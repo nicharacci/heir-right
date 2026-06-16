@@ -151,3 +151,20 @@ Tomorrow's agent should improve:
 - Build S18 `qualification-review.md` around source coverage and reason codes.
 - If a real batch exists, run `seeds:validate`, `run:daily`, and compare coverage against the 30-40% source-fact target.
 - Keep the 30-day packet blocked unless source coverage, qualified volume, and live readback evidence actually clear.
+
+## Planning Normalization Addendum
+
+Completed after reviewing the missing/archived June 15 planning state:
+
+- Added durable sprint briefs for S16-S20 under `sprint-md/`, including orchestration files and child tracks.
+- Backfilled the local Linear load sheet so S12-S20 now appear in `linear/HEIRRIGHT_LINEAR_TICKETS.md`.
+- Preserved the June 15 retrospective discovery doc as the planning source for S16-S20.
+- Live Linear sync is still blocked by reauthentication, so the repo-local Linear load sheet is the sync-ready source until the connector is restored.
+
+S16-S20 planning status:
+
+- S16: planned and partly implemented for the seed contract/example path; real production seed batch still needs Sam/Joshua approval.
+- S17: planned and partly implemented for source-coverage gating; extraction adapters still need real property/tax/deed/probate facts.
+- S18: planned and next recommended implementation, centered on `qualification-review.md`.
+- S19: planned but externally blocked until Google/Podio credentials, controlled test values, and live-write approval exist.
+- S20: planned but blocked until S16-S19 evidence exists.

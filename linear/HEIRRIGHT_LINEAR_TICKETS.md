@@ -7,12 +7,12 @@ Phase: Post-Friday milestone execution
 Owner for implementation issues: Claude Cowork / Codex Automation
 Human blocker assignee: sam@solvys.io
 Audience: internal implementation only
-Track cap: 5 child tracks per execution batch; S12-S15 2.0 Beta pack uses exactly 2 tracks per sprint and 2 sprints per repo branch.
+Track cap: 5 child tracks per execution batch; S12-S15 2.0 Beta pack uses exactly 2 tracks per sprint and 2 sprints per repo branch. S16-S20 30-day acceptance pack uses 3 focused tracks per sprint.
 
 ## Post-Friday Linear Operating Model
 
 - Preserve `HEI-5` through `HEI-28` as completed S1-S4 Friday delivery evidence.
-- Use the active `HeirRight Deal Engine Automation` project for S5-S15, run-point setup, and milestone gates.
+- Use the active `HeirRight Deal Engine Automation` project for S5-S20, run-point setup, and milestone gates.
 - Keep granular agent tickets for execution, but create human testing tickets only at milestone gates.
 - Assign human-only tickets to `sam@solvys.io` only for credentials, approvals, legal/compliance review, live-write permission, or milestone acceptance.
 - Podio remains CRM/work queue of record unless smoke tests disprove it; Macro and Close stay fallback candidates.
@@ -697,3 +697,197 @@ Acceptance:
 - OpenPanel/PostHog analytics and monitoring path is represented behind a provider-agnostic event contract.
 - Solvys admin dashboard requirements cover cross-project analytics and deeper Solvys-1 control.
 - HeirRight MVP validation gates generic shell extraction.
+
+## S12-S20 Local Linear Recovery Pack
+
+Sync status: live Linear connector is blocked by reauthentication as of June 16, 2026. Treat this section as the local sync source until the HeirRight Linear workspace is reauthenticated.
+
+Current repo branch for recovery pack: `v2.4.1/heirright-2026-06-16-run-point`
+Planning sources: `@sprint-md/S12-ORCHESTRATION.md` through `@sprint-md/S20-ORCHESTRATION.md`, plus `@docs/discovery/heirright-retrospective-discovery-2026-06-15.md`.
+
+## S12-ORCH: Organization Access + Beta Runtime Gate
+
+Owner: TP
+Milestone: Pre-Alaska MVP Testing Handoff
+Brief: `@sprint-md/S12-ORCHESTRATION.md`
+Status: repo-planned / implementation evidence exists in run-point handoffs
+
+Child tracks:
+
+- `S12-T1: Google OAuth Login`
+- `S12-T2: Protected Beta Runtime`
+
+Acceptance:
+
+- Allowed HeirRight and configured Solvys users can enter.
+- Non-allowed Google accounts are rejected.
+- Lead packet JSON and report data are not exposed without a valid session or internal API token.
+- Missing OAuth configuration shows a clear blocker instead of exposing data.
+
+## S13-ORCH: Report Rail + Operator UI Completion
+
+Owner: TP
+Milestone: Pre-Alaska MVP Testing Handoff
+Brief: `@sprint-md/S13-ORCHESTRATION.md`
+Status: repo-planned / implementation evidence exists in run-point handoffs
+
+Child tracks:
+
+- `S13-T1: Streamdown Report Rail`
+- `S13-T2: HeirRight Report Shape Polish`
+
+Acceptance:
+
+- Report Rail shows the completed lead report workspace, not raw artifacts.
+- Preview includes date added, property, owner/estate, heirs/contact placeholders, offer status, missing data, and source-note context.
+- UI stays in plain real estate workflow language.
+
+## S14-ORCH: Daily Lead Production + Qualification
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S14-ORCHESTRATION.md`
+Status: repo-planned / partially implemented
+
+Child tracks:
+
+- `S14-T1: Configurable Daily County Runs`
+- `S14-T2: Qualification Intelligence`
+
+Acceptance:
+
+- Daily runs can target configured counties.
+- Duplicate, source-blocked, and placeholder-only records do not count as qualified.
+- Output reports raw leads, qualified leads, blockers, dead letters, and missed-volume reasons.
+
+## S15-ORCH: Google/Podio Export + Readback
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S15-ORCHESTRATION.md`
+Status: repo-complete for guarded dry/prep path; live readback externally blocked
+
+Child tracks:
+
+- `S15-T1: Google Workspace Export`
+- `S15-T2: Podio Export + Readback`
+
+Acceptance:
+
+- Google export prepares Drive, Docs, and Sheet output with readback when credentials exist.
+- Podio export creates the item, adds the source-note handoff, creates the review task, and verifies readback when approved live credentials exist.
+- Failed or skipped exports create visible blockers.
+
+External blockers:
+
+- Google Workspace token and target Sheet/Drive/Docs config.
+- Podio bearer token, app ID/field map or Texas Equity preset, controlled test values, CSV backup/export access, and explicit live-write approval.
+
+## S16-ORCH: Production Seed Intake + Acceptance Batch
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S16-ORCHESTRATION.md`
+Status: implemented for contract/example path; real production batch externally blocked
+
+Child tracks:
+
+- `S16-T1: Production Seed File Contract`
+- `S16-T2: Seed Review + Import CLI`
+- `S16-T3: Small Production Batch Falsifier`
+
+Acceptance:
+
+- Approved production seeds load from `DAILY_RUN_SEEDS_JSON` or `apps/worker/input/production-seeds.json`.
+- Default review seeds cannot satisfy milestone acceptance.
+- Seed import output shows provenance, duplicates, missing identifiers, county support, and failure piles.
+- No paid/manual source data, live outreach, or CRM write is triggered by seed intake.
+
+External blocker:
+
+- Sam/Joshua must provide or approve the first real Miami-Dade production seed file.
+
+## S17-ORCH: Structured Source Extraction Upgrade
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S17-ORCHESTRATION.md`
+Status: partially implemented for coverage gate; extraction adapters still need real source facts
+
+Child tracks:
+
+- `S17-T1: Property + Tax Extraction Path`
+- `S17-T2: Official Records + Deed Extraction Path`
+- `S17-T3: Probate + Court Extraction Path`
+
+Acceptance:
+
+- A meaningful share of an approved small batch has extracted property identity, tax status, deed/title, and probate/case facts with source references.
+- Reports show fewer placeholder missing sections for extracted records.
+- Source-health-only facts are not treated as evidence.
+- Paid/manual sources and legal heirship conclusions remain approval-gated.
+
+## S18-ORCH: Qualification Promotion Loop
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S18-ORCHESTRATION.md`
+Status: next recommended implementation
+
+Child tracks:
+
+- `S18-T1: Evidence Coverage Scoring`
+- `S18-T2: Lead-Quality Settings Activation`
+- `S18-T3: Operator Spot-Check Packet`
+
+Acceptance:
+
+- The system can promote real source-backed candidates or honestly explain why none qualify.
+- No lead with open core blockers is counted as qualified.
+- Operator review can tune thresholds without weakening source-evidence rules.
+- A `qualification-review.md` packet samples qualified, review, disqualified, duplicate, and dead-letter states.
+
+## S19-ORCH: Controlled Google + Podio Readback
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S19-ORCHESTRATION.md`
+Status: externally blocked
+
+Child tracks:
+
+- `S19-T1: Google Workspace Readback`
+- `S19-T2: Podio Controlled Write`
+- `S19-T3: Readback Evidence Packet`
+
+Acceptance:
+
+- Google live export returns readback evidence from the configured Drive/Docs/Sheets target.
+- Podio live test creates one clearly labeled test item and reads it back.
+- The 30-day packet no longer blocks on Google/Podio readback only after both routes have proof.
+- No real outreach or external send occurs.
+
+External blockers:
+
+- Google Workspace credentials and target config.
+- Podio credentials, controlled test values, CSV backup/export access, and `PODIO_LIVE_WRITE_APPROVED=true`.
+
+## S20-ORCH: 30-Day Acceptance Run
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S20-ORCHESTRATION.md`
+Status: blocked until S16-S19 evidence exists
+
+Child tracks:
+
+- `S20-T1: Production-Volume Run`
+- `S20-T2: Acceptance Packet`
+- `S20-T3: Client Review Script`
+
+Acceptance:
+
+- Approved seeds run toward the 200-400 raw / 80-150 qualified target or preserve a named blocker.
+- The packet answers raw volume, qualified volume, report completeness, Google/Podio readback, no-auto-send guard, and next actions.
+- `overallStatus` is `ready_for_human_review` or blocked by a small named set of non-repo decisions.
+- The review script tells Sam/Joshua what is automated, what remains manual, and what decision unblocks the next milestone.
