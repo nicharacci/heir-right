@@ -47,7 +47,7 @@ function rollup(checks: SourceEvidenceQaCheck[]): SourceEvidenceQaStatus {
   return "passed";
 }
 
-export function runSourceEvidenceQa(dossier: Omit<RawDossier, "evidenceQa" | "outreach">): SourceEvidenceQaResult {
+export function runSourceEvidenceQa(dossier: Omit<RawDossier, "evidenceQa" | "sourceCoverage" | "outreach">): SourceEvidenceQaResult {
   const checks = [
     checkClaim({ code: "PROPERTY_ADDRESS", label: "Property address", claim: dossier.property.address }),
     checkClaim({ code: "PROPERTY_OWNER", label: "Property owner", claim: dossier.property.ownerName }),

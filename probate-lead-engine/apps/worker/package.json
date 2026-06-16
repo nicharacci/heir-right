@@ -11,6 +11,7 @@
     "dev:cloudflare": "wrangler dev",
     "test": "node dist/validation/run-validation.js",
     "run:daily": "node dist/daily-cli.js",
+    "seeds:validate": "node dist/seed-validation-cli.js",
     "milestone:30-day": "node dist/milestone-30-day-cli.js",
     "export:dry": "node dist/export-cli.js",
     "export:podio-live-test": "node dist/podio-live-test-cli.js",

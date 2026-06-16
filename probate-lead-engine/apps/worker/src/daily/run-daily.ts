@@ -1,6 +1,7 @@
-import type { DailyLeadResult, DailyRunConfig, DailyRunResult, IntakeSeed, RawDossier } from "@ple/types";
+import type { DailyLeadResult, DailyRunConfig, DailyRunResult, IntakeSeed, RawDossier, SeedBatchSummary, SourceCoverageSummary } from "@ple/types";
 import { runDryPipeline, type RunDryPipelineOptions } from "../index";
 import { nowIso, seedIdentity, slug } from "../lib";
+import { loadConfiguredSeedBatch } from "./seed-batch";
 
 type RuntimeEnv = Record<string, string | undefined>;
 
@@ -16,12 +17,7 @@ function numberFromEnv(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function parseSeeds(env: RuntimeEnv, counties: string[]): IntakeSeed[] {
-  if (env.DAILY_RUN_SEEDS_JSON) {
-    const parsed = JSON.parse(env.DAILY_RUN_SEEDS_JSON) as IntakeSeed[];
-    return parsed.map((seed) => ({ ...seed, source: seed.source ?? "operator_cli" }));
-  }
-
+function defaultReviewSeeds(counties: string[]): IntakeSeed[] {
   return counties.map((county) => ({
     propertyAddress: county.toLowerCase() === "miami-dade"
       ? "20611 NW 33rd Pl, Miami Gardens, FL 33056"
@@ -30,13 +26,65 @@ function parseSeeds(env: RuntimeEnv, counties: string[]): IntakeSeed[] {
     ownerName: "Fresh public-source lead",
     county,
     source: "operator_cli",
+    seedBatchId: "default-review-seeds",
+    seedSourceLabel: "Default review seeds",
+    sourceOwner: "Codex Automation",
+    approvalMarker: "review_only_not_for_acceptance",
   }));
+}
+
+function aggregateCoverageStatus(summary: Omit<SourceCoverageSummary, "status">): SourceCoverageSummary["status"] {
+  if (summary.blockedAreaCount > 0 || summary.leadCount === 0) return "blocked";
+  if (summary.partialAreaCount > 0) return "partial";
+  return "extracted";
+}
+
+function summarizeSourceCoverage(leads: DailyLeadResult[]): SourceCoverageSummary {
+  const areaMap = new Map<string, { key: SourceCoverageSummary["areaStatuses"][number]["key"]; label: string; extracted: number; partial: number; blocked: number }>();
+  let extractedAreaCount = 0;
+  let partialAreaCount = 0;
+  let blockedAreaCount = 0;
+  let extractedFieldCount = 0;
+  let missingFieldCount = 0;
+
+  for (const lead of leads) {
+    extractedAreaCount += lead.sourceCoverage.extractedAreaCount;
+    partialAreaCount += lead.sourceCoverage.partialAreaCount;
+    blockedAreaCount += lead.sourceCoverage.blockedAreaCount;
+    extractedFieldCount += lead.sourceCoverage.extractedFieldCount;
+    missingFieldCount += lead.sourceCoverage.missingFieldCount;
+    for (const area of lead.sourceCoverage.areas) {
+      const current = areaMap.get(area.key) ?? { key: area.key, label: area.label, extracted: 0, partial: 0, blocked: 0 };
+      if (area.status === "extracted") current.extracted += 1;
+      if (area.status === "partial") current.partial += 1;
+      if (area.status === "blocked") current.blocked += 1;
+      areaMap.set(area.key, current);
+    }
+  }
+
+  const base = {
+    leadCount: leads.length,
+    extractedAreaCount,
+    partialAreaCount,
+    blockedAreaCount,
+    extractedFieldCount,
+    missingFieldCount,
+    areaStatuses: Array.from(areaMap.values()),
+  };
+  return {
+    status: aggregateCoverageStatus(base),
+    ...base,
+  };
 }
 
 export function dailyRunConfigFromEnv(env: RuntimeEnv = process.env): DailyRunConfig {
   const counties = splitList(env.DAILY_COUNTIES || env.COUNTY_LIST, "miami-dade,broward").map((county) => county.toLowerCase());
+  const seedBatch = loadConfiguredSeedBatch(env);
+  const runCounties = seedBatch?.batch.counties.length ? seedBatch.batch.counties : counties;
+  const seeds = seedBatch?.acceptedSeeds ?? defaultReviewSeeds(runCounties);
+  const summary: SeedBatchSummary | undefined = seedBatch?.batch;
   return {
-    counties,
+    counties: runCounties,
     targetRawLeadRange: {
       min: numberFromEnv(env.DAILY_TARGET_RAW_MIN, 200),
       max: numberFromEnv(env.DAILY_TARGET_RAW_MAX, 400),
@@ -45,8 +93,9 @@ export function dailyRunConfigFromEnv(env: RuntimeEnv = process.env): DailyRunCo
       min: numberFromEnv(env.DAILY_TARGET_QUALIFIED_MIN, 80),
       max: numberFromEnv(env.DAILY_TARGET_QUALIFIED_MAX, 150),
     },
-    seeds: parseSeeds(env, counties),
-    seedSource: env.DAILY_RUN_SEEDS_JSON ? "configured_batch" : "default_review_seeds",
+    seeds,
+    seedSource: seedBatch ? "configured_batch" : "default_review_seeds",
+    seedBatch: summary,
     startedBy: "automation",
   };
 }
@@ -85,6 +134,7 @@ function leadResult(dossier: RawDossier): DailyLeadResult {
     qualified: blockers.length === 0,
     blockers,
     reportId: dossier.completedLeadReport?.id,
+    sourceCoverage: dossier.sourceCoverage,
   };
 }
 
@@ -133,6 +183,13 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
   if (config.seedSource !== "configured_batch") {
     missedVolumeReasons.push("No production batch seed file was provided; default review seeds do not satisfy contract volume.");
   }
+  if (config.seedBatch?.rejectedSeedCount) {
+    missedVolumeReasons.push(`${config.seedBatch.rejectedSeedCount} seed(s) were rejected by intake validation before the run.`);
+  }
+  const sourceCoverageSummary = summarizeSourceCoverage(leads);
+  if (sourceCoverageSummary.blockedAreaCount > 0) {
+    missedVolumeReasons.push(`${sourceCoverageSummary.blockedAreaCount} source area(s) are still blocked by missing extracted property, tax, deed, probate, or family-tree facts.`);
+  }
   if (deadLetters.length) missedVolumeReasons.push(`${deadLetters.length} seed(s) failed and were written to dead letters.`);
 
   return {
@@ -148,5 +205,6 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
     deadLetters,
     missedVolumeReasons,
     blockers,
+    sourceCoverageSummary,
   };
 }

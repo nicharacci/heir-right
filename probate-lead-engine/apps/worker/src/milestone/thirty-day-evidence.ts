@@ -99,6 +99,8 @@ function buildGates(input: {
   const qualifiedVolumeReady = inRange(input.dailyRun.qualifiedLeadCount, qualifiedTarget);
   const podioReady = podioLiveReadbackReady(podioStatus, input.env);
   const googleReady = Boolean(googleStatus?.ok && googleStatus.mode === "live");
+  const sourceCoverageReady = input.dailyRun.sourceCoverageSummary.extractedFieldCount > 0
+    && input.dailyRun.sourceCoverageSummary.blockedAreaCount === 0;
 
   return [
     gate({
@@ -144,6 +146,16 @@ function buildGates(input: {
         ? "Keep generic seeds in review until source evidence converges."
         : "Fix qualification rules before acceptance review.",
       blockers: qualificationIntegrityPassed(input.dailyRun) ? [] : ["Blocked or generic review leads are being counted as qualified."],
+    }),
+    gate({
+      id: "structured_source_coverage",
+      label: "Structured source coverage",
+      status: sourceCoverageReady ? "passed" : "blocked",
+      evidence: `${input.dailyRun.sourceCoverageSummary.extractedFieldCount} extracted source field(s), ${input.dailyRun.sourceCoverageSummary.missingFieldCount} missing field(s), ${input.dailyRun.sourceCoverageSummary.blockedAreaCount} blocked source area(s).`,
+      nextAction: sourceCoverageReady
+        ? "Spot-check extracted fields against county source links before acceptance review."
+        : "Capture real property, tax, deed/title, probate, and family-tree facts before using the run as acceptance evidence.",
+      blockers: sourceCoverageReady ? [] : ["Source coverage still depends on missing facts, source-health checks, or intake placeholders."],
     }),
     gate({
       id: "dead_letters_duplicates",
@@ -270,6 +282,8 @@ export async function generateThirtyDayMilestoneEvidence(
       duplicateCount: dailyRun.duplicateCount,
       errorCount: dailyRun.errorCount,
       missedVolumeReasons: dailyRun.missedVolumeReasons,
+      seedBatch: dailyRun.config.seedBatch,
+      sourceCoverageSummary: dailyRun.sourceCoverageSummary,
     },
     exportReadiness: {
       connectionStatuses: statuses,
@@ -313,6 +327,8 @@ ${evidence.operatorSummary}
 - Review leads: ${evidence.dailyRun.reviewLeadCount}
 - Duplicates: ${evidence.dailyRun.duplicateCount}
 - Dead letters: ${evidence.dailyRun.errorCount}
+- Source coverage: ${evidence.dailyRun.sourceCoverageSummary.extractedFieldCount} extracted field(s), ${evidence.dailyRun.sourceCoverageSummary.missingFieldCount} missing field(s), ${evidence.dailyRun.sourceCoverageSummary.blockedAreaCount} blocked area(s)
+${evidence.dailyRun.seedBatch ? `- Seed batch: ${evidence.dailyRun.seedBatch.batchId} (${evidence.dailyRun.seedBatch.acceptedSeedCount} accepted, ${evidence.dailyRun.seedBatch.rejectedSeedCount} rejected)` : ""}
 
 ## Acceptance Gates
 

@@ -1,6 +1,7 @@
 import type { DossierClaim, DossierEvent, DocketReference, FamilyTreeHypothesisData, LatestDeedRecord, MemorialSearchPlaceholder, OfficialRecordCrossLink, OrBookPageRef, RawDossier, ReviewFlag, SourceEvidenceReviewTask, SourceFact, SourceGovernanceCatalog, SourceKey, SourceRef, TaxAmountDue } from "@ple/types";
 import { nowIso, sourceRef, slug } from "../lib";
 import { buildOutreachWorkflow } from "../outreach/build-outreach-workflow";
+import { buildSourceCoverageProfile } from "../qa/source-coverage";
 import { runSourceEvidenceQa } from "../qa/source-evidence";
 import { buildOperatorQueue } from "../queue/operator-queue";
 import { evaluateWorkflowRules } from "../workflow/evaluate-workflow-rules";
@@ -410,7 +411,7 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
   ];
   const narrative = narrativeParts.filter((part): part is string => part !== null).join(" ");
 
-  const dossierWithoutQueue: Omit<RawDossier, "operatorQueue" | "evidenceQa" | "outreach"> = {
+  const dossierWithoutQueue: Omit<RawDossier, "operatorQueue" | "evidenceQa" | "sourceCoverage" | "outreach"> = {
     id: `dossier-${slug(displayName)}-${runId}`,
     runId,
     status: auditFlags.includes("SOURCE_BLOCKED") ? "blocked" : "ready_for_review",
@@ -455,7 +456,9 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
   const operatorQueue = buildOperatorQueue(dossierWithoutQueue);
   const dossierWithQueue = { ...dossierWithoutQueue, operatorQueue };
   const evidenceQa = runSourceEvidenceQa(dossierWithQueue);
-  const dossierWithoutOutreach = { ...dossierWithQueue, evidenceQa };
+  const dossierWithEvidence = { ...dossierWithQueue, evidenceQa };
+  const sourceCoverage = buildSourceCoverageProfile(dossierWithEvidence);
+  const dossierWithoutOutreach = { ...dossierWithEvidence, sourceCoverage };
   const outreach = buildOutreachWorkflow(dossierWithoutOutreach);
 
   return { ...dossierWithoutOutreach, outreach };

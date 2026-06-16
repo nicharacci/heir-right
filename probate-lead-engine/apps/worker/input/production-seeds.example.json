@@ -1,0 +1,21 @@
+{
+  "batchId": "sample-miami-dade-production-contract",
+  "sourceLabel": "Sample Miami-Dade county seed batch",
+  "sourceOwner": "HeirRight operator",
+  "approvalMarker": "approved_for_production_batch",
+  "seeds": [
+    {
+      "county": "miami-dade",
+      "propertyAddress": "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+      "ownerName": "Fresh public-source lead",
+      "parcelId": "sample-folio-review",
+      "source": "operator_cli"
+    },
+    {
+      "county": "miami-dade",
+      "estateName": "Estate of Sample Public Source Lead",
+      "caseNumber": "2026-CP-SAMPLE",
+      "source": "operator_cli"
+    }
+  ]
+}

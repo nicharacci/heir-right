@@ -179,7 +179,77 @@ export interface DailyRunConfig {
   targetQualifiedLeadRange: { min: number; max: number };
   seeds: IntakeSeed[];
   seedSource: "configured_batch" | "default_review_seeds" | "manual";
+  seedBatch?: SeedBatchSummary;
   startedBy: "automation" | "operator_cli";
+}
+
+export interface SeedBatchSummary {
+  batchId: string;
+  sourceLabel: string;
+  sourceOwner: string;
+  approvalMarker: string;
+  seedCount: number;
+  acceptedSeedCount: number;
+  rejectedSeedCount: number;
+  duplicateCount: number;
+  counties: string[];
+  inputPath?: string;
+}
+
+export type SeedValidationSeverity = "error" | "warning";
+
+export interface SeedValidationIssue {
+  severity: SeedValidationSeverity;
+  code: string;
+  message: string;
+  seedIndex?: number;
+}
+
+export interface SeedValidationReport {
+  ok: boolean;
+  generatedAt: string;
+  batch: SeedBatchSummary;
+  issues: SeedValidationIssue[];
+  acceptedSeeds: IntakeSeed[];
+  rejectedSeeds: Array<{ seed: IntakeSeed; issues: SeedValidationIssue[] }>;
+  operatorSummary: string;
+  nextActions: string[];
+}
+
+export type SourceCoverageAreaKey = "property" | "tax" | "deed_title" | "probate" | "family_tree_offer";
+export type SourceCoverageAreaStatus = "extracted" | "partial" | "blocked";
+
+export interface SourceCoverageArea {
+  key: SourceCoverageAreaKey;
+  label: string;
+  status: SourceCoverageAreaStatus;
+  extractedFields: string[];
+  missingFields: string[];
+  nextAction: string;
+  sourceRefs: SourceRef[];
+  reviewFlags: ReviewFlag[];
+}
+
+export interface SourceCoverageProfile {
+  status: SourceCoverageAreaStatus;
+  checkedAt: string;
+  extractedAreaCount: number;
+  partialAreaCount: number;
+  blockedAreaCount: number;
+  extractedFieldCount: number;
+  missingFieldCount: number;
+  areas: SourceCoverageArea[];
+}
+
+export interface SourceCoverageSummary {
+  status: SourceCoverageAreaStatus;
+  leadCount: number;
+  extractedAreaCount: number;
+  partialAreaCount: number;
+  blockedAreaCount: number;
+  extractedFieldCount: number;
+  missingFieldCount: number;
+  areaStatuses: Array<{ key: SourceCoverageAreaKey; label: string; extracted: number; partial: number; blocked: number }>;
 }
 
 export interface DailyLeadResult {
@@ -194,6 +264,7 @@ export interface DailyLeadResult {
   qualified: boolean;
   blockers: string[];
   reportId?: string;
+  sourceCoverage: SourceCoverageProfile;
 }
 
 export interface DailyRunResult {
@@ -209,6 +280,7 @@ export interface DailyRunResult {
   deadLetters: DeadLetter[];
   missedVolumeReasons: string[];
   blockers: string[];
+  sourceCoverageSummary: SourceCoverageSummary;
 }
 
 export type ExportRoute = "google" | "podio";
@@ -274,6 +346,8 @@ export interface ThirtyDayMilestoneEvidence {
     duplicateCount: number;
     errorCount: number;
     missedVolumeReasons: string[];
+    seedBatch?: SeedBatchSummary;
+    sourceCoverageSummary: SourceCoverageSummary;
   };
   exportReadiness: {
     connectionStatuses: ConnectionStatus[];
@@ -895,6 +969,7 @@ export interface RawDossier {
   workflow: WorkflowRuleEvaluation;
   operatorQueue: OperatorQueue;
   evidenceQa: SourceEvidenceQaResult;
+  sourceCoverage: SourceCoverageProfile;
   narrative: string;
   crm: {
     provider: "podio";
@@ -941,4 +1016,8 @@ export interface IntakeSeed {
   county: string;
   parcelId?: string;
   source: "landing_page" | "operator_cli";
+  seedBatchId?: string;
+  seedSourceLabel?: string;
+  sourceOwner?: string;
+  approvalMarker?: string;
 }

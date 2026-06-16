@@ -3547,6 +3547,7 @@ function operatorBlockerText(value) {
     .replace(/Raw lead count/i, "Raw leads")
     .replace(/Qualified lead count/i, "Qualified leads")
     .replace(/No production batch seed file was provided; default review seeds do not satisfy contract volume\./i, "Production county seed file is still needed before volume targets can be claimed.")
+    .replace(/(\d+) source area\(s\) are still blocked by missing extracted property, tax, deed, probate, or family-tree facts\./i, "$1 source area(s) still need real county facts before the lead can count.")
     .replace(/Lead bucket is review_required, not qualified\./i, "Lead is still in review, not qualified.")
     .replace(/Workflow status is review_required\./i, "Workflow still needs operator review.")
     .replace(/Operator queue is manual_review\./i, "Operator queue still needs manual review.")
@@ -3574,6 +3575,10 @@ function milestoneBlockers(dossier) {
   const reportMissing = dossier?.completedLeadReport?.missingData?.length ?? buildMissingSections(dossier ?? {}).length;
   if (reportMissing > 0) {
     blockers.push(`${reportMissing} report section${reportMissing === 1 ? "" : "s"} still need review before a completed lead claim.`);
+  }
+  const blockedSourceAreas = dailyRun?.sourceCoverageSummary?.blockedAreaCount ?? 0;
+  if (blockedSourceAreas > 0) {
+    blockers.push(`${blockedSourceAreas} source area${blockedSourceAreas === 1 ? "" : "s"} still need property, tax, deed, probate, or heir facts from the source records.`);
   }
 
   blockers.push("Google Workspace handoff still needs approved Drive, Docs, and tracking Sheet configuration.");

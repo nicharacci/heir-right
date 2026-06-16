@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import type { SourceFact, SourceKey, SourceSubject } from "@ple/types";
 import { runDailyProduction } from "../daily/run-daily";
+import { validateSeedBatchInput } from "../daily/seed-batch";
 import { buildRawDossier } from "../dossier/build-raw-dossier";
 import { connectionStatuses, exportCompletedReport } from "../export/export-package";
 import { PODIO_LIVE_WRITE_APPROVAL_KEY, TEXAS_EQUITY_PROS_LEADS_APP_ID } from "../export/podio-config";
@@ -150,6 +151,9 @@ async function main(): Promise<void> {
   if (!result.dossier.operatorQueue.items.length) failures.push("Operator queue items missing.");
   if (!result.dossier.evidenceQa.checks.length) failures.push("Source evidence QA checks missing.");
   if (result.dossier.evidenceQa.status === "failed") failures.push("Source evidence QA failed.");
+  if (!result.dossier.sourceCoverage.areas.length) failures.push("S17 source coverage areas missing.");
+  if (result.dossier.sourceCoverage.extractedFieldCount <= 0) failures.push("S17 source coverage should count property seed facts as captured.");
+  if (result.dossier.sourceCoverage.blockedAreaCount <= 0) failures.push("S17 source coverage should keep missing source areas blocked.");
 
   const dailyResult = await runDailyProduction({
     counties: ["miami-dade", "broward"],
@@ -183,7 +187,42 @@ async function main(): Promise<void> {
   if (dailyResult.qualifiedLeadCount !== 0) failures.push("S14 should not count review-placeholder/no-enrichment leads as qualified.");
   if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("Qualified lead count"))) failures.push("S14 missed qualified-volume reason missing.");
   if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("No production batch seed file"))) failures.push("S14 production seed blocker missing.");
+  if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("source area"))) failures.push("S17 source coverage missed-volume reason missing.");
+  if (!dailyResult.sourceCoverageSummary.areaStatuses.length) failures.push("S17 daily source coverage rollup missing.");
   if (!dailyResult.blockers.some((blocker) => blocker.includes("No enrichment/contact"))) failures.push("S14 no-enrichment qualification blocker missing.");
+
+  const validSeedReport = validateSeedBatchInput({
+    batchId: "validation-miami-dade-seeds",
+    sourceLabel: "Validation county seed batch",
+    sourceOwner: "HeirRight operator",
+    approvalMarker: "approved_for_production_batch",
+    seeds: [
+      {
+        propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+        ownerName: "Fresh public-source validation lead",
+        county: "miami-dade",
+        source: "operator_cli",
+      },
+      {
+        propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+        ownerName: "Fresh public-source validation lead",
+        county: "miami-dade",
+        source: "operator_cli",
+      },
+    ],
+  });
+  if (!validSeedReport.ok) failures.push("S16 approved Miami-Dade seed batch should validate.");
+  if (validSeedReport.batch.acceptedSeedCount !== 1) failures.push("S16 seed validator should dedupe duplicate seeds.");
+  if (validSeedReport.batch.duplicateCount !== 1) failures.push("S16 seed validator duplicate count missing.");
+  const invalidSeedReport = validateSeedBatchInput({
+    batchId: "validation-unapproved-seeds",
+    sourceLabel: "Unapproved county seed batch",
+    sourceOwner: "HeirRight operator",
+    seeds: [{ county: "broward", source: "operator_cli" }],
+  });
+  if (invalidSeedReport.ok) failures.push("S16 unapproved or unsupported seed batch should be blocked.");
+  if (!invalidSeedReport.issues.some((item) => item.code === "MISSING_APPROVAL_MARKER")) failures.push("S16 missing approval marker issue missing.");
+  if (!invalidSeedReport.issues.some((item) => item.code === "UNSUPPORTED_COUNTY")) failures.push("S16 unsupported county issue missing.");
 
   const dryExport = await exportCompletedReport({
     routes: ["google", "podio"],
@@ -264,6 +303,7 @@ async function main(): Promise<void> {
   if (!thirtyDayEvidence.gates.some((item) => item.id === "production_seed_batch" && item.status === "blocked")) failures.push("HEI-77 production seed blocker missing.");
   if (!thirtyDayEvidence.gates.some((item) => item.id === "qualified_lead_volume" && item.status === "blocked")) failures.push("HEI-77 qualified-volume blocker missing.");
   if (!thirtyDayEvidence.gates.some((item) => item.id === "qualification_integrity" && item.status === "passed")) failures.push("HEI-77 qualification-integrity gate missing.");
+  if (!thirtyDayEvidence.gates.some((item) => item.id === "structured_source_coverage" && item.status === "blocked")) failures.push("S17 structured-source coverage gate missing.");
   if (!thirtyDayEvidence.gates.some((item) => item.id === "external_use_guard" && item.status === "passed")) failures.push("HEI-77 external-use guard gate missing.");
   if (!thirtyDayEvidenceMarkdown.includes("HeirRight 30-Day Milestone Evidence")) failures.push("HEI-77 evidence markdown heading missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Not ready for 30-Day acceptance")) failures.push("HEI-77 evidence markdown summary missing.");
