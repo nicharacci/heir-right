@@ -25,4 +25,3 @@ cd probate-lead-engine
 pnpm --filter @ple/worker test
 pnpm --filter @ple/worker run:daily
 ```
-

@@ -24,4 +24,3 @@ cd probate-lead-engine
 DAILY_RUN_SEEDS_FILE=input/production-seeds.json pnpm --filter @ple/worker run:daily
 pnpm --filter @ple/worker milestone:30-day
 ```
-

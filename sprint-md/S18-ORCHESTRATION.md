@@ -23,4 +23,3 @@ Turn extracted evidence into qualified, review, disqualified, duplicate, and dea
 - No lead with open core blockers is counted as qualified.
 - Operator review can tune thresholds without weakening source-evidence rules.
 - A `qualification-review.md` packet gives a sample across qualified, review, disqualified, duplicate, and dead-letter states.
-

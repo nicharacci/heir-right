@@ -23,4 +23,3 @@ Run the first acceptance-grade evidence packet for Sam/Joshua without overstatin
 - The packet answers raw volume, qualified volume, report completeness, Google/Podio readback, no-auto-send guard, and next actions.
 - `overallStatus` is `ready_for_human_review` or blocked by a small named set of non-repo decisions.
 - The review script tells Sam/Joshua what is automated, what remains manual, and what decision unblocks the next milestone.
-

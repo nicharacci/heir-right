@@ -23,4 +23,3 @@ Move from source reachability to structured source facts for Miami-Dade property
 - Reports show fewer placeholder missing sections for extracted records.
 - Source-health-only facts are not treated as evidence.
 - Paid/manual sources and legal heirship conclusions remain approval-gated.
-

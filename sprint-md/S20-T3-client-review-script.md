@@ -23,4 +23,3 @@ Prepare a plain-language 30-minute review agenda for Sam/Joshua.
 ```bash
 rg -n "30-day|production seed|Google|Podio|qualified" docs/run-point-daily docs/discovery sprint-md/S20-*.md
 ```
-

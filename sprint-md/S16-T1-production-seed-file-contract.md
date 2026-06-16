@@ -25,4 +25,3 @@ Define the approved production seed shape so operators can distinguish a real co
 cd probate-lead-engine
 pnpm --filter @ple/worker seeds:validate -- --file=input/production-seeds.example.json
 ```
-
