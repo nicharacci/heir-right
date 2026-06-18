@@ -1,6 +1,7 @@
-import type { DailyLeadResult, DailyRunConfig, DailyRunResult, IntakeSeed, RawDossier, SeedBatchSummary, SourceCoverageSummary } from "@ple/types";
+import type { DailyDuplicateLeadResult, DailyLeadResult, DailyRunConfig, DailyRunResult, IntakeSeed, LeadQualitySettings, RawDossier, SeedBatchSummary, SourceCoverageSummary } from "@ple/types";
 import { runDryPipeline, type RunDryPipelineOptions } from "../index";
 import { nowIso, seedIdentity, slug } from "../lib";
+import { buildQualificationDecision, buildQualificationReviewPacket, qualificationBlockers } from "../qualification/qualification-review";
 import { loadConfiguredSeedBatch } from "./seed-batch";
 
 type RuntimeEnv = Record<string, string | undefined>;
@@ -108,20 +109,10 @@ function dedupeKey(dossier: RawDossier): string {
   return slug(caseNumber || parcelId || `${address || "unknown-address"}:${owner || "unknown-owner"}`);
 }
 
-function qualificationBlockers(dossier: RawDossier): string[] {
-  const blockers: string[] = [];
-  const profile = dossier.completedLeadReport?.leadQualityProfile;
-  if (!profile?.promotionEligible) blockers.push(`Lead bucket is ${profile?.leadBucket ?? "unknown"}, not qualified.`);
-  if (dossier.workflow.status !== "continue") blockers.push(`Workflow status is ${dossier.workflow.status}.`);
-  if (dossier.operatorQueue.state !== "ready_for_review") blockers.push(`Operator queue is ${dossier.operatorQueue.state}.`);
-  if (dossier.audit.reviewFlags.includes("SOURCE_HEALTH_ONLY")) blockers.push("Only source reachability is proven for at least one source.");
-  if (dossier.audit.reviewFlags.includes("NO_ENRICHMENT_RUN")) blockers.push("No enrichment/contact run has been approved or completed.");
-  if (dossier.completedLeadReport?.missingData.length) blockers.push(`Report has ${dossier.completedLeadReport.missingData.length} missing section(s).`);
-  return Array.from(new Set(blockers));
-}
-
 function leadResult(dossier: RawDossier): DailyLeadResult {
   const blockers = qualificationBlockers(dossier);
+  const qualificationDecision = buildQualificationDecision(dossier, blockers);
+  dossier.qualificationDecision = qualificationDecision;
   return {
     dedupeKey: dedupeKey(dossier),
     county: dossier.property.county.value ?? "unknown",
@@ -131,10 +122,11 @@ function leadResult(dossier: RawDossier): DailyLeadResult {
     workflowStatus: dossier.workflow.status,
     operatorQueueState: dossier.operatorQueue.state,
     leadBucket: dossier.completedLeadReport?.leadQualityProfile.leadBucket ?? "review_required",
-    qualified: blockers.length === 0,
+    qualified: qualificationDecision.status === "qualified" && blockers.length === 0,
     blockers,
     reportId: dossier.completedLeadReport?.id,
     sourceCoverage: dossier.sourceCoverage,
+    qualificationDecision,
   };
 }
 
@@ -142,19 +134,30 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
   const generatedAt = nowIso();
   const runId = `daily-${Date.now()}-${slug(config.counties.join("-"))}`;
   const leads: DailyLeadResult[] = [];
+  const duplicates: DailyDuplicateLeadResult[] = [];
   const deadLetters: DailyRunResult["deadLetters"] = [];
-  const seen = new Set<string>();
-  let duplicateCount = 0;
+  const seen = new Map<string, DailyLeadResult>();
+  let settings: LeadQualitySettings | undefined;
 
   for (const seed of config.seeds) {
     try {
       const result = await runDryPipeline(seed, options);
+      settings = settings ?? result.dossier.workflow.leadQuality;
       const lead = leadResult(result.dossier);
-      if (seen.has(lead.dedupeKey)) {
-        duplicateCount += 1;
+      const original = seen.get(lead.dedupeKey);
+      if (original) {
+        duplicates.push({
+          dedupeKey: lead.dedupeKey,
+          county: lead.county,
+          runId: lead.runId,
+          displayName: lead.displayName,
+          originalRunId: original.runId,
+          reason: "Duplicate dedupe key matched an earlier lead in this daily run.",
+          nextAction: "Keep the first packet and suppress this duplicate from qualified counts.",
+        });
         continue;
       }
-      seen.add(lead.dedupeKey);
+      seen.set(lead.dedupeKey, lead);
       leads.push(lead);
     } catch (error) {
       deadLetters.push({
@@ -172,6 +175,7 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
   const rawLeadCount = leads.length;
   const qualifiedLeadCount = leads.filter((lead) => lead.qualified).length;
   const reviewLeadCount = leads.filter((lead) => !lead.qualified).length;
+  const duplicateCount = duplicates.length;
   const blockers = Array.from(new Set(leads.flatMap((lead) => lead.blockers)));
   const missedVolumeReasons: string[] = [];
   if (rawLeadCount < config.targetRawLeadRange.min) {
@@ -191,6 +195,15 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
     missedVolumeReasons.push(`${sourceCoverageSummary.blockedAreaCount} source area(s) are still blocked by missing extracted property, tax, deed, probate, or family-tree facts.`);
   }
   if (deadLetters.length) missedVolumeReasons.push(`${deadLetters.length} seed(s) failed and were written to dead letters.`);
+  const qualificationReview = buildQualificationReviewPacket({
+    dailyRunId: runId,
+    generatedAt,
+    leads,
+    duplicates,
+    deadLetters,
+    sourceCoverageSummary,
+    settings,
+  });
 
   return {
     id: runId,
@@ -202,9 +215,11 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
     duplicateCount,
     errorCount: deadLetters.length,
     leads,
+    duplicates,
     deadLetters,
     missedVolumeReasons,
     blockers,
     sourceCoverageSummary,
+    qualificationReview,
   };
 }

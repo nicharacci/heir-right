@@ -2,6 +2,8 @@ import type { IntakeSeed } from "@ple/types";
 import { runDailyProduction } from "./daily/run-daily";
 import { connectionStatuses, exportCompletedReport } from "./export/export-package";
 import { runDryPipeline } from "./index";
+import { renderQualificationReviewMarkdown } from "./qualification/qualification-review";
+import { buildReadbackEvidencePacket, renderReadbackEvidenceMarkdown } from "./readback/readback-evidence";
 
 interface CloudflareEnv {
   DEPLOYMENT_KEY?: string;
@@ -24,6 +26,10 @@ interface CloudflareEnv {
   AUTH_ALLOWED_EMAILS?: string;
   SOLVYS_ADMIN_EMAILS?: string;
   HEIRRIGHT_API_TOKEN?: string;
+  GOOGLE_WORKSPACE_ACCESS_TOKEN?: string;
+  GOOGLE_TRACKING_SHEET_ID?: string;
+  GOOGLE_DRIVE_PARENT_FOLDER_ID?: string;
+  GOOGLE_TRACKING_SHEET_RANGE?: string;
 }
 
 const DEFAULT_ADDRESS = "20611 NW 33rd Pl, Miami Gardens, FL 33056";
@@ -179,6 +185,21 @@ async function dailyRunResponse(env: CloudflareEnv): Promise<Response> {
   return json(result, { headers: { "cache-control": "no-store" } });
 }
 
+async function qualificationReviewResponse(env: CloudflareEnv, markdown: boolean): Promise<Response> {
+  const result = await runDailyProduction(undefined, {
+    env: env as Record<string, string | undefined>,
+  });
+  if (markdown) {
+    return new Response(renderQualificationReviewMarkdown(result.qualificationReview), {
+      headers: {
+        "content-type": "text/markdown; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
+  }
+  return json(result.qualificationReview, { headers: { "cache-control": "no-store" } });
+}
+
 async function exportResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
   const dryRun = url.searchParams.get("dry-run") !== "false";
   const routesParam = url.searchParams.get("routes");
@@ -197,6 +218,28 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
     dryRun: body?.dryRun ?? dryRun,
   }, env as Record<string, string | undefined>);
   return json(result, { headers: { "cache-control": "no-store" } });
+}
+
+async function readbackEvidenceResponse(url: URL, env: CloudflareEnv, markdown: boolean): Promise<Response> {
+  const dryRun = url.searchParams.get("dry-run") !== "false";
+  const pipeline = await runDryPipeline(seedFromUrl(url, env), {
+    env: env as Record<string, string | undefined>,
+  });
+  const exportResult = await exportCompletedReport({
+    routes: ["google", "podio"],
+    dossier: pipeline.dossier,
+    dryRun,
+  }, env as Record<string, string | undefined>);
+  const packet = buildReadbackEvidencePacket(exportResult, await connectionStatuses(env as Record<string, string | undefined>));
+  if (markdown) {
+    return new Response(renderReadbackEvidenceMarkdown(packet), {
+      headers: {
+        "content-type": "text/markdown; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
+  }
+  return json(packet, { headers: { "cache-control": "no-store" } });
 }
 
 export default {
@@ -220,6 +263,10 @@ export default {
           "/internal-summary.md",
           "/internal-summary.html",
           "/daily-run.json",
+          "/qualification-review.json",
+          "/qualification-review.md",
+          "/readback-evidence.json",
+          "/readback-evidence.md",
           "/api/exports",
           "/api/connections/status",
         ],
@@ -245,10 +292,22 @@ export default {
       return dailyRunResponse(env);
     }
 
+    if (url.pathname === "/qualification-review.json" || url.pathname === "/qualification-review.md") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return qualificationReviewResponse(env, url.pathname.endsWith(".md"));
+    }
+
     if (url.pathname === "/api/exports" || url.pathname === "/export-result.json") {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return exportResponse(request, url, env);
+    }
+
+    if (url.pathname === "/readback-evidence.json" || url.pathname === "/readback-evidence.md") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return readbackEvidenceResponse(url, env, url.pathname.endsWith(".md"));
     }
 
     if (url.pathname === "/api/connections/status" || url.pathname === "/connection-status.json") {

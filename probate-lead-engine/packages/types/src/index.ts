@@ -252,6 +252,95 @@ export interface SourceCoverageSummary {
   areaStatuses: Array<{ key: SourceCoverageAreaKey; label: string; extracted: number; partial: number; blocked: number }>;
 }
 
+export type QualificationDecisionStatus = "qualified" | "review" | "disqualified" | "duplicate" | "dead_letter";
+
+export interface QualificationCoverageScore {
+  area: SourceCoverageAreaKey;
+  label: string;
+  status: SourceCoverageAreaStatus;
+  weight: number;
+  earned: number;
+  reasonCode: string;
+  nextAction: string;
+}
+
+export interface QualificationDecision {
+  status: Exclude<QualificationDecisionStatus, "duplicate" | "dead_letter">;
+  label: string;
+  promotionEligible: boolean;
+  coverageScore: number;
+  requiredCoverageScore: number;
+  sourceCoverageStatus: SourceCoverageAreaStatus;
+  evidenceSummary: string;
+  reasonCodes: string[];
+  blockers: string[];
+  nextAction: string;
+  coverage: QualificationCoverageScore[];
+  reviewedAt: string;
+}
+
+export interface DailyDuplicateLeadResult {
+  dedupeKey: string;
+  county: string;
+  runId: string;
+  displayName: string;
+  originalRunId?: string;
+  reason: string;
+  nextAction: string;
+}
+
+export interface QualificationReviewRecord {
+  status: QualificationDecisionStatus;
+  dedupeKey: string;
+  county: string;
+  runId: string;
+  displayName: string;
+  qualified: boolean;
+  leadBucket?: LeadBucket;
+  workflowStatus?: WorkflowRuleStatus;
+  operatorQueueState?: OperatorQueueState;
+  coverageScore?: number;
+  requiredCoverageScore?: number;
+  reasonCodes: string[];
+  blockers: string[];
+  nextAction: string;
+  reportId?: string;
+}
+
+export interface QualificationReviewPacket {
+  id: string;
+  runId: string;
+  generatedAt: string;
+  operatorSummary: string;
+  settings: {
+    model: LeadQualitySettings["model"];
+    requiredCoverageScore: number;
+    minEnabledSignalWeightForPromotion: number;
+    evidenceGatesCannotBeWeakened: boolean;
+    enabledSignals: string[];
+    reasonCodes: string[];
+  };
+  summary: {
+    totalRecords: number;
+    qualified: number;
+    review: number;
+    disqualified: number;
+    duplicate: number;
+    deadLetter: number;
+    blockedFromPromotion: number;
+  };
+  sourceCoverageSummary: SourceCoverageSummary;
+  records: QualificationReviewRecord[];
+  samples: {
+    qualified: QualificationReviewRecord[];
+    review: QualificationReviewRecord[];
+    disqualified: QualificationReviewRecord[];
+    duplicate: QualificationReviewRecord[];
+    deadLetter: QualificationReviewRecord[];
+  };
+  nextActions: string[];
+}
+
 export interface DailyLeadResult {
   dedupeKey: string;
   county: string;
@@ -265,6 +354,7 @@ export interface DailyLeadResult {
   blockers: string[];
   reportId?: string;
   sourceCoverage: SourceCoverageProfile;
+  qualificationDecision: QualificationDecision;
 }
 
 export interface DailyRunResult {
@@ -277,10 +367,12 @@ export interface DailyRunResult {
   duplicateCount: number;
   errorCount: number;
   leads: DailyLeadResult[];
+  duplicates: DailyDuplicateLeadResult[];
   deadLetters: DeadLetter[];
   missedVolumeReasons: string[];
   blockers: string[];
   sourceCoverageSummary: SourceCoverageSummary;
+  qualificationReview: QualificationReviewPacket;
 }
 
 export type ExportRoute = "google" | "podio";
@@ -318,6 +410,42 @@ export interface ConnectionStatus {
   checkedAt: string;
 }
 
+export type ReadbackRouteStatus = "passed" | "blocked" | "prepared_only";
+
+export interface ReadbackRouteEvidence {
+  route: ExportRoute;
+  label: string;
+  status: ReadbackRouteStatus;
+  mode: ExportRouteResult["mode"];
+  prepared: boolean;
+  liveWriteAttempted: boolean;
+  createdRecord: boolean;
+  externalId?: string;
+  url?: string;
+  readbackOk: boolean;
+  verification: {
+    record: string;
+    reportBody: string;
+    trackingRow: string;
+    reviewTask: string;
+    cleanup: string;
+  };
+  blockers: string[];
+  nextAction: string;
+  checkedAt: string;
+}
+
+export interface ReadbackEvidencePacket {
+  id: string;
+  generatedAt: string;
+  overallStatus: "passed" | "blocked";
+  operatorSummary: string;
+  routes: ReadbackRouteEvidence[];
+  blockers: string[];
+  cleanupNotes: string[];
+  nextActions: string[];
+}
+
 export type MilestoneEvidenceGateStatus = "passed" | "review_required" | "blocked";
 
 export interface MilestoneEvidenceGate {
@@ -348,10 +476,12 @@ export interface ThirtyDayMilestoneEvidence {
     missedVolumeReasons: string[];
     seedBatch?: SeedBatchSummary;
     sourceCoverageSummary: SourceCoverageSummary;
+    qualificationReviewSummary: QualificationReviewPacket["summary"];
   };
   exportReadiness: {
     connectionStatuses: ConnectionStatus[];
     dryRunRoutes: ExportRouteResult[];
+    readbackEvidence: ReadbackEvidencePacket;
   };
   gates: MilestoneEvidenceGate[];
   blockers: string[];
@@ -970,6 +1100,7 @@ export interface RawDossier {
   operatorQueue: OperatorQueue;
   evidenceQa: SourceEvidenceQaResult;
   sourceCoverage: SourceCoverageProfile;
+  qualificationDecision?: QualificationDecision;
   narrative: string;
   crm: {
     provider: "podio";

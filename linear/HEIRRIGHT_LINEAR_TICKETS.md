@@ -832,13 +832,13 @@ Acceptance:
 Owner: TP
 Milestone: 30-Day Workflow Automation Milestone
 Brief: `@sprint-md/S18-ORCHESTRATION.md`
-Status: next recommended implementation
+Status: repo-implemented on `v2.4.3/heirright-2026-06-18-run-point`; live acceptance still depends on real source coverage and production seed volume
 
 Child tracks:
 
-- `S18-T1: Evidence Coverage Scoring`
-- `S18-T2: Lead-Quality Settings Activation`
-- `S18-T3: Operator Spot-Check Packet`
+- `S18-T1: Evidence Coverage Scoring` - repo-implemented
+- `S18-T2: Lead-Quality Settings Activation` - repo-implemented
+- `S18-T3: Operator Spot-Check Packet` - repo-implemented through `qualification-review.md`
 
 Acceptance:
 
@@ -852,13 +852,13 @@ Acceptance:
 Owner: TP
 Milestone: 30-Day Workflow Automation Milestone
 Brief: `@sprint-md/S19-ORCHESTRATION.md`
-Status: externally blocked
+Status: repo packet implemented for S19-T3; S19-T1/T2 live readbacks externally blocked
 
 Child tracks:
 
-- `S19-T1: Google Workspace Readback`
-- `S19-T2: Podio Controlled Write`
-- `S19-T3: Readback Evidence Packet`
+- `S19-T1: Google Workspace Readback` - externally blocked until approved Workspace target/config exists
+- `S19-T2: Podio Controlled Write` - externally blocked until credentials, test values, CSV backup/export access, and explicit write approval exist
+- `S19-T3: Readback Evidence Packet` - repo-implemented through `readback-evidence.md`
 
 Acceptance:
 
@@ -871,19 +871,20 @@ External blockers:
 
 - Google Workspace credentials and target config.
 - Podio credentials, controlled test values, CSV backup/export access, and `PODIO_LIVE_WRITE_APPROVED=true`.
+- Live Linear mutation is currently unavailable through the Codex connector (`oauth_token_invalid_grant`), so this repo-local sheet is the current planning fallback.
 
 ## S20-ORCH: 30-Day Acceptance Run
 
 Owner: TP
 Milestone: 30-Day Workflow Automation Milestone
 Brief: `@sprint-md/S20-ORCHESTRATION.md`
-Status: blocked until S16-S19 evidence exists
+Status: repo packet/review-script implemented; milestone remains blocked by production seed volume, qualified volume, source coverage, and live readback
 
 Child tracks:
 
-- `S20-T1: Production-Volume Run`
-- `S20-T2: Acceptance Packet`
-- `S20-T3: Client Review Script`
+- `S20-T1: Production-Volume Run` - blocked by missing approved production seed batch and volume
+- `S20-T2: Acceptance Packet` - repo-implemented, currently blocked by acceptance gates
+- `S20-T3: Client Review Script` - repo-implemented through `thirty-day-review-script.md`
 
 Acceptance:
 

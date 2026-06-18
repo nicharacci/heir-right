@@ -14,6 +14,7 @@ import { generateCompletedLeadReport } from "./documents/completed-lead-report";
 import { generateInternalSummary } from "./documents/internal-summary";
 import { fact, intakeSubject, normalizeEstateSearchKey, nowIso, seedIdentity, slug } from "./lib";
 import { buildOutreachWorkflow } from "./outreach/build-outreach-workflow";
+import { buildQualificationDecision } from "./qualification/qualification-review";
 import { jsonOutput, PipelineOutput, textOutput } from "./storage/output-manifest";
 
 type RuntimeEnv = Record<string, string | undefined>;
@@ -165,6 +166,7 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
   dossier.completedLeadReport = await generateCompletedLeadReport(dossier);
   dossier.outreach = buildOutreachWorkflow(dossier, dossier.completedLeadReport);
   dossier.completedLeadReport = await generateCompletedLeadReport(dossier);
+  dossier.qualificationDecision = buildQualificationDecision(dossier);
   const podio = new PodioAdapter(options.env);
   const podioPayload = await podio.dryRun(dossier);
   dossier.crm.payload = podioPayload;

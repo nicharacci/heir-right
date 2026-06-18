@@ -14,6 +14,7 @@ import { connectionStatuses, exportCompletedReport } from "../export/export-pack
 import { PODIO_LIVE_WRITE_APPROVAL_KEY } from "../export/podio-config";
 import { runDryPipeline, type RunDryPipelineOptions } from "../index";
 import { nowIso } from "../lib";
+import { buildReadbackEvidencePacket } from "../readback/readback-evidence";
 
 type RuntimeEnv = Record<string, string | undefined>;
 
@@ -255,6 +256,7 @@ export async function generateThirtyDayMilestoneEvidence(
     dryRun: true,
   }, dryRunExportEnv(env));
   const statuses = await connectionStatuses(env);
+  const readbackEvidence = buildReadbackEvidencePacket(dryExport, statuses);
   const gates = buildGates({
     dailyRun,
     dryExport,
@@ -284,10 +286,12 @@ export async function generateThirtyDayMilestoneEvidence(
       missedVolumeReasons: dailyRun.missedVolumeReasons,
       seedBatch: dailyRun.config.seedBatch,
       sourceCoverageSummary: dailyRun.sourceCoverageSummary,
+      qualificationReviewSummary: dailyRun.qualificationReview.summary,
     },
     exportReadiness: {
       connectionStatuses: statuses,
       dryRunRoutes: dryExport.routes,
+      readbackEvidence,
     },
     gates,
     blockers,
@@ -328,6 +332,8 @@ ${evidence.operatorSummary}
 - Duplicates: ${evidence.dailyRun.duplicateCount}
 - Dead letters: ${evidence.dailyRun.errorCount}
 - Source coverage: ${evidence.dailyRun.sourceCoverageSummary.extractedFieldCount} extracted field(s), ${evidence.dailyRun.sourceCoverageSummary.missingFieldCount} missing field(s), ${evidence.dailyRun.sourceCoverageSummary.blockedAreaCount} blocked area(s)
+- Qualification review: ${evidence.dailyRun.qualificationReviewSummary.qualified} qualified, ${evidence.dailyRun.qualificationReviewSummary.review} review, ${evidence.dailyRun.qualificationReviewSummary.disqualified} disqualified, ${evidence.dailyRun.qualificationReviewSummary.duplicate} duplicate, ${evidence.dailyRun.qualificationReviewSummary.deadLetter} dead-letter
+- Google/Podio readback: ${evidence.exportReadiness.readbackEvidence.overallStatus === "passed" ? "passed" : "blocked"}
 ${evidence.dailyRun.seedBatch ? `- Seed batch: ${evidence.dailyRun.seedBatch.batchId} (${evidence.dailyRun.seedBatch.acceptedSeedCount} accepted, ${evidence.dailyRun.seedBatch.rejectedSeedCount} rejected)` : ""}
 
 ## Acceptance Gates
@@ -340,6 +346,12 @@ ${gateRows}
 
 ${bulletList(evidence.blockers)}
 
+## Google + Podio Readback
+
+${evidence.exportReadiness.readbackEvidence.operatorSummary}
+
+${bulletList(evidence.exportReadiness.readbackEvidence.nextActions)}
+
 ## Missed Volume Reasons
 
 ${bulletList(evidence.dailyRun.missedVolumeReasons)}
@@ -347,5 +359,88 @@ ${bulletList(evidence.dailyRun.missedVolumeReasons)}
 ## Next Actions
 
 ${bulletList(evidence.nextActions)}
+`;
+}
+
+function reviewAgendaStatus(evidence: ThirtyDayMilestoneEvidence): string {
+  if (evidence.overallStatus === "ready_for_human_review") {
+    return "Ready for Sam and Joshua to spot-check before acceptance.";
+  }
+  return "Not ready for acceptance yet. The review should focus on the decisions that unblock a real production run.";
+}
+
+function reviewDecisionList(evidence: ThirtyDayMilestoneEvidence): string[] {
+  const decisions: string[] = [];
+  if (evidence.dailyRun.seedSource !== "configured_batch") {
+    decisions.push("Provide or approve the first production seed batch for the county run.");
+  }
+  if (evidence.dailyRun.qualifiedLeadCount < evidence.dailyRun.qualifiedLeadTarget.min) {
+    decisions.push("Decide whether the next pass should prioritize source records for property, taxes, deed/title, probate, and heirs before expanding volume.");
+  }
+  const google = evidence.gates.find((gate) => gate.id === "google_live_readback");
+  if (google?.status !== "passed") {
+    decisions.push("Choose when to provide the approved Google Workspace destination for one controlled readback.");
+  }
+  const podio = evidence.gates.find((gate) => gate.id === "podio_live_readback");
+  if (podio?.status !== "passed") {
+    decisions.push("Choose whether to approve one clearly labeled Podio test item and readback.");
+  }
+  if (!decisions.length) {
+    decisions.push("Confirm whether the 30-Day Workflow Automation Milestone is accepted.");
+  }
+  return Array.from(new Set(decisions));
+}
+
+function reviewProofList(evidence: ThirtyDayMilestoneEvidence): string[] {
+  return [
+    `${evidence.dailyRun.rawLeadCount} raw lead(s) were reviewed against a target of ${rangeLabel(evidence.dailyRun.rawLeadTarget)}.`,
+    `${evidence.dailyRun.qualifiedLeadCount} qualified lead(s) were counted against a target of ${rangeLabel(evidence.dailyRun.qualifiedLeadTarget)}.`,
+    `${evidence.dailyRun.reviewLeadCount} lead(s) remain in review, with ${evidence.dailyRun.duplicateCount} duplicate(s) and ${evidence.dailyRun.errorCount} dead-letter item(s).`,
+    `${evidence.dailyRun.sourceCoverageSummary.extractedFieldCount} source field(s) are captured; ${evidence.dailyRun.sourceCoverageSummary.blockedAreaCount} source area(s) still need records.`,
+    `${evidence.dailyRun.qualificationReviewSummary.qualified} candidate(s) are ready for spot-check and ${evidence.dailyRun.qualificationReviewSummary.blockedFromPromotion} are blocked from promotion.`,
+  ];
+}
+
+export function renderThirtyDayClientReviewScriptMarkdown(evidence: ThirtyDayMilestoneEvidence): string {
+  return `# HeirRight 30-Day Review Agenda
+
+Generated: ${evidence.generatedAt}
+Status: ${reviewAgendaStatus(evidence)}
+
+## 30-Minute Agenda
+
+- 0-5 minutes: Confirm the latest property and estate seed source.
+- 5-12 minutes: Review raw, review, duplicate, and qualified counts.
+- 12-20 minutes: Check the property, deed/title, tax, probate, heir, and offer facts still missing.
+- 20-25 minutes: Decide whether Google and Podio controlled readback tests are approved.
+- 25-30 minutes: Choose the next move: approve the milestone, keep gathering records, or run a larger approved seed batch.
+
+## What Is Automated Now
+
+- Intake can load approved county seed batches and reject incomplete seeds.
+- The lead engine separates review candidates, duplicates, dead letters, disqualified leads, and qualified candidates.
+- The qualification packet explains source coverage, reason codes, report gaps, and the next operator action.
+- Completed reports and follow-up language remain blocked from outside use until review.
+
+## What Remains Manual
+
+- Approved production seed selection.
+- Property, deed/title, tax, probate, heir, and offer fact spot-checking where source coverage is missing.
+- Paid or manual research paths such as skip tracing, ancestry, obituary, and voter/license checks.
+- Live Google and Podio readback approval before the handoff loop can be treated as live.
+
+## Current Proof
+
+${bulletList(reviewProofList(evidence))}
+
+## Decisions For Sam And Joshua
+
+${bulletList(reviewDecisionList(evidence))}
+
+## Recommended Close
+
+${evidence.overallStatus === "ready_for_human_review"
+    ? "Accept the milestone after spot-checking the qualified samples and confirming no outreach or legal claim is sent without approval."
+    : "Keep the milestone blocked until an approved seed batch, stronger source coverage, qualified volume, and controlled Google/Podio readback are all present."}
 `;
 }

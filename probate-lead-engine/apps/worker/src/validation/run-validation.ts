@@ -7,7 +7,9 @@ import { connectionStatuses, exportCompletedReport } from "../export/export-pack
 import { PODIO_LIVE_WRITE_APPROVAL_KEY, TEXAS_EQUITY_PROS_LEADS_APP_ID } from "../export/podio-config";
 import { runDryPipeline } from "../index";
 import { fact, nowIso } from "../lib";
-import { generateThirtyDayMilestoneEvidence, renderThirtyDayMilestoneEvidenceMarkdown } from "../milestone/thirty-day-evidence";
+import { generateThirtyDayMilestoneEvidence, renderThirtyDayClientReviewScriptMarkdown, renderThirtyDayMilestoneEvidenceMarkdown } from "../milestone/thirty-day-evidence";
+import { renderQualificationReviewMarkdown } from "../qualification/qualification-review";
+import { buildReadbackEvidencePacket, renderReadbackEvidenceMarkdown } from "../readback/readback-evidence";
 import { persistOutput } from "../storage/write-output";
 
 function fixtureFact(input: {
@@ -154,6 +156,11 @@ async function main(): Promise<void> {
   if (!result.dossier.sourceCoverage.areas.length) failures.push("S17 source coverage areas missing.");
   if (result.dossier.sourceCoverage.extractedFieldCount <= 0) failures.push("S17 source coverage should count property seed facts as captured.");
   if (result.dossier.sourceCoverage.blockedAreaCount <= 0) failures.push("S17 source coverage should keep missing source areas blocked.");
+  if (!result.dossier.qualificationDecision) failures.push("S18 dry-run qualification decision missing.");
+  if (result.dossier.qualificationDecision?.status !== "review") failures.push("S18 default dry-run lead should remain in review.");
+  if ((result.dossier.qualificationDecision?.coverageScore ?? 0) <= 0) failures.push("S18 qualification coverage score missing.");
+  if (!result.dossier.qualificationDecision?.reasonCodes.length) failures.push("S18 qualification reason codes missing.");
+  if (!result.dossier.qualificationDecision?.blockers.some((blocker) => blocker.includes("No enrichment/contact"))) failures.push("S18 no-enrichment promotion blocker missing.");
 
   const dailyResult = await runDailyProduction({
     counties: ["miami-dade", "broward"],
@@ -184,7 +191,20 @@ async function main(): Promise<void> {
   if (!dailyResult.id.startsWith("daily-")) failures.push("S14 daily run id missing.");
   if (dailyResult.rawLeadCount !== 2) failures.push("S14 daily run did not dedupe repeated seeds.");
   if (dailyResult.duplicateCount !== 1) failures.push("S14 daily duplicate count missing.");
+  if (dailyResult.duplicates.length !== 1) failures.push("S18 daily duplicate sample missing.");
   if (dailyResult.qualifiedLeadCount !== 0) failures.push("S14 should not count review-placeholder/no-enrichment leads as qualified.");
+  if (dailyResult.leads.some((lead) => !lead.qualificationDecision)) failures.push("S18 daily lead qualification decision missing.");
+  if (dailyResult.leads.some((lead) => lead.qualified && lead.qualificationDecision.blockers.length)) failures.push("S18 blocked lead was counted as qualified.");
+  if (dailyResult.qualificationReview.summary.qualified !== 0) failures.push("S18 review-placeholder run should have zero qualified samples.");
+  if (dailyResult.qualificationReview.summary.review < 1) failures.push("S18 review sample count missing.");
+  if (dailyResult.qualificationReview.summary.duplicate !== 1) failures.push("S18 duplicate summary missing.");
+  if (!dailyResult.qualificationReview.samples.review.length) failures.push("S18 review sample missing.");
+  if (!dailyResult.qualificationReview.samples.duplicate.length) failures.push("S18 duplicate sample section missing.");
+  const qualificationReviewMarkdown = renderQualificationReviewMarkdown(dailyResult.qualificationReview);
+  if (!qualificationReviewMarkdown.includes("HeirRight Qualification Review Packet")) failures.push("S18 qualification review markdown heading missing.");
+  for (const heading of ["Qualified Samples", "Review Samples", "Disqualified Samples", "Duplicate Samples", "Dead-Letter Samples"] as const) {
+    if (!qualificationReviewMarkdown.includes(heading)) failures.push(`S18 qualification review markdown section missing ${heading}.`);
+  }
   if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("Qualified lead count"))) failures.push("S14 missed qualified-volume reason missing.");
   if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("No production batch seed file"))) failures.push("S14 production seed blocker missing.");
   if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("source area"))) failures.push("S17 source coverage missed-volume reason missing.");
@@ -243,6 +263,18 @@ async function main(): Promise<void> {
   if (dryExport.routes.length !== 2) failures.push("S15 dry export did not return Google and Podio routes.");
   if (!dryExport.routes.every((route) => route.mode === "dry_run")) failures.push("S15 dry export routes should stay dry-run.");
   if (!dryExport.routes.every((route) => route.blockers.some((blocker) => blocker.includes("skipped in dry-run")))) failures.push("S15 dry export readback blockers missing.");
+  const dryReadbackPacket = buildReadbackEvidencePacket(dryExport, await connectionStatuses({
+    GOOGLE_WORKSPACE_ACCESS_TOKEN: "validation-google-token",
+    GOOGLE_TRACKING_SHEET_ID: "validation-sheet",
+    PODIO_ACCESS_TOKEN: "validation-podio-token",
+    PODIO_APP_ID: "validation-app",
+    PODIO_FIELD_MAP_JSON: JSON.stringify({ title: "title" }),
+  }));
+  const dryReadbackMarkdown = renderReadbackEvidenceMarkdown(dryReadbackPacket);
+  if (dryReadbackPacket.overallStatus !== "blocked") failures.push("S19 dry readback packet should stay blocked until live readback passes.");
+  if (!dryReadbackPacket.routes.every((route) => route.status === "prepared_only")) failures.push("S19 dry readback routes should be prepared-only.");
+  if (!dryReadbackMarkdown.includes("HeirRight Google + Podio Readback Evidence")) failures.push("S19 readback markdown heading missing.");
+  if (!dryReadbackMarkdown.includes("No live record")) failures.push("S19 readback markdown should show no live record for dry prep.");
 
   const podioPresetDryExport = await exportCompletedReport({
     routes: ["podio"],
@@ -298,6 +330,7 @@ async function main(): Promise<void> {
 
   const thirtyDayEvidence = await generateThirtyDayMilestoneEvidence({});
   const thirtyDayEvidenceMarkdown = renderThirtyDayMilestoneEvidenceMarkdown(thirtyDayEvidence);
+  const thirtyDayReviewScript = renderThirtyDayClientReviewScriptMarkdown(thirtyDayEvidence);
   if (thirtyDayEvidence.milestone !== "30-Day Workflow Automation Milestone") failures.push("HEI-77 milestone evidence title missing.");
   if (thirtyDayEvidence.overallStatus !== "blocked") failures.push("HEI-77 default evidence should be blocked without production seeds and live readback.");
   if (!thirtyDayEvidence.gates.some((item) => item.id === "production_seed_batch" && item.status === "blocked")) failures.push("HEI-77 production seed blocker missing.");
@@ -305,8 +338,17 @@ async function main(): Promise<void> {
   if (!thirtyDayEvidence.gates.some((item) => item.id === "qualification_integrity" && item.status === "passed")) failures.push("HEI-77 qualification-integrity gate missing.");
   if (!thirtyDayEvidence.gates.some((item) => item.id === "structured_source_coverage" && item.status === "blocked")) failures.push("S17 structured-source coverage gate missing.");
   if (!thirtyDayEvidence.gates.some((item) => item.id === "external_use_guard" && item.status === "passed")) failures.push("HEI-77 external-use guard gate missing.");
+  if (!thirtyDayEvidence.dailyRun.qualificationReviewSummary) failures.push("S18 milestone qualification summary missing.");
+  if (!thirtyDayEvidence.exportReadiness.readbackEvidence) failures.push("S19 milestone readback evidence packet missing.");
+  if (thirtyDayEvidence.exportReadiness.readbackEvidence.overallStatus !== "blocked") failures.push("S19 default milestone readback evidence should remain blocked.");
   if (!thirtyDayEvidenceMarkdown.includes("HeirRight 30-Day Milestone Evidence")) failures.push("HEI-77 evidence markdown heading missing.");
+  if (!thirtyDayEvidenceMarkdown.includes("Qualification review:")) failures.push("S18 milestone markdown qualification summary missing.");
+  if (!thirtyDayEvidenceMarkdown.includes("Google + Podio Readback")) failures.push("S19 milestone markdown readback section missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Not ready for 30-Day acceptance")) failures.push("HEI-77 evidence markdown summary missing.");
+  if (!thirtyDayReviewScript.includes("HeirRight 30-Day Review Agenda")) failures.push("S20 client review script heading missing.");
+  for (const phrase of ["production seed", "Google", "Podio", "qualified"] as const) {
+    if (!thirtyDayReviewScript.includes(phrase)) failures.push(`S20 client review script missing ${phrase}.`);
+  }
 
   const estateResult = await runDryPipeline({
     estateName: "Estate of Maria Lopez",

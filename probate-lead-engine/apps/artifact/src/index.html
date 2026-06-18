@@ -2992,6 +2992,7 @@ const state = {
   data: null,
   dossier: null,
   dailyRun: null,
+  qualificationReview: null,
   session: null,
   connections: [],
   exportResult: null,
@@ -3138,6 +3139,33 @@ function decisionCopy(dossier) {
   };
 }
 
+function qualificationDecision(dossier = state.dossier) {
+  return dossier?.qualificationDecision ?? state.dailyRun?.leads?.[0]?.qualificationDecision ?? null;
+}
+
+function qualificationReview() {
+  return state.qualificationReview ?? state.dailyRun?.qualificationReview ?? null;
+}
+
+function qualificationTone(decision) {
+  if (!decision) return "neutral";
+  if (decision.status === "qualified") return "ready";
+  if (decision.status === "disqualified") return "blocked";
+  return "review";
+}
+
+function qualificationLabel(decision) {
+  if (!decision) return "No qualification packet";
+  if (decision.status === "qualified") return "Qualified";
+  if (decision.status === "disqualified") return "Disqualified";
+  return "Review";
+}
+
+function qualificationScoreText(decision) {
+  if (!decision) return "Needs review";
+  return `${decision.coverageScore} / ${decision.requiredCoverageScore}`;
+}
+
 function rowTone(row) {
   if (row.status === "blocked") return "blocked";
   if (row.score >= 80 && row.missing.length <= 2) return "ready";
@@ -3205,9 +3233,11 @@ function buildMissingSections(dossier) {
 
 function buildRows(data, dossier) {
   const decision = decisionCopy(dossier);
+  const qualification = qualificationDecision(dossier);
+  const qTone = qualificationTone(qualification);
   const missing = buildMissingSections(dossier);
   const facts = data.facts?.length ?? 0;
-  const baseScore = Math.max(28, Math.min(94, facts * 3 + Math.max(0, 72 - taskCount(dossier) * 4)));
+  const baseScore = qualification?.coverageScore ?? Math.max(28, Math.min(94, facts * 3 + Math.max(0, 72 - taskCount(dossier) * 4)));
   const address = claimValue(dossier.property?.address, data.seed?.propertyAddress ?? "Address needs review");
   const estate = claimValue(dossier.property?.estateName, dossier.summary?.displayName ?? "Current estate");
   const owner = claimValue(dossier.property?.ownerName, data.seed?.ownerName ?? "Owner needs review");
@@ -3225,12 +3255,12 @@ function buildRows(data, dossier) {
       parcel,
       owner,
       score: baseScore,
-      evidence: Math.min(facts, 9),
-      evidenceTotal: 9,
-      status: decision.tone,
+      evidence: qualification?.coverage?.filter((area) => area.status === "extracted").length ?? Math.min(facts, 9),
+      evidenceTotal: qualification?.coverage?.length ?? 9,
+      status: qTone === "neutral" ? decision.tone : qTone,
       next: missing[0]?.label ?? decision.next,
       missing,
-      search: `${estate} ${owner} ${address} ${caseNumber} ${county} ${parcel} ${decision.label} ${missing.map((item) => item.label).join(" ")}`,
+      search: `${estate} ${owner} ${address} ${caseNumber} ${county} ${parcel} ${decision.label} ${qualification?.label ?? ""} ${(qualification?.reasonCodes ?? []).join(" ")} ${missing.map((item) => item.label).join(" ")}`,
       leadType: "probate"
     },
     {
@@ -3566,6 +3596,10 @@ function milestoneBlockers(dossier) {
   } else {
     blockers.push("Production county seed file is still needed before volume targets can be claimed.");
   }
+  const review = qualificationReview();
+  if (review?.summary && review.summary.qualified === 0) {
+    blockers.push("No candidate is qualified yet; the qualification review packet keeps every open blocker visible.");
+  }
 
   const podio = dossier?.crm?.payload?.podioReadiness ?? {};
   if ((podio.missingConfig?.length ?? 0) || (podio.blockers?.length ?? 0)) {
@@ -3895,9 +3929,12 @@ function renderSummary() {
   const facts = state.data?.facts?.length ?? 0;
   const openTasks = taskCount(state.dossier);
   const missing = buildMissingSections(state.dossier ?? {}).length;
+  const review = qualificationReview();
+  const qualified = review?.summary?.qualified ?? state.dailyRun?.qualifiedLeadCount ?? 0;
   document.getElementById("summaryMetrics").innerHTML = [
     { label: "Estate files", value: state.rows.length || 0 },
     { label: "Evidence items", value: facts },
+    { label: "Qualified candidates", value: qualified },
     { label: "Missing sections", value: missing },
     { label: "Open reviews", value: openTasks }
   ].map((item) => `
@@ -3992,6 +4029,7 @@ function renderDetail() {
   const dossier = state.dossier;
   if (!row || !dossier) return;
   const decision = decisionCopy(dossier);
+  const qualification = qualificationDecision(dossier);
   document.getElementById("detailTitle").textContent = row.title;
   document.getElementById("detailSubtitle").textContent = `${row.kind} · ${row.file}`;
   document.getElementById("detailPill").className = `pill ${row.tone}`;
@@ -4003,6 +4041,8 @@ function renderDetail() {
     ["County", row.county],
     ["Folio", row.parcel],
     ["Case", row.file],
+    ["Qualification", qualificationLabel(qualification)],
+    ["Source score", qualificationScoreText(qualification)],
     ["Workflow", displayStatus(dossier.workflow?.status)],
     ["Outreach", displayStatus(dossier.outreach?.readiness?.status, "Blocked")]
   ].map(([label, value]) => `
@@ -4013,7 +4053,9 @@ function renderDetail() {
   `).join("");
   const evidencePct = Math.round((row.evidence / row.evidenceTotal) * 100);
   document.getElementById("evidenceFill").style.width = `${Math.min(100, evidencePct)}%`;
-  document.getElementById("evidenceSummary").textContent = `${row.evidence} of ${row.evidenceTotal} report sections have evidence attached.`;
+  document.getElementById("evidenceSummary").textContent = qualification
+    ? `${qualification.evidenceSummary} Source coverage score is ${qualificationScoreText(qualification)}.`
+    : `${row.evidence} of ${row.evidenceTotal} report sections have evidence attached.`;
   renderMilestoneBlockers(dossier);
   document.getElementById("detailChips").innerHTML = row.missing.length
     ? row.missing.map((item) => `<button class="chip" type="button" data-chip="${escapeHtml(item.id)}">${escapeHtml(item.label)}</button>`).join("")
@@ -4075,6 +4117,7 @@ function railTabHtml(row, dossier) {
 
 function railFlowHtml(row, dossier) {
   const sections = row.missing.length ? row.missing : buildMissingSections(dossier);
+  const qualification = qualificationDecision(dossier);
   return `
     <section class="glass-card rail-card">
       <h3>What to fill in next</h3>
@@ -4090,6 +4133,26 @@ function railFlowHtml(row, dossier) {
             <button class="btn" type="button" data-fill-section="${escapeHtml(section.id)}">Fill</button>
           </article>
         `).join("") || `<p class="copy">No flow gaps remain for this file.</p>`}
+      </div>
+    </section>
+    <section class="glass-card rail-card">
+      <h3>Qualification review</h3>
+      <ul class="mini-list">
+        <li><strong>Status</strong><span>${escapeHtml(qualificationLabel(qualification))}</span></li>
+        <li><strong>Source score</strong><span>${escapeHtml(qualificationScoreText(qualification))}</span></li>
+        <li><strong>Next action</strong><span>${escapeHtml(qualification?.nextAction ?? "Run the daily qualification packet.")}</span></li>
+      </ul>
+      <div>
+        ${(qualification?.coverage ?? []).map((area, index) => `
+          <article class="rail-item">
+            <span class="rail-item-index">${String(index + 1).padStart(2, "0")}</span>
+            <span>
+              <span class="rail-item-title">${escapeHtml(area.label)}</span>
+              <span class="rail-item-copy">${escapeHtml(area.nextAction)}</span>
+            </span>
+            ${statusPill(area.status === "extracted" ? "ready" : area.status === "partial" ? "review" : "blocked", `${area.earned}/${area.weight}`)}
+          </article>
+        `).join("") || `<p class="copy">Qualification coverage appears after the worker writes the S18 packet.</p>`}
       </div>
     </section>
     <section class="glass-card rail-card">
@@ -4132,6 +4195,8 @@ function railTimelineHtml(row, dossier) {
 
 function railDocsHtml(row, dossier) {
   const report = dossier.completedLeadReport;
+  const qualification = qualificationDecision(dossier);
+  const review = qualificationReview();
   const podio = dossier.crm?.payload?.podioReadiness;
   const podioModel = dossier.crm?.payload?.appModel;
   const exportMeta = state.exportRoute ? exportRouteMeta(state.exportRoute) : null;
@@ -4155,6 +4220,20 @@ function railDocsHtml(row, dossier) {
         <li><strong>Missing data</strong><span>${escapeHtml(`${report?.missingData?.length ?? row.missing.length} open section${(report?.missingData?.length ?? row.missing.length) === 1 ? "" : "s"}`)}</span></li>
       </ul>
       <iframe class="doc-frame" data-renderer="streamdown" sandbox="" title="Rendered lead report" srcdoc="${escapeHtml(reportHtml)}"></iframe>
+    </section>
+    <section class="glass-card rail-card">
+      <h3>Qualification packet</h3>
+      <p class="copy">${escapeHtml(review?.operatorSummary ?? qualification?.nextAction ?? "Run the daily qualification review to create the operator packet.")}</p>
+      <ul class="mini-list">
+        <li><strong>Current lead</strong><span>${escapeHtml(`${qualificationLabel(qualification)} · ${qualificationScoreText(qualification)}`)}</span></li>
+        <li><strong>Batch status</strong><span>${escapeHtml(review?.summary ? `${review.summary.qualified} qualified, ${review.summary.review} review, ${review.summary.disqualified} disqualified` : "Packet not loaded")}</span></li>
+        <li><strong>Duplicates</strong><span>${escapeHtml(review?.summary?.duplicate ?? 0)} held out of counts</span></li>
+        <li><strong>Dead letters</strong><span>${escapeHtml(review?.summary?.deadLetter ?? 0)} need seed repair</span></li>
+        <li><strong>Evidence gates</strong><span>${review?.settings?.evidenceGatesCannotBeWeakened ? "Cannot be weakened by operator settings." : "Needs review before promotion."}</span></li>
+        <li><strong>Markdown packet</strong><span><a href="/qualification-review.md" target="_blank" rel="noreferrer">Open qualification-review.md</a></span></li>
+        <li><strong>Readback packet</strong><span><a href="/readback-evidence.md" target="_blank" rel="noreferrer">Open readback evidence</a></span></li>
+        <li><strong>30-Day agenda</strong><span><a href="/thirty-day-review-script.md" target="_blank" rel="noreferrer">Open review agenda</a></span></li>
+      </ul>
     </section>
     <section class="glass-card rail-card">
       <h3>Handoff readiness</h3>
@@ -4362,6 +4441,16 @@ async function loadDailyRun() {
   }
 }
 
+async function loadQualificationReview() {
+  try {
+    const response = await fetch("/qualification-review.json", { cache: "no-store" });
+    if (!response.ok) throw new Error("No qualification review loaded.");
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 async function loadRun() {
   try {
     document.getElementById("topStatus").textContent = "Loading latest lead packet...";
@@ -4370,11 +4459,13 @@ async function loadRun() {
     const data = await response.json();
     if (!data.dossier) throw new Error("The latest lead review did not include a dossier.");
     state.dailyRun = await loadDailyRun();
+    state.qualificationReview = state.dailyRun?.qualificationReview ?? await loadQualificationReview();
     renderLoadedState(data, data.dossier);
   } catch (error) {
     state.data = null;
     state.dossier = null;
     state.dailyRun = null;
+    state.qualificationReview = null;
     state.rows = [];
     state.filteredRows = [];
     state.selectedId = null;

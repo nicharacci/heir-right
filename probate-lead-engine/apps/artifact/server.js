@@ -8,6 +8,11 @@ const port = Number(process.env.PORT || 4173);
 const root = join(__dirname, "dist");
 const workerOutput = join(__dirname, "..", "worker", "output", "latest-run.json");
 const dailyRunOutput = join(__dirname, "..", "worker", "output", "daily-run.json");
+const qualificationReviewJsonOutput = join(__dirname, "..", "worker", "output", "qualification-review.json");
+const qualificationReviewMarkdownOutput = join(__dirname, "..", "worker", "output", "qualification-review.md");
+const readbackEvidenceJsonOutput = join(__dirname, "..", "worker", "output", "readback-evidence.json");
+const readbackEvidenceMarkdownOutput = join(__dirname, "..", "worker", "output", "readback-evidence.md");
+const thirtyDayReviewScriptOutput = join(__dirname, "..", "worker", "output", "thirty-day-review-script.md");
 const sessionCookie = process.env.AUTH_SESSION_COOKIE || "hr_session";
 const stateCookie = process.env.AUTH_STATE_COOKIE || "hr_oauth_state";
 const sessionTtlSeconds = Number(process.env.AUTH_SESSION_TTL_SECONDS || 60 * 60 * 12);
@@ -485,7 +490,7 @@ createServer((req, res) => {
 
   const session = readSession(req);
   if (authRequired() && !session) {
-    if (url.pathname === "/latest-run.json" || url.pathname === "/daily-run.json" || url.pathname.startsWith("/api/")) {
+    if (url.pathname === "/latest-run.json" || url.pathname === "/daily-run.json" || url.pathname === "/qualification-review.json" || url.pathname === "/qualification-review.md" || url.pathname === "/readback-evidence.json" || url.pathname === "/readback-evidence.md" || url.pathname === "/thirty-day-review-script.md" || url.pathname.startsWith("/api/")) {
       sendJson(res, 401, { ok: false, error: "auth_required", loginUrl: "/auth/login" });
       return;
     }
@@ -542,6 +547,56 @@ createServer((req, res) => {
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
       res.end(readFileSync(dailyRunOutput));
     }).catch((error) => sendJson(res, 502, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/qualification-review.json" || url.pathname === "/qualification-review.md") {
+    const localPath = url.pathname.endsWith(".md") ? qualificationReviewMarkdownOutput : qualificationReviewJsonOutput;
+    const contentType = url.pathname.endsWith(".md") ? "text/markdown; charset=utf-8" : "application/json; charset=utf-8";
+    const proxied = proxyWorkerJson(url.pathname);
+    proxied.then((response) => {
+      if (response) {
+        res.writeHead(response.status, { "content-type": response.contentType, "cache-control": "no-store" });
+        res.end(response.body);
+        return;
+      }
+      if (!existsSync(localPath)) {
+        sendJson(res, 404, { error: "Run the daily production review first." });
+        return;
+      }
+      res.writeHead(200, { "content-type": contentType, "cache-control": "no-store" });
+      res.end(readFileSync(localPath));
+    }).catch((error) => sendJson(res, 502, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/readback-evidence.json" || url.pathname === "/readback-evidence.md") {
+    const localPath = url.pathname.endsWith(".md") ? readbackEvidenceMarkdownOutput : readbackEvidenceJsonOutput;
+    const contentType = url.pathname.endsWith(".md") ? "text/markdown; charset=utf-8" : "application/json; charset=utf-8";
+    const proxied = proxyWorkerJson(url.pathname);
+    proxied.then((response) => {
+      if (response) {
+        res.writeHead(response.status, { "content-type": response.contentType, "cache-control": "no-store" });
+        res.end(response.body);
+        return;
+      }
+      if (!existsSync(localPath)) {
+        sendJson(res, 404, { error: "Run the export or 30-Day milestone review first." });
+        return;
+      }
+      res.writeHead(200, { "content-type": contentType, "cache-control": "no-store" });
+      res.end(readFileSync(localPath));
+    }).catch((error) => sendJson(res, 502, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/thirty-day-review-script.md") {
+    if (!existsSync(thirtyDayReviewScriptOutput)) {
+      sendJson(res, 404, { error: "Run the 30-Day milestone review first." });
+      return;
+    }
+    res.writeHead(200, { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" });
+    res.end(readFileSync(thirtyDayReviewScriptOutput));
     return;
   }
 

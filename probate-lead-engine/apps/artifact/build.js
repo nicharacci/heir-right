@@ -15,4 +15,12 @@ if (existsSync(dailyRunPath)) {
 } else if (existsSync(join(__dirname, "demo", "daily-run.json"))) {
   copyFileSync(join(__dirname, "demo", "daily-run.json"), join(__dirname, "dist", "daily-run.json"));
 }
+for (const name of ["qualification-review.json", "qualification-review.md", "readback-evidence.json", "readback-evidence.md", "thirty-day-review-script.md"]) {
+  const path = join(__dirname, "..", "worker", "output", name);
+  if (existsSync(path)) {
+    copyFileSync(path, join(__dirname, "dist", name));
+  } else if (existsSync(join(__dirname, "demo", name))) {
+    copyFileSync(join(__dirname, "demo", name), join(__dirname, "dist", name));
+  }
+}
 console.log("artifact built: dist/index.html");
