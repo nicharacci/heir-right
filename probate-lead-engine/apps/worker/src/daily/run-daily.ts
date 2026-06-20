@@ -1,4 +1,4 @@
-import type { DailyDuplicateLeadResult, DailyLeadResult, DailyRunConfig, DailyRunResult, IntakeSeed, LeadQualitySettings, RawDossier, SeedBatchSummary, SourceCoverageSummary } from "@ple/types";
+import type { DailyDuplicateLeadResult, DailyLeadResult, DailyRunConfig, DailyRunResult, IntakeSeed, LeadQualitySettings, RawDossier, SeedBatchSummary, SourceCoverageBlocker, SourceCoverageSummary } from "@ple/types";
 import { runDryPipeline, type RunDryPipelineOptions } from "../index";
 import { nowIso, seedIdentity, slug } from "../lib";
 import { buildQualificationDecision, buildQualificationReviewPacket, qualificationBlockers } from "../qualification/qualification-review";
@@ -16,6 +16,10 @@ function splitList(value: string | undefined, fallback: string): string[] {
 function numberFromEnv(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function unique<T>(items: T[]): T[] {
+  return Array.from(new Set(items));
 }
 
 function defaultReviewSeeds(counties: string[]): IntakeSeed[] {
@@ -76,6 +80,32 @@ function summarizeSourceCoverage(leads: DailyLeadResult[]): SourceCoverageSummar
     status: aggregateCoverageStatus(base),
     ...base,
   };
+}
+
+function summarizeSourceCoverageBlockers(leads: DailyLeadResult[]): SourceCoverageBlocker[] {
+  const blockerMap = new Map<SourceCoverageBlocker["key"], SourceCoverageBlocker & { runIds: Set<string> }>();
+
+  for (const lead of leads) {
+    for (const area of lead.sourceCoverage.areas) {
+      if (area.status === "extracted") continue;
+      const current = blockerMap.get(area.key) ?? {
+        key: area.key,
+        label: area.label,
+        affectedLeadCount: 0,
+        missingFields: [],
+        reviewFlags: [],
+        nextAction: area.nextAction,
+        runIds: new Set<string>(),
+      };
+      current.runIds.add(lead.runId);
+      current.affectedLeadCount = current.runIds.size;
+      current.missingFields = unique([...current.missingFields, ...area.missingFields]).sort();
+      current.reviewFlags = unique([...current.reviewFlags, ...area.reviewFlags]).sort();
+      blockerMap.set(area.key, current);
+    }
+  }
+
+  return Array.from(blockerMap.values()).map(({ runIds: _runIds, ...blocker }) => blocker);
 }
 
 export function dailyRunConfigFromEnv(env: RuntimeEnv = process.env): DailyRunConfig {
@@ -191,6 +221,7 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
     missedVolumeReasons.push(`${config.seedBatch.rejectedSeedCount} seed(s) were rejected by intake validation before the run.`);
   }
   const sourceCoverageSummary = summarizeSourceCoverage(leads);
+  const sourceCoverageBlockers = summarizeSourceCoverageBlockers(leads);
   if (sourceCoverageSummary.blockedAreaCount > 0) {
     missedVolumeReasons.push(`${sourceCoverageSummary.blockedAreaCount} source area(s) are still blocked by missing extracted property, tax, deed, probate, or family-tree facts.`);
   }
@@ -220,6 +251,7 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
     missedVolumeReasons,
     blockers,
     sourceCoverageSummary,
+    sourceCoverageBlockers,
     qualificationReview,
   };
 }

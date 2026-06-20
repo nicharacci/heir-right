@@ -209,6 +209,8 @@ async function main(): Promise<void> {
   if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("No production batch seed file"))) failures.push("S14 production seed blocker missing.");
   if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("source area"))) failures.push("S17 source coverage missed-volume reason missing.");
   if (!dailyResult.sourceCoverageSummary.areaStatuses.length) failures.push("S17 daily source coverage rollup missing.");
+  if (!dailyResult.sourceCoverageBlockers.length) failures.push("S17 source coverage blocker summary missing.");
+  if (!dailyResult.sourceCoverageBlockers.some((blocker) => blocker.label === "Tax status" && blocker.missingFields.includes("unpaid tax years"))) failures.push("S17 source coverage blocker fields missing.");
   if (!dailyResult.blockers.some((blocker) => blocker.includes("No enrichment/contact"))) failures.push("S14 no-enrichment qualification blocker missing.");
 
   const validSeedReport = validateSeedBatchInput({
@@ -338,14 +340,17 @@ async function main(): Promise<void> {
   if (!thirtyDayEvidence.gates.some((item) => item.id === "qualification_integrity" && item.status === "passed")) failures.push("HEI-77 qualification-integrity gate missing.");
   if (!thirtyDayEvidence.gates.some((item) => item.id === "structured_source_coverage" && item.status === "blocked")) failures.push("S17 structured-source coverage gate missing.");
   if (!thirtyDayEvidence.gates.some((item) => item.id === "external_use_guard" && item.status === "passed")) failures.push("HEI-77 external-use guard gate missing.");
+  if (!thirtyDayEvidence.dailyRun.sourceCoverageBlockers.length) failures.push("S17 milestone source coverage blockers missing.");
   if (!thirtyDayEvidence.dailyRun.qualificationReviewSummary) failures.push("S18 milestone qualification summary missing.");
   if (!thirtyDayEvidence.exportReadiness.readbackEvidence) failures.push("S19 milestone readback evidence packet missing.");
   if (thirtyDayEvidence.exportReadiness.readbackEvidence.overallStatus !== "blocked") failures.push("S19 default milestone readback evidence should remain blocked.");
   if (!thirtyDayEvidenceMarkdown.includes("HeirRight 30-Day Milestone Evidence")) failures.push("HEI-77 evidence markdown heading missing.");
+  if (!thirtyDayEvidenceMarkdown.includes("Source Coverage Blockers")) failures.push("S17 milestone markdown source blocker section missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Qualification review:")) failures.push("S18 milestone markdown qualification summary missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Google + Podio Readback")) failures.push("S19 milestone markdown readback section missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Not ready for 30-Day acceptance")) failures.push("HEI-77 evidence markdown summary missing.");
   if (!thirtyDayReviewScript.includes("HeirRight 30-Day Review Agenda")) failures.push("S20 client review script heading missing.");
+  if (!thirtyDayReviewScript.includes("Records To Pull Next")) failures.push("S20 client review script source blocker section missing.");
   for (const phrase of ["production seed", "Google", "Podio", "qualified"] as const) {
     if (!thirtyDayReviewScript.includes(phrase)) failures.push(`S20 client review script missing ${phrase}.`);
   }

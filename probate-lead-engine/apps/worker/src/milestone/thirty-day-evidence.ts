@@ -102,6 +102,7 @@ function buildGates(input: {
   const googleReady = Boolean(googleStatus?.ok && googleStatus.mode === "live");
   const sourceCoverageReady = input.dailyRun.sourceCoverageSummary.extractedFieldCount > 0
     && input.dailyRun.sourceCoverageSummary.blockedAreaCount === 0;
+  const sourceCoverageBlockerLabels = input.dailyRun.sourceCoverageBlockers.map((item) => item.label).join(", ");
 
   return [
     gate({
@@ -152,10 +153,13 @@ function buildGates(input: {
       id: "structured_source_coverage",
       label: "Structured source coverage",
       status: sourceCoverageReady ? "passed" : "blocked",
-      evidence: `${input.dailyRun.sourceCoverageSummary.extractedFieldCount} extracted source field(s), ${input.dailyRun.sourceCoverageSummary.missingFieldCount} missing field(s), ${input.dailyRun.sourceCoverageSummary.blockedAreaCount} blocked source area(s).`,
+      evidence: [
+        `${input.dailyRun.sourceCoverageSummary.extractedFieldCount} extracted source field(s), ${input.dailyRun.sourceCoverageSummary.missingFieldCount} missing field(s), ${input.dailyRun.sourceCoverageSummary.blockedAreaCount} blocked source area(s).`,
+        sourceCoverageBlockerLabels ? `Blocked areas: ${sourceCoverageBlockerLabels}.` : "",
+      ].filter(Boolean).join(" "),
       nextAction: sourceCoverageReady
         ? "Spot-check extracted fields against county source links before acceptance review."
-        : "Capture real property, tax, deed/title, probate, and family-tree facts before using the run as acceptance evidence.",
+        : "Pull the source records listed in the Source Coverage Blockers section before using the run as acceptance evidence.",
       blockers: sourceCoverageReady ? [] : ["Source coverage still depends on missing facts, source-health checks, or intake placeholders."],
     }),
     gate({
@@ -286,6 +290,7 @@ export async function generateThirtyDayMilestoneEvidence(
       missedVolumeReasons: dailyRun.missedVolumeReasons,
       seedBatch: dailyRun.config.seedBatch,
       sourceCoverageSummary: dailyRun.sourceCoverageSummary,
+      sourceCoverageBlockers: dailyRun.sourceCoverageBlockers,
       qualificationReviewSummary: dailyRun.qualificationReview.summary,
     },
     exportReadiness: {
@@ -308,6 +313,15 @@ function statusLabel(status: MilestoneEvidenceGateStatus): string {
 function bulletList(items: string[]): string {
   if (!items.length) return "- None";
   return items.map((item) => `- ${item}`).join("\n");
+}
+
+function sourceCoverageBlockerList(blockers: ThirtyDayMilestoneEvidence["dailyRun"]["sourceCoverageBlockers"]): string {
+  if (!blockers.length) return "- None";
+  return blockers.map((blocker) => [
+    `- ${blocker.label}: ${blocker.affectedLeadCount} lead(s) affected.`,
+    `  Missing: ${blocker.missingFields.join(", ") || "none"}.`,
+    `  Next: ${blocker.nextAction}`,
+  ].join("\n")).join("\n");
 }
 
 export function renderThirtyDayMilestoneEvidenceMarkdown(evidence: ThirtyDayMilestoneEvidence): string {
@@ -335,6 +349,10 @@ ${evidence.operatorSummary}
 - Qualification review: ${evidence.dailyRun.qualificationReviewSummary.qualified} qualified, ${evidence.dailyRun.qualificationReviewSummary.review} review, ${evidence.dailyRun.qualificationReviewSummary.disqualified} disqualified, ${evidence.dailyRun.qualificationReviewSummary.duplicate} duplicate, ${evidence.dailyRun.qualificationReviewSummary.deadLetter} dead-letter
 - Google/Podio readback: ${evidence.exportReadiness.readbackEvidence.overallStatus === "passed" ? "passed" : "blocked"}
 ${evidence.dailyRun.seedBatch ? `- Seed batch: ${evidence.dailyRun.seedBatch.batchId} (${evidence.dailyRun.seedBatch.acceptedSeedCount} accepted, ${evidence.dailyRun.seedBatch.rejectedSeedCount} rejected)` : ""}
+
+## Source Coverage Blockers
+
+${sourceCoverageBlockerList(evidence.dailyRun.sourceCoverageBlockers)}
 
 ## Acceptance Gates
 
@@ -401,6 +419,16 @@ function reviewProofList(evidence: ThirtyDayMilestoneEvidence): string[] {
   ];
 }
 
+function sourceCoverageReviewList(evidence: ThirtyDayMilestoneEvidence): string[] {
+  if (!evidence.dailyRun.sourceCoverageBlockers.length) {
+    return ["No source coverage blocker is open in the latest packet."];
+  }
+  return evidence.dailyRun.sourceCoverageBlockers.map((blocker) => {
+    const fields = blocker.missingFields.slice(0, 4).join(", ");
+    return `${blocker.label}: pull ${fields || "the missing source facts"} for ${blocker.affectedLeadCount} lead(s).`;
+  });
+}
+
 export function renderThirtyDayClientReviewScriptMarkdown(evidence: ThirtyDayMilestoneEvidence): string {
   return `# HeirRight 30-Day Review Agenda
 
@@ -432,6 +460,10 @@ Status: ${reviewAgendaStatus(evidence)}
 ## Current Proof
 
 ${bulletList(reviewProofList(evidence))}
+
+## Records To Pull Next
+
+${bulletList(sourceCoverageReviewList(evidence))}
 
 ## Decisions For Sam And Joshua
 

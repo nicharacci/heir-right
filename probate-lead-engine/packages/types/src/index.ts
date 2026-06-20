@@ -252,6 +252,15 @@ export interface SourceCoverageSummary {
   areaStatuses: Array<{ key: SourceCoverageAreaKey; label: string; extracted: number; partial: number; blocked: number }>;
 }
 
+export interface SourceCoverageBlocker {
+  key: SourceCoverageAreaKey;
+  label: string;
+  affectedLeadCount: number;
+  missingFields: string[];
+  reviewFlags: ReviewFlag[];
+  nextAction: string;
+}
+
 export type QualificationDecisionStatus = "qualified" | "review" | "disqualified" | "duplicate" | "dead_letter";
 
 export interface QualificationCoverageScore {
@@ -372,6 +381,7 @@ export interface DailyRunResult {
   missedVolumeReasons: string[];
   blockers: string[];
   sourceCoverageSummary: SourceCoverageSummary;
+  sourceCoverageBlockers: SourceCoverageBlocker[];
   qualificationReview: QualificationReviewPacket;
 }
 
@@ -476,6 +486,7 @@ export interface ThirtyDayMilestoneEvidence {
     missedVolumeReasons: string[];
     seedBatch?: SeedBatchSummary;
     sourceCoverageSummary: SourceCoverageSummary;
+    sourceCoverageBlockers: SourceCoverageBlocker[];
     qualificationReviewSummary: QualificationReviewPacket["summary"];
   };
   exportReadiness: {
