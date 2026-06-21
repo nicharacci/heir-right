@@ -211,6 +211,7 @@ async function main(): Promise<void> {
   if (!dailyResult.sourceCoverageSummary.areaStatuses.length) failures.push("S17 daily source coverage rollup missing.");
   if (!dailyResult.sourceCoverageBlockers.length) failures.push("S17 source coverage blocker summary missing.");
   if (!dailyResult.sourceCoverageBlockers.some((blocker) => blocker.label === "Tax status" && blocker.missingFields.includes("unpaid tax years"))) failures.push("S17 source coverage blocker fields missing.");
+  if (!dailyResult.sourceCoverageBlockers.some((blocker) => blocker.label === "Property identity" && blocker.capturedFields.includes("property address"))) failures.push("S17 source coverage captured-fields plan missing.");
   if (!dailyResult.blockers.some((blocker) => blocker.includes("No enrichment/contact"))) failures.push("S14 no-enrichment qualification blocker missing.");
 
   const validSeedReport = validateSeedBatchInput({
@@ -346,11 +347,13 @@ async function main(): Promise<void> {
   if (thirtyDayEvidence.exportReadiness.readbackEvidence.overallStatus !== "blocked") failures.push("S19 default milestone readback evidence should remain blocked.");
   if (!thirtyDayEvidenceMarkdown.includes("HeirRight 30-Day Milestone Evidence")) failures.push("HEI-77 evidence markdown heading missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Source Coverage Blockers")) failures.push("S17 milestone markdown source blocker section missing.");
+  if (!thirtyDayEvidenceMarkdown.includes("Captured: property address")) failures.push("S17 milestone markdown captured source fields missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Qualification review:")) failures.push("S18 milestone markdown qualification summary missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Google + Podio Readback")) failures.push("S19 milestone markdown readback section missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Not ready for 30-Day acceptance")) failures.push("HEI-77 evidence markdown summary missing.");
   if (!thirtyDayReviewScript.includes("HeirRight 30-Day Review Agenda")) failures.push("S20 client review script heading missing.");
   if (!thirtyDayReviewScript.includes("Records To Pull Next")) failures.push("S20 client review script source blocker section missing.");
+  if (!thirtyDayReviewScript.includes("already captured property address")) failures.push("S20 client review script captured-vs-missing source plan missing.");
   for (const phrase of ["production seed", "Google", "Podio", "qualified"] as const) {
     if (!thirtyDayReviewScript.includes(phrase)) failures.push(`S20 client review script missing ${phrase}.`);
   }

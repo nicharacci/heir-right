@@ -91,14 +91,18 @@ function summarizeSourceCoverageBlockers(leads: DailyLeadResult[]): SourceCovera
       const current = blockerMap.get(area.key) ?? {
         key: area.key,
         label: area.label,
+        status: area.status === "partial" ? "partial" : "blocked",
         affectedLeadCount: 0,
+        capturedFields: [],
         missingFields: [],
         reviewFlags: [],
         nextAction: area.nextAction,
         runIds: new Set<string>(),
       };
+      current.status = current.status === "blocked" || area.status === "blocked" ? "blocked" : "partial";
       current.runIds.add(lead.runId);
       current.affectedLeadCount = current.runIds.size;
+      current.capturedFields = unique([...current.capturedFields, ...area.extractedFields]).sort();
       current.missingFields = unique([...current.missingFields, ...area.missingFields]).sort();
       current.reviewFlags = unique([...current.reviewFlags, ...area.reviewFlags]).sort();
       blockerMap.set(area.key, current);

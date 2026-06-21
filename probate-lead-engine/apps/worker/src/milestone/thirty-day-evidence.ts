@@ -318,7 +318,8 @@ function bulletList(items: string[]): string {
 function sourceCoverageBlockerList(blockers: ThirtyDayMilestoneEvidence["dailyRun"]["sourceCoverageBlockers"]): string {
   if (!blockers.length) return "- None";
   return blockers.map((blocker) => [
-    `- ${blocker.label}: ${blocker.affectedLeadCount} lead(s) affected.`,
+    `- ${blocker.label}: ${blocker.status === "partial" ? "partial" : "blocked"} for ${blocker.affectedLeadCount} lead(s).`,
+    `  Captured: ${blocker.capturedFields.join(", ") || "none yet"}.`,
     `  Missing: ${blocker.missingFields.join(", ") || "none"}.`,
     `  Next: ${blocker.nextAction}`,
   ].join("\n")).join("\n");
@@ -424,8 +425,12 @@ function sourceCoverageReviewList(evidence: ThirtyDayMilestoneEvidence): string[
     return ["No source coverage blocker is open in the latest packet."];
   }
   return evidence.dailyRun.sourceCoverageBlockers.map((blocker) => {
-    const fields = blocker.missingFields.slice(0, 4).join(", ");
-    return `${blocker.label}: pull ${fields || "the missing source facts"} for ${blocker.affectedLeadCount} lead(s).`;
+    const captured = blocker.capturedFields.slice(0, 3).join(", ") || "no fields captured yet";
+    const missing = blocker.missingFields.slice(0, 4).join(", ") || "the missing source facts";
+    const capturedPhrase = blocker.capturedFields.length
+      ? `already captured ${captured}`
+      : "no source fields captured yet";
+    return `${blocker.label}: across ${blocker.affectedLeadCount} lead(s), ${capturedPhrase}; still pull or confirm ${missing}.`;
   });
 }
 

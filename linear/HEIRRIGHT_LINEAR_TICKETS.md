@@ -34,13 +34,13 @@ Active milestones:
 - 30-Day Workflow Automation Milestone: June 21, 2026.
 - 90-Day Deal Engine Milestone: August 20, 2026.
 
-## Current Repo Status - 2026-06-20
+## Current Repo Status - 2026-06-21
 
 Live Linear updates are blocked by reauthentication (`oauth_token_invalid_grant`), so this section is the repo-local fallback status for the HEI-001 run.
 
-- S17 structured source extraction: strengthened the daily and 30-day evidence packet with explicit source coverage blockers by deal-flow area. The packet now names the records still needed for property identity, tax status, deed/title, probate/court, and family tree/offer inputs instead of only reporting a blocked-area count.
-- S20 30-Day acceptance packet: still blocked, correctly. Latest generated packet reports 2 raw review leads, 0 qualified leads, 6 blocked gates, no production seed batch, missing live Google/Podio readback, and source coverage still dependent on missing county/source records.
-- Artifact dashboard: now serves `/thirty-day-milestone-evidence.md` and `/thirty-day-milestone-evidence.json`, and the qualification packet panel links the 30-Day evidence packet beside readback evidence and the review agenda.
+- S17 structured source extraction: the daily and 30-day source coverage blocker contract now preserves each blocked area's `status` plus the source fields already captured. Latest generated evidence shows property identity is `partial` with property address and property owner captured, while tax, deed/title, probate/court, and family-tree/offer inputs remain blocked.
+- S20 30-Day acceptance packet: still blocked, correctly. Latest generated packet reports 2 raw review leads, 0 qualified leads, 6 blocked gates, 3 extracted source fields, 47 missing fields, no production seed batch, and missing live Google/Podio readback.
+- 30-day review agenda: `Records To Pull Next` now tells Sam/Joshua what is already captured versus what still needs to be pulled or confirmed across the current review leads.
 - Human blockers remain unchanged: approved production seed batch, real source-record coverage, Google Workspace destination/config, Podio credentials/controlled test values, explicit live-write approval, and Linear reauthentication.
 
 ## S1-ORCH: HeirRight live public-source search

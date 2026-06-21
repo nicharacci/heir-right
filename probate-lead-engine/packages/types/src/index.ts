@@ -255,7 +255,9 @@ export interface SourceCoverageSummary {
 export interface SourceCoverageBlocker {
   key: SourceCoverageAreaKey;
   label: string;
+  status: Exclude<SourceCoverageAreaStatus, "extracted">;
   affectedLeadCount: number;
+  capturedFields: string[];
   missingFields: string[];
   reviewFlags: ReviewFlag[];
   nextAction: string;
