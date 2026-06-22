@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
-import type { IntakeSeed, SeedBatchSummary, SeedValidationIssue, SeedValidationReport } from "@ple/types";
+import type { ConfirmedSourceFactInput, FactType, IntakeSeed, ReviewFlag, SeedBatchSummary, SeedValidationIssue, SeedValidationReport } from "@ple/types";
 import { nowIso, seedIdentity, slug } from "../lib";
 
 type RuntimeEnv = Record<string, string | undefined>;
@@ -15,6 +15,54 @@ interface SeedBatchFile {
 
 const APPROVED_PRODUCTION_MARKER = "approved_for_production_batch";
 const SUPPORTED_PRODUCTION_COUNTIES = new Set(["miami-dade"]);
+const CONFIRMED_SOURCE_FACT_SOURCES = new Set<ConfirmedSourceFactInput["source"]>([
+  "clerk_of_courts",
+  "property_appraiser",
+  "probate_court",
+  "tax_collector",
+  "official_records",
+]);
+const CONFIRMED_SOURCE_FACT_TYPES = new Set<FactType>([
+  "property_address",
+  "property_owner",
+  "property_folio",
+  "mailing_address_signal",
+  "tax_history_status",
+  "unpaid_tax_years",
+  "tax_amount_due",
+  "tax_reassessment_signal",
+  "tax_receipt_status",
+  "tax_payer_identity",
+  "deed_history_status",
+  "latest_deed",
+  "or_book_page",
+  "last_sale_date",
+  "ownership_activity_note",
+  "mortgage_signal",
+  "lien_signal",
+  "lis_pendens_signal",
+  "foreclosure_signal",
+  "adverse_possession_signal",
+  "case_number",
+  "probate_docket_status",
+  "probate_case_status",
+  "civil_family_docket_ref",
+  "affidavit_of_heirs_status",
+  "probate_document_availability",
+  "official_record_cross_link",
+  "marriage_death_status",
+  "marriage_license_signal",
+  "date_of_birth",
+  "date_of_death",
+  "obituary_link",
+  "family_tree_status",
+  "family_tree_hypothesis",
+  "offer_as_is_value",
+  "offer_heir_count",
+  "offer_buy_percentage",
+  "offer_minimum_net_profit",
+]);
+const BLOCKING_CONFIRMED_SOURCE_FLAGS = new Set<ReviewFlag>(["SOURCE_EVIDENCE_REQUIRED", "SOURCE_HEALTH_ONLY", "SOURCE_BLOCKED"]);
 
 function defaultSeedFileCandidates(): string[] {
   const cwd = process.cwd();
@@ -83,6 +131,7 @@ function hasIdentifier(seed: Partial<IntakeSeed>): boolean {
 }
 
 function normalizeSeed(seed: Partial<IntakeSeed>, batch: Required<SeedBatchFile>): IntakeSeed {
+  const confirmedSourceFacts = Array.isArray(seed.confirmedSourceFacts) ? seed.confirmedSourceFacts : undefined;
   return {
     ownerName: seed.ownerName,
     estateName: seed.estateName,
@@ -95,7 +144,82 @@ function normalizeSeed(seed: Partial<IntakeSeed>, batch: Required<SeedBatchFile>
     seedSourceLabel: seed.seedSourceLabel ?? batch.sourceLabel,
     sourceOwner: seed.sourceOwner ?? batch.sourceOwner,
     approvalMarker: seed.approvalMarker ?? batch.approvalMarker,
+    confirmedSourceFacts,
   };
+}
+
+function isBlankValue(value: unknown): boolean {
+  return value === null || value === undefined || value === "";
+}
+
+function validateConfirmedSourceFacts(facts: unknown, seedIndex: number): SeedValidationIssue[] {
+  const issues: SeedValidationIssue[] = [];
+  if (facts === undefined) return issues;
+  if (!Array.isArray(facts)) {
+    issues.push(issue({
+      code: "INVALID_CONFIRMED_SOURCE_FACTS",
+      message: `Seed ${seedIndex + 1} confirmed source facts must be a list of source-backed field records.`,
+      seedIndex,
+    }));
+    return issues;
+  }
+  facts.forEach((candidate, factIndex) => {
+    const location = `confirmed source fact ${factIndex + 1}`;
+    if (!candidate || typeof candidate !== "object") {
+      issues.push(issue({
+        code: "INVALID_CONFIRMED_SOURCE_FACT",
+        message: `Seed ${seedIndex + 1} ${location} must be an object with source, factType, value, and source reference.`,
+        seedIndex,
+      }));
+      return;
+    }
+    const sourceFact = candidate as Partial<ConfirmedSourceFactInput>;
+    if (!CONFIRMED_SOURCE_FACT_SOURCES.has(sourceFact.source as ConfirmedSourceFactInput["source"])) {
+      issues.push(issue({
+        code: "INVALID_CONFIRMED_SOURCE",
+        message: `Seed ${seedIndex + 1} ${location} uses an unsupported source. Use public property, tax, official-record, probate, or clerk sources only.`,
+        seedIndex,
+      }));
+    }
+    if (!CONFIRMED_SOURCE_FACT_TYPES.has(sourceFact.factType as FactType)) {
+      issues.push(issue({
+        code: "INVALID_CONFIRMED_FACT_TYPE",
+        message: `Seed ${seedIndex + 1} ${location} uses ${sourceFact.factType}; only deal-flow source fields can be confirmed on seed intake.`,
+        seedIndex,
+      }));
+    }
+    if (isBlankValue(sourceFact.value)) {
+      issues.push(issue({
+        code: "MISSING_CONFIRMED_FACT_VALUE",
+        message: `Seed ${seedIndex + 1} ${location} needs a non-empty value before it can count as source evidence.`,
+        seedIndex,
+      }));
+    }
+    if (!sourceFact.rawId && !sourceFact.sourceUrl) {
+      issues.push(issue({
+        code: "MISSING_CONFIRMED_FACT_REFERENCE",
+        message: `Seed ${seedIndex + 1} ${location} needs a source URL or record reference such as folio, OR book/page, instrument, docket, or receipt ID.`,
+        seedIndex,
+      }));
+    }
+    if (sourceFact.confidence !== undefined && (!Number.isFinite(sourceFact.confidence) || sourceFact.confidence < 0 || sourceFact.confidence > 1)) {
+      issues.push(issue({
+        code: "INVALID_CONFIRMED_FACT_CONFIDENCE",
+        message: `Seed ${seedIndex + 1} ${location} confidence must be between 0 and 1.`,
+        seedIndex,
+      }));
+    }
+    const reviewFlags = Array.isArray(sourceFact.reviewFlags) ? sourceFact.reviewFlags : [];
+    const blockingFlags = reviewFlags.filter((flag) => BLOCKING_CONFIRMED_SOURCE_FLAGS.has(flag));
+    if (blockingFlags.length) {
+      issues.push(issue({
+        code: "BLOCKED_CONFIRMED_SOURCE_FACT",
+        message: `Seed ${seedIndex + 1} ${location} still has blocking source flags (${blockingFlags.join(", ")}); leave it out until the source fact is actually confirmed.`,
+        seedIndex,
+      }));
+    }
+  });
+  return issues;
 }
 
 function summarize(report: Omit<SeedValidationReport, "operatorSummary" | "nextActions">): Pick<SeedValidationReport, "operatorSummary" | "nextActions"> {
@@ -159,6 +283,7 @@ export function validateSeedBatchInput(input: unknown, env: RuntimeEnv = {}, inp
         seedIndex: index,
       }));
     }
+    seedIssues.push(...validateConfirmedSourceFacts((rawSeed as { confirmedSourceFacts?: unknown }).confirmedSourceFacts, index));
 
     const dedupeKey = seedKey(seed);
     if (seen.has(dedupeKey)) {

@@ -125,6 +125,26 @@ function intakeFacts(runId: string, seed: IntakeSeed): SourceFact[] {
   return facts;
 }
 
+function confirmedSourceFacts(runId: string, seed: IntakeSeed): SourceFact[] {
+  const identity = seedIdentity(seed);
+  const subject = intakeSubject(seed);
+  const fetchedAt = nowIso();
+
+  return (seed.confirmedSourceFacts ?? []).map((sourceFact, index) => fact({
+    runId,
+    source: sourceFact.source,
+    rawId: sourceFact.rawId ?? `confirmed-source:${slug(identity)}:${index + 1}:${slug(sourceFact.factType)}`,
+    fetchedAt: sourceFact.fetchedAt ?? fetchedAt,
+    county: seed.county,
+    subject,
+    factType: sourceFact.factType,
+    value: sourceFact.value,
+    confidence: sourceFact.confidence ?? 0.9,
+    sourceUrl: sourceFact.sourceUrl,
+    reviewFlags: sourceFact.reviewFlags ?? [],
+  }));
+}
+
 export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options: RunDryPipelineOptions = {}): Promise<{
   runId: string;
   facts: SourceFact[];
@@ -147,7 +167,19 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
     fetchSourceGovernanceFacts(runId, seed),
     fetchOfferProfitInputFacts(runId, seed),
   ]);
-  const facts = [...intakeFacts(runId, seed), ...propertyFacts, ...officialRecordFacts, ...taxFacts, ...deedFacts, ...probateFacts, ...marriageDeathFacts, ...familyTreeFacts, ...governanceFacts, ...offerProfitFacts];
+  const facts = [
+    ...intakeFacts(runId, seed),
+    ...confirmedSourceFacts(runId, seed),
+    ...propertyFacts,
+    ...officialRecordFacts,
+    ...taxFacts,
+    ...deedFacts,
+    ...probateFacts,
+    ...marriageDeathFacts,
+    ...familyTreeFacts,
+    ...governanceFacts,
+    ...offerProfitFacts,
+  ];
   const propertyCountyFact = fact({
     runId,
     source: "property_appraiser",

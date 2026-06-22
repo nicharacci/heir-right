@@ -66,6 +66,7 @@ export function buildSourceCoverageProfile(dossier: CoverageInput): SourceCovera
       key: "tax",
       label: "Tax status",
       fields: [
+        { label: "tax status", claim: dossier.taxHistory.sourceStatus },
         { label: "unpaid tax years", claim: dossier.taxHistory.unpaidYears },
         { label: "tax amount due", claim: dossier.taxHistory.amountDue },
         { label: "receipt status", claim: dossier.taxHistory.receiptStatus },

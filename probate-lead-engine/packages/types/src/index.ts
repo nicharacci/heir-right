@@ -624,6 +624,19 @@ export interface SourceFact {
   reviewFlags: ReviewFlag[];
 }
 
+export type ConfirmedSourceFactSource = "clerk_of_courts" | "property_appraiser" | "probate_court" | "tax_collector" | "official_records";
+
+export interface ConfirmedSourceFactInput {
+  source: ConfirmedSourceFactSource;
+  factType: FactType;
+  value: unknown;
+  rawId?: string;
+  fetchedAt?: string;
+  confidence?: number;
+  sourceUrl?: string;
+  reviewFlags?: ReviewFlag[];
+}
+
 export interface DossierClaim<T = unknown> {
   value: T | null;
   confidence: number;
@@ -1164,4 +1177,5 @@ export interface IntakeSeed {
   seedSourceLabel?: string;
   sourceOwner?: string;
   approvalMarker?: string;
+  confirmedSourceFacts?: ConfirmedSourceFactInput[];
 }

@@ -34,14 +34,15 @@ Active milestones:
 - 30-Day Workflow Automation Milestone: June 21, 2026.
 - 90-Day Deal Engine Milestone: August 20, 2026.
 
-## Current Repo Status - 2026-06-21
+## Current Repo Status - 2026-06-22
 
 Live Linear updates are blocked by reauthentication (`oauth_token_invalid_grant`), so this section is the repo-local fallback status for the HEI-001 run.
 
-- S17 structured source extraction: the daily and 30-day source coverage blocker contract now preserves each blocked area's `status` plus the source fields already captured. Latest generated evidence shows property identity is `partial` with property address and property owner captured, while tax, deed/title, probate/court, and family-tree/offer inputs remain blocked.
-- S20 30-Day acceptance packet: still blocked, correctly. Latest generated packet reports 2 raw review leads, 0 qualified leads, 6 blocked gates, 3 extracted source fields, 47 missing fields, no production seed batch, and missing live Google/Podio readback.
-- 30-day review agenda: `Records To Pull Next` now tells Sam/Joshua what is already captured versus what still needs to be pulled or confirmed across the current review leads.
-- Human blockers remain unchanged: approved production seed batch, real source-record coverage, Google Workspace destination/config, Podio credentials/controlled test values, explicit live-write approval, and Linear reauthentication.
+- S17 structured source extraction: approved seed batches can now carry guarded `confirmedSourceFacts` from public property, tax, official-record, probate, or clerk sources. Seed validation rejects unsupported sources, source-health-only placeholders, missing values, missing record references, and invalid confidence values.
+- S18 qualification loop: dossier claims now prefer real source-backed facts over same-field placeholders, so confirmed facts can clear their own coverage field without letting remaining missing fields promote the lead. Validation proves confirmed sample facts reduce source blockers while qualified count stays `0`.
+- S20 30-Day acceptance packet: aggregate source blockers now say `captured on at least one lead` and `still missing on at least one lead`, so Sam/Joshua can read mixed-lead coverage without contradictory wording.
+- Latest sample-file evidence: `DAILY_RUN_SEEDS_FILE=input/production-seeds.example.json pnpm --filter @ple/worker milestone:30-day` reports `overallStatus: blocked`, `blockedGateCount: 5`, 2 raw leads, 0 qualified leads, and no live Google/Podio readback.
+- Human blockers remain unchanged: real approved production seed volume, remaining source-record coverage, Google Workspace destination/config, Podio credentials/controlled test values, explicit live-write approval, and Linear reauthentication.
 
 ## S1-ORCH: HeirRight live public-source search
 

@@ -214,6 +214,64 @@ async function main(): Promise<void> {
   if (!dailyResult.sourceCoverageBlockers.some((blocker) => blocker.label === "Property identity" && blocker.capturedFields.includes("property address"))) failures.push("S17 source coverage captured-fields plan missing.");
   if (!dailyResult.blockers.some((blocker) => blocker.includes("No enrichment/contact"))) failures.push("S14 no-enrichment qualification blocker missing.");
 
+  const confirmedSourceRun = await runDailyProduction({
+    counties: ["miami-dade"],
+    targetRawLeadRange: { min: 1, max: 2 },
+    targetQualifiedLeadRange: { min: 1, max: 2 },
+    seedSource: "configured_batch",
+    seedBatch: {
+      batchId: "validation-confirmed-source-facts",
+      sourceLabel: "Validation confirmed source facts",
+      sourceOwner: "HeirRight operator",
+      approvalMarker: "approved_for_production_batch",
+      seedCount: 1,
+      acceptedSeedCount: 1,
+      rejectedSeedCount: 0,
+      duplicateCount: 0,
+      counties: ["miami-dade"],
+    },
+    startedBy: "automation",
+    seeds: [{
+      propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+      ownerName: "Fresh public-source validation lead",
+      county: "miami-dade",
+      parcelId: "validated-folio",
+      source: "operator_cli",
+      confirmedSourceFacts: [
+        {
+          source: "property_appraiser",
+          factType: "mailing_address_signal",
+          value: "Mailing address matched the county property record.",
+          rawId: "validation-property-record-mailing",
+          confidence: 0.85,
+        },
+        {
+          source: "tax_collector",
+          factType: "tax_history_status",
+          value: "Tax account reviewed by operator.",
+          rawId: "validation-tax-status",
+          confidence: 0.85,
+        },
+        {
+          source: "official_records",
+          factType: "last_sale_date",
+          value: "2018-04-12",
+          rawId: "validation-last-sale",
+          confidence: 0.85,
+        },
+      ],
+    }],
+  });
+  const confirmedLead = confirmedSourceRun.leads[0];
+  const propertyArea = confirmedLead?.sourceCoverage.areas.find((area) => area.key === "property");
+  const taxBlocker = confirmedSourceRun.sourceCoverageBlockers.find((blocker) => blocker.key === "tax");
+  const deedBlocker = confirmedSourceRun.sourceCoverageBlockers.find((blocker) => blocker.key === "deed_title");
+  if (!propertyArea?.extractedFields.includes("mailing address")) failures.push("S17 confirmed source facts should clear mailing-address coverage.");
+  if (!taxBlocker?.capturedFields.includes("tax status")) failures.push("S17 confirmed source facts should appear in tax captured fields.");
+  if (!deedBlocker?.capturedFields.includes("last sale date")) failures.push("S17 confirmed source facts should appear in deed/title captured fields.");
+  if (confirmedSourceRun.qualifiedLeadCount !== 0) failures.push("S18 confirmed source facts should not override remaining promotion blockers.");
+  if (!confirmedLead?.qualificationDecision.blockers.some((blocker) => blocker.includes("No enrichment/contact"))) failures.push("S18 confirmed source fact run should keep no-enrichment blocker.");
+
   const validSeedReport = validateSeedBatchInput({
     batchId: "validation-miami-dade-seeds",
     sourceLabel: "Validation county seed batch",
@@ -225,6 +283,13 @@ async function main(): Promise<void> {
         ownerName: "Fresh public-source validation lead",
         county: "miami-dade",
         source: "operator_cli",
+        confirmedSourceFacts: [{
+          source: "tax_collector",
+          factType: "tax_history_status",
+          value: "Tax record review started.",
+          rawId: "validation-tax-status",
+          confidence: 0.8,
+        }],
       },
       {
         propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
@@ -237,15 +302,28 @@ async function main(): Promise<void> {
   if (!validSeedReport.ok) failures.push("S16 approved Miami-Dade seed batch should validate.");
   if (validSeedReport.batch.acceptedSeedCount !== 1) failures.push("S16 seed validator should dedupe duplicate seeds.");
   if (validSeedReport.batch.duplicateCount !== 1) failures.push("S16 seed validator duplicate count missing.");
+  if (validSeedReport.acceptedSeeds[0]?.confirmedSourceFacts?.[0]?.factType !== "tax_history_status") failures.push("S17 confirmed source facts should survive seed validation.");
   const invalidSeedReport = validateSeedBatchInput({
     batchId: "validation-unapproved-seeds",
     sourceLabel: "Unapproved county seed batch",
     sourceOwner: "HeirRight operator",
-    seeds: [{ county: "broward", source: "operator_cli" }],
+    seeds: [{
+      county: "broward",
+      source: "operator_cli",
+      confirmedSourceFacts: [{
+        source: "intake",
+        factType: "source_status",
+        value: null,
+        reviewFlags: ["SOURCE_EVIDENCE_REQUIRED"],
+      }],
+    }],
   });
   if (invalidSeedReport.ok) failures.push("S16 unapproved or unsupported seed batch should be blocked.");
   if (!invalidSeedReport.issues.some((item) => item.code === "MISSING_APPROVAL_MARKER")) failures.push("S16 missing approval marker issue missing.");
   if (!invalidSeedReport.issues.some((item) => item.code === "UNSUPPORTED_COUNTY")) failures.push("S16 unsupported county issue missing.");
+  if (!invalidSeedReport.issues.some((item) => item.code === "INVALID_CONFIRMED_SOURCE")) failures.push("S17 invalid confirmed source issue missing.");
+  if (!invalidSeedReport.issues.some((item) => item.code === "MISSING_CONFIRMED_FACT_VALUE")) failures.push("S17 empty confirmed source fact issue missing.");
+  if (!invalidSeedReport.issues.some((item) => item.code === "BLOCKED_CONFIRMED_SOURCE_FACT")) failures.push("S17 blocked confirmed source fact issue missing.");
 
   const dryExport = await exportCompletedReport({
     routes: ["google", "podio"],
@@ -347,13 +425,13 @@ async function main(): Promise<void> {
   if (thirtyDayEvidence.exportReadiness.readbackEvidence.overallStatus !== "blocked") failures.push("S19 default milestone readback evidence should remain blocked.");
   if (!thirtyDayEvidenceMarkdown.includes("HeirRight 30-Day Milestone Evidence")) failures.push("HEI-77 evidence markdown heading missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Source Coverage Blockers")) failures.push("S17 milestone markdown source blocker section missing.");
-  if (!thirtyDayEvidenceMarkdown.includes("Captured: property address")) failures.push("S17 milestone markdown captured source fields missing.");
+  if (!thirtyDayEvidenceMarkdown.includes("Captured on at least one lead: property address")) failures.push("S17 milestone markdown captured source fields missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Qualification review:")) failures.push("S18 milestone markdown qualification summary missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Google + Podio Readback")) failures.push("S19 milestone markdown readback section missing.");
   if (!thirtyDayEvidenceMarkdown.includes("Not ready for 30-Day acceptance")) failures.push("HEI-77 evidence markdown summary missing.");
   if (!thirtyDayReviewScript.includes("HeirRight 30-Day Review Agenda")) failures.push("S20 client review script heading missing.");
   if (!thirtyDayReviewScript.includes("Records To Pull Next")) failures.push("S20 client review script source blocker section missing.");
-  if (!thirtyDayReviewScript.includes("already captured property address")) failures.push("S20 client review script captured-vs-missing source plan missing.");
+  if (!thirtyDayReviewScript.includes("already captured on at least one lead: property address")) failures.push("S20 client review script captured-vs-missing source plan missing.");
   for (const phrase of ["production seed", "Google", "Podio", "qualified"] as const) {
     if (!thirtyDayReviewScript.includes(phrase)) failures.push(`S20 client review script missing ${phrase}.`);
   }

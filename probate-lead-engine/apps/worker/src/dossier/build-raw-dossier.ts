@@ -17,25 +17,39 @@ function valueFor<T>(facts: SourceFact[], factType: SourceFact["factType"]): T |
   return item ? (item.value as T) : null;
 }
 
-function claim<T>(facts: SourceFact[], factType: SourceFact["factType"], missing: ReviewFlag): DossierClaim<T> {
-  const value = valueFor<T>(facts, factType);
+const BLOCKING_SOURCE_FACT_FLAGS: ReviewFlag[] = ["SOURCE_EVIDENCE_REQUIRED", "SOURCE_HEALTH_ONLY", "SOURCE_BLOCKED"];
+
+function isSourceBackedFact(fact: SourceFact): boolean {
+  if (fact.value === null || fact.value === undefined || fact.value === "") return false;
+  if (fact.source === "intake" || fact.source === "document_packet" || fact.source === "podio") return false;
+  return !fact.reviewFlags.some((flag) => BLOCKING_SOURCE_FACT_FLAGS.includes(flag));
+}
+
+function factsForClaim(facts: SourceFact[], factType: SourceFact["factType"]): SourceFact[] {
   const related = facts.filter((item) => item.factType === factType);
+  const sourceBacked = related.filter(isSourceBackedFact);
+  return sourceBacked.length ? sourceBacked : related;
+}
+
+function claim<T>(facts: SourceFact[], factType: SourceFact["factType"], missing: ReviewFlag): DossierClaim<T> {
+  const related = factsForClaim(facts, factType);
+  const value = valueFor<T>(related, factType);
   const reviewFlags = Array.from(new Set(related.flatMap((item) => item.reviewFlags).concat(value === null ? [missing] : [])));
   return {
     value,
     confidence: related.length ? Math.max(...related.map((item) => item.confidence)) : 0,
-    sourceRefs: refsFor(facts, factType),
+    sourceRefs: refsFor(related, factType),
     reviewFlags,
   };
 }
 
 function optionalClaim<T>(facts: SourceFact[], factType: SourceFact["factType"]): DossierClaim<T> {
-  const value = valueFor<T>(facts, factType);
-  const related = facts.filter((item) => item.factType === factType);
+  const related = factsForClaim(facts, factType);
+  const value = valueFor<T>(related, factType);
   return {
     value,
     confidence: related.length ? Math.max(...related.map((item) => item.confidence)) : 0,
-    sourceRefs: refsFor(facts, factType),
+    sourceRefs: refsFor(related, factType),
     reviewFlags: Array.from(new Set(related.flatMap((item) => item.reviewFlags))),
   };
 }
