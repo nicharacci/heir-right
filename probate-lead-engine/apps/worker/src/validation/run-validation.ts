@@ -206,7 +206,7 @@ async function main(): Promise<void> {
     if (!qualificationReviewMarkdown.includes(heading)) failures.push(`S18 qualification review markdown section missing ${heading}.`);
   }
   if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("Qualified lead count"))) failures.push("S14 missed qualified-volume reason missing.");
-  if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("No production batch seed file"))) failures.push("S14 production seed blocker missing.");
+  if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("Manual operator seeds"))) failures.push("S14 production seed blocker missing.");
   if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("source area"))) failures.push("S17 source coverage missed-volume reason missing.");
   if (!dailyResult.sourceCoverageSummary.areaStatuses.length) failures.push("S17 daily source coverage rollup missing.");
   if (!dailyResult.sourceCoverageBlockers.length) failures.push("S17 source coverage blocker summary missing.");

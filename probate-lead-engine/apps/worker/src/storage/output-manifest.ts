@@ -9,6 +9,7 @@ export type PipelineOutputName =
   | "daily-run.json"
   | "qualification-review.json"
   | "qualification-review.md"
+  | "fresh-lead-batch.json"
   | "export-result.json"
   | "readback-evidence.json"
   | "readback-evidence.md"

@@ -178,9 +178,9 @@ export interface DailyRunConfig {
   targetRawLeadRange: { min: number; max: number };
   targetQualifiedLeadRange: { min: number; max: number };
   seeds: IntakeSeed[];
-  seedSource: "configured_batch" | "default_review_seeds" | "manual";
+  seedSource: "configured_batch" | "default_review_seeds" | "manual" | "external_live_source";
   seedBatch?: SeedBatchSummary;
-  startedBy: "automation" | "operator_cli";
+  startedBy: "automation" | "operator_cli" | "operator_ui";
 }
 
 export interface SeedBatchSummary {
@@ -385,6 +385,73 @@ export interface DailyRunResult {
   sourceCoverageSummary: SourceCoverageSummary;
   sourceCoverageBlockers: SourceCoverageBlocker[];
   qualificationReview: QualificationReviewPacket;
+}
+
+export type FreshLeadSourceKey = "miami_dade_property_appraiser";
+export type FreshLeadSearchMode = "owner" | "address" | "folio";
+
+export interface FreshLeadFilters {
+  county?: string;
+  query?: string;
+  searchMode?: FreshLeadSearchMode;
+  limit?: number;
+  leadType?: string;
+  status?: string;
+  minimumEvidence?: number;
+  missingInfo?: string;
+  priorityOnly?: boolean;
+  includeCompanyOwners?: boolean;
+}
+
+export interface FreshLeadBatchRequest {
+  source?: FreshLeadSourceKey;
+  filters?: FreshLeadFilters;
+  startedBy?: DailyRunConfig["startedBy"];
+}
+
+export interface FreshLeadSourceLedgerEntry {
+  label: string;
+  url: string;
+  status: "used" | "checked" | "blocked";
+  note: string;
+}
+
+export interface FreshLeadCandidateSummary {
+  rawId: string;
+  folio?: string;
+  ownerName?: string;
+  propertyAddress?: string;
+  county?: string;
+  municipality?: string;
+  sourceUrl: string;
+  accepted: boolean;
+  rejectedReason?: string;
+  sourceRecord?: unknown;
+}
+
+export interface FreshLeadPipelineRun {
+  runId: string;
+  seed: IntakeSeed;
+  facts: SourceFact[];
+  dossier: RawDossier;
+}
+
+export interface FreshLeadBatchResult {
+  ok: boolean;
+  source: FreshLeadSourceKey;
+  generatedAt: string;
+  filters: Required<Pick<FreshLeadFilters, "county" | "query" | "searchMode" | "limit">> & FreshLeadFilters;
+  externalRecordCount: number;
+  acceptedSeedCount: number;
+  rejectedCandidateCount: number;
+  seeds: IntakeSeed[];
+  candidates: FreshLeadCandidateSummary[];
+  leadRuns: FreshLeadPipelineRun[];
+  dailyRun: DailyRunResult;
+  latestRun?: FreshLeadPipelineRun;
+  blockers: string[];
+  operatorSummary: string;
+  sourceLedger: FreshLeadSourceLedgerEntry[];
 }
 
 export type ExportRoute = "google" | "podio";
@@ -1172,7 +1239,7 @@ export interface IntakeSeed {
   caseNumber?: string;
   county: string;
   parcelId?: string;
-  source: "landing_page" | "operator_cli";
+  source: "landing_page" | "operator_cli" | "external_public_source";
   seedBatchId?: string;
   seedSourceLabel?: string;
   sourceOwner?: string;

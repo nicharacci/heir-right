@@ -1,7 +1,8 @@
-import type { IntakeSeed } from "@ple/types";
+import type { FreshLeadBatchRequest, FreshLeadSearchMode, IntakeSeed } from "@ple/types";
 import { runDailyProduction } from "./daily/run-daily";
 import { connectionStatuses, exportCompletedReport } from "./export/export-package";
 import { runDryPipeline } from "./index";
+import { runFreshLeadBatch } from "./live/source-batch";
 import { renderQualificationReviewMarkdown } from "./qualification/qualification-review";
 import { buildReadbackEvidencePacket, renderReadbackEvidenceMarkdown } from "./readback/readback-evidence";
 
@@ -200,6 +201,39 @@ async function qualificationReviewResponse(env: CloudflareEnv, markdown: boolean
   return json(result.qualificationReview, { headers: { "cache-control": "no-store" } });
 }
 
+function freshLeadRequestFromHttp(requestBody: FreshLeadBatchRequest | undefined, url: URL): FreshLeadBatchRequest {
+  const query = url.searchParams.get("query")
+    || url.searchParams.get("owner")
+    || url.searchParams.get("address")
+    || url.searchParams.get("folio")
+    || undefined;
+  const searchMode = url.searchParams.get("searchMode") || url.searchParams.get("mode");
+  return {
+    ...requestBody,
+    source: "miami_dade_property_appraiser",
+    filters: {
+      ...(requestBody?.filters ?? {}),
+      county: url.searchParams.get("county") ?? requestBody?.filters?.county,
+      searchMode: (searchMode ?? requestBody?.filters?.searchMode) as FreshLeadSearchMode | undefined,
+      query: query ?? requestBody?.filters?.query,
+      limit: url.searchParams.get("limit") ? Number(url.searchParams.get("limit")) : requestBody?.filters?.limit,
+      includeCompanyOwners: url.searchParams.get("includeCompanyOwners")
+        ? url.searchParams.get("includeCompanyOwners") === "true"
+        : requestBody?.filters?.includeCompanyOwners,
+    },
+  };
+}
+
+async function freshLeadBatchResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  const body = request.method === "POST"
+    ? await request.json().catch(() => undefined) as FreshLeadBatchRequest | undefined
+    : undefined;
+  const result = await runFreshLeadBatch(freshLeadRequestFromHttp(body, url), {
+    env: env as Record<string, string | undefined>,
+  });
+  return json(result, { headers: { "cache-control": "no-store" } });
+}
+
 async function exportResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
   const dryRun = url.searchParams.get("dry-run") !== "false";
   const routesParam = url.searchParams.get("routes");
@@ -265,6 +299,7 @@ export default {
           "/daily-run.json",
           "/qualification-review.json",
           "/qualification-review.md",
+          "/api/leads/fresh-batch",
           "/readback-evidence.json",
           "/readback-evidence.md",
           "/api/exports",
@@ -296,6 +331,12 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return qualificationReviewResponse(env, url.pathname.endsWith(".md"));
+    }
+
+    if (url.pathname === "/api/leads/fresh-batch" || url.pathname === "/fresh-lead-batch.json") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return freshLeadBatchResponse(request, url, env);
     }
 
     if (url.pathname === "/api/exports" || url.pathname === "/export-result.json") {

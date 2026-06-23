@@ -10,6 +10,7 @@ const workerOutput = join(__dirname, "..", "worker", "output", "latest-run.json"
 const dailyRunOutput = join(__dirname, "..", "worker", "output", "daily-run.json");
 const qualificationReviewJsonOutput = join(__dirname, "..", "worker", "output", "qualification-review.json");
 const qualificationReviewMarkdownOutput = join(__dirname, "..", "worker", "output", "qualification-review.md");
+const freshLeadBatchOutput = join(__dirname, "..", "worker", "output", "fresh-lead-batch.json");
 const readbackEvidenceJsonOutput = join(__dirname, "..", "worker", "output", "readback-evidence.json");
 const readbackEvidenceMarkdownOutput = join(__dirname, "..", "worker", "output", "readback-evidence.md");
 const thirtyDayMilestoneEvidenceJsonOutput = join(__dirname, "..", "worker", "output", "thirty-day-milestone-evidence.json");
@@ -221,6 +222,8 @@ function podioMissingLocalConfig() {
 function localConnectionStatuses() {
   const checkedAt = new Date().toISOString();
   const missingPodio = podioMissingLocalConfig();
+  const freshBatchExists = existsSync(freshLeadBatchOutput);
+  const latestRunExists = existsSync(workerOutput);
   return [
     {
       name: "Podio",
@@ -242,10 +245,12 @@ function localConnectionStatuses() {
     },
     {
       name: "Web Search",
-      ok: existsSync(workerOutput),
-      mode: existsSync(workerOutput) ? "dry_run" : "blocked",
-      message: existsSync(workerOutput)
-        ? "Public source checks are represented in the latest lead packet."
+      ok: freshBatchExists || latestRunExists,
+      mode: freshBatchExists ? "live" : latestRunExists ? "dry_run" : "blocked",
+      message: freshBatchExists
+        ? "A live external public-source lead batch has been pulled and persisted."
+        : latestRunExists
+          ? "Public source checks are represented in the latest lead packet."
         : "Run the worker before validating public source status.",
       checkedAt,
     },
@@ -382,6 +387,28 @@ async function handleLocalExport(req, res) {
     routes: results,
     blockers: results.flatMap((result) => result.blockers),
   });
+}
+
+async function handleFreshLeadBatch(req, res) {
+  const body = req.method === "POST" ? await readJsonBody(req) : {};
+  const proxied = await proxyWorkerJson("/api/leads/fresh-batch", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (proxied) {
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+    res.end(proxied.body);
+    return;
+  }
+
+  try {
+    const { runFreshLeadBatch, persistFreshLeadBatchOutputs } = require("../worker/dist/live/source-batch");
+    const result = await runFreshLeadBatch(body, { env: process.env });
+    const outputs = persistFreshLeadBatchOutputs(result);
+    sendJson(res, 200, { ...result, outputs }, { "cache-control": "no-store" });
+  } catch (error) {
+    sendJson(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) }, { "cache-control": "no-store" });
+  }
 }
 
 async function handleLogin(req, res) {
@@ -521,6 +548,21 @@ createServer((req, res) => {
 
   if (url.pathname === "/api/exports") {
     handleLocalExport(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/api/leads/fresh-batch") {
+    handleFreshLeadBatch(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/fresh-lead-batch.json") {
+    if (!existsSync(freshLeadBatchOutput)) {
+      sendJson(res, 404, { error: "Pull a fresh lead batch first." });
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+    res.end(readFileSync(freshLeadBatchOutput));
     return;
   }
 

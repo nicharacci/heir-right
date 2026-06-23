@@ -105,7 +105,9 @@ export function qualificationBlockers(dossier: RawDossier): string[] {
   if (!profile?.promotionEligible) blockers.push(`Lead bucket is ${profile?.leadBucket ?? "unknown"}, not qualified.`);
   if (dossier.workflow.status !== "continue") blockers.push(`Workflow status is ${dossier.workflow.status}.`);
   if (dossier.operatorQueue.state !== "ready_for_review") blockers.push(`Operator queue is ${dossier.operatorQueue.state}.`);
-  if (dossier.audit.reviewFlags.includes("SOURCE_HEALTH_ONLY")) blockers.push("Only source reachability is proven for at least one source.");
+  if (dossier.audit.reviewFlags.includes("SOURCE_HEALTH_ONLY") && dossier.sourceCoverage.extractedFieldCount === 0) {
+    blockers.push("Only source reachability is proven for at least one source.");
+  }
   if (dossier.audit.reviewFlags.includes("NO_ENRICHMENT_RUN")) blockers.push("No enrichment/contact run has been approved or completed.");
   if (dossier.sourceCoverage.blockedAreaCount > 0) {
     blockers.push(`${plural(dossier.sourceCoverage.blockedAreaCount, "source area")} still need real county source facts.`);

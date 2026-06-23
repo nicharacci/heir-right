@@ -218,8 +218,14 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
   if (qualifiedLeadCount < config.targetQualifiedLeadRange.min) {
     missedVolumeReasons.push(`Qualified lead count ${qualifiedLeadCount} is below target ${config.targetQualifiedLeadRange.min}-${config.targetQualifiedLeadRange.max}.`);
   }
-  if (config.seedSource !== "configured_batch") {
+  if (config.seedSource === "default_review_seeds") {
     missedVolumeReasons.push("No production batch seed file was provided; default review seeds do not satisfy contract volume.");
+  }
+  if (config.seedSource === "manual") {
+    missedVolumeReasons.push("Manual operator seeds do not satisfy production batch volume until an approved seed file is provided.");
+  }
+  if (config.seedSource === "external_live_source") {
+    missedVolumeReasons.push("Operator-requested live source pulls prove fresh external intake, but still need approved production-volume criteria before contract volume is satisfied.");
   }
   if (config.seedBatch?.rejectedSeedCount) {
     missedVolumeReasons.push(`${config.seedBatch.rejectedSeedCount} seed(s) were rejected by intake validation before the run.`);

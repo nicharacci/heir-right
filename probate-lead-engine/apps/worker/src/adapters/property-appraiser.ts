@@ -16,7 +16,7 @@ export async function fetchPropertyFacts(runId: string, seed: IntakeSeed): Promi
   const ownerType = ownerTypeFromSeed(seed.ownerName);
   const subject = intakeSubject(seed);
 
-  return [
+  const facts: SourceFact[] = [
     fact({
       runId,
       source: "property_appraiser",
@@ -50,6 +50,13 @@ export async function fetchPropertyFacts(runId: string, seed: IntakeSeed): Promi
       sourceUrl: PROPERTY_SEARCH_URL,
       reviewFlags: ["SOURCE_HEALTH_ONLY", "NO_ENRICHMENT_RUN"],
     }),
+  ];
+
+  if (seed.source === "external_public_source") {
+    return facts;
+  }
+
+  facts.push(
     fact({
       runId,
       source: "property_appraiser",
@@ -117,5 +124,7 @@ export async function fetchPropertyFacts(runId: string, seed: IntakeSeed): Promi
       sourceUrl: PROPERTY_SEARCH_URL,
       reviewFlags: seed.parcelId ? ["HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"] : ["MISSING_PROPERTY_FACT", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
     }),
-  ];
+  );
+
+  return facts;
 }
