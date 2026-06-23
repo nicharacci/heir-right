@@ -1,5 +1,6 @@
 import type { FreshLeadBatchRequest, FreshLeadSearchMode, IntakeSeed } from "@ple/types";
 import { runDailyProduction } from "./daily/run-daily";
+import { buildControlledPodioTestSeed } from "./export/controlled-test-lead";
 import { connectionStatuses, exportCompletedReport } from "./export/export-package";
 import { runDryPipeline } from "./index";
 import { runFreshLeadBatch } from "./live/source-batch";
@@ -241,15 +242,19 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
     ? routesParam.split(",").map((route) => route.trim()).filter((route): route is "google" | "podio" => route === "google" || route === "podio")
     : ["google", "podio"] as Array<"google" | "podio">;
   const body = request.method === "POST"
-    ? await request.json().catch(() => undefined) as { seed?: IntakeSeed; routes?: Array<"google" | "podio">; dryRun?: boolean } | undefined
+    ? await request.json().catch(() => undefined) as { seed?: IntakeSeed; routes?: Array<"google" | "podio">; dryRun?: boolean; controlledTest?: boolean } | undefined
     : undefined;
-  const pipeline = await runDryPipeline(body?.seed ?? seedFromUrl(url, env), {
+  const seed = body?.controlledTest
+    ? buildControlledPodioTestSeed(env as Record<string, string | undefined>)
+    : body?.seed ?? seedFromUrl(url, env);
+  const pipeline = await runDryPipeline(seed, {
     env: env as Record<string, string | undefined>,
   });
   const result = await exportCompletedReport({
     routes: body?.routes ?? routes,
     dossier: pipeline.dossier,
     dryRun: body?.dryRun ?? dryRun,
+    controlledTest: body?.controlledTest,
   }, env as Record<string, string | undefined>);
   return json(result, { headers: { "cache-control": "no-store" } });
 }

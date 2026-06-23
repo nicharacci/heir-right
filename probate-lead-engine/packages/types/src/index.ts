@@ -460,6 +460,7 @@ export interface ExportRequest {
   routes: ExportRoute[];
   dossier: RawDossier;
   dryRun?: boolean;
+  controlledTest?: boolean;
 }
 
 export interface ExportRouteResult {

@@ -1620,7 +1620,7 @@
     .table-wrap {
       min-height: 0;
       overflow: auto;
-      padding: 0 10px 10px;
+      padding: 0 0 10px;
       background: rgba(242,242,247,.42);
     }
 
@@ -3189,6 +3189,10 @@
             <button class="export-option" type="button" role="menuitem" data-export-route="podio">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
               <span><strong>Podio</strong><span>Prepare the completed report and lead fields for CRM handoff.</span></span>
+            </button>
+            <button class="export-option" type="button" role="menuitem" data-export-route="podio-test">
+              <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 5.5h14v13H5v-13Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 13h5M16 16.5l2 2 3-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <span><strong>Send Podio test card</strong><span>Create one controlled test Lead contact card and confirm it comes back.</span></span>
             </button>
             <button class="export-option" type="button" role="menuitem" data-export-route="both">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M8 7h10v12H8V7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1M11 11h4M11 15h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
@@ -5359,6 +5363,14 @@ function exportRouteMeta(route) {
       title: "Prepare Podio handoff",
       copy: "Prepare the completed report and lead fields for Podio. Use this when the file is ready for CRM handoff."
     },
+    "podio-test": {
+      label: "Podio test card",
+      status: "handoff: [PODIO TEST]",
+      title: "Send Podio test card",
+      copy: "Create one controlled test Lead contact card in Podio and confirm it comes back.",
+      dryRun: false,
+      controlledTest: true
+    },
     both: {
       label: "Google + Podio",
       status: "handoff: [GOOGLE + PODIO]",
@@ -5377,8 +5389,13 @@ function setExportMenuOpen(open) {
 }
 
 function routesForExport(route) {
+  if (route === "podio-test") return ["podio"];
   if (route === "both") return ["google", "podio"];
   return [route];
+}
+
+function deliveredPodioTest(result) {
+  return Boolean(result?.ok && (result.routes ?? []).some((route) => route.route === "podio" && route.mode === "live" && route.readbackOk));
 }
 
 async function chooseExportRoute(route, source = null) {
@@ -5391,35 +5408,48 @@ async function chooseExportRoute(route, source = null) {
   }
   state.exportRoute = route;
   state.exportResult = null;
+  const isControlledTest = Boolean(meta.controlledTest);
   state.railPreview = {
     title: meta.title,
-    markdown: `${meta.copy} Preparing a review-only handoff package now. No live CRM write will be attempted from this demo surface.`,
+    markdown: isControlledTest
+      ? `${meta.copy} This uses a generated test lead, not the loaded lead packet.`
+      : `${meta.copy} Preparing a review-only handoff package now. No live CRM write will be attempted from this demo surface.`,
     updatedAt: Date.now()
   };
   openRailWithContinuity(source, "docs");
   document.getElementById("statusExport").textContent = meta.status;
-  document.getElementById("topStatus").textContent = `Preparing completed report handoff for ${meta.label}...`;
+  document.getElementById("topStatus").textContent = isControlledTest
+    ? "Sending a controlled test Lead contact card to Podio..."
+    : `Preparing completed report handoff for ${meta.label}...`;
   try {
     const response = await fetch("/api/exports", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         routes: routesForExport(route),
-        dryRun: true,
+        dryRun: meta.dryRun === false ? false : true,
+        controlledTest: isControlledTest,
       }),
     });
     const result = await response.json();
     state.exportResult = result;
     const blockers = (result.blockers ?? []).filter((blocker) => !/skipped in dry-run mode/i.test(blocker));
-    if (result.ok) {
+    const testDelivered = isControlledTest && deliveredPodioTest(result);
+    if (testDelivered) {
+      addShellEvent("Podio test card delivered", "A controlled test Lead contact card was created in Podio and read back successfully.", "ready", false);
+    } else if (result.ok) {
       addShellEvent(exportSuccessActivityTitle(), exportSuccessActivityCopy(meta.label), "ready", false);
     }
-    document.getElementById("topStatus").textContent = result.ok
-      ? `${meta.label} handoff prepared for review. Live readback still needs approval before any CRM write.`
-      : blockers.length
-        ? `${meta.label} handoff has ${blockers.length} blocker${blockers.length === 1 ? "" : "s"}.`
-        : `${meta.label} handoff is blocked.`;
-    document.getElementById("statusExport").textContent = result.ok ? `${meta.status} [PREPARED]` : `${meta.status} [BLOCKED]`;
+    document.getElementById("topStatus").textContent = testDelivered
+      ? "Podio test contact card delivered and readback confirmed."
+      : result.ok
+        ? `${meta.label} handoff prepared for review. Live readback still needs approval before any CRM write.`
+        : blockers.length
+          ? `${meta.label} handoff has ${blockers.length} blocker${blockers.length === 1 ? "" : "s"}.`
+          : `${meta.label} handoff is blocked.`;
+    document.getElementById("statusExport").textContent = testDelivered
+      ? `${meta.status} [DELIVERED]`
+      : result.ok ? `${meta.status} [PREPARED]` : `${meta.status} [BLOCKED]`;
     await loadConnectionStatuses();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

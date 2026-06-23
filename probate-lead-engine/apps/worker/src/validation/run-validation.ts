@@ -3,6 +3,7 @@ import type { SourceFact, SourceKey, SourceSubject } from "@ple/types";
 import { runDailyProduction } from "../daily/run-daily";
 import { validateSeedBatchInput } from "../daily/seed-batch";
 import { buildRawDossier } from "../dossier/build-raw-dossier";
+import { buildControlledPodioTestSeed } from "../export/controlled-test-lead";
 import { connectionStatuses, exportCompletedReport } from "../export/export-package";
 import { PODIO_LIVE_WRITE_APPROVAL_KEY, TEXAS_EQUITY_PROS_LEADS_APP_ID } from "../export/podio-config";
 import { runDryPipeline } from "../index";
@@ -324,6 +325,14 @@ async function main(): Promise<void> {
   if (!invalidSeedReport.issues.some((item) => item.code === "INVALID_CONFIRMED_SOURCE")) failures.push("S17 invalid confirmed source issue missing.");
   if (!invalidSeedReport.issues.some((item) => item.code === "MISSING_CONFIRMED_FACT_VALUE")) failures.push("S17 empty confirmed source fact issue missing.");
   if (!invalidSeedReport.issues.some((item) => item.code === "BLOCKED_CONFIRMED_SOURCE_FACT")) failures.push("S17 blocked confirmed source fact issue missing.");
+
+  const controlledPodioSeed = buildControlledPodioTestSeed({}, new Date("2026-06-23T19:00:00.000Z"));
+  const controlledPodioSeedText = JSON.stringify(controlledPodioSeed);
+  if (controlledPodioSeed.estateName !== "HeirRight Podio Test 20260623190000") failures.push("S9 controlled Podio test seed should be timestamped and synthetic.");
+  if (controlledPodioSeed.approvalMarker !== "approved_controlled_podio_test_export") failures.push("S9 controlled Podio test seed approval marker missing.");
+  if (controlledPodioSeedText.includes("AMARANTHE") || controlledPodioSeedText.includes("ACHILLE") || controlledPodioSeedText.includes("20611 NW 33rd Pl")) {
+    failures.push("S9 controlled Podio test seed must not reuse packet or default validation lead data.");
+  }
 
   const dryExport = await exportCompletedReport({
     routes: ["google", "podio"],

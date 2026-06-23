@@ -219,9 +219,17 @@ function podioMissingLocalConfig() {
   return missing;
 }
 
+function podioMissingControlledTestConfig() {
+  return Array.from(new Set([
+    ...podioMissingLocalConfig(),
+    ...["PODIO_TEST_PHONE", "PODIO_TEST_EMAIL", "PODIO_LEAD_POINT_PROFILE_ID"].filter((key) => !process.env[key]),
+  ]));
+}
+
 function localConnectionStatuses() {
   const checkedAt = new Date().toISOString();
-  const missingPodio = podioMissingLocalConfig();
+  const missingPodio = podioMissingControlledTestConfig();
+  const podioApproved = process.env.PODIO_LIVE_WRITE_APPROVED === "true";
   const freshBatchExists = existsSync(freshLeadBatchOutput);
   const latestRunExists = existsSync(workerOutput);
   return [
@@ -230,7 +238,9 @@ function localConnectionStatuses() {
       ok: !missingPodio.length,
       mode: missingPodio.length ? "blocked" : "live",
       message: !missingPodio.length
-        ? "Podio export config is present; controlled write still needs approval."
+        ? podioApproved
+          ? "Podio export config and controlled write approval are present."
+          : "Podio export config is present; controlled write still needs approval."
         : `Podio export/readback config is missing: ${missingPodio.join(", ")}.`,
       checkedAt,
     },
@@ -358,6 +368,20 @@ function localExportRoute(route, dryRun) {
   };
 }
 
+async function localControlledPodioExport() {
+  const { runDryPipeline } = require("../worker/dist/index");
+  const { buildControlledPodioTestSeed } = require("../worker/dist/export/controlled-test-lead");
+  const { exportCompletedReport } = require("../worker/dist/export/export-package");
+  const seed = buildControlledPodioTestSeed(process.env);
+  const pipeline = await runDryPipeline(seed, { env: process.env });
+  return exportCompletedReport({
+    routes: ["podio"],
+    dossier: pipeline.dossier,
+    dryRun: false,
+    controlledTest: true,
+  }, process.env);
+}
+
 async function handleLocalExport(req, res) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
   const proxied = await proxyWorkerJson("/api/exports", {
@@ -369,16 +393,29 @@ async function handleLocalExport(req, res) {
     res.end(proxied.body);
     return;
   }
-  if (!existsSync(workerOutput)) {
-    sendJson(res, 404, { ok: false, error: "Run the worker dry pipeline first." });
-    return;
-  }
   const requestedRoutes = Array.isArray(body.routes) && body.routes.length ? body.routes : ["google", "podio"];
   const routes = requestedRoutes
     .map((route) => route === "both" ? ["google", "podio"] : [route])
     .flat()
     .filter((route) => route === "google" || route === "podio");
   const dryRun = body.dryRun !== false;
+  if (body.controlledTest === true && routes.includes("podio") && !dryRun) {
+    try {
+      const result = await localControlledPodioExport();
+      sendJson(res, 200, result, { "cache-control": "no-store" });
+    } catch (error) {
+      sendJson(res, 500, {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+        blockers: ["The local Podio test export could not reach the worker export adapter."],
+      }, { "cache-control": "no-store" });
+    }
+    return;
+  }
+  if (!existsSync(workerOutput)) {
+    sendJson(res, 404, { ok: false, error: "Run the worker dry pipeline first." });
+    return;
+  }
   const results = Array.from(new Set(routes)).map((route) => localExportRoute(route, dryRun));
   sendJson(res, 200, {
     ok: results.every((result) => result.ok),
