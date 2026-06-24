@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- [claude-code 2026-06-24] S21 discovery dossier product loop: dashboard, dossier workspace, drips, queue, and guided rail workflow. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -36,6 +37,11 @@
       --ease: cubic-bezier(.4, 0, .2, 1);
       --ease-out: cubic-bezier(.16, 1, .3, 1);
       --detail-rail-width: min(370px, 34vw);
+      --t-dropdown-open-dur: 250ms;
+      --t-dropdown-close-dur: 150ms;
+      --t-dropdown-pre-scale: .97;
+      --t-dropdown-closing-scale: .99;
+      --t-dropdown-ease: cubic-bezier(.22, 1, .36, 1);
       --solvys-lg-tint-source: var(--page-2);
       --solvys-lg-rim-source: var(--line-strong);
       --solvys-lg-text-source: var(--text);
@@ -749,8 +755,8 @@
 
     .app {
       min-width: 0;
-      height: calc(100vh - 16px);
-      margin: 8px 0;
+      height: 100vh;
+      margin: 0;
       display: grid;
       grid-template-rows: 64px minmax(0, 1fr) auto;
       overflow: hidden;
@@ -759,7 +765,7 @@
       border-left: 0;
       border-right: 0;
       border-radius: 0 0 0 16px;
-      background: var(--page);
+      background: var(--shell-surface);
       box-shadow: 0 18px 42px rgba(15, 23, 42, .06);
     }
 
@@ -773,7 +779,7 @@
       align-items: center;
       padding: 10px 16px;
       border-bottom: 0;
-      background: rgba(250,250,252,.74);
+      background: var(--shell-surface);
       backdrop-filter: saturate(180%) blur(28px);
       -webkit-backdrop-filter: saturate(180%) blur(28px);
     }
@@ -837,6 +843,7 @@
     }
 
     .top-status {
+      display: none;
       min-width: 0;
       color: var(--muted);
       font-size: 12px;
@@ -947,12 +954,6 @@
     .btn:hover {
       background: rgba(255,255,255,.96);
       border-color: var(--line-strong);
-    }
-
-    .btn.is-rail-origin {
-      transform: translateY(-1px) scale(.98);
-      border-color: var(--focus-ring);
-      background: rgba(255,255,255,.96);
     }
 
     .btn.primary {
@@ -1211,7 +1212,7 @@
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
       overflow: visible;
-      border-right: 1px solid var(--line);
+      border-right: 0;
       background: rgba(255,255,255,.44);
       backdrop-filter: saturate(180%) blur(18px);
       -webkit-backdrop-filter: saturate(180%) blur(18px);
@@ -1220,12 +1221,28 @@
       transition: opacity .2s var(--ease), transform .26s var(--ease-out), border-color .2s var(--ease);
     }
 
+    .filters::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 1px;
+      background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--line-strong) 74%, transparent) 10%, color-mix(in srgb, var(--line-strong) 74%, transparent) 90%, transparent 100%);
+      opacity: .72;
+      pointer-events: none;
+    }
+
     .content.is-filter-collapsed .filters {
       border-right-color: transparent;
       opacity: 0;
       overflow: hidden;
       pointer-events: none;
       transform: translateX(-18px);
+    }
+
+    .content.is-filter-collapsed .filters::after {
+      opacity: 0;
     }
 
     .filter-resizer {
@@ -1337,7 +1354,10 @@
       min-height: 0;
       overflow: auto;
       padding: 14px 12px 18px;
+      scrollbar-width: none;
     }
+
+    .filter-scroll::-webkit-scrollbar { display: none; }
 
     .field {
       position: relative;
@@ -1479,16 +1499,55 @@
       overflow: hidden;
     }
 
+    .app[data-active-view]:not([data-active-view="find-estates"]) .content {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .app[data-active-view]:not([data-active-view="find-estates"]) .filters,
+    .app[data-active-view]:not([data-active-view="find-estates"]) .filter-reopen {
+      display: none;
+    }
+
+    .app[data-active-view]:not([data-active-view="find-estates"]) .research-rail {
+      display: none !important;
+    }
+
+    [data-view-panel] {
+      display: none;
+    }
+
+    .app[data-active-view="find-estates"] [data-view-panel="find-estates"] {
+      display: grid;
+    }
+
+    .app[data-active-view="dashboard"] [data-view-panel="dashboard"],
+    .app[data-active-view="dossiers"] [data-view-panel="dossiers"],
+    .app[data-active-view="drips"] [data-view-panel="drips"],
+    .app[data-active-view="queue"] [data-view-panel="queue"],
+    .app[data-active-view="admin"] [data-view-panel="admin"],
+    .app[data-active-view="settings"] [data-view-panel="settings"] {
+      display: block;
+    }
+
+    .app[data-active-view="dashboard"] .workbench,
+    .app[data-active-view="dossiers"] .workbench,
+    .app[data-active-view="drips"] .workbench,
+    .app[data-active-view="queue"] .workbench,
+    .app[data-active-view="admin"] .workbench,
+    .app[data-active-view="settings"] .workbench {
+      grid-template-rows: minmax(0, 1fr);
+    }
+
     .workbench-head {
       position: relative;
       z-index: 12;
       width: 100%;
-      min-height: 196px;
+      min-height: 134px;
       display: grid;
       grid-template-columns: minmax(0, 1fr);
-      gap: 12px;
+      gap: 8px;
       align-items: start;
-      padding: 18px 18px 14px;
+      padding: 14px 18px 8px;
       border-bottom: 0;
       background: var(--shell-surface);
       backdrop-filter: saturate(180%) blur(18px);
@@ -1517,7 +1576,7 @@
       grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 0;
       width: 100%;
-      min-height: 116px;
+      min-height: 74px;
       border-radius: 8px;
       background: transparent;
     }
@@ -1525,7 +1584,7 @@
     .metric {
       position: relative;
       min-width: 0;
-      padding: 8px 9px;
+      padding: 5px 9px;
       border: 0;
       border-radius: 0;
       background: transparent;
@@ -1558,7 +1617,7 @@
       margin-top: 3px;
       color: var(--text);
       font-family: var(--mono);
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 740;
     }
 
@@ -1591,6 +1650,12 @@
       background: rgba(255,255,255,.22);
     }
 
+    .app[data-active-view]:not([data-active-view="find-estates"]) .workbench-head[data-view-panel="find-estates"],
+    .app[data-active-view]:not([data-active-view="find-estates"]) .workbench-body[data-view-panel="find-estates"],
+    .app[data-active-view]:not([data-active-view="find-estates"]) .detail {
+      display: none !important;
+    }
+
     .results {
       min-width: 0;
       min-height: 0;
@@ -1598,6 +1663,397 @@
       grid-template-rows: auto minmax(0, 1fr) auto;
       border-right: 1px solid var(--line);
       background: rgba(255,255,255,.22);
+    }
+
+    .loop-view {
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      overflow: auto;
+      padding: 16px;
+      background: rgba(255,255,255,.22);
+      animation: loopViewIn .36s var(--ease-out);
+    }
+
+    @keyframes loopViewIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .loop-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, .9fr) minmax(0, 1.35fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .loop-grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .loop-panel {
+      min-width: 0;
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.44);
+    }
+
+    .loop-panel.full {
+      grid-column: 1 / -1;
+    }
+
+    .loop-panel-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .loop-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.18;
+      letter-spacing: -.01em;
+    }
+
+    .loop-tabs {
+      display: inline-flex;
+      gap: 4px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.42);
+    }
+
+    .loop-tab {
+      min-height: 28px;
+      border: 0;
+      border-radius: 6px;
+      padding: 5px 9px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 730;
+    }
+
+    .loop-tab[aria-pressed="true"] {
+      color: var(--text);
+      background: var(--ios-fill);
+    }
+
+    .tracker-list,
+    .dossier-doc-list,
+    .drip-list,
+    .queue-list,
+    .suggestion-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .tracker-item,
+    .dossier-doc,
+    .drip-item,
+    .queue-item,
+    .suggestion-chip {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.36);
+      color: var(--text);
+    }
+
+    .tracker-item {
+      grid-template-columns: 24px minmax(0, 1fr) auto;
+      align-items: start;
+    }
+
+    .tracker-icon {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--muted);
+      background: var(--ios-fill);
+    }
+
+    .tracker-icon svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .tracker-item strong,
+    .dossier-doc strong,
+    .drip-item strong,
+    .queue-item strong,
+    .suggestion-chip strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.25;
+    }
+
+    .tracker-item span,
+    .dossier-doc span,
+    .drip-item span,
+    .queue-item span,
+    .suggestion-chip span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .tracker-date,
+    .queue-count {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .dossier-shell {
+      display: grid;
+      grid-template-columns: minmax(420px, .95fr) minmax(360px, 1.05fr);
+      gap: 14px;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .dossier-list-panel,
+    .dossier-reader-panel {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.38);
+    }
+
+    .dossier-list-head,
+    .dossier-reader-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dossier-list-scroll,
+    .dossier-reader-scroll {
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .dossier-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .dossier-table tr {
+      cursor: pointer;
+    }
+
+    .dossier-table tr.is-selected {
+      background: var(--ios-fill);
+    }
+
+    .dossier-table td,
+    .dossier-table th {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 12px;
+    }
+
+    .dossier-doc-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .dossier-doc {
+      text-align: left;
+      cursor: pointer;
+      transition: background .18s var(--ease), border-color .18s var(--ease);
+    }
+
+    .dossier-doc.is-selected {
+      border-color: var(--focus-ring);
+      background: var(--ios-fill-strong);
+    }
+
+    .pdf-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .pdf-reader {
+      width: calc(100% - 24px);
+      min-height: 480px;
+      margin: 0 12px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+    }
+
+    .discovery-strip {
+      display: grid;
+      grid-template-columns: minmax(178px, 3fr) minmax(104px, auto) auto;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .discovery-fuse {
+      position: relative;
+      height: 30px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.42);
+    }
+
+    .discovery-fuse::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--fuse-progress, 0%);
+      background: var(--green-soft);
+      transition: width .48s var(--ease-out);
+    }
+
+    .discovery-fuse span {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .discovery-phase-meter {
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .discovery-phase-meter strong {
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+    }
+
+    .discovery-wizard {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      padding: 14px;
+      animation: discoveryTakeover .48s var(--ease-out);
+    }
+
+    @keyframes discoveryTakeover {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .discovery-head,
+    .discovery-actions {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .discovery-body {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      gap: 12px;
+    }
+
+    .phase-ruler {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .phase-ruler span {
+      height: 5px;
+      border-radius: 999px;
+      background: var(--ios-fill);
+    }
+
+    .phase-ruler span.is-complete {
+      background: var(--green);
+    }
+
+    .phase-ruler span.is-active {
+      background: var(--accent);
+    }
+
+    .preference-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .preference-card {
+      display: grid;
+      gap: 7px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.38);
+    }
+
+    .preference-card label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .discovery-notes {
+      min-height: 82px;
+      width: 100%;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: rgba(255,255,255,.56);
+      color: var(--text);
+      font: 12px/1.45 inherit;
     }
 
     .results-toolbar {
@@ -2066,6 +2522,181 @@
       background: #1c1c1e;
     }
 
+    .select-enhanced {
+      position: relative;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .select-enhanced .select-native {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .select-button {
+      width: 100%;
+      min-height: 38px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 16px;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: left;
+      --solvys-lg-tint-source: var(--page-2);
+      --solvys-lg-rim-source: var(--line-strong);
+      --solvys-lg-bg: color-mix(in srgb, var(--solvys-lg-tint) 36%, transparent);
+      background: var(--solvys-lg-bg);
+      border-color: var(--solvys-lg-border);
+      transition:
+        color .18s var(--ease),
+        border-color .18s var(--ease),
+        background .18s var(--ease),
+        box-shadow .18s var(--ease);
+    }
+
+    .setting-card .select-button {
+      min-height: 34px;
+      padding: 7px 9px;
+    }
+
+    .select-button:hover,
+    .select-enhanced.is-open .select-button,
+    .select-button:focus-visible {
+      border-color: color-mix(in srgb, var(--focus-ring) 78%, transparent);
+      background: color-mix(in srgb, var(--solvys-lg-tint) 46%, transparent);
+      outline: 0;
+    }
+
+    .select-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .select-chevron {
+      justify-self: end;
+      color: var(--muted);
+      transition: transform .18s var(--ease), color .18s var(--ease);
+    }
+
+    .select-enhanced.is-open .select-chevron { transform: rotate(180deg); color: var(--text); }
+
+    .select-menu {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 80;
+      max-height: min(260px, 48vh);
+      overflow: auto;
+      padding: 5px;
+      border-radius: 10px;
+      --solvys-lg-tint-source: var(--page-2);
+      --solvys-lg-rim-source: var(--line-strong);
+      --solvys-lg-bg: color-mix(in srgb, var(--solvys-lg-tint) 52%, transparent);
+      background: var(--solvys-lg-bg);
+      border-color: var(--solvys-lg-border);
+    }
+
+    .select-menu::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      backdrop-filter: blur(30px) saturate(1.14);
+      -webkit-backdrop-filter: blur(30px) saturate(1.14);
+      -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.86) 44%, rgba(0,0,0,.48) 76%, rgba(0,0,0,.20) 100%);
+      mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.86) 44%, rgba(0,0,0,.48) 76%, rgba(0,0,0,.20) 100%);
+    }
+
+    .select-option {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      padding: 7px 8px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 720;
+      transition: background .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease);
+    }
+
+    .select-option:hover,
+    .select-option:focus-visible {
+      background: color-mix(in srgb, var(--ios-fill-strong) 84%, transparent);
+      border-color: color-mix(in srgb, var(--line-strong) 72%, transparent);
+      outline: 0;
+    }
+
+    .select-option[aria-selected="true"] {
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent-soft) 86%, transparent);
+      border-color: color-mix(in srgb, var(--focus-ring) 64%, transparent);
+    }
+
+    .select-check {
+      color: var(--accent);
+      opacity: 0;
+    }
+
+    .select-option[aria-selected="true"] .select-check { opacity: 1; }
+
+    .t-dropdown {
+      transform-origin: top left;
+      transform: scale(var(--t-dropdown-pre-scale));
+      opacity: 0;
+      pointer-events: none;
+      transition:
+        transform var(--t-dropdown-open-dur) var(--t-dropdown-ease),
+        opacity var(--t-dropdown-open-dur) var(--t-dropdown-ease);
+      will-change: transform, opacity;
+    }
+
+    .t-dropdown[data-origin="top-right"] { transform-origin: top right; }
+    .t-dropdown.is-open {
+      transform: scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .t-dropdown.is-closing {
+      transform: scale(var(--t-dropdown-closing-scale));
+      opacity: 0;
+      pointer-events: none;
+      transition:
+        transform var(--t-dropdown-close-dur) var(--t-dropdown-ease),
+        opacity var(--t-dropdown-close-dur) var(--t-dropdown-ease);
+    }
+
+    body[data-theme="dark"] .select-button {
+      --solvys-lg-bg: color-mix(in srgb, var(--solvys-lg-tint) 44%, transparent);
+      background: var(--solvys-lg-bg);
+      border-color: var(--solvys-lg-border);
+    }
+
+    body[data-theme="dark"] .select-menu {
+      --solvys-lg-bg: color-mix(in srgb, var(--solvys-lg-tint) 58%, transparent);
+      background: var(--solvys-lg-bg);
+      border-color: var(--solvys-lg-border);
+    }
+
     .toggle-line {
       min-height: 32px;
       display: flex;
@@ -2290,7 +2921,7 @@
       justify-self: end;
       top: 0;
       right: 0;
-      bottom: 0;
+      bottom: 23px;
       z-index: 28;
       min-width: 0;
       height: auto;
@@ -2310,10 +2941,6 @@
     .research-rail[data-open="false"] {
       pointer-events: none;
       opacity: 0;
-    }
-
-    .research-rail.is-entering {
-      animation: railContinuityIn .48s var(--ease-out);
     }
 
     .rail-resizer {
@@ -2517,6 +3144,9 @@
 
     .rail-scroll {
       min-height: 0;
+      height: min(690px, calc(100vh - 304px));
+      max-height: min(690px, calc(100vh - 304px));
+      flex: 0 1 auto;
       overflow: auto;
       padding: 12px;
       display: grid;
@@ -2629,17 +3259,23 @@
     .report-cover {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 7px;
+      gap: 8px;
     }
 
     .report-cover li {
       min-width: 0;
       display: grid;
-      gap: 3px;
-      padding: 8px;
-      border: 1px solid var(--line);
+      gap: 6px;
+      padding: 12px;
+      border: 0;
       border-radius: 8px;
-      background: rgba(255,255,255,.48);
+      background: transparent;
+      --solvys-lg-tint-source: var(--page-2);
+      --solvys-lg-rim-source: var(--line-strong);
+    }
+
+    .report-cover li:first-child {
+      padding-top: 12px;
     }
 
     .report-cover strong {
@@ -2647,12 +3283,14 @@
       font-size: 10px;
       text-transform: uppercase;
       letter-spacing: .03em;
+      line-height: 1.25;
     }
 
     .report-cover span {
       color: var(--text);
       font-size: 12px;
       font-weight: 720;
+      line-height: 1.3;
       overflow-wrap: anywhere;
     }
 
@@ -2948,48 +3586,12 @@
     .connection-chip.blocked .connection-dot { background: var(--red); }
     .connection-chip.neutral .connection-dot { background: var(--soft); }
 
-    .rail-continuity-ghost {
-      position: fixed;
-      z-index: 80;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 0;
-      overflow: hidden;
-      padding: 0 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255,255,255,.74);
-      color: var(--text);
-      box-shadow: 0 16px 38px rgba(15,23,42,.12);
-      backdrop-filter: saturate(190%) blur(24px);
-      -webkit-backdrop-filter: saturate(190%) blur(24px);
-      font-size: 13px;
-      font-weight: 760;
-      white-space: nowrap;
-      pointer-events: none;
-      transform-origin: center;
-    }
-
     [hidden] { display: none !important; }
     .column-hidden { display: none; }
 
     @keyframes railFade {
       from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes railContinuityIn {
-      from {
-        opacity: 0;
-        transform: translateX(42px) scale(.982);
-        filter: blur(2px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0) scale(1);
-        filter: blur(0);
-      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -3090,10 +3692,15 @@
         margin-right: 0 !important;
         transform: none !important;
         min-height: 620px;
+        bottom: auto;
       }
       .research-rail[data-open="false"] { display: none; }
       .research-rail[data-open="true"] { display: flex; opacity: 1; }
       .rail-resizer { display: none; }
+      .rail-scroll {
+        height: auto;
+        max-height: none;
+      }
       table { min-width: 680px; }
       .summary-metrics {
         width: 100%;
@@ -3128,14 +3735,13 @@
       </div>
     </div>
     <nav class="nav-list" aria-label="HeirRight sections">
-      <button class="nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" title="Source Runs" data-shell-nav="source-runs" data-hover-label="Source Runs" data-hover-description="Lead intake and source status"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Source Runs</span></button>
-      <button class="nav-item" type="button" title="Dossiers" data-shell-nav="dossiers" data-hover-label="Dossiers" data-hover-description="Estate packets and source review"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dossiers</span></button>
-      <button class="nav-item" type="button" title="Lead Reports" data-shell-nav="lead-reports" data-hover-label="Lead Reports" data-hover-description="Draft reports and section gaps"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M7 3h7l4 4v14H7V3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h4M9 13h6M9 17h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Lead Reports</span></button>
-      <button class="nav-item" type="button" title="CRM Queue" data-shell-nav="crm-queue" data-hover-label="CRM Queue" data-hover-description="Handoff status and export prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">CRM Queue</span></button>
-      <button class="nav-item" type="button" title="Documents" data-shell-nav="documents" data-hover-label="Documents" data-hover-description="Source files and evidence"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M8 7h10v12H8V7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1M11 11h4M11 15h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Documents</span></button>
-      <button class="nav-item" type="button" title="Blockers" data-shell-nav="blockers" data-hover-label="Blockers" data-hover-description="Open risks and blocked work"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.3 4.7 3.4 17.5A2 2 0 0 0 5.2 20h13.6a2 2 0 0 0 1.8-2.9L13.7 4.7a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Blockers</span></button>
-      <button class="nav-item" type="button" title="Settings" data-shell-nav="settings" data-hover-label="Settings" data-hover-description="Review controls and preferences"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 2v4M8 10v4M16 18v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Settings</span></button>
-      <button class="nav-item" type="button" title="Admin" data-shell-nav="admin" data-hover-label="Admin" data-hover-description="Team review and admin controls"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM4 20a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 11.5a3 3 0 1 0-1-5.84M17 20h3a4.5 4.5 0 0 0-5.3-4.43" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Admin</span></button>
+      <button class="nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" title="Dashboard" data-shell-nav="dashboard" data-hover-label="Dashboard" data-hover-description="Task tracker, activity, and drips"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 5h7v6H4V5Zm9 0h7v4h-7V5ZM4 13h7v6H4v-6Zm9-2h7v8h-7v-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dashboard</span></button>
+      <button class="nav-item" type="button" title="Find Estates" data-shell-nav="find-estates" data-hover-label="Find Estates" data-hover-description="Lead intake and source status"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Find Estates</span></button>
+      <button class="nav-item" type="button" title="Dossiers" data-shell-nav="dossiers" data-hover-label="Dossiers" data-hover-description="Finished dossier documents"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dossiers</span></button>
+      <button class="nav-item" type="button" title="Drips" data-shell-nav="drips" data-hover-label="Drips" data-hover-description="Email and SMS schedules"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 7h14M7 7v12m10-12v12M6 19h12M8 4h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10 11h4m-4 4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Drips</span></button>
+      <button class="nav-item" type="button" title="Queue" data-shell-nav="queue" data-hover-label="Queue" data-hover-description="Batch export prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10h8M8 14h5M17 14l2 2 3-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Queue</span></button>
+      <button class="nav-item" type="button" title="Admin" data-shell-nav="admin" data-hover-label="Admin" data-hover-description="Team review and controls"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM4 20a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 11.5a3 3 0 1 0-1-5.84M17 20h3a4.5 4.5 0 0 0-5.3-4.43" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Admin</span></button>
+      <button class="nav-item" type="button" title="Settings" data-shell-nav="settings" data-hover-label="Settings" data-hover-description="Preferences and review gates"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 2v4M8 10v4M16 18v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Settings</span></button>
     </nav>
     <div class="sidebar-footer">
       <div class="theme-row">
@@ -3166,7 +3772,7 @@
     </div>
   </aside>
 
-  <section class="app" data-active-view="source-runs" aria-label="HeirRight lead workspace">
+  <section class="app" data-active-view="dashboard" aria-label="HeirRight lead workspace">
     <header class="topbar">
       <label class="search-control solvys-liquid-glass">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -3181,7 +3787,7 @@
             Prep export
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div id="exportPopover" class="export-popover" role="menu" aria-label="Choose handoff route">
+          <div id="exportPopover" class="export-popover solvys-liquid-glass-strong t-dropdown" data-origin="top-right" role="menu" aria-label="Choose handoff route">
             <button class="export-option" type="button" role="menuitem" data-export-route="google">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Z" stroke="currentColor" stroke-width="1.7"/><path d="m5 8 7 5 7-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
               <span><strong>Google Workspace</strong><span>Prepare the completed report package for Docs or Sheets review.</span></span>
@@ -3327,49 +3933,46 @@
       </button>
 
       <section class="workbench" aria-label="Lead results and selected details">
-        <div class="workbench-head">
+        <div class="workbench-head" data-view-panel="find-estates">
           <div class="workbench-heading-row">
             <div class="workbench-title-row">
               <h1>Find Estates</h1>
               <div class="shell-info-wrap">
-                <button class="icon-button shell-info-button" type="button" aria-label="More operator shell context" aria-describedby="shellInfoPopover">
+                <button class="icon-button shell-info-button" type="button" aria-label="Lead review help" aria-describedby="shellInfoPopover">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 11v5m0-9h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
                 <div id="shellInfoPopover" class="shell-info-popover" role="tooltip">
                   <div class="shell-info-row">
                     <strong>Start here</strong>
-                    <span>Start by choosing a county and what information is missing. Then open a file and fill the missing report sections before outreach.</span>
+                    <span>Choose a county, open a lead, and fill the missing report sections before any outreach.</span>
                   </div>
                   <div class="shell-info-row">
-                    <strong>CRM queue first</strong>
-                    <span>Research, review, and handoff stay centered on lead files.</span>
+                    <strong>Review the property</strong>
+                    <span>Confirm owner, property address, tax history, deed history, probate status, and heirs.</span>
                   </div>
                   <div class="shell-info-row">
-                    <strong>Command center ready</strong>
-                    <span>Composer captures commands without approving live outreach.</span>
+                    <strong>Record the next step</strong>
+                    <span>Flag what still needs review so the next person knows exactly what to check.</span>
                   </div>
                   <div class="shell-info-row">
-                    <strong>Project plan authoritative</strong>
-                    <span>Sprint state and blockers stay anchored to the review plan.</span>
+                    <strong>Keep outreach locked</strong>
+                    <span>Do not contact anyone until the lead packet is reviewed and approved.</span>
                   </div>
                   <div class="shell-info-row">
-                    <strong>Approval-gated handoffs</strong>
-                    <span>Podio and Google require access and readback proof.</span>
+                    <strong>Export when ready</strong>
+                    <span>Send the lead packet only after the missing sections and review flags are cleared.</span>
                   </div>
                 </div>
               </div>
             </div>
             <div class="pager summary-pager" aria-label="Pagination">
-              <button type="button" aria-label="Previous page">‹</button>
-              <button class="is-active" type="button" aria-label="Page 1">1</button>
-              <button type="button" aria-label="Page 2">2</button>
-              <button type="button" aria-label="Next page">›</button>
+              <button class="is-active" type="button" aria-label="Current page 1">1</button>
             </div>
           </div>
           <div id="summaryMetrics" class="summary-metrics" aria-label="Lead summary metrics"></div>
         </div>
 
-        <div class="workbench-body">
+        <div class="workbench-body" data-view-panel="find-estates">
           <section class="results" aria-label="Estate results">
             <div class="results-toolbar">
               <span id="resultsCount" class="results-count"><strong>0</strong> results</span>
@@ -3503,6 +4106,12 @@
             </div>
           </aside>
         </div>
+        <section id="dashboardView" class="loop-view" data-view-panel="dashboard" aria-label="Dashboard task tracker"></section>
+        <section id="dossiersView" class="loop-view" data-view-panel="dossiers" aria-label="Dossiers"></section>
+        <section id="dripsView" class="loop-view" data-view-panel="drips" aria-label="Drips"></section>
+        <section id="queueView" class="loop-view" data-view-panel="queue" aria-label="Batch export queue"></section>
+        <section id="adminView" class="loop-view" data-view-panel="admin" aria-label="Admin"></section>
+        <section id="settingsView" class="loop-view" data-view-panel="settings" aria-label="Settings"></section>
       </section>
 
       <aside id="researchRail" class="research-rail" data-open="false" aria-label="HeirRight Research Rail">
@@ -3552,7 +4161,6 @@
       <div class="composer-actions" aria-label="Common commands">
         <button class="btn quick" type="button" data-shell-command="record-blocker">Flag</button>
         <button class="btn quick" type="button" data-shell-command="stage-export">Export</button>
-        <button class="btn quick" type="button" data-shell-command="linear-sync">Plan</button>
       </div>
     </section>
 
@@ -3596,6 +4204,7 @@
 
 <script>
 const state = {
+  activeView: "dashboard",
   data: null,
   dossier: null,
   dailyRun: null,
@@ -3621,6 +4230,12 @@ const state = {
   shellCommandCount: 0,
   shellEvents: [],
   railRenaming: false,
+  dashboardActivityTab: "activities",
+  selectedDossierDocId: "discovery-dossier",
+  discoveryOpen: false,
+  discoveryPhaseIndex: 0,
+  discoveryCompleted: new Set(),
+  discoveryNotes: {},
   shellSettings: {
     signalWeight: "3",
     taxThreshold: "2",
@@ -3645,6 +4260,74 @@ const columnMap = {
   evidence: '[data-column="evidence"]',
   next: '[data-column="next"]'
 };
+
+const productViews = ["dashboard", "find-estates", "dossiers", "drips", "queue", "admin", "settings"];
+
+const discoveryPhases = [
+  {
+    id: "owner-property",
+    name: "Owner And Property",
+    label: "Owner and property",
+    source: "County property search",
+    summary: "Confirm individual ownership, property address, mailing address, deed, OR book/page, and recent sale activity.",
+    steps: ["Confirm the owner is an individual or mark the lead to move on.", "Open county property search and verify deed or OR book/page.", "Check mailing address, sale activity, and adverse-possession signal."],
+    preferences: ["Stop on company owner", "Require OR book/page", "Flag sale inside five years"]
+  },
+  {
+    id: "tax-history",
+    name: "Tax History",
+    label: "Tax history",
+    source: "Tax Collector",
+    summary: "Capture unpaid years, amount due, receipt status, payer, ownership history, and reassessment changes.",
+    steps: ["Check unpaid taxes with a two-year minimum signal.", "Review receipt status and who paid the taxes.", "Download or note tax receipts if payer differs."],
+    preferences: ["Prioritize two-year unpaid taxes", "Require payer note", "Capture reassessment changes"]
+  },
+  {
+    id: "court-probate",
+    name: "Court And Probate",
+    label: "Court and probate",
+    source: "Clerk and probate docket",
+    summary: "Check civil, family, probate, official records, affidavits of heirs, OR books, and marriage licenses.",
+    steps: ["Search civil, family, and probate records with last-name comma format.", "Check affidavit of heirs and probate document availability.", "Cross-check official records and marriage licenses."],
+    preferences: ["Require probate status", "Show document-ordering steps", "Hold if affidavit is missing"]
+  },
+  {
+    id: "heirs-contacts",
+    name: "Heirs And Contacts",
+    label: "Heirs and contacts",
+    source: "Obituary, family tree, public records",
+    summary: "Build the heir picture from obituary, Findagrave, Legacy, Ancestry, voter records, and deceased indicators.",
+    steps: ["Capture owner DOB and deceased indicators where known.", "Build family-tree context and possible heir roles.", "Add phone and address notes only from approved paths."],
+    preferences: ["Use obituary first", "Gate paid sources", "Flag missing phones"]
+  },
+  {
+    id: "manual-research",
+    name: "Manual Research",
+    label: "Manual research",
+    source: "Approval-gated sources",
+    summary: "Keep IDI, Intelius, Ancestry, ForeWarn, VitalChek, PI work, door knocks, and jail/prison searches explicitly approval-gated.",
+    steps: ["List manual research still needed.", "Mark paid-source approval before using any restricted source.", "Write plain next actions for the operator."],
+    preferences: ["Require approval", "Separate PI work", "Preserve source notes"]
+  },
+  {
+    id: "document-prep",
+    name: "Document Prep",
+    label: "Document prep",
+    source: "Probate document ordering",
+    summary: "Prepare the Discovery Dossier and the seven to ten document packet inputs before CRM handoff.",
+    steps: ["Prepare discovery dossier summary.", "Stage probate request, deed/tax packet, source notes, and outreach drafts.", "Confirm every document has a next action or blocker."],
+    preferences: ["Show PDF packet", "Include pop-out review", "Keep incomplete docs visible"]
+  },
+  {
+    id: "crm-handoff",
+    name: "CRM Handoff",
+    label: "CRM handoff",
+    source: "Podio prep",
+    summary: "Prepare Podio fields, tasks, batch export queue, drip settings, and readback checklist without live writes.",
+    steps: ["Stage Podio field mapping and queue state.", "Configure email and SMS drip preferences.", "Hold live handoff until controlled write and readback are proven."],
+    preferences: ["Prep only", "Batch export", "Require readback proof"]
+  }
+];
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -4240,6 +4923,7 @@ function syncShellSettings() {
   if (deedProofRequired) deedProofRequired.checked = Boolean(state.shellSettings.deedProofRequired);
   if (paidSourceApproval) paidSourceApproval.checked = Boolean(state.shellSettings.paidSourceApproval);
   if (signalWeightValue) signalWeightValue.textContent = signalWeightLabel(state.shellSettings.signalWeight);
+  syncAllEnhancedSelects();
 }
 
 function eventTime(value) {
@@ -4380,6 +5064,531 @@ function addShellEvent(title, copy, tone = "review", openDrawer = true) {
   if (openDrawer) setActivityOpen(true);
 }
 
+function activeViewLabel(view = state.activeView) {
+  return {
+    dashboard: "Dashboard",
+    "find-estates": "Find Estates",
+    dossiers: "Dossiers",
+    drips: "Drips",
+    queue: "Queue",
+    admin: "Admin",
+    settings: "Settings"
+  }[view] ?? "Dashboard";
+}
+
+function trackerIcon(type = "check") {
+  const paths = {
+    check: '<path d="m5 12 4 4 10-10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+    clock: '<path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+    flag: '<path d="M6 20V5m0 0h10l-1.5 3L16 11H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+    route: '<path d="M6 5h.01M18 19h.01M7 5c4 0 10 1 10 5 0 5-10 3-10 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+  };
+  return `<span class="tracker-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none">${paths[type] ?? paths.check}</svg></span>`;
+}
+
+function currentDiscoveryPhase() {
+  return discoveryPhases[state.discoveryPhaseIndex] ?? discoveryPhases[0];
+}
+
+function discoveryProgress() {
+  const completed = state.discoveryCompleted.size;
+  const total = discoveryPhases.length;
+  const derived = state.filled.size ? Math.round((Math.min(state.filled.size, total) / total) * 100) : 0;
+  const phaseProgress = Math.round((completed / total) * 100);
+  return Math.max(derived, phaseProgress);
+}
+
+function phaseIsComplete(phaseId = currentDiscoveryPhase().id) {
+  return state.discoveryCompleted.has(phaseId);
+}
+
+function dashboardMilestones() {
+  const row = selectedRow();
+  const missing = row?.missing?.length ?? buildMissingSections(state.dossier ?? {}).length;
+  const qualified = qualificationReview()?.summary?.qualified ?? state.dailyRun?.qualifiedLeadCount ?? 0;
+  return [
+    {
+      icon: "clock",
+      title: "Weekly discovery packet",
+      copy: `${missing} report section${missing === 1 ? "" : "s"} still need source notes before handoff.`,
+      date: "This week"
+    },
+    {
+      icon: "route",
+      title: "Prospecting phase review",
+      copy: "Pull fresh public-record leads, then begin Discovery on each accepted estate.",
+      date: "Next"
+    },
+    {
+      icon: "flag",
+      title: "Monthly deal milestone",
+      copy: `${qualified} lead${qualified === 1 ? "" : "s"} currently count as ready. Keep blocked gates visible.`,
+      date: "30 days"
+    }
+  ];
+}
+
+function dashboardSuggestions() {
+  return [
+    ["Start with owner stop rules", "Move company-owned and recently sold properties out before spending research time."],
+    ["Batch missing tax notes", "Filter by tax history and clear receipt, payer, and reassessment notes together."],
+    ["Stage Podio after documents", "Use Queue only after the dossier packet has a review owner and readback gate."]
+  ];
+}
+
+function scheduledDrips() {
+  return [
+    { title: "Heir warm follow-up", channel: "Email + SMS", cadence: "Day 1, Day 4, Day 9", status: "Prepared only" },
+    { title: "Probate document request", channel: "Email", cadence: "After court packet review", status: "Needs approval" },
+    { title: "No-contact hold", channel: "Internal task", cadence: "Until review clears", status: "Active guardrail" }
+  ];
+}
+
+function queueItems() {
+  const rows = state.rows.length ? state.rows : [];
+  const selected = selectedRow();
+  const sourceRows = rows.length ? rows : selected ? [selected] : [];
+  return sourceRows.map((row, index) => ({
+    id: row.id,
+    title: row.leadName || row.title,
+    copy: `${row.address || "Address needs review"} - ${row.next || "Review next action"}`,
+    route: index % 2 === 0 ? "Podio batch prep" : "Google + Podio prep",
+    status: row.tone === "ready" ? "Ready for review" : row.tone === "blocked" ? "Blocked" : "Needs source notes"
+  }));
+}
+
+function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
+  const report = dossier?.completedLeadReport;
+  const missing = row?.missing ?? buildMissingSections(dossier ?? {});
+  return [
+    {
+      id: "discovery-dossier",
+      title: "Discovery Dossier",
+      type: "PDF packet",
+      copy: "Owner, property, deed, tax, probate, heirs, notes, and next actions.",
+      status: missing.length ? `${missing.length} open section${missing.length === 1 ? "" : "s"}` : "Ready for review",
+      body: discoveryDossierHtml(row, dossier)
+    },
+    {
+      id: "completed-report",
+      title: "Completed Lead Report",
+      type: "Rendered report",
+      copy: "Lead report draft with offer, source notes, and review gate.",
+      status: report?.reviewGate?.externalUseBlocked ? "Review blocked" : "Prepared",
+      body: report?.formats?.html ?? dossier?.documentPacket?.formats?.html ?? discoveryDossierHtml(row, dossier)
+    },
+    {
+      id: "source-notes",
+      title: "Source Notes",
+      type: "Review notes",
+      copy: "County records, source coverage, and missing fact checklist.",
+      status: "Source-backed",
+      body: sourceNotesHtml(row, dossier)
+    },
+    {
+      id: "probate-request",
+      title: "Probate Document Request",
+      type: "Court request",
+      copy: "Court call, page count, money order, certified copy, and pickup path.",
+      status: "Draft",
+      body: probateRequestHtml(row, dossier)
+    },
+    {
+      id: "outreach-drafts",
+      title: "Outreach Drafts",
+      type: "Email and SMS",
+      copy: "Review-only outreach language held until approval.",
+      status: "Locked",
+      body: outreachDraftHtml(row, dossier)
+    },
+    {
+      id: "crm-handoff",
+      title: "CRM Handoff",
+      type: "Podio fields",
+      copy: "Batch export fields, tasks, drip route, and readback checklist.",
+      status: "Prep only",
+      body: crmHandoffHtml(row, dossier)
+    }
+  ];
+}
+
+function pageShellHtml(title, kicker, body) {
+  return `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { margin: 0; padding: 32px; color: #1d1d1f; background: #f7f7f2; font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+          .page { max-width: 760px; margin: 0 auto; padding: 36px; background: #fff; border: 1px solid #d8d5ca; border-radius: 8px; }
+          h1 { margin: 0 0 6px; font-size: 28px; line-height: 1.05; }
+          h2 { margin: 24px 0 8px; font-size: 16px; }
+          .kicker { color: #6e7681; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+          table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+          td, th { padding: 9px; border: 1px solid #ddd8cc; text-align: left; vertical-align: top; }
+          ul { padding-left: 18px; }
+          li { margin: 6px 0; }
+          .muted { color: #6e7681; }
+        </style>
+      </head>
+      <body><main class="page"><div class="kicker">${escapeHtml(kicker)}</div><h1>${escapeHtml(title)}</h1>${body}</main></body>
+    </html>
+  `;
+}
+
+function discoveryDossierHtml(row, dossier) {
+  const property = dossier?.property ?? {};
+  const missing = row?.missing ?? buildMissingSections(dossier ?? {});
+  return pageShellHtml("Discovery Dossier", row?.leadName ?? "Lead file", `
+    <p class="muted">Prepared from the current public-record lead packet. Review-only until source notes and handoff gates clear.</p>
+    <table>
+      <tr><th>Owner / estate</th><td>${escapeHtml(row?.owner ?? claimValue(property.ownerName, "Needs review"))}</td></tr>
+      <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
+      <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Miami-Dade County, FL"))}</td></tr>
+      <tr><th>Case / file</th><td>${escapeHtml(row?.file ?? claimValue(property.caseNumber, "Needs review"))}</td></tr>
+      <tr><th>Current phase</th><td>${escapeHtml(currentDiscoveryPhase().label)}</td></tr>
+    </table>
+    <h2>Open source notes</h2>
+    <ul>${(missing.length ? missing : buildMissingSections(dossier ?? {})).map((item) => `<li><strong>${escapeHtml(item.short ?? item.label)}</strong> - ${escapeHtml(item.copy)}</li>`).join("") || "<li>All current dossier sections are marked ready in this view.</li>"}</ul>
+    <h2>Document packet</h2>
+    <p>Discovery dossier, completed lead report, source notes, probate request, outreach drafts, CRM handoff, and drip queue are staged for operator review.</p>
+  `);
+}
+
+function sourceNotesHtml(row, dossier) {
+  const facts = state.data?.facts ?? [];
+  const coverage = qualificationDecision(dossier)?.coverage ?? [];
+  return pageShellHtml("Source Notes", row?.leadName ?? "Lead file", `
+    <p class="muted">County-record and workflow checks remain visible so placeholders never count as confirmed facts.</p>
+    <h2>Coverage</h2>
+    <ul>${coverage.map((area) => `<li><strong>${escapeHtml(area.label)}</strong> - ${escapeHtml(displayStatus(area.status))}: ${escapeHtml(area.nextAction)}</li>`).join("") || "<li>Run qualification review to populate coverage.</li>"}</ul>
+    <h2>Facts</h2>
+    <ul>${facts.slice(0, 12).map((fact) => `<li><strong>${escapeHtml(displayStatus(fact.factType, "Source fact"))}</strong> - ${escapeHtml(typeof fact.value === "object" ? JSON.stringify(fact.value) : fact.value)}</li>`).join("") || "<li>No facts loaded yet.</li>"}</ul>
+  `);
+}
+
+function probateRequestHtml(row, dossier) {
+  return pageShellHtml("Probate Document Request", row?.leadName ?? "Lead file", `
+    <p class="muted">Use this when probate documents need to be requested after docket review.</p>
+    <h2>Request steps</h2>
+    <ol>
+      <li>Call probate court to verify the documents available and page count.</li>
+      <li>Prepare a written request with the case number and copy type.</li>
+      <li>Use money order by mail or go in person for same-day copies.</li>
+      <li>Record whether copies are certified and add the final cost to the dossier.</li>
+    </ol>
+    <h2>Case</h2>
+    <table><tr><th>Case / file</th><td>${escapeHtml(row?.file ?? "Needs review")}</td></tr><tr><th>Property</th><td>${escapeHtml(row?.address ?? "Needs review")}</td></tr></table>
+  `);
+}
+
+function outreachDraftHtml(row) {
+  return pageShellHtml("Outreach Drafts", row?.leadName ?? "Lead file", `
+    <p class="muted">Review-only drafts. Nothing is sent until the operator approves contact and compliance review clears.</p>
+    <h2>Email draft</h2>
+    <p>We are reviewing public records for the property at ${escapeHtml(row?.address ?? "the property")} and would like to confirm the right person to speak with about the estate file.</p>
+    <h2>SMS draft</h2>
+    <p>Hello, this is the HeirRight team following up about ${escapeHtml(row?.address ?? "the property")}. Please reply with the best time to connect if you are the right contact.</p>
+  `);
+}
+
+function crmHandoffHtml(row, dossier) {
+  const podio = dossier?.crm?.payload?.podioReadiness ?? {};
+  return pageShellHtml("CRM Handoff", row?.leadName ?? "Lead file", `
+    <p class="muted">Prepared for Podio batch export. Live write remains locked until credentials, approval, and readback proof exist.</p>
+    <table>
+      <tr><th>Route</th><td>Podio batch prep</td></tr>
+      <tr><th>Status</th><td>${escapeHtml(displayStatus(dossier?.crm?.status, "Prep only"))}</td></tr>
+      <tr><th>Missing setup</th><td>${escapeHtml((podio.missingConfig ?? []).join(", ") || "None recorded")}</td></tr>
+      <tr><th>Readback checks</th><td>${escapeHtml(podio.readbackChecks?.length ?? 0)} required</td></tr>
+    </table>
+  `);
+}
+
+function selectedDossierDocument(row = selectedRow()) {
+  const docs = dossierDocuments(row, dossierForRow(row));
+  return docs.find((doc) => doc.id === state.selectedDossierDocId) ?? docs[0];
+}
+
+function renderDashboardView() {
+  const target = document.getElementById("dashboardView");
+  if (!target) return;
+  const milestones = dashboardMilestones();
+  const drips = scheduledDrips();
+  const recent = state.shellEvents.length ? state.shellEvents.slice(0, 5) : defaultShellEvents();
+  target.innerHTML = `
+    <div class="loop-grid">
+      <section class="loop-panel">
+        <div class="loop-panel-head">
+          <div><p class="eyebrow">To-Do List</p><h2 class="loop-title">Deals and prospecting</h2></div>
+          <span class="pill review">This week</span>
+        </div>
+        <ul class="tracker-list">
+          ${milestones.map((item) => `
+            <li class="tracker-item">
+              ${trackerIcon(item.icon)}
+              <span><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></span>
+              <span class="tracker-date">${escapeHtml(item.date)}</span>
+            </li>
+          `).join("")}
+        </ul>
+      </section>
+      <section class="loop-panel">
+        <div class="loop-panel-head">
+          <div><p class="eyebrow">Activities</p><h2 class="loop-title">Today in the loop</h2></div>
+          <div class="loop-tabs" role="tablist" aria-label="Dashboard mode">
+            <button class="loop-tab" type="button" data-dashboard-tab="activities" aria-pressed="${state.dashboardActivityTab === "activities"}">Activities</button>
+            <button class="loop-tab" type="button" data-dashboard-tab="drips" aria-pressed="${state.dashboardActivityTab === "drips"}">Drips</button>
+          </div>
+        </div>
+        ${state.dashboardActivityTab === "drips" ? `
+          <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}</span></li>`).join("")}</ul>
+        ` : `
+          <ul class="tracker-list">${recent.map((event) => `<li class="tracker-item">${trackerIcon(event.tone === "blocked" ? "flag" : "check")}<span><strong>${escapeHtml(event.title)}</strong><span>${escapeHtml(event.copy)}</span></span><span class="tracker-date">${escapeHtml(eventTime(event.at))}</span></li>`).join("")}</ul>
+        `}
+      </section>
+      <section class="loop-panel full">
+        <div class="loop-panel-head">
+          <div><p class="eyebrow">Recent Activity</p><h2 class="loop-title">Leads opened before logout</h2></div>
+          <button class="btn" type="button" data-shell-nav-shortcut="find-estates">Open Find Estates</button>
+        </div>
+        <ul class="tracker-list">
+          ${(state.rows.length ? state.rows.slice(0, 4) : [{ leadName: "No lead selected", address: "Load latest or pull a fresh batch", next: "Begin with public records", tone: "review" }]).map((row) => `
+            <li class="tracker-item">
+              ${trackerIcon(row.tone === "ready" ? "check" : row.tone === "blocked" ? "flag" : "route")}
+              <span><strong>${escapeHtml(row.leadName ?? row.title)}</strong><span>${escapeHtml(row.address ?? "Address needs review")}</span></span>
+              <span class="tracker-date">${escapeHtml(row.next ?? "Review")}</span>
+            </li>
+          `).join("")}
+        </ul>
+      </section>
+      <section class="loop-panel full">
+        <div class="loop-panel-head">
+          <div><p class="eyebrow">Suggestions</p><h2 class="loop-title">Productivity chips</h2></div>
+        </div>
+        <div class="suggestion-list">
+          ${dashboardSuggestions().map(([title, copy]) => `<button class="suggestion-chip" type="button" data-suggestion="${escapeHtml(title)}"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(copy)}</span></button>`).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+  target.querySelectorAll("[data-dashboard-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.dashboardActivityTab = button.dataset.dashboardTab;
+      renderDashboardView();
+    });
+  });
+  target.querySelectorAll("[data-shell-nav-shortcut]").forEach((button) => {
+    button.addEventListener("click", () => document.querySelector(`[data-shell-nav="${button.dataset.shellNavShortcut}"]`)?.click());
+  });
+  target.querySelectorAll("[data-suggestion]").forEach((button) => {
+    button.addEventListener("click", () => addShellEvent("Suggestion queued", `${button.dataset.suggestion} was added to the operator review trail.`, "review", false));
+  });
+}
+
+function renderDossiersView() {
+  const target = document.getElementById("dossiersView");
+  if (!target) return;
+  const rows = state.filteredRows.length ? state.filteredRows : state.rows;
+  const row = selectedRow();
+  const docs = dossierDocuments(row, dossierForRow(row));
+  const selectedDoc = selectedDossierDocument(row);
+  target.innerHTML = `
+    <div class="dossier-shell">
+      <section class="dossier-list-panel">
+        <div class="dossier-list-head">
+          <div><p class="eyebrow">Dossiers</p><h2 class="loop-title">Finished dossier list</h2></div>
+          <span class="results-count"><strong>${rows.length}</strong> result${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        <div class="dossier-list-scroll">
+          <table class="dossier-table">
+            <thead><tr><th style="width: 42px;"></th><th>Last Name, First Initial</th><th>Property address</th><th>Score</th><th>Classification</th><th>Next step</th></tr></thead>
+            <tbody>
+              ${rows.map((item) => {
+                const address = addressDisplayParts(item.address, item.county);
+                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${item.id === state.selectedId ? "is-selected" : ""}"><td><span class="select-box">${item.id === state.selectedId ? "✓" : ""}</span></td><td><span class="primary-text">${escapeHtml(item.leadName)}</span></td><td><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td><td><span class="score ${escapeHtml(item.tone)}">${escapeHtml(item.score)}</span></td><td><span class="classification">${escapeHtml(evidenceClassification(item.evidence))}</span></td><td>${escapeHtml(item.next)}</td></tr>`;
+              }).join("") || `<tr><td colspan="6"><span class="primary-text">No dossier loaded.</span><span class="secondary-text">Load latest or pull a fresh public-record batch.</span></td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="dossier-reader-panel">
+        <div class="dossier-reader-head">
+          <div><p class="eyebrow">${escapeHtml(row?.leadName ?? "No lead")}</p><h2 class="loop-title">${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}</h2></div>
+          <button class="btn" type="button" data-popout-doc="${escapeHtml(selectedDoc?.id ?? "discovery-dossier")}">Pop out</button>
+        </div>
+        <div class="dossier-reader-scroll">
+          <div class="dossier-doc-grid">
+            ${docs.map((doc) => `<button class="dossier-doc ${doc.id === selectedDoc?.id ? "is-selected" : ""}" type="button" data-dossier-doc="${escapeHtml(doc.id)}"><strong>${escapeHtml(doc.title)}</strong><span>${escapeHtml(doc.type)} - ${escapeHtml(doc.status)}</span><span>${escapeHtml(doc.copy)}</span></button>`).join("")}
+          </div>
+          <div class="pdf-toolbar"><span>${escapeHtml(selectedDoc?.type ?? "PDF packet")} - ${escapeHtml(selectedDoc?.status ?? "Review")}</span><span class="tracker-date">Embedded PDF reader</span></div>
+          <iframe class="pdf-reader" title="${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}" sandbox="" srcdoc="${escapeHtml(selectedDoc?.body ?? "")}"></iframe>
+        </div>
+      </section>
+    </div>
+  `;
+  target.querySelectorAll("[data-dossier-row]").forEach((rowButton) => {
+    rowButton.addEventListener("click", () => {
+      state.selectedId = rowButton.dataset.dossierRow;
+      state.selectedDossierDocId = "discovery-dossier";
+      addShellEvent("Dossier opened", "The lead documents opened inside Dossiers without using the report rail.", "ready", false);
+      renderDossiersView();
+      updateFooterLeadContext(selectedRow());
+    });
+  });
+  target.querySelectorAll("[data-dossier-doc]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedDossierDocId = button.dataset.dossierDoc;
+      renderDossiersView();
+    });
+  });
+  target.querySelectorAll("[data-popout-doc]").forEach((button) => {
+    button.addEventListener("click", () => popOutDossierDocument(button.dataset.popoutDoc));
+  });
+}
+
+function popOutDossierDocument(docId) {
+  const row = selectedRow();
+  const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === docId) ?? selectedDossierDocument(row);
+  const popout = window.open("", "_blank", "width=960,height=760");
+  if (!popout) {
+    addShellEvent("Pop-out blocked", "Allow browser pop-outs to open the selected dossier document in a separate window.", "blocked", true);
+    return;
+  }
+  popout.document.open();
+  popout.document.write(doc.body);
+  popout.document.close();
+}
+
+function renderDripsView() {
+  const target = document.getElementById("dripsView");
+  if (!target) return;
+  const drips = scheduledDrips();
+  target.innerHTML = `
+    <div class="loop-grid">
+      <section class="loop-panel">
+        <div class="loop-panel-head"><div><p class="eyebrow">Scheduled Automations</p><h2 class="loop-title">Drips</h2></div><span class="pill review">Prep only</span></div>
+        <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}</span></li>`).join("")}</ul>
+      </section>
+      <section class="loop-panel">
+        <div class="loop-panel-head"><div><p class="eyebrow">Agent Wrapper</p><h2 class="loop-title">OpenCodeGo direct API</h2></div><span class="pill blocked">No live send</span></div>
+        <p class="copy">This prepares the chat-less automation wrapper that can later run beside Hermes or an approved cloud artifact. For now, every sequence is staged as review-only.</p>
+        <ul class="mini-list">
+          <li><strong>Trigger</strong><span>Lead reaches completed Discovery Dossier.</span></li>
+          <li><strong>Action</strong><span>Create Podio task, email draft, SMS draft, and readback checklist.</span></li>
+          <li><strong>Stop</strong><span>No external send until compliance and contact approval clear.</span></li>
+        </ul>
+      </section>
+      <section class="loop-panel full">
+        <div class="loop-panel-head"><div><p class="eyebrow">Preferences</p><h2 class="loop-title">Cadence controls</h2></div></div>
+        <div class="settings-grid">
+          <div class="setting-card"><label><strong>Start delay</strong><span>After dossier approval</span></label><select><option>Same day after review</option><option>Next business morning</option></select></div>
+          <div class="setting-card"><label><strong>SMS cap</strong><span>Messages per heir per week</span></label><input type="range" min="1" max="4" value="2"></div>
+          <div class="setting-card"><label class="toggle-line"><strong>Require review owner</strong><input type="checkbox" checked></label><span>Every drip needs an operator owner before export.</span></div>
+        </div>
+      </section>
+    </div>
+  `;
+  enhanceSelectMenus(target);
+}
+
+function renderQueueView() {
+  const target = document.getElementById("queueView");
+  if (!target) return;
+  const items = queueItems();
+  target.innerHTML = `
+    <div class="loop-grid">
+      <section class="loop-panel full">
+        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch export prep</h2></div><button class="btn primary" type="button" data-queue-stage>Stage batch</button></div>
+        <ul class="queue-list">
+          ${items.map((item, index) => `<li class="queue-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Find Estates and select leads before staging a batch.</span></li>`}
+        </ul>
+      </section>
+      <section class="loop-panel">
+        <div class="loop-panel-head"><div><p class="eyebrow">Export Guardrails</p><h2 class="loop-title">Before Podio</h2></div></div>
+        <ul class="mini-list">
+          <li><strong>Discovery</strong><span>Each lead needs a dossier packet and source notes.</span></li>
+          <li><strong>Readback</strong><span>Controlled write and CRM readback must pass before live claim.</span></li>
+          <li><strong>Batch</strong><span>Queue export is batch-first, not one-off report rail export.</span></li>
+        </ul>
+      </section>
+      <section class="loop-panel">
+        <div class="loop-panel-head"><div><p class="eyebrow">Destination</p><h2 class="loop-title">Podio prep</h2></div><span class="pill review">Prepared</span></div>
+        <p class="copy">Podio remains CRM of record for now. This queue prepares fields, tasks, and documents without writing production data.</p>
+      </section>
+    </div>
+  `;
+  target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
+    addShellEvent("Batch staged", "Selected dossier packets were staged for batch export prep. Live CRM write remains locked.", "review", true);
+  });
+}
+
+function renderAdminLoopView() {
+  const target = document.getElementById("adminView");
+  if (!target) return;
+  target.innerHTML = `
+    <div class="loop-grid three">
+      <section class="loop-panel"><p class="eyebrow">Admin</p><h2 class="loop-title">Workspace readiness</h2><ul class="mini-list"><li><strong>Podio</strong><span>${escapeHtml(connectionByName("Podio")?.message ?? "Prep-only until credentials are configured.")}</span></li><li><strong>Google</strong><span>${escapeHtml(connectionByName("Google")?.message ?? "Prep-only until destination approval.")}</span></li><li><strong>Web Search</strong><span>${escapeHtml(connectionByName("Web Search")?.message ?? "Source validation required.")}</span></li></ul></section>
+      <section class="loop-panel"><p class="eyebrow">Agent Artifact</p><h2 class="loop-title">OpenCodeGo wrapper</h2><p class="copy">Direct API wrapper is staged for the chat-less automation loop. Hermes or another cloud artifact can replace it after approval.</p><ul class="mini-list"><li><strong>Mode</strong><span>Review-only</span></li><li><strong>Runs</strong><span>Scheduled drip preparation and dossier packet checks</span></li><li><strong>Stop</strong><span>No live outreach or CRM writes</span></li></ul></section>
+      <section class="loop-panel"><p class="eyebrow">Analytics</p><h2 class="loop-title">Operator trail</h2><div class="admin-grid"><div class="admin-metric"><span>Commands</span><strong>${escapeHtml(state.shellCommandCount)}</strong></div><div class="admin-metric"><span>Blockers</span><strong>${escapeHtml(milestoneBlockers(state.dossier).length)}</strong></div><div class="admin-metric"><span>Events</span><strong>${escapeHtml(state.shellEvents.length)}</strong></div></div></section>
+    </div>
+  `;
+}
+
+function renderSettingsView() {
+  const target = document.getElementById("settingsView");
+  if (!target) return;
+  target.innerHTML = `
+    <div class="loop-grid">
+      <section class="loop-panel full">
+        <div class="loop-panel-head"><div><p class="eyebrow">Settings</p><h2 class="loop-title">Discovery and review preferences</h2></div><span class="pill review">Local</span></div>
+        <div class="settings-grid">
+          <div class="setting-card"><label for="settingsSignalWeight"><strong>Source signal weight</strong><span>${escapeHtml(signalWeightLabel(state.shellSettings.signalWeight))}</span></label><input id="settingsSignalWeight" type="range" min="1" max="5" value="${escapeHtml(state.shellSettings.signalWeight)}"></div>
+          <div class="setting-card"><label for="settingsTaxThreshold"><strong>Tax pressure threshold</strong><span>Unpaid years before priority review.</span></label><select id="settingsTaxThreshold"><option value="1">1+ unpaid year</option><option value="2">2+ unpaid years</option><option value="3">3+ unpaid years</option></select></div>
+          <div class="setting-card"><label for="settingsReasonCodes"><strong>Reason-code set</strong><span>Operator-facing qualification reasons.</span></label><select id="settingsReasonCodes"><option value="probate-title-tax">Probate + title + tax</option><option value="property-pressure">Property pressure only</option><option value="heirship-first">Heirship first</option></select></div>
+          <div class="setting-card"><label class="toggle-line"><strong>Require deed proof</strong><input id="settingsDeedProofRequired" type="checkbox" ${state.shellSettings.deedProofRequired ? "checked" : ""}></label><span>OR book/page evidence stays required before promotion.</span></div>
+          <div class="setting-card"><label class="toggle-line"><strong>Manual paid-source approval</strong><input id="settingsPaidSourceApproval" type="checkbox" ${state.shellSettings.paidSourceApproval ? "checked" : ""}></label><span>IDI, Intelius, Ancestry, ForeWarn, VitalChek, and PI work stay gated.</span></div>
+        </div>
+      </section>
+    </div>
+  `;
+  const tax = target.querySelector("#settingsTaxThreshold");
+  const reason = target.querySelector("#settingsReasonCodes");
+  if (tax) tax.value = state.shellSettings.taxThreshold;
+  if (reason) reason.value = state.shellSettings.reasonCodes;
+  enhanceSelectMenus(target);
+  target.querySelector("#settingsSignalWeight")?.addEventListener("input", (event) => {
+    state.shellSettings.signalWeight = event.target.value;
+    persistShellSettings("Source signal weight updated");
+    renderSettingsView();
+  });
+  target.querySelector("#settingsTaxThreshold")?.addEventListener("change", (event) => {
+    state.shellSettings.taxThreshold = event.target.value;
+    persistShellSettings("Tax pressure threshold updated");
+  });
+  target.querySelector("#settingsReasonCodes")?.addEventListener("change", (event) => {
+    state.shellSettings.reasonCodes = event.target.value;
+    persistShellSettings("Reason-code set updated");
+  });
+  target.querySelector("#settingsDeedProofRequired")?.addEventListener("change", (event) => {
+    state.shellSettings.deedProofRequired = event.target.checked;
+    persistShellSettings("Deed proof gate updated");
+  });
+  target.querySelector("#settingsPaidSourceApproval")?.addEventListener("change", (event) => {
+    state.shellSettings.paidSourceApproval = event.target.checked;
+    persistShellSettings("Paid-source approval gate updated");
+  });
+}
+
+function renderCurrentLoopView() {
+  if (state.activeView === "dashboard") renderDashboardView();
+  if (state.activeView === "dossiers") renderDossiersView();
+  if (state.activeView === "drips") renderDripsView();
+  if (state.activeView === "queue") renderQueueView();
+  if (state.activeView === "admin") renderAdminLoopView();
+  if (state.activeView === "settings") renderSettingsView();
+}
+
 function shellCommandCopy(command) {
   const normalized = String(command || "").trim().toLowerCase();
   if (/flag|block/.test(normalized)) return "record-blocker";
@@ -4493,99 +5702,35 @@ function setDetailRailOpen(open) {
   toggle.setAttribute("aria-pressed", open ? "true" : "false");
 }
 
-function setActiveShellView(view = "source-runs", label = "") {
+function setActiveShellView(view = "dashboard", label = "") {
   const app = document.querySelector(".app");
-  const nextView = view === "admin" ? "admin" : "source-runs";
+  const nextView = productViews.includes(view) ? view : "dashboard";
   const detail = document.querySelector(".detail");
+  state.activeView = nextView;
   if (app) app.dataset.activeView = nextView;
-  if (detail) detail.setAttribute("aria-hidden", nextView === "admin" ? "false" : "true");
-  if (nextView === "admin") {
+  if (detail) detail.setAttribute("aria-hidden", "true");
+  if (nextView !== "find-estates") {
     setRailOpen(false);
-    setDetailRailOpen(true);
-    document.getElementById("topStatus").textContent = "Admin workspace selected.";
+    setDetailRailOpen(false);
+    document.getElementById("topStatus").textContent = `${label || activeViewLabel(nextView)} workspace selected.`;
   } else {
     setDetailRailOpen(false);
-    document.getElementById("topStatus").textContent = `${label || "Source Runs"} workspace selected.`;
+    document.getElementById("topStatus").textContent = "Find Estates workspace selected. Open a lead, then begin Discovery from the rail.";
   }
   const toggle = document.getElementById("rightRailToggle");
   if (toggle) {
-    const toggleLabel = nextView === "admin" ? "Return to Source Runs" : "Open Admin tab";
+    const toggleLabel = nextView === "find-estates" ? "Return to Dashboard" : "Open Find Estates";
     toggle.setAttribute("aria-label", toggleLabel);
     toggle.setAttribute("title", toggleLabel);
-    toggle.setAttribute("aria-pressed", nextView === "admin" ? "true" : "false");
+    toggle.setAttribute("aria-pressed", nextView === "find-estates" ? "true" : "false");
   }
+  renderCurrentLoopView();
 }
 
 function toggleRightRail() {
   if (state.railOpen) setRailOpen(false);
-  const app = document.querySelector(".app");
-  const target = app?.dataset.activeView === "admin" ? "source-runs" : "admin";
+  const target = state.activeView === "find-estates" ? "dashboard" : "find-estates";
   document.querySelector(`[data-shell-nav="${target}"]`)?.click();
-}
-
-function captureRailOrigin(source) {
-  if (!source) return null;
-  if (typeof source.left === "number") return source;
-  const target = source.closest?.('[data-rail-action="report"], [data-open-next], [data-rail-chip], [data-chip], button, [data-row-id]') || source;
-  if (typeof target.getBoundingClientRect !== "function") return null;
-  const rect = target.getBoundingClientRect();
-  return {
-    left: rect.left,
-    top: rect.top,
-    width: rect.width,
-    height: rect.height,
-    label: target.innerText?.trim()?.replace(/\s+/g, " ") || target.getAttribute?.("aria-label") || target.getAttribute?.("title") || "Report"
-  };
-}
-
-function railSourceElement(source) {
-  if (!source || typeof source.left === "number") return null;
-  return source.closest?.('[data-rail-action="report"], [data-open-next], [data-rail-chip], [data-chip], button, [data-row-id]') || source;
-}
-
-function animateRailContinuity(origin) {
-  if (!origin || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const rail = document.getElementById("researchRail");
-  const railRect = rail.getBoundingClientRect();
-  if (!railRect.width || !railRect.height) return;
-
-  rail.classList.remove("is-entering");
-  void rail.offsetWidth;
-  rail.classList.add("is-entering");
-  window.setTimeout(() => rail.classList.remove("is-entering"), 520);
-
-  const ghost = document.createElement("div");
-  ghost.className = "rail-continuity-ghost";
-  ghost.textContent = origin.label || "Report";
-  ghost.style.left = `${origin.left}px`;
-  ghost.style.top = `${origin.top}px`;
-  ghost.style.width = `${Math.max(42, origin.width)}px`;
-  ghost.style.height = `${Math.max(32, origin.height)}px`;
-  document.body.appendChild(ghost);
-
-  const endWidth = Math.min(Math.max(180, railRect.width - 24), 320);
-  const endHeight = Math.min(Math.max(38, origin.height), 54);
-  const endLeft = railRect.left + 12;
-  const endTop = railRect.top + 10;
-  const startCenterX = origin.left + origin.width / 2;
-  const startCenterY = origin.top + origin.height / 2;
-  const endCenterX = endLeft + endWidth / 2;
-  const endCenterY = endTop + endHeight / 2;
-  const scaleX = endWidth / Math.max(1, origin.width);
-  const scaleY = endHeight / Math.max(1, origin.height);
-
-  const transition = ghost.animate([
-    { opacity: .94, transform: "translate3d(0,0,0) scale(1)" },
-    { opacity: .72, transform: `translate3d(${(endCenterX - startCenterX) * .62}px, ${(endCenterY - startCenterY) * .62}px, 0) scale(${Math.min(1.08, (scaleX + scaleY) / 2)})` },
-    { opacity: 0, transform: `translate3d(${endCenterX - startCenterX}px, ${endCenterY - startCenterY}px, 0) scale(${scaleX}, ${scaleY})` }
-  ], {
-    duration: 430,
-    easing: "cubic-bezier(.16, 1, .3, 1)",
-    fill: "forwards"
-  });
-  const cleanupGhost = () => ghost.remove();
-  transition.finished.then(cleanupGhost, cleanupGhost);
-  window.setTimeout(cleanupGhost, 560);
 }
 
 function syncRailContext(row) {
@@ -4628,25 +5773,14 @@ function syncRailTabs() {
 }
 
 function setRailOpen(open, source = null) {
-  const wasOpen = state.railOpen;
-  const effectiveSource = source || (open && !wasOpen ? document.getElementById("quickReport") : null);
   state.railOpen = open;
   const rail = document.getElementById("researchRail");
   const width = `min(${state.railWidth}px, 55vw, calc(100vw - 64px))`;
-  const origin = open ? captureRailOrigin(effectiveSource) : null;
-  const sourceElement = railSourceElement(effectiveSource);
-  if (open && sourceElement?.classList) {
-    sourceElement.classList.add("is-rail-origin");
-    window.setTimeout(() => sourceElement.classList.remove("is-rail-origin"), 360);
-  }
   rail.dataset.open = open ? "true" : "false";
   rail.style.width = width;
   rail.style.marginRight = open ? "0" : `calc(-1 * ${width})`;
   rail.style.transform = open ? "translateX(0)" : "translateX(100%)";
   document.getElementById("statusRail").textContent = `rail: [${open ? "OPEN" : "CLOSED"}]`;
-  if (open && origin) {
-    requestAnimationFrame(() => animateRailContinuity(origin));
-  }
   if (open && window.matchMedia("(max-width: 820px)").matches) {
     requestAnimationFrame(() => {
       rail.scrollIntoView({
@@ -4686,6 +5820,117 @@ function openRailPreview(sectionId, source = null) {
   updateFooterLeadContext(row);
 }
 
+function discoveryStripHtml(row, dossier) {
+  const pct = discoveryProgress();
+  const phase = currentDiscoveryPhase();
+  return `
+    <div class="discovery-strip" aria-label="Discovery completion">
+      <div class="discovery-fuse" style="--fuse-progress: ${pct}%"><span>Discovery fuse</span></div>
+      <div class="discovery-phase-meter"><strong>${pct}%</strong><span>${escapeHtml(phase.label)}</span></div>
+      <button class="btn primary solvys-liquid-glass" type="button" data-begin-discovery>Begin Discovery</button>
+    </div>
+  `;
+}
+
+function beginDiscoveryWizard(source = null) {
+  if (!selectedRow()) return;
+  state.discoveryOpen = true;
+  state.railTab = "flow";
+  openRailWithContinuity(source, "flow");
+  addShellEvent("Discovery started", "The guided dossier workflow opened for the selected lead.", "ready", false);
+}
+
+function closeDiscoveryWizard() {
+  state.discoveryOpen = false;
+  state.railPreview = {
+    title: "Discovery paused",
+    markdown: `${currentDiscoveryPhase().label} is saved locally for this review session. Continue from the fuse when ready.`,
+    updatedAt: Date.now()
+  };
+  renderRail();
+}
+
+function completeDiscoveryPhase() {
+  const phase = currentDiscoveryPhase();
+  state.discoveryCompleted.add(phase.id);
+  addShellEvent(`${phase.label} complete`, `${phase.summary} The operator can close Discovery or continue to the next phase.`, "ready", false);
+  renderRail();
+  renderCurrentLoopView();
+}
+
+function advanceDiscoveryPhase(direction = 1) {
+  const next = Math.max(0, Math.min(discoveryPhases.length - 1, state.discoveryPhaseIndex + direction));
+  state.discoveryPhaseIndex = next;
+  renderRail();
+}
+
+function renderDiscoveryWizard(row, dossier) {
+  const phase = currentDiscoveryPhase();
+  const phaseComplete = phaseIsComplete(phase.id);
+  const pct = discoveryProgress();
+  const missing = row.missing.length ? row.missing : buildMissingSections(dossier);
+  return `
+    <section class="discovery-wizard" aria-label="Discovery workflow">
+      <div class="discovery-head">
+        <div>
+          <p class="eyebrow">Discovery Dossier</p>
+          <h2 class="rail-title">${escapeHtml(phase.name)}</h2>
+          <p class="copy">${escapeHtml(phase.summary)}</p>
+        </div>
+        <span class="pill ${phaseComplete ? "ready" : "review"}">${phaseComplete ? "Phase complete" : `${pct}% complete`}</span>
+      </div>
+      <div class="phase-ruler" aria-hidden="true">
+        ${discoveryPhases.map((item, index) => `<span class="${state.discoveryCompleted.has(item.id) ? "is-complete" : index === state.discoveryPhaseIndex ? "is-active" : ""}"></span>`).join("")}
+      </div>
+      <div class="discovery-body">
+        <section class="glass-card rail-card">
+          <h3>What this phase creates</h3>
+          <ul class="mini-list">
+            <li><strong>Source</strong><span>${escapeHtml(phase.source)}</span></li>
+            <li><strong>Dossier output</strong><span>${escapeHtml(phase.label)} notes, review decision, and next action.</span></li>
+            <li><strong>Current lead</strong><span>${escapeHtml(row.leadName)} - ${escapeHtml(row.address)}</span></li>
+          </ul>
+        </section>
+        <section class="glass-card rail-card">
+          <h3>Steps</h3>
+          <div>
+            ${phase.steps.map((step, index) => `
+              <article class="rail-item">
+                <span class="rail-item-index">${String(index + 1).padStart(2, "0")}</span>
+                <span><span class="rail-item-title">${escapeHtml(step)}</span><span class="rail-item-copy">${escapeHtml(missing[index]?.copy ?? "Record the source note or blocker before moving forward.")}</span></span>
+                ${statusPill(index < state.discoveryCompleted.size ? "ready" : "review", index < state.discoveryCompleted.size ? "Done" : "Check")}
+              </article>
+            `).join("")}
+          </div>
+        </section>
+        <section class="glass-card rail-card">
+          <h3>Preferences</h3>
+          <div class="preference-grid">
+            ${phase.preferences.map((preference, index) => `
+              <div class="preference-card">
+                <label>${escapeHtml(preference)}<input type="checkbox" ${index < 2 ? "checked" : ""}></label>
+                <span class="copy">${index === 0 ? "Default for this workflow." : index === 1 ? "Recommended for the current lead." : "Optional operator preference."}</span>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+        <section class="glass-card rail-card">
+          <h3>Operator notes</h3>
+          <textarea class="discovery-notes" data-discovery-notes="${escapeHtml(phase.id)}" placeholder="Add source notes, blockers, or handoff context for this phase.">${escapeHtml(state.discoveryNotes[phase.id] ?? "")}</textarea>
+        </section>
+      </div>
+      <div class="discovery-actions">
+        <button class="btn" type="button" data-discovery-prev ${state.discoveryPhaseIndex === 0 ? "disabled" : ""}>Previous</button>
+        <div>
+          ${phaseComplete ? `<button class="btn" type="button" data-close-discovery>Close Discovery</button>` : ""}
+          <button class="btn primary solvys-liquid-glass" type="button" data-complete-phase>${phaseComplete ? "Save Again" : "Complete Phase"}</button>
+          <button class="btn" type="button" data-discovery-next ${state.discoveryPhaseIndex === discoveryPhases.length - 1 ? "disabled" : ""}>Next Phase</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function fillSection(sectionId) {
   state.filled.add(sectionId);
   persistFilled();
@@ -4710,6 +5955,21 @@ function evidenceClassification(evidence) {
   if (value >= 8) return "Enriched";
   if (value >= 5) return "Fully Scouted";
   return "Basic Scouting";
+}
+
+function addressDisplayParts(address, fallback = "") {
+  const text = String(address ?? "").trim();
+  const parts = text.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return {
+      street: parts[0],
+      locality: parts.slice(1).join(", ")
+    };
+  }
+  return {
+    street: text || "Address pending",
+    locality: String(fallback ?? "").trim()
+  };
 }
 
 function renderSummary() {
@@ -4758,6 +6018,7 @@ function applyFilters() {
   renderResults();
   renderDetail();
   renderRail();
+  renderCurrentLoopView();
 }
 
 function renderResults() {
@@ -4769,42 +6030,43 @@ function renderResults() {
     body.innerHTML = `<tr><td colspan="6"><span class="primary-text">No estate files match these filters.</span><span class="secondary-text">Try showing all missing info or lowering minimum evidence.</span></td></tr>`;
     return;
   }
-  body.innerHTML = rows.map((row) => `
-    <tr data-row-id="${escapeHtml(row.id)}" class="${row.id === state.selectedId ? "is-selected" : ""}">
-      <td><span class="select-box">${row.id === state.selectedId ? "✓" : ""}</span></td>
-      <td>
-        <span class="primary-text">${escapeHtml(row.leadName)}</span>
-      </td>
-      <td data-column="address">
-        <span class="primary-text">${escapeHtml(row.address)}</span>
-        <span class="secondary-text">${escapeHtml(row.county)}</span>
-      </td>
-      <td data-column="score"><span class="score ${escapeHtml(row.tone)}">${escapeHtml(row.score)}</span></td>
-      <td data-column="evidence"><span class="classification">${escapeHtml(evidenceClassification(row.evidence))}</span></td>
-      <td data-column="next"><button class="next-link" type="button" data-open-next="${escapeHtml(row.id)}">${escapeHtml(row.next)}</button></td>
-    </tr>
-  `).join("");
+  body.innerHTML = rows.map((row) => {
+    const addressParts = addressDisplayParts(row.address, row.county);
+    return `
+      <tr data-row-id="${escapeHtml(row.id)}" class="${row.id === state.selectedId ? "is-selected" : ""}">
+        <td><span class="select-box">${row.id === state.selectedId ? "✓" : ""}</span></td>
+        <td>
+          <span class="primary-text">${escapeHtml(row.leadName)}</span>
+        </td>
+        <td data-column="address">
+          <span class="primary-text">${escapeHtml(addressParts.street)}</span>
+          <span class="secondary-text">${escapeHtml(addressParts.locality)}</span>
+        </td>
+        <td data-column="score"><span class="score ${escapeHtml(row.tone)}">${escapeHtml(row.score)}</span></td>
+        <td data-column="evidence"><span class="classification">${escapeHtml(evidenceClassification(row.evidence))}</span></td>
+        <td data-column="next"><button class="next-link" type="button" data-open-next="${escapeHtml(row.id)}">${escapeHtml(row.next)}</button></td>
+      </tr>
+    `;
+  }).join("");
 
   body.querySelectorAll("[data-row-id]").forEach((rowEl) => {
     rowEl.addEventListener("click", () => {
-      const origin = captureRailOrigin(rowEl);
       state.selectedId = rowEl.dataset.rowId;
       state.railOpen = true;
       setDetailRailOpen(false);
       renderAll();
-      setRailOpen(true, origin);
+      setRailOpen(true, rowEl);
     });
   });
   body.querySelectorAll("[data-open-next]").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
-      const origin = captureRailOrigin(button);
       state.selectedId = button.dataset.openNext;
       const row = selectedRow();
       state.railOpen = true;
       setDetailRailOpen(false);
       renderAll();
-      openRailPreview(row?.missing[0]?.id ?? "tax", origin);
+      openRailPreview(row?.missing[0]?.id ?? "tax", button);
     });
   });
   applyColumnVisibility();
@@ -4863,6 +6125,18 @@ function renderRail() {
     setRailOpen(state.railOpen);
     return;
   }
+  if (state.discoveryOpen) {
+    content.innerHTML = renderDiscoveryWizard(row, dossier);
+    content.querySelector("[data-complete-phase]")?.addEventListener("click", completeDiscoveryPhase);
+    content.querySelector("[data-close-discovery]")?.addEventListener("click", closeDiscoveryWizard);
+    content.querySelector("[data-discovery-prev]")?.addEventListener("click", () => advanceDiscoveryPhase(-1));
+    content.querySelector("[data-discovery-next]")?.addEventListener("click", () => advanceDiscoveryPhase(1));
+    content.querySelector("[data-discovery-notes]")?.addEventListener("input", (event) => {
+      state.discoveryNotes[event.target.dataset.discoveryNotes] = event.target.value;
+    });
+    setRailOpen(true);
+    return;
+  }
   const previewHtml = state.railPreview ? `
     <section class="glass-card rail-preview">
       <time>${new Date(state.railPreview.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
@@ -4880,12 +6154,11 @@ function renderRail() {
         </div>
         ${statusPill(row.tone, row.tone === "blocked" ? "Blocked" : row.tone === "ready" ? "Ready" : "Review")}
       </div>
-      <div class="chip-list">
-        ${buildMissingSections(dossier).map((item) => `<button class="chip solvys-liquid-glass" type="button" data-rail-chip="${escapeHtml(item.id)}">${escapeHtml(item.label)}</button>`).join("") || `<span class="copy">All current suggestion chips are filled for this view.</span>`}
-      </div>
+      ${discoveryStripHtml(row, dossier)}
     </section>
   `;
   content.innerHTML = titleCard + previewHtml + railTabHtml(row, dossier);
+  content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
   content.querySelectorAll("[data-rail-chip]").forEach((chip) => {
     chip.addEventListener("click", () => openRailPreview(chip.dataset.railChip, chip));
   });
@@ -4998,12 +6271,12 @@ function railDocsHtml(row, dossier) {
       <h3>Completed report packet</h3>
       <p class="copy">This rendered report is the source of truth for Google Workspace, Podio, or both.</p>
       <ul class="report-cover mini-list">
-        <li><strong>Date added</strong><span>${escapeHtml(new Date(report?.generatedAt ?? dossier.generatedAt ?? Date.now()).toLocaleDateString())}</span></li>
-        <li><strong>Property</strong><span>${escapeHtml(dossier.property?.address?.value ?? row.address ?? "Needs review")}</span></li>
-        <li><strong>Owner / estate</strong><span>${escapeHtml(dossier.summary?.estateName ?? dossier.property?.ownerName?.value ?? row.owner ?? "Needs review")}</span></li>
-        <li><strong>Heirs / contacts</strong><span>${escapeHtml(`${familyNodes} placeholders`)}</span></li>
-        <li><strong>Offer status</strong><span>${escapeHtml(offerMath?.offerAmount?.note ?? "Draft until underwriting review")}</span></li>
-        <li><strong>Missing data</strong><span>${escapeHtml(`${report?.missingData?.length ?? row.missing.length} open section${(report?.missingData?.length ?? row.missing.length) === 1 ? "" : "s"}`)}</span></li>
+        <li class="solvys-liquid-glass"><strong>Date added</strong><span>${escapeHtml(new Date(report?.generatedAt ?? dossier.generatedAt ?? Date.now()).toLocaleDateString())}</span></li>
+        <li class="solvys-liquid-glass"><strong>Property</strong><span>${escapeHtml(dossier.property?.address?.value ?? row.address ?? "Needs review")}</span></li>
+        <li class="solvys-liquid-glass"><strong>Owner / estate</strong><span>${escapeHtml(dossier.summary?.estateName ?? dossier.property?.ownerName?.value ?? row.owner ?? "Needs review")}</span></li>
+        <li class="solvys-liquid-glass"><strong>Heirs / contacts</strong><span>${escapeHtml(`${familyNodes} placeholders`)}</span></li>
+        <li class="solvys-liquid-glass"><strong>Offer status</strong><span>${escapeHtml(offerMath?.offerAmount?.note ?? "Draft until underwriting review")}</span></li>
+        <li class="solvys-liquid-glass"><strong>Missing data</strong><span>${escapeHtml(`${report?.missingData?.length ?? row.missing.length} open section${(report?.missingData?.length ?? row.missing.length) === 1 ? "" : "s"}`)}</span></li>
       </ul>
       <iframe class="doc-frame" data-renderer="streamdown" sandbox="" title="Rendered lead report" srcdoc="${escapeHtml(reportHtml)}"></iframe>
     </section>
@@ -5103,6 +6376,7 @@ function applyColumnVisibility() {
 function renderAll() {
   renderSummary();
   applyFilters();
+  renderCurrentLoopView();
 }
 
 function connectionVisibleState(tone, status) {
@@ -5238,13 +6512,41 @@ async function loadQualificationReview() {
   }
 }
 
+async function loadFreshLeadBatch() {
+  try {
+    const response = await fetch("/fresh-lead-batch.json", { cache: "no-store" });
+    if (!response.ok) throw new Error("No fresh lead batch loaded.");
+    const batch = await response.json();
+    if (!batch?.latestRun?.dossier || !Array.isArray(batch.leadRuns) || !batch.leadRuns.length) {
+      throw new Error("Fresh lead batch is not renderable yet.");
+    }
+    return batch;
+  } catch {
+    return null;
+  }
+}
+
 async function loadRun() {
   try {
     document.getElementById("topStatus").textContent = "Loading latest lead packet...";
+    const freshBatch = await loadFreshLeadBatch();
+    if (freshBatch) {
+      state.freshBatch = freshBatch;
+      state.dailyRun = freshBatch.dailyRun ?? await loadDailyRun();
+      state.qualificationReview = state.dailyRun?.qualificationReview ?? await loadQualificationReview();
+      renderLoadedState(freshBatch.latestRun, freshBatch.latestRun.dossier);
+      const firstSeed = freshBatch.seeds?.[0] ?? {};
+      const firstLead = firstSeed.ownerName || firstSeed.estateName || firstSeed.propertyAddress || "live public-source lead";
+      const summary = freshBatch.operatorSummary || `Pulled ${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead(s).`;
+      document.getElementById("topStatus").textContent = `${summary} First lead: ${firstLead}.`;
+      setFreshBatchStatus(`${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead${(freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length) === 1 ? "" : "s"} loaded from the latest Miami-Dade Property Appraiser pull.`, "ready");
+      return;
+    }
     const response = await fetch("/latest-run.json", { cache: "no-store" });
     if (!response.ok) throw new Error("No latest lead found. Run the lead review pipeline first.");
     const data = await response.json();
     if (!data.dossier) throw new Error("The latest lead review did not include a dossier.");
+    state.freshBatch = null;
     state.dailyRun = await loadDailyRun();
     state.qualificationReview = state.dailyRun?.qualificationReview ?? await loadQualificationReview();
     renderLoadedState(data, data.dossier);
@@ -5384,8 +6686,175 @@ function exportRouteMeta(route) {
 function setExportMenuOpen(open) {
   const menu = document.getElementById("exportMenu");
   const toggle = document.getElementById("exportToggle");
+  const popover = document.getElementById("exportPopover");
   menu.dataset.open = open ? "true" : "false";
   toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  popover?.classList.toggle("is-open", open);
+  if (open) popover?.classList.remove("is-closing");
+  else popover?.classList.add("is-closing");
+}
+
+function dropdownCloseDelay() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue("--t-dropdown-close-dur").trim();
+  const value = Number.parseFloat(raw);
+  if (!Number.isFinite(value)) return 160;
+  return raw.endsWith("ms") ? value : value * 1000;
+}
+
+function optionLabel(option) {
+  return option?.textContent?.trim()?.replace(/\s+/g, " ") || "";
+}
+
+function selectDisplayLabel(select) {
+  return optionLabel(select.selectedOptions?.[0]) || optionLabel(select.options?.[0]) || "Select";
+}
+
+function syncEnhancedSelect(select) {
+  const wrapper = select.closest(".select-enhanced");
+  if (!wrapper) return;
+  const label = wrapper.querySelector(".select-label");
+  const button = wrapper.querySelector(".select-button");
+  if (label) label.textContent = selectDisplayLabel(select);
+  if (button) button.title = selectDisplayLabel(select);
+  wrapper.querySelectorAll(".select-option").forEach((optionButton) => {
+    const selected = optionButton.dataset.value === select.value;
+    optionButton.setAttribute("aria-selected", selected ? "true" : "false");
+    optionButton.tabIndex = selected ? 0 : -1;
+  });
+}
+
+function closeEnhancedSelect(wrapper, immediate = false) {
+  if (!wrapper) return;
+  const menu = wrapper.querySelector(".select-menu");
+  const button = wrapper.querySelector(".select-button");
+  wrapper.classList.remove("is-open");
+  button?.setAttribute("aria-expanded", "false");
+  if (!menu) return;
+  window.clearTimeout(Number(wrapper.dataset.closeTimer || 0));
+  menu.classList.remove("is-open");
+  if (immediate) {
+    menu.classList.remove("is-closing");
+    menu.hidden = true;
+    return;
+  }
+  menu.classList.add("is-closing");
+  wrapper.dataset.closeTimer = String(window.setTimeout(() => {
+    if (!wrapper.classList.contains("is-open")) {
+      menu.hidden = true;
+      menu.classList.remove("is-closing");
+    }
+  }, dropdownCloseDelay()));
+}
+
+function closeAllEnhancedSelects(except = null) {
+  document.querySelectorAll(".select-enhanced.is-open").forEach((wrapper) => {
+    if (wrapper !== except) closeEnhancedSelect(wrapper);
+  });
+}
+
+function openEnhancedSelect(wrapper) {
+  const menu = wrapper.querySelector(".select-menu");
+  const button = wrapper.querySelector(".select-button");
+  if (!menu) return;
+  closeAllEnhancedSelects(wrapper);
+  window.clearTimeout(Number(wrapper.dataset.closeTimer || 0));
+  wrapper.classList.add("is-open");
+  button?.setAttribute("aria-expanded", "true");
+  menu.hidden = false;
+  menu.classList.remove("is-closing");
+  requestAnimationFrame(() => menu.classList.add("is-open"));
+}
+
+function chooseEnhancedSelectOption(select, value) {
+  if (select.value === value) {
+    syncEnhancedSelect(select);
+    return;
+  }
+  select.value = value;
+  syncEnhancedSelect(select);
+  select.dispatchEvent(new Event("input", { bubbles: true }));
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function enhanceSelect(select) {
+  if (!select || select.classList.contains("select-native") || select.closest(".select-enhanced")) return;
+  const wrapper = document.createElement("div");
+  wrapper.className = "select-enhanced";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "select-button solvys-liquid-glass";
+  button.setAttribute("aria-haspopup", "listbox");
+  button.setAttribute("aria-expanded", "false");
+  button.innerHTML = `
+    <span class="select-label"></span>
+    <svg class="select-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  `;
+  const menu = document.createElement("div");
+  menu.className = "select-menu solvys-liquid-glass-strong t-dropdown";
+  menu.hidden = true;
+  menu.setAttribute("role", "listbox");
+  [...select.options].forEach((option) => {
+    const optionButton = document.createElement("button");
+    optionButton.type = "button";
+    optionButton.className = "select-option";
+    optionButton.dataset.value = option.value;
+    optionButton.setAttribute("role", "option");
+    optionButton.disabled = option.disabled;
+    optionButton.innerHTML = `<span>${escapeHtml(optionLabel(option))}</span><span class="select-check" aria-hidden="true">✓</span>`;
+    optionButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      chooseEnhancedSelectOption(select, option.value);
+      closeEnhancedSelect(wrapper);
+      button.focus({ preventScroll: true });
+    });
+    menu.appendChild(optionButton);
+  });
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.appendChild(select);
+  wrapper.appendChild(button);
+  wrapper.appendChild(menu);
+  select.classList.add("select-native");
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (wrapper.classList.contains("is-open")) closeEnhancedSelect(wrapper);
+    else openEnhancedSelect(wrapper);
+  });
+  button.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeEnhancedSelect(wrapper);
+      return;
+    }
+    if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
+      event.preventDefault();
+      openEnhancedSelect(wrapper);
+      wrapper.querySelector('.select-option[aria-selected="true"]')?.focus({ preventScroll: true });
+    }
+  });
+  menu.addEventListener("keydown", (event) => {
+    const options = [...menu.querySelectorAll(".select-option:not(:disabled)")];
+    const index = options.indexOf(document.activeElement);
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeEnhancedSelect(wrapper);
+      button.focus({ preventScroll: true });
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      options[Math.min(options.length - 1, index + 1)]?.focus({ preventScroll: true });
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      options[Math.max(0, index - 1)]?.focus({ preventScroll: true });
+    }
+  });
+  select.addEventListener("change", () => syncEnhancedSelect(select));
+  syncEnhancedSelect(select);
+}
+
+function enhanceSelectMenus(root = document) {
+  root.querySelectorAll("select").forEach(enhanceSelect);
+}
+
+function syncAllEnhancedSelects() {
+  document.querySelectorAll("select.select-native").forEach(syncEnhancedSelect);
 }
 
 function routesForExport(route) {
@@ -5466,6 +6935,14 @@ async function chooseExportRoute(route, source = null) {
 }
 
 function openUtilityRail(kind, source = null) {
+  if (state.activeView === "dossiers") {
+    document.getElementById("topStatus").textContent = "Dossiers keep documents in the product loop. Use Find Estates to open the report rail.";
+    addShellEvent("Report rail held", "Dossiers does not open the report rail; select a document in the dossier reader instead.", "review", false);
+    return;
+  }
+  if (state.activeView !== "find-estates") {
+    document.querySelector('[data-shell-nav="find-estates"]')?.click();
+  }
   if (kind === "report") {
     const origin = source || document.getElementById("quickReport");
     state.railPreview = {
@@ -5481,6 +6958,7 @@ function openUtilityRail(kind, source = null) {
 }
 
 function wireEvents() {
+  enhanceSelectMenus();
   document.getElementById("sidebarToggle").addEventListener("click", () => {
     const workspace = document.getElementById("workspace");
     if (workspace.classList.contains("is-auto-collapsed")) return;
@@ -5511,11 +6989,19 @@ function wireEvents() {
       setActiveShellView(button.dataset.shellNav, label);
       addShellEvent(
         `${label} selected`,
-        button.dataset.shellNav === "admin"
-          ? "Admin opens the selected lead, readiness blockers, review controls, and team handoff status."
+        button.dataset.shellNav === "find-estates"
+          ? "Find Estates opens the public-record lead list and Discovery report rail."
+          : button.dataset.shellNav === "dossiers"
+          ? "Dossiers opens finished document packets without the report rail."
+          : button.dataset.shellNav === "drips"
+          ? "Drips opens review-only email and SMS sequence preparation."
+          : button.dataset.shellNav === "queue"
+          ? "Queue opens batch export prep for reviewed dossiers."
           : button.dataset.shellNav === "settings"
           ? "Lead-quality controls are open. Review-only guardrails remain active."
-          : "The selected review section is open.",
+          : button.dataset.shellNav === "admin"
+          ? "Admin opens workspace readiness, wrapper, and review controls."
+          : "Dashboard opens task tracker, activity, and scheduled drips.",
         "review",
         false
       );
@@ -5610,6 +7096,14 @@ function wireEvents() {
       openUtilityRail("report", reportTrigger);
       return;
     }
+    const clickPath = event.composedPath?.() ?? [];
+    const clickedInsideRail = clickPath.some((item) => item?.id === "researchRail");
+    closeAllEnhancedSelects(event.target.closest?.(".select-enhanced"));
+    const rail = document.getElementById("researchRail");
+    const railOpener = event.target.closest?.('[data-row-id], [data-open-next], [data-chip], [data-rail-chip]');
+    if (state.railOpen && rail && !clickedInsideRail && !rail.contains(event.target) && !railOpener) {
+      setRailOpen(false);
+    }
     if (!document.getElementById("exportMenu").contains(event.target)) {
       setExportMenuOpen(false);
     }
@@ -5634,6 +7128,7 @@ function wireEvents() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      closeAllEnhancedSelects();
       setExportMenuOpen(false);
       setActivityOpen(false);
     }
@@ -5720,7 +7215,7 @@ function wireFilterResize() {
 loadSavedState();
 wireEvents();
 setRailOpen(false);
-setActiveShellView("source-runs", "Source Runs");
+setActiveShellView("dashboard", "Dashboard");
 loadSession();
 loadRun();
 </script>
