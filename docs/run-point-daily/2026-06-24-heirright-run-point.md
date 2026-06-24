@@ -323,6 +323,29 @@ Required corrections before complete:
     - Production deployment `dpl_DBtm2JqEFPiPzcKrjaB6RpcQea2b` is aliased to `https://heirright-landing-demo.vercel.app`.
     - Live alias proof confirmed `/health` 200, Dashboard subtab animation/copy, Dossier `data-mode="dossier"` rail open with 10 docs and no main-view reader, Completed Lead Report North Star sections, row switching, pop-out rendering, normal Report rail isolation in Find Estates, no console/page errors, and no failed responses.
 
+## /solvys-heir-audit Sidebar Divider Polish Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local rendered proof, and current Queue/sidebar screenshot annotation.
+
+Backward: This pass supports the operator workbench polish track by removing the fading divider under the collapsed sidebar top control while leaving content-section hierarchy dividers intact.
+
+UX pass: aligned. The annotated top-left sidebar line is gone; Queue content cards, toolbar controls, and section dividers still render normally. The annotated Drips, Queue, and Admin sidebar icons now use clearer scheduled-drip, batch-tray, and admin-shield glyphs.
+
+Forward: Deploy the visual polish pass and verify the live alias.
+
+Alignment: aligned
+
+Required corrections before complete:
+- None for this visual correction. Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked behind approved access and readback proof.
+
+Proof:
+- `pnpm build` passed from `probate-lead-engine/apps/artifact`.
+- `git diff --check` passed.
+- Local rendered proof at 1230x994 confirmed `.sidebar-top::after` has `content: none`, Queue remained visible, and no console/page errors fired. Screenshot saved to `/tmp/heirright-sidebar-line-removed-local.png`.
+- Local rendered proof at 1230x994 confirmed Drips/Queue/Admin hydrate to `scheduled-drips`, `batch-tray`, and `admin-shield`, the Queue view remained usable, the sidebar divider remained removed, and no console/page errors or failed responses fired. Screenshot saved to `/tmp/heirright-sidebar-icons-local.png`.
+- Production deployment `dpl_DQqc2hdHWYVzasrZrCJxqQ2CbmQq` is aliased to `https://heirright-landing-demo.vercel.app`.
+- Live alias proof at 1230x994 confirmed `.sidebar-top::after` has `content: none`, Drips/Queue/Admin hydrate to `scheduled-drips`, `batch-tray`, and `admin-shield`, Queue opened to `Batch handoff prep`, and no console/page errors or failed responses fired. Screenshot saved to `/tmp/heirright-sidebar-icons-live.png`.
+
 ## /solvys-heir-audit Dossier Batch Selection And Table Alignment Follow-up
 
 Source checked: HeirRight deal-flow checklist, current artifact source, local rebuilt browser proof, and current Dossier/Queue product loop.
