@@ -255,3 +255,28 @@ Alignment: aligned with gaps
 Required corrections before complete:
 - Incoming client document examples/templates remain external inputs for the final comprehensive packet.
 - Live outreach and production CRM card creation remain locked until credentials, approval, and readback proof exist.
+- Dossier document language cleanup follow-up:
+  - Replaced raw object-shaped source fact rendering in Source Notes and Tax History Packet with plain operator-readable field labels and values.
+  - Replaced raw Podio setup names in the CRM Handoff document and report-rail handoff readiness with plain labels: Podio access, Podio Leads app, and Podio field map.
+  - Updated the CRM Handoff document boundary copy to say no live Podio card is created until credentials, approval, and readback proof exist.
+  - Local proof:
+    - `pnpm build` passed.
+    - Browser proof on `http://localhost:4173` confirmed Source Notes and Tax History Packet no longer render JSON-shaped fact values, CRM Handoff no longer renders raw `PODIO_*` setup names, the report-rail Docs tab shows plain setup labels, and Dossiers keeps the report rail closed.
+  - Production deployment `dpl_2Z79yvkY37UNYkDDueMvr99PEYV4` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias proof confirmed Source Notes, Tax History Packet, CRM Handoff, and the report-rail Docs tab avoid JSON-shaped fact output, raw Podio setup names, and "Live write" wording; `/health` returned 200 and no console/page errors or 4xx responses occurred.
+
+## /solvys-heir-audit Dossier Document Language Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local browser proof, live Vercel alias proof, and production deployment metadata.
+
+Backward: This pass supports S7/S9 by making the generated Dossier documents and report-rail handoff readiness readable to a real estate operator. Source facts now read like field notes instead of raw data, and CRM Handoff shows plain Podio setup needs without implying a live card was created.
+
+UX pass: aligned with gaps. The operator can read Source Notes, Tax History, and CRM Handoff without developer terminology, while the app still preserves review-only boundaries.
+
+Forward: Attach the incoming client examples/templates to the 10-document packet and run a controlled Podio readback only after credentials and explicit approval exist.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Incoming client document examples/templates remain external inputs for the final comprehensive packet.
+- Live outreach and production CRM card creation remain locked until credentials, approval, and readback proof exist.

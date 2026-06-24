@@ -5031,6 +5031,22 @@ function displayStatus(value, fallback = "Needs review") {
   return String(value).replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function formatSourceFactValue(value, fallback = "Needs review") {
+  if (value === null || value === undefined || value === "") return fallback;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) {
+    return value.map((item) => formatSourceFactValue(item, "")).filter(Boolean).join("; ") || fallback;
+  }
+  if (typeof value === "object") {
+    const parts = Object.entries(value)
+      .filter(([, item]) => item !== null && item !== undefined && item !== "")
+      .map(([key, item]) => `${displayStatus(key)}: ${formatSourceFactValue(item, "")}`)
+      .filter((item) => !item.endsWith(": "));
+    return parts.join("; ") || fallback;
+  }
+  return String(value);
+}
+
 function formatMoney(value, currency = "USD") {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "Needs review";
   return `${currency} ${Number(value).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -5673,6 +5689,21 @@ function operatorBlockerText(value) {
     .replace(/Live (Google|Podio) config still needed before controlled write\/readback: /i, "$1 setup still needed before a controlled test and confirmation readback: ");
 }
 
+function operatorSetupLabel(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/PODIO_FIELD_MAP_JSON/i.test(text)) return "Podio field map";
+  if (/PODIO_ACCESS_TOKEN/i.test(text)) return "Podio access";
+  if (/PODIO_APP_ID/i.test(text)) return "Podio Leads app";
+  if (/GOOGLE|DRIVE|DOCS|SHEETS/i.test(text)) return "Google handoff destination";
+  if (/TOKEN|SECRET|CREDENTIAL/i.test(text)) return "Approved access";
+  return displayStatus(text.replace(/[_=]/g, " "));
+}
+
+function operatorSetupList(items = []) {
+  return uniqueItems(items.map(operatorSetupLabel)).join(", ") || "None recorded";
+}
+
 function milestoneBlockerLabel(blocker) {
   if (/lead list|production county seed|raw lead/i.test(blocker)) return "Lead list size";
   if (/ready-lead|qualified|counted as ready|No lead is ready/i.test(blocker)) return "Ready-lead count";
@@ -6056,7 +6087,7 @@ function sourceNotesHtml(row, dossier) {
     <h2>Coverage</h2>
     <ul>${coverage.map((area) => `<li><strong>${escapeHtml(area.label)}</strong> - ${escapeHtml(displayStatus(area.status))}: ${escapeHtml(area.nextAction)}</li>`).join("") || "<li>Run qualification review to populate coverage.</li>"}</ul>
     <h2>Facts</h2>
-    <ul>${facts.slice(0, 12).map((fact) => `<li><strong>${escapeHtml(displayStatus(fact.factType, "Source fact"))}</strong> - ${escapeHtml(typeof fact.value === "object" ? JSON.stringify(fact.value) : fact.value)}</li>`).join("") || "<li>No facts loaded yet.</li>"}</ul>
+    <ul>${facts.slice(0, 12).map((fact) => `<li><strong>${escapeHtml(displayStatus(fact.factType, "Source fact"))}</strong> - ${escapeHtml(formatSourceFactValue(fact.value))}</li>`).join("") || "<li>No facts loaded yet.</li>"}</ul>
   `);
 }
 
@@ -6100,7 +6131,7 @@ function deedTitleNotesHtml(row, dossier) {
 function taxHistoryHtml(row, dossier) {
   const tasks = dossier?.taxHistory?.reviewTasks ?? [];
   const facts = (state.data?.facts ?? [])
-    .filter((fact) => /tax|assessment|folio|parcel|receipt|payer/i.test(`${fact.source ?? ""} ${fact.factType ?? ""} ${JSON.stringify(fact.value ?? "")}`))
+    .filter((fact) => /tax|assessment|folio|parcel|receipt|payer/i.test(`${fact.source ?? ""} ${fact.factType ?? ""} ${formatSourceFactValue(fact.value ?? "")}`))
     .slice(0, 10);
   return pageShellHtml("Tax History Packet", row?.leadName ?? "Lead file", `
     <p class="muted">Tax collector notes for unpaid years, payer history, receipt status, reassessment, and lien review.</p>
@@ -6112,7 +6143,7 @@ function taxHistoryHtml(row, dossier) {
     <h2>Tax tasks</h2>
     <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Tax review")}</strong> - ${escapeHtml(task.nextAction ?? task.reason ?? "Capture tax status from the collector record.")}</li>`).join("") || "<li>No open tax blocker is recorded; preserve receipt and payer notes during review.</li>"}</ul>
     <h2>Tax-related source facts</h2>
-    <ul>${facts.map((fact) => `<li><strong>${escapeHtml(displayStatus(fact.factType, "Tax fact"))}</strong> - ${escapeHtml(typeof fact.value === "object" ? JSON.stringify(fact.value) : fact.value)}</li>`).join("") || "<li>Tax facts need review from the live source packet before this document is final.</li>"}</ul>
+    <ul>${facts.map((fact) => `<li><strong>${escapeHtml(displayStatus(fact.factType, "Tax fact"))}</strong> - ${escapeHtml(formatSourceFactValue(fact.value))}</li>`).join("") || "<li>Tax facts need review from the live source packet before this document is final.</li>"}</ul>
   `);
 }
 
@@ -6168,11 +6199,11 @@ function dripScheduleHtml(row) {
 function crmHandoffHtml(row, dossier) {
   const podio = dossier?.crm?.payload?.podioReadiness ?? {};
   return pageShellHtml("CRM Handoff", row?.leadName ?? "Lead file", `
-    <p class="muted">Prepared for Podio batch export. Live write remains locked until credentials, approval, and readback proof exist.</p>
+    <p class="muted">Prepared for Podio batch export. No live Podio card is created until credentials, approval, and readback proof exist.</p>
     <table>
       <tr><th>Route</th><td>Podio batch prep</td></tr>
       <tr><th>Status</th><td>${escapeHtml(displayStatus(dossier?.crm?.status, "Prep only"))}</td></tr>
-      <tr><th>Missing setup</th><td>${escapeHtml((podio.missingConfig ?? []).join(", ") || "None recorded")}</td></tr>
+      <tr><th>Missing setup</th><td>${escapeHtml(operatorSetupList(podio.missingConfig ?? []))}</td></tr>
       <tr><th>Readback checks</th><td>${escapeHtml(podio.readbackChecks?.length ?? 0)} required</td></tr>
     </table>
   `);
@@ -7206,7 +7237,7 @@ function railDocsHtml(row, dossier) {
       <ul class="mini-list">
         <li><strong>Selected route</strong><span>${escapeHtml(exportMeta?.label ?? "Choose a handoff route from the header.")}</span></li>
         <li><strong>Podio status</strong><span>${escapeHtml(displayStatus(dossier.crm?.status, "Prep only"))}</span></li>
-        <li><strong>Missing config</strong><span>${escapeHtml((podio?.missingConfig ?? []).join(", ") || "None recorded")}</span></li>
+        <li><strong>Missing setup</strong><span>${escapeHtml(operatorSetupList(podio?.missingConfig ?? []))}</span></li>
         <li><strong>Readback checks</strong><span>${escapeHtml(podio?.readbackChecks?.length ?? 0)} required</span></li>
         <li><strong>External use</strong><span>${report?.reviewGate?.externalUseBlocked ? "Blocked until review clears." : "Needs review before sending."}</span></li>
       </ul>
