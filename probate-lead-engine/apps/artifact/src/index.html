@@ -6193,11 +6193,11 @@ function renderDripsView() {
         <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}</span></li>`).join("")}</ul>
       </section>
       <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Agent Wrapper</p><h2 class="loop-title">OpenCodeGo direct API</h2></div><span class="pill blocked">No live send</span></div>
-        <p class="copy">This prepares the chat-less automation wrapper that can later run beside Hermes or an approved cloud artifact. For now, every sequence is staged as review-only.</p>
+        <div class="loop-panel-head"><div><p class="eyebrow">Review Route</p><h2 class="loop-title">OpenCodeGo automation prep</h2></div><span class="pill blocked">No live send</span></div>
+        <p class="copy">This stages the review-only route for scheduled follow-up work. Every sequence stays inside operator review until contact approval and CRM confirmation are clear.</p>
         <ul class="mini-list">
           <li><strong>Trigger</strong><span>Lead reaches completed Discovery Dossier.</span></li>
-          <li><strong>Action</strong><span>Create Podio task, email draft, SMS draft, and readback checklist.</span></li>
+          <li><strong>Action</strong><span>Prepare Podio task, email draft, SMS draft, and confirmation checklist.</span></li>
           <li><strong>Stop</strong><span>No external send until compliance and contact approval clear.</span></li>
         </ul>
       </section>
@@ -6250,8 +6250,8 @@ function renderAdminLoopView() {
   if (!target) return;
   target.innerHTML = `
     <div class="loop-grid three">
-      <section class="loop-panel"><p class="eyebrow">Admin</p><h2 class="loop-title">Workspace readiness</h2><ul class="mini-list"><li><strong>Podio</strong><span>${escapeHtml(connectionByName("Podio")?.message ?? "Prep-only until credentials are configured.")}</span></li><li><strong>Google</strong><span>${escapeHtml(connectionByName("Google")?.message ?? "Prep-only until destination approval.")}</span></li><li><strong>Web Search</strong><span>${escapeHtml(connectionByName("Web Search")?.message ?? "Source validation required.")}</span></li></ul></section>
-      <section class="loop-panel"><p class="eyebrow">Agent Artifact</p><h2 class="loop-title">OpenCodeGo wrapper</h2><p class="copy">Direct API wrapper is staged for the chat-less automation loop. Hermes or another cloud artifact can replace it after approval.</p><ul class="mini-list"><li><strong>Mode</strong><span>Review-only</span></li><li><strong>Runs</strong><span>Scheduled drip preparation and dossier packet checks</span></li><li><strong>Stop</strong><span>No live outreach or CRM writes</span></li></ul></section>
+      <section class="loop-panel"><p class="eyebrow">Admin</p><h2 class="loop-title">Workspace readiness</h2><ul class="mini-list"><li><strong>Podio</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Podio"), "Podio"))}</span></li><li><strong>Google</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Google"), "Google"))}</span></li><li><strong>Web Search</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Web Search"), "Web Search"))}</span></li></ul></section>
+      <section class="loop-panel"><p class="eyebrow">Automation</p><h2 class="loop-title">Scheduled work prep</h2><p class="copy">OpenCodeGo is staged as the current review route for scheduled dossier checks and drip preparation. A Hermes-based route can replace it after approval.</p><ul class="mini-list"><li><strong>Mode</strong><span>Review-only</span></li><li><strong>Runs</strong><span>Scheduled drip preparation and dossier packet checks</span></li><li><strong>Stop</strong><span>No live outreach or CRM writes</span></li></ul></section>
       <section class="loop-panel"><p class="eyebrow">Analytics</p><h2 class="loop-title">Operator trail</h2><div class="admin-grid"><div class="admin-metric"><span>Commands</span><strong>${escapeHtml(state.shellCommandCount)}</strong></div><div class="admin-metric"><span>Blockers</span><strong>${escapeHtml(milestoneBlockers(state.dossier).length)}</strong></div><div class="admin-metric"><span>Events</span><strong>${escapeHtml(state.shellEvents.length)}</strong></div></div></section>
     </div>
   `;
@@ -7145,6 +7145,17 @@ function connectionByName(name) {
   return state.connections.find((connection) => connection.name === name);
 }
 
+function operatorConnectionMessage(connection, name) {
+  const raw = connection?.message ?? "";
+  const hasSetupDetail = /[A-Z0-9]+_[A-Z0-9_]+|config|credential|missing|token|field map/i.test(raw);
+  if (!raw || hasSetupDetail) {
+    if (name === "Podio") return "Podio is not connected yet. Keep CRM handoff prep-only until access, one approved test card, and confirmation are complete.";
+    if (name === "Google") return "Google Workspace handoff is not connected yet. Keep Docs and Sheets prep-only until destination approval is configured.";
+    if (name === "Web Search") return "Public-source validation needs a fresh checked lead packet before promotion.";
+  }
+  return raw;
+}
+
 async function loadConnectionStatuses() {
   try {
     const response = await fetch("/api/connections/status", { cache: "no-store" });
@@ -7163,9 +7174,9 @@ function updateConnectionStatuses() {
   const webConnection = connectionByName("Web Search");
 
   if (podioConnection || googleConnection || webConnection) {
-    setConnectionChip("podioStatus", connectionTone(podioConnection), podioConnection?.message ?? "Podio status unavailable.", displayStatus(podioConnection?.mode));
-    setConnectionChip("googleStatus", connectionTone(googleConnection), googleConnection?.message ?? "Google status unavailable.", displayStatus(googleConnection?.mode));
-    setConnectionChip("webSearchStatus", connectionTone(webConnection), webConnection?.message ?? "Web Search status unavailable.", displayStatus(webConnection?.mode));
+    setConnectionChip("podioStatus", connectionTone(podioConnection), operatorConnectionMessage(podioConnection, "Podio"), displayStatus(podioConnection?.mode));
+    setConnectionChip("googleStatus", connectionTone(googleConnection), operatorConnectionMessage(googleConnection, "Google"), displayStatus(googleConnection?.mode));
+    setConnectionChip("webSearchStatus", connectionTone(webConnection), operatorConnectionMessage(webConnection, "Web Search"), displayStatus(webConnection?.mode));
     return;
   }
 
@@ -7722,7 +7733,7 @@ function wireEvents() {
           : button.dataset.shellNav === "settings"
           ? "Lead-quality controls are open. Review-only guardrails remain active."
           : button.dataset.shellNav === "admin"
-          ? "Admin opens workspace readiness, wrapper, and review controls."
+          ? "Admin opens workspace readiness, scheduled work prep, and review controls."
           : "Dashboard opens task tracker, activity, and scheduled drips.",
         "review",
         false

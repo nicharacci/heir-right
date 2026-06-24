@@ -174,3 +174,23 @@ Tomorrow's recommended sprints:
   - Updated Dashboard milestone copy to call out the 10-document dossier packet.
   - Production deployment `dpl_51cP2QdQA574TgW9CS1H9nyBEFH8` is aliased to `https://heirright-landing-demo.vercel.app`.
   - Live alias verification confirmed 10 Dossier document cards, added-document selection into the embedded reader, no report rail in Dossiers, Dashboard 10-document packet copy, no console/page errors, and no mobile horizontal overflow at 390px.
+- Operator-language audit follow-up:
+  - Replaced exposed Drips/Admin wording like "direct API", "wrapper", and "cloud artifact" with operator-facing scheduled-work prep language while preserving OpenCodeGo and Hermes approval truth.
+  - Added an operator-facing connection-message translation layer so raw setup variables such as Podio/Google environment names do not appear in Admin readiness, footer titles, or accessibility labels.
+  - Production deployment `dpl_9veNZSru74k1HFRHqE6WMaitdpfb` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias verification confirmed no `PODIO_*`/`GOOGLE_*` setup strings, no old wrapper/API phrases, plain Podio/Google prep-only status, OpenCodeGo/Hermes review-route copy retained, and no console/page errors.
+
+## /solvys-heir-audit Closeout
+
+Source checked: `/Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md`, current artifact source, local rendered browser proof, and live Vercel alias proof.
+
+Backward: The latest pass cleaned Drips/Admin automation copy and connection readiness messages so the workflow reads as scheduled follow-up prep, CRM handoff prep, contact approval, and confirmation rather than integration plumbing. This supports S8 outreach/no-auto-send guardrails and S9 Podio/workflow-loop adoption without implying live sends or production CRM writes.
+
+UX pass: aligned. The operator now sees concrete work states: review-only, no live send, CRM handoff prep-only, one approved test card, and confirmation needed.
+
+Forward: Next work should attach the incoming client-provided document examples/templates to the 10-document packet and replace generic packet bodies with final client-specific forms.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Incoming client document examples/templates are still external inputs for the final production packet.
