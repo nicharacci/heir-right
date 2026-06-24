@@ -168,3 +168,9 @@ Tomorrow's recommended sprints:
   - Kept secondary Dashboard actions unbordered/transparent.
   - Production deployment `dpl_Fck4yTE85HsLo6r14DeXFWP1Pm4z` is aliased to `https://heirright-landing-demo.vercel.app`.
   - Live alias verification confirmed Dashboard canvas `rgb(32, 33, 36)`, loop panels `rgb(38, 38, 38)`, suggestion chips `rgb(38, 38, 38)`, transparent tracker rows, and no console/page errors.
+- Ten-document packet follow-up:
+  - Expanded Dossiers from 6 documents to 10 documents: Discovery Dossier, Completed Lead Report, Source Notes, Deed & Title Notes, Tax History Packet, Probate Document Request, Heir Contact Matrix, Outreach Drafts, Drip Schedule, and CRM Handoff.
+  - Added rendered reader/pop-out bodies for Deed & Title Notes, Tax History Packet, Heir Contact Matrix, and Drip Schedule.
+  - Updated Dashboard milestone copy to call out the 10-document dossier packet.
+  - Production deployment `dpl_51cP2QdQA574TgW9CS1H9nyBEFH8` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias verification confirmed 10 Dossier document cards, added-document selection into the embedded reader, no report rail in Dossiers, Dashboard 10-document packet copy, no console/page errors, and no mobile horizontal overflow at 390px.

@@ -5719,8 +5719,8 @@ function dashboardMilestones() {
   return [
     {
       icon: "clock",
-      title: "Weekly discovery packet",
-      copy: `${missing} report section${missing === 1 ? "" : "s"} still need source notes before handoff.`,
+      title: "Weekly document packet",
+      copy: `10-document dossier packet is staged; ${missing} source section${missing === 1 ? "" : "s"} still need review before handoff.`,
       date: "This week"
     },
     {
@@ -5796,6 +5796,22 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
       body: sourceNotesHtml(row, dossier)
     },
     {
+      id: "deed-title-notes",
+      title: "Deed & Title Notes",
+      type: "Official records",
+      copy: "Owner chain, deed gaps, OR book/page notes, and title review blockers.",
+      status: (dossier?.deedHistory?.reviewTasks ?? []).length ? "Needs review" : "Staged",
+      body: deedTitleNotesHtml(row, dossier)
+    },
+    {
+      id: "tax-history",
+      title: "Tax History Packet",
+      type: "Tax collector",
+      copy: "Unpaid years, receipt status, payer notes, reassessment, and lien review.",
+      status: missing.some((item) => item.type === "tax") ? "Open" : "Staged",
+      body: taxHistoryHtml(row, dossier)
+    },
+    {
       id: "probate-request",
       title: "Probate Document Request",
       type: "Court request",
@@ -5804,12 +5820,28 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
       body: probateRequestHtml(row, dossier)
     },
     {
+      id: "heir-contact-matrix",
+      title: "Heir Contact Matrix",
+      type: "Contact review",
+      copy: "Potential heirs, contact confidence, approval gates, and source notes.",
+      status: (dossier?.familyTree?.reviewTasks ?? []).length ? "Needs review" : "Staged",
+      body: heirContactMatrixHtml(row, dossier)
+    },
+    {
       id: "outreach-drafts",
       title: "Outreach Drafts",
       type: "Email and SMS",
       copy: "Review-only outreach language held until approval.",
       status: "Locked",
       body: outreachDraftHtml(row, dossier)
+    },
+    {
+      id: "drip-schedule",
+      title: "Drip Schedule",
+      type: "Automation prep",
+      copy: "Email/SMS cadence, stop rules, review owner, and no-send guardrails.",
+      status: "Prepared only",
+      body: dripScheduleHtml(row, dossier)
     },
     {
       id: "crm-handoff",
@@ -5861,7 +5893,7 @@ function discoveryDossierHtml(row, dossier) {
     <h2>Open source notes</h2>
     <ul>${(missing.length ? missing : buildMissingSections(dossier ?? {})).map((item) => `<li><strong>${escapeHtml(item.short ?? item.label)}</strong> - ${escapeHtml(item.copy)}</li>`).join("") || "<li>All current dossier sections are marked ready in this view.</li>"}</ul>
     <h2>Document packet</h2>
-    <p>Discovery dossier, completed lead report, source notes, probate request, outreach drafts, CRM handoff, and drip queue are staged for operator review.</p>
+    <p>Ten documents are staged for operator review: discovery dossier, completed lead report, source notes, deed and title notes, tax history packet, probate request, heir contact matrix, outreach drafts, drip schedule, and CRM handoff.</p>
   `);
 }
 
@@ -5892,6 +5924,68 @@ function probateRequestHtml(row, dossier) {
   `);
 }
 
+function deedTitleNotesHtml(row, dossier) {
+  const tasks = dossier?.deedHistory?.reviewTasks ?? [];
+  const property = dossier?.property ?? {};
+  return pageShellHtml("Deed & Title Notes", row?.leadName ?? "Lead file", `
+    <p class="muted">Official-record notes for owner chain, deed gaps, and title-review blockers.</p>
+    <table>
+      <tr><th>Owner / estate</th><td>${escapeHtml(row?.owner ?? claimValue(property.ownerName, "Needs review"))}</td></tr>
+      <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
+      <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? claimValue(property.parcelId, "Needs review"))}</td></tr>
+      <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Miami-Dade County, FL"))}</td></tr>
+    </table>
+    <h2>Title review tasks</h2>
+    <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Review task")}</strong> - ${escapeHtml(task.nextAction ?? task.reason ?? "Record the official-record note.")}</li>`).join("") || "<li>Owner chain is staged for review; no deed blocker is recorded in the current packet.</li>"}</ul>
+    <h2>Operator checks</h2>
+    <ol>
+      <li>Confirm vesting, transfer path, and any company-owned stop rule.</li>
+      <li>Record OR book/page, deed date, and seller/buyer names when visible.</li>
+      <li>Flag recent sales, title defects, or missing official-record pages before outreach.</li>
+    </ol>
+  `);
+}
+
+function taxHistoryHtml(row, dossier) {
+  const tasks = dossier?.taxHistory?.reviewTasks ?? [];
+  const facts = (state.data?.facts ?? [])
+    .filter((fact) => /tax|assessment|folio|parcel|receipt|payer/i.test(`${fact.source ?? ""} ${fact.factType ?? ""} ${JSON.stringify(fact.value ?? "")}`))
+    .slice(0, 10);
+  return pageShellHtml("Tax History Packet", row?.leadName ?? "Lead file", `
+    <p class="muted">Tax collector notes for unpaid years, payer history, receipt status, reassessment, and lien review.</p>
+    <table>
+      <tr><th>Property</th><td>${escapeHtml(row?.address ?? "Needs review")}</td></tr>
+      <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? "Needs review")}</td></tr>
+      <tr><th>Next tax action</th><td>${escapeHtml(tasks[0]?.nextAction ?? tasks[0]?.reason ?? "Confirm unpaid years, amount due, and who paid the taxes.")}</td></tr>
+    </table>
+    <h2>Tax tasks</h2>
+    <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Tax review")}</strong> - ${escapeHtml(task.nextAction ?? task.reason ?? "Capture tax status from the collector record.")}</li>`).join("") || "<li>No open tax blocker is recorded; preserve receipt and payer notes during review.</li>"}</ul>
+    <h2>Tax-related source facts</h2>
+    <ul>${facts.map((fact) => `<li><strong>${escapeHtml(displayStatus(fact.factType, "Tax fact"))}</strong> - ${escapeHtml(typeof fact.value === "object" ? JSON.stringify(fact.value) : fact.value)}</li>`).join("") || "<li>Tax facts need review from the live source packet before this document is final.</li>"}</ul>
+  `);
+}
+
+function heirContactMatrixHtml(row, dossier) {
+  const report = dossier?.completedLeadReport;
+  const contacts = report?.contactPlaceholders ?? dossier?.familyTree?.hypothesis?.value?.nodes ?? [];
+  const tasks = [
+    ...(dossier?.familyTree?.reviewTasks ?? []),
+    ...(dossier?.marriageDeathIndicators?.reviewTasks ?? [])
+  ];
+  return pageShellHtml("Heir Contact Matrix", row?.leadName ?? "Lead file", `
+    <p class="muted">Contact research remains review-only until source notes, paid-source approval, and operator contact approval clear.</p>
+    <table>
+      <tr><th>Estate</th><td>${escapeHtml(row?.owner ?? row?.leadName ?? "Needs review")}</td></tr>
+      <tr><th>Contact placeholders</th><td>${escapeHtml(contacts.length)}</td></tr>
+      <tr><th>Approval status</th><td>Do not contact until review clears</td></tr>
+    </table>
+    <h2>Potential contact records</h2>
+    <ul>${contacts.slice(0, 12).map((contact, index) => `<li><strong>${escapeHtml(contact.name ?? contact.label ?? `Contact ${index + 1}`)}</strong> - ${escapeHtml(contact.relationship ?? contact.role ?? contact.status ?? "Relationship needs review")}</li>`).join("") || "<li>No contact records are confirmed yet; build from obituary, probate, family tree, and approved sources.</li>"}</ul>
+    <h2>Open contact checks</h2>
+    <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Contact review")}</strong> - ${escapeHtml(task.nextAction ?? task.reason ?? "Confirm heir/contact confidence.")}</li>`).join("") || "<li>Confirm heir roles, phone/address confidence, and no-contact gates before outreach.</li>"}</ul>
+  `);
+}
+
 function outreachDraftHtml(row) {
   return pageShellHtml("Outreach Drafts", row?.leadName ?? "Lead file", `
     <p class="muted">Review-only drafts. Nothing is sent until the operator approves contact and compliance review clears.</p>
@@ -5899,6 +5993,24 @@ function outreachDraftHtml(row) {
     <p>We are reviewing public records for the property at ${escapeHtml(row?.address ?? "the property")} and would like to confirm the right person to speak with about the estate file.</p>
     <h2>SMS draft</h2>
     <p>Hello, this is the HeirRight team following up about ${escapeHtml(row?.address ?? "the property")}. Please reply with the best time to connect if you are the right contact.</p>
+  `);
+}
+
+function dripScheduleHtml(row) {
+  const drips = scheduledDrips();
+  return pageShellHtml("Drip Schedule", row?.leadName ?? "Lead file", `
+    <p class="muted">Scheduled automations are prepared only. No email, SMS, or CRM write is sent from this demo surface.</p>
+    <h2>Prepared cadences</h2>
+    <table>
+      <tr><th>Sequence</th><th>Channel</th><th>Cadence</th><th>Status</th></tr>
+      ${drips.map((drip) => `<tr><td>${escapeHtml(drip.title)}</td><td>${escapeHtml(drip.channel)}</td><td>${escapeHtml(drip.cadence)}</td><td>${escapeHtml(drip.status)}</td></tr>`).join("")}
+    </table>
+    <h2>Stop rules</h2>
+    <ul>
+      <li>No live send until contact approval and compliance review clear.</li>
+      <li>Stop if a lead is marked no-contact, company-owned, recently sold, or source-blocked.</li>
+      <li>Queue only batch-ready dossiers with owner, source notes, document packet, and readback gate.</li>
+    </ul>
   `);
 }
 

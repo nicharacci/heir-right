@@ -10,15 +10,16 @@ HeirRight operators get a working product loop for document preparation: Dashboa
 
 ## Scope -- Included
 
-- [ ] Replace old shell navigation with Dashboard, Find Estates, Dossiers, Drips, Queue, Admin, Settings.
-- [ ] Make Dashboard a task tracker with Activities, scheduled drips, recent activity, milestones, and productivity chips.
-- [ ] Reduce Find Estates header height and remove excess lower whitespace from Find Estates and Dossiers.
-- [ ] Convert the rail gap-chip strip into a three-chip-width completion fuse with percentage and phase label, plus a right-aligned Begin Discovery CTA.
-- [ ] Add a full-rail Discovery wizard takeover with uniform fades, modular controls, preference toggles, note fields, close-on-phase-complete behavior, and the workflow packet phases.
-- [ ] Add a Dossiers tab that mirrors the main lead list, opens the selected lead documents in the rail area, embeds a document/PDF-style reader below, and supports pop-out.
-- [ ] Add Drips and Queue tabs for configurable email/SMS preparation and batch export queue state without claiming live sends.
-- [ ] Represent the autonomous agent wrapper as direct OpenCodeGo/API artifact scaffolding for now, with no unapproved live outreach, paid-source usage, or production Podio write.
-- [ ] Add progress evidence under `docs/run-point-daily/2026-06-24-heirright-run-point.md`.
+- [x] Replace old shell navigation with Dashboard, Find Estates, Dossiers, Drips, Queue, Admin, Settings.
+- [x] Make Dashboard a task tracker with Activities, scheduled drips, recent activity, milestones, and productivity chips.
+- [x] Reduce Find Estates header height and remove excess lower whitespace from Find Estates and Dossiers.
+- [x] Convert the rail gap-chip strip into a three-chip-width completion fuse with percentage and phase label, plus a right-aligned Begin Discovery CTA.
+- [x] Add a full-rail Discovery wizard takeover with uniform fades, modular controls, preference toggles, note fields, close-on-phase-complete behavior, and the workflow packet phases.
+- [x] Add a Dossiers tab that mirrors the main lead list, opens the selected lead documents in the rail area, embeds a document/PDF-style reader below, and supports pop-out.
+- [x] Add a ten-document dossier packet so the client-requested 7-10 document workflow is represented in the app.
+- [x] Add Drips and Queue tabs for configurable email/SMS preparation and batch export queue state without claiming live sends.
+- [x] Represent the autonomous agent wrapper as direct OpenCodeGo/API artifact scaffolding for now, with no unapproved live outreach, paid-source usage, or production Podio write.
+- [x] Add progress evidence under `docs/run-point-daily/2026-06-24-heirright-run-point.md`.
 
 ## Scope -- Excluded (OUT OF BOUNDS)
 
@@ -60,7 +61,7 @@ Discovery phases come from the workflow packet and HeirRight deal-flow checklist
 - Approval-gated paid/manual research.
 - Probate document ordering and CRM handoff preparation.
 
-Finished dossiers are derived from the loaded lead run/dossier and rendered as document cards: Discovery Dossier, Lead Report, Source Notes, Probate Request, Outreach Drafts, and CRM Handoff.
+Finished dossiers are derived from the loaded lead run/dossier and rendered as ten document cards: Discovery Dossier, Lead Report, Source Notes, Deed & Title Notes, Tax History Packet, Probate Request, Heir Contact Matrix, Outreach Drafts, Drip Schedule, and CRM Handoff.
 
 ### Aesthetic Rules
 
@@ -80,17 +81,18 @@ Finished dossiers are derived from the loaded lead run/dossier and rendered as d
 
 ## Acceptance Criteria
 
-- [ ] Sidebar shows exactly Dashboard, Find Estates, Dossiers, Drips, Queue, Admin, Settings in that order.
-- [ ] Dashboard is the default task-tracker surface and uses operator workflow language.
-- [ ] Find Estates header and bottom space are visibly tighter.
-- [ ] Report rail gap chips are replaced by fuse, percent, phase label, and Begin Discovery CTA.
-- [ ] Discovery wizard fades in, occupies the full rail, supports preferences and notes, and can be closed after a phase completes.
-- [ ] Dossiers mirrors the lead list, has no report rail, opens lead documents in the dossier workspace, embeds a reader below, and supports pop-out.
-- [ ] Drips and Queue are useful prep surfaces without implying unapproved live sends or CRM writes.
-- [ ] `pnpm --filter @ple/artifact build` passes.
-- [ ] `pnpm build` passes.
-- [ ] UI is browser-verified on the rendered artifact and reviewed for overlap/text fit.
-- [ ] Daily handoff/progress file is updated.
+- [x] Sidebar shows exactly Dashboard, Find Estates, Dossiers, Drips, Queue, Admin, Settings in that order.
+- [x] Dashboard is the default task-tracker surface and uses operator workflow language.
+- [x] Find Estates header and bottom space are visibly tighter.
+- [x] Report rail gap chips are replaced by fuse, percent, phase label, and Begin Discovery CTA.
+- [x] Discovery wizard fades in, occupies the full rail, supports preferences and notes, and can be closed after a phase completes.
+- [x] Dossiers mirrors the lead list, has no report rail, opens lead documents in the dossier workspace, embeds a reader below, and supports pop-out.
+- [x] Dossiers renders 10 packet documents, satisfying the requested 7-10 document preparation workflow range.
+- [x] Drips and Queue are useful prep surfaces without implying unapproved live sends or CRM writes.
+- [x] `pnpm --filter @ple/artifact build` passes.
+- [x] `pnpm build` passes.
+- [x] UI is browser-verified on the rendered artifact and reviewed for overlap/text fit.
+- [x] Daily handoff/progress file is updated.
 
 ## Validation Commands
 
