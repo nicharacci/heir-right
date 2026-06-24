@@ -4,6 +4,10 @@
   "outputDirectory": "apps/artifact/dist",
   "rewrites": [
     {
+      "source": "/health",
+      "destination": "/api/health"
+    },
+    {
       "source": "/auth/:path*",
       "destination": "/api/auth/:path*"
     }

@@ -194,3 +194,9 @@ Alignment: aligned with gaps
 
 Required corrections before complete:
 - Incoming client document examples/templates are still external inputs for the final production packet.
+- Clean-tree deploy and health follow-up:
+  - Removed the stale local `postgres` dependency change and duplicate untracked artifact-level API shims from the working tree; the tracked root `api/` wrappers are the Vercel production route source.
+  - Added a tracked `/api/health` wrapper and `/health` rewrite so production health checks match the local artifact server.
+  - Production deployment `dpl_GADV1RFY5U24LXgURAmqoAfWRtqZ` proved the clean tracked tree deploys and removed `postgres` during Vercel install.
+  - Production deployment `dpl_Ak5mZCu4bFtvM1CzzuBSkZkryQ23` is aliased to `https://heirright-landing-demo.vercel.app` with `/health` returning 200.
+  - Live alias verification confirmed `/health`, `/api/connections/status`, and `/api/exports` return 200; Dossiers still renders 10 documents without the report rail; Admin/Drips operator copy stays sanitized; and no console/page errors occurred.
