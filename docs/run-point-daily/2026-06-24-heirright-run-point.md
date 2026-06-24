@@ -77,3 +77,8 @@ Required corrections before complete:
   - Mobile 390px verification passed with Dashboard collapsed to one column and no horizontal overflow.
   - Production deployment `dpl_3Pa1Qd12W584dJzNB2dNhKiLG2Ci` is aliased to `https://heirright-landing-demo.vercel.app`.
   - Live alias verification confirmed `.sidebar-top`, `.nav-list`, `.results-toolbar`, and `thead tr` compute to `rgb(32, 33, 36)` and the Dashboard/Dossiers product-loop surfaces still render without the report rail in Dossiers.
+- Follow-up annotation batch:
+  - Hardened `#dossiersView`, `.sidebar-top`, `.nav-list`, and `.sidebar-footer` to `#202124`.
+  - Hardened every Dossiers document card, including selected state, to `#262626`.
+  - Production deployment `dpl_Ck2PNfvZZ4bkjiAH4RD49FQvcaKt` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias verification confirmed the annotated Dossiers/sidebar selectors compute to the requested colors with no console/page errors.
