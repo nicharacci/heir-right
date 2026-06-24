@@ -253,8 +253,8 @@ function localConnectionStatuses() {
       mode: missingPodio.length ? "blocked" : "live",
       message: !missingPodio.length
         ? podioApproved
-          ? "Podio export config and controlled write approval are present."
-          : "Podio export config is present; controlled write still needs approval."
+          ? "Podio handoff access and approval are present."
+          : "Podio handoff access is present; final approval still needs confirmation."
         : `Podio export/readback config is missing: ${missingPodio.join(", ")}.`,
       checkedAt,
     },
@@ -263,7 +263,7 @@ function localConnectionStatuses() {
       ok: hasAll(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"]),
       mode: hasAll(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"]) ? "live" : "blocked",
       message: hasAll(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"])
-        ? "Google export config is present; controlled write still needs approval."
+        ? "Google Workspace handoff access is present; final approval still needs confirmation."
         : "Google Drive/Docs/Sheets export config is missing.",
       checkedAt,
     },
@@ -344,7 +344,7 @@ function localExportRoute(route, dryRun) {
       readbackOk: false,
       blockers: [
         `Live ${routeName} readback skipped in dry-run mode.`,
-        ...(missing.length ? [`Live ${routeName} config still needed before controlled write/readback: ${missing.join(", ")}`] : []),
+        ...(missing.length ? [`Live ${routeName} setup still needed before approval and readback: ${missing.join(", ")}`] : []),
       ],
       message: `${routeName} handoff package is prepared from the latest lead packet. No live write was attempted.`,
     };
@@ -382,6 +382,41 @@ function localExportRoute(route, dryRun) {
   };
 }
 
+function operatorSetupText(value) {
+  return String(value || "")
+    .replace(/PODIO_FIELD_MAP_JSON or PODIO_APP_ID=24265877/g, "Podio field map or verified Leads app")
+    .replace(/PODIO_ACCESS_TOKEN/g, "Podio access")
+    .replace(/PODIO_APP_ID/g, "Podio Leads app")
+    .replace(/GOOGLE_WORKSPACE_ACCESS_TOKEN/g, "Google Workspace access")
+    .replace(/GOOGLE_TRACKING_SHEET_ID/g, "Google tracking Sheet")
+    .replace(/PODIO_TEST_PHONE/g, "approved sample phone")
+    .replace(/PODIO_TEST_EMAIL/g, "approved sample email")
+    .replace(/PODIO_LEAD_POINT_PROFILE_ID/g, "approved Lead profile");
+}
+
+function operatorBlockerText(value) {
+  return operatorSetupText(value)
+    .replace(/Missing Podio export config: /i, "Podio setup still needed before an approved sample card and confirmation readback: ")
+    .replace(/Missing Google export config: /i, "Google setup still needed before Docs, Sheets, and confirmation readback: ")
+    .replace(/Podio export is blocked until .*field map.*configured\./i, "Podio handoff is blocked until CRM access, the Leads app, and field mapping are approved.")
+    .replace(/Live (Google|Podio) readback skipped in dry-run mode\./i, "$1 readback has not run yet.")
+    .replace(/Live (Google|Podio) (config|setup) still needed before .*readback: /i, "$1 setup still needed before approval and confirmation readback: ");
+}
+
+function sanitizeLocalExportResult(result) {
+  const routes = (result?.routes ?? []).map((route) => ({
+    ...route,
+    blockers: (route.blockers ?? []).map(operatorBlockerText),
+    message: operatorBlockerText(route.message ?? "Handoff result recorded."),
+  }));
+  return {
+    ...result,
+    routes,
+    blockers: (result?.blockers ?? []).map(operatorBlockerText),
+    error: result?.error ? operatorBlockerText(result.error) : result?.error,
+  };
+}
+
 async function localControlledPodioExport() {
   const { runDryPipeline } = require("../worker/dist/index");
   const { buildControlledPodioTestSeed } = require("../worker/dist/export/controlled-test-lead");
@@ -416,12 +451,22 @@ async function handleLocalExport(req, res) {
   if (body.controlledTest === true && routes.includes("podio") && !dryRun) {
     try {
       const result = await localControlledPodioExport();
-      sendJson(res, 200, result, { "cache-control": "no-store" });
+      sendJson(res, 200, sanitizeLocalExportResult(result), { "cache-control": "no-store" });
     } catch (error) {
-      sendJson(res, 500, {
+      const blocker = "Podio readiness check is blocked until access, approved sample-card permission, and confirmation readback are available.";
+      sendJson(res, 200, {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
-        blockers: ["The local Podio test export could not reach the worker export adapter."],
+        generatedAt: new Date().toISOString(),
+        error: "Podio readiness check is blocked before an approved sample card can be created.",
+        routes: [{
+          route: "podio",
+          ok: false,
+          mode: "blocked",
+          readbackOk: false,
+          blockers: [blocker],
+          message: "Podio readiness check is blocked before any live CRM card is created.",
+        }],
+        blockers: [blocker],
       }, { "cache-control": "no-store" });
     }
     return;
@@ -432,13 +477,13 @@ async function handleLocalExport(req, res) {
     return;
   }
   const results = Array.from(new Set(routes)).map((route) => localExportRoute(route, dryRun));
-  sendJson(res, 200, {
+  sendJson(res, 200, sanitizeLocalExportResult({
     ok: results.every((result) => result.ok),
     generatedAt: new Date().toISOString(),
     dossierId: JSON.parse(readFileSync(latestRunPath, "utf8")).dossier?.id ?? "latest",
     routes: results,
     blockers: results.flatMap((result) => result.blockers),
-  });
+  }));
 }
 
 async function handleFreshLeadBatch(req, res) {

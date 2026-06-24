@@ -337,6 +337,24 @@ Alignment: aligned with gaps
 
 Required corrections before complete:
 - Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until credentials, approval, and readback proof exist.
+
+- Dossier rail annotation and readiness cleanup:
+  - Converted the shared right rail into a mode-aware Dossier rail with Dossier-specific aria labels, close/resize labels, context copy, and no report-tab segment inside Dossiers.
+  - Moved the selected document heading and pop-out control into a Dossier document toolbar, keeping the finished dossier list as the main left workspace and the document packet/PDF reader in the right rail.
+  - Set a wider Dossier rail target so saved narrow Report rail widths do not crush document cards or the embedded packet reader.
+  - Disabled report-rail rename behavior while in Dossier mode.
+  - Sanitized local export/readiness API responses so blocked Podio readiness returns plain operator copy instead of raw setup keys or server-error semantics.
+  - Replaced remaining visible `controlled write` language with approval and confirmation-readback language.
+  - Local proof:
+    - `pnpm build` passed from `probate-lead-engine`.
+    - Source audit found no remaining visible `OpenCodeGo`, `Hermes`, `Podio test card`, `controlled test`, `controlled live test`, `controlled write`, `Mapped payload ready`, `generated test lead`, `PODIO TEST`, `bearer-token`, or `local Podio test` strings in the artifact source/server.
+    - `POST /api/exports` for the Podio readiness path returned HTTP 200 with `ok: false`, one plain Podio setup blocker, and no raw `PODIO_*` keys in the returned message/blocker copy.
+    - Chrome proof on `http://localhost:4173` confirmed Dossiers opens `#researchRail` as `data-mode="dossier"` at 560px, list and rail share the workbench, the report tab segment is hidden, 10 document cards and one embedded PDF reader render in the right rail, no inline Dossier reader remains in the main view, row switching keeps the rail open, close/toggle work, Drips/Admin/export copy stays plain, and no console/page errors or failed responses occurred.
+  - Production deployment `dpl_9xkwm7N26jdYh2zy2kEMyVuhDt6b` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias proof:
+    - `/health` returned 200 with auth disabled for the demo.
+    - `POST /api/exports` for the Podio readiness path returned HTTP 200 with a safe blocked state and no package/runtime internals.
+    - Chrome proof on `https://heirright-landing-demo.vercel.app` confirmed Dossiers opens the right rail as `data-mode="dossier"` at 560px, Dossier labels/close/resize copy are mode-specific, the report tab segment is hidden, 10 document cards and one embedded PDF reader render, no inline reader remains in the main view, row switching keeps the Dossier rail context synced, Drips/Admin/export copy stays plain, forbidden implementation phrases are absent, and no console/page errors or failed responses occurred.
 - The new PDFs are visual anchors; their pages are image-based and still need human/client review before any field is treated as confirmed source truth.
 
 - Export / Queue handoff hardening follow-up:
@@ -373,3 +391,27 @@ Alignment: aligned with gaps
 Required corrections before complete:
 - Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until credentials, approval, and readback proof exist.
 - Queue currently prepares the handoff package in-app; credentialed write/readback validation remains external to this pass.
+
+- Operator-language cleanup follow-up:
+  - Replaced visible implementation route names in Drips and Admin with plain review-route language.
+  - Renamed the export-menu Podio test action to `Run Podio readiness check` and rewrote its copy around an approved sample Lead card.
+  - Replaced visible `controlled test`, `generated test lead`, `PODIO TEST`, and `Mapped payload ready` language with approved sample-card and mapped-for-review language.
+  - Added the review route to each scheduled-check row so operators can see how each drip/check will be prepared.
+  - Local proof:
+    - `pnpm build` passed from `probate-lead-engine`.
+    - Chrome proof on `http://localhost:4173` confirmed the export menu shows `Run Podio readiness check`, Drips renders `Review automation route`, Admin describes scheduled checks as review preparation, the preview activity uses review-route language, the Podio readiness route blocks safely with `handoff: [PODIO CHECK] [BLOCKED]`, and the rendered body no longer contains `OpenCodeGo`, `Hermes`, `Podio test card`, `controlled test`, `Mapped payload ready`, `generated test lead`, or `PODIO TEST`.
+
+## /solvys-heir-audit Operator Language Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local Chrome proof, and existing deployment notes.
+
+Backward: This pass supports S8/S9 by keeping scheduled checks, drip prep, and Podio handoff actions understandable to a real estate operator. It keeps the same guarded export and review behavior, but removes implementation labels from visible workflow screens.
+
+UX pass: aligned with gaps. Drips, Admin, the export menu, activity trail, and blocked Podio readiness path now use plain workflow language: review route, approved sample Lead card, prep-only, and confirmation readback.
+
+Forward: Deploy this operator-language pass, run live alias proof, and keep production writes locked until approved credentials and readback proof exist.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until credentials, approval, and readback proof exist.

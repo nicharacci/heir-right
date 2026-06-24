@@ -1960,6 +1960,27 @@
       font-size: 10px;
     }
 
+    .research-rail[data-mode="dossier"] .rail-context-copy {
+      cursor: default;
+    }
+
+    .research-rail[data-mode="dossier"] .rail-context-copy:hover .rail-context-title {
+      color: var(--text);
+    }
+
+    .dossier-rail-toolbar {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(235,235,245,.08);
+    }
+
+    .dossier-rail-toolbar .copy {
+      margin-top: 4px;
+    }
+
     .dossier-doc {
       text-align: left;
       cursor: pointer;
@@ -4486,7 +4507,7 @@
             </button>
             <button class="export-option" type="button" role="menuitem" data-export-route="podio-test">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 5.5h14v13H5v-13Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 13h5M16 16.5l2 2 3-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-              <span><strong>Send Podio test card</strong><span>Create one controlled test Lead contact card and confirm it comes back.</span></span>
+              <span><strong>Run Podio readiness check</strong><span>Create one approved sample Lead card and confirm it comes back.</span></span>
             </button>
             <button class="export-option" type="button" role="menuitem" data-export-route="both">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M8 7h10v12H8V7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1M11 11h4M11 15h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
@@ -4802,7 +4823,7 @@
         <section id="settingsView" class="loop-view" data-view-panel="settings" aria-label="Settings"></section>
       </section>
 
-      <aside id="researchRail" class="research-rail" data-open="false" aria-label="HeirRight Research Rail">
+      <aside id="researchRail" class="research-rail" data-open="false" aria-label="HeirRight Report Rail">
         <div id="railResizer" class="rail-resizer" role="separator" aria-orientation="vertical" aria-label="Resize report rail"></div>
         <div class="rail-chrome">
           <div id="railContext" class="rail-context" aria-live="polite">
@@ -5024,7 +5045,7 @@ const discoveryPhases = [
     label: "CRM handoff",
     source: "Podio prep",
     summary: "Prepare Podio fields, tasks, batch export queue, drip settings, and readback checklist without live writes.",
-    steps: ["Stage Podio field mapping and queue state.", "Configure email and SMS drip preferences.", "Hold live handoff until controlled write and readback are proven."],
+    steps: ["Stage Podio field mapping and queue state.", "Configure email and SMS drip preferences.", "Hold live handoff until approval and readback are proven."],
     preferences: ["Prep only", "Batch export", "Require readback proof"]
   }
 ];
@@ -5757,6 +5778,9 @@ function uniqueItems(items) {
 
 function operatorBlockerText(value) {
   return String(value || "")
+    .replace(/Podio export is blocked until .*field map.*configured\./i, "Podio handoff is blocked until CRM access, the Leads app, and field mapping are approved.")
+    .replace(/Missing Podio export config: /i, "Podio setup still needed before an approved sample card and confirmation readback: ")
+    .replace(/Missing Google Workspace config: /i, "Google setup still needed before Docs, Sheets, and confirmation readback: ")
     .replace(/Raw lead count/i, "Raw leads")
     .replace(/Qualified lead count/i, "Qualified leads")
     .replace(/Raw leads (\d+) is below target ([\d-]+)\./i, "Lead list is too small: $1 raw leads loaded, but the 30-day target is $2.")
@@ -5769,7 +5793,12 @@ function operatorBlockerText(value) {
     .replace(/No enrichment\/contact run has been approved or completed\./i, "Contact research has not been approved or completed.")
     .replace(/Report has (\d+) missing section\(s\)\./i, "$1 report sections still need review.")
     .replace(/Live (Google|Podio) readback skipped in dry-run mode\./i, "$1 readback has not run yet.")
-    .replace(/Live (Google|Podio) config still needed before controlled write\/readback: /i, "$1 setup still needed before a controlled test and confirmation readback: ");
+    .replace(/Live (Google|Podio) (config|setup) still needed before .*readback: /i, "$1 setup still needed before an approved sample card and confirmation readback: ")
+    .replace(/PODIO_FIELD_MAP_JSON or PODIO_APP_ID=24265877/g, "Podio field map or verified Leads app")
+    .replace(/PODIO_ACCESS_TOKEN/g, "Podio access")
+    .replace(/PODIO_APP_ID/g, "Podio Leads app")
+    .replace(/GOOGLE_WORKSPACE_ACCESS_TOKEN/g, "Google Workspace access")
+    .replace(/GOOGLE_TRACKING_SHEET_ID/g, "Google tracking Sheet");
 }
 
 function operatorSetupLabel(value) {
@@ -5995,7 +6024,7 @@ function dripAutomationJobs() {
     {
       title: "Discovery dossier check",
       schedule: "Hourly during review hours",
-      route: "OpenCodeGo review route",
+      route: "Review automation route",
       status: "Ready to prepare",
       action: "Find completed dossiers that still need source notes, owner stop checks, or tax receipt notes.",
       stop: reviewOwner
@@ -6003,7 +6032,7 @@ function dripAutomationJobs() {
     {
       title: "Court packet check",
       schedule: state.dripSettings.requireCourtPacket ? "After court packet review" : "After operator approval",
-      route: "OpenCodeGo review route",
+      route: "Review automation route",
       status: "Held for approval",
       action: "Prepare the probate document request task after docket status and page count are reviewed.",
       stop: "No court request leaves review automatically"
@@ -6011,7 +6040,7 @@ function dripAutomationJobs() {
     {
       title: "Drip draft prep",
       schedule: dripStartDelayLabel(),
-      route: "OpenCodeGo now; Hermes after approval",
+      route: "Review automation now; approved background route later",
       status: "Prepared only",
       action: "Prepare email, SMS, and task drafts for the operator to review in Podio.",
       stop: "No external send, no live CRM card"
@@ -6153,7 +6182,7 @@ function queueReadinessItems() {
       title: "Readback proof",
       copy: blockers.length
         ? `${blockers.length} live handoff blocker${blockers.length === 1 ? "" : "s"} remain before a production write.`
-        : "Prepared package only; controlled write and readback proof are still required before live writes."
+        : "Prepared package only; approval and readback proof are still required before live writes."
     }
   ];
 }
@@ -6309,8 +6338,8 @@ function podioFieldRows(row, dossier, report) {
     ["parcel_id", fields.parcel_id ?? row?.parcel],
     ["dossier_status", fields.dossier_status ?? dossier?.operatorQueue?.state],
     ["lead_bucket", fields.lead_bucket ?? report?.leadQualityProfile?.leadBucket],
-    ["offer_math", fields.offer_math ? "Mapped payload ready" : "Needs Podio field map"],
-    ["outreach_workflow", fields.outreach_workflow ? "Mapped payload ready" : "Prepared only"]
+    ["offer_math", fields.offer_math ? "Mapped for review" : "Needs Podio field map"],
+    ["outreach_workflow", fields.outreach_workflow ? "Mapped for review" : "Prepared only"]
   ];
   return rows.map(([field, value]) => `<tr><th><code>${escapeHtml(field)}</code></th><td>${escapeHtml(formatSourceFactValue(value))}</td></tr>`).join("");
 }
@@ -6707,8 +6736,12 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   content.innerHTML = `
     <div class="dossier-rail-content">
       <section class="glass-card rail-card">
-        <div class="loop-panel-head">
-          <div><p class="eyebrow">${escapeHtml(row.leadName ?? "Lead")}</p><h2 class="rail-title">${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}</h2></div>
+        <div class="dossier-rail-toolbar">
+          <div>
+            <p class="eyebrow">Document packet</p>
+            <h2 class="rail-title">${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}</h2>
+            <p class="copy">${escapeHtml(selectedDoc?.type ?? "PDF packet")} - ${escapeHtml(selectedDoc?.status ?? "Review")}</p>
+          </div>
           <button class="btn" type="button" data-popout-doc="${escapeHtml(selectedDoc?.id ?? "discovery-dossier")}">Pop out</button>
         </div>
         <div class="dossier-doc-grid">
@@ -6759,10 +6792,10 @@ function renderDripsView() {
         <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}; ${escapeHtml(drip.nextRun)}</span><span>${escapeHtml(drip.guardrail)}</span></li>`).join("")}</ul>
       </section>
       <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Scheduled Checks</p><h2 class="loop-title">OpenCodeGo route</h2></div><span class="pill blocked">No live send</span></div>
+        <div class="loop-panel-head"><div><p class="eyebrow">Scheduled Checks</p><h2 class="loop-title">Review automation route</h2></div><span class="pill blocked">No live send</span></div>
         <p class="copy">These checks run as review preparation beside the dossier workflow. They prepare tasks and drafts for the operator; they do not contact heirs or create CRM records.</p>
         <ul class="mini-list">
-          ${jobs.map((job) => `<li><strong>${escapeHtml(job.title)}</strong><span>${escapeHtml(job.schedule)}; ${escapeHtml(job.status)}. ${escapeHtml(job.action)} ${escapeHtml(job.stop)}.</span></li>`).join("")}
+          ${jobs.map((job) => `<li><strong>${escapeHtml(job.title)}</strong><span>${escapeHtml(job.schedule)}; ${escapeHtml(job.route)}; ${escapeHtml(job.status)}. ${escapeHtml(job.action)} ${escapeHtml(job.stop)}.</span></li>`).join("")}
         </ul>
         <button class="btn primary solvys-liquid-glass" type="button" data-drip-preview>Preview next check</button>
       </section>
@@ -6796,7 +6829,7 @@ function renderDripsView() {
   });
   target.querySelector("[data-drip-preview]")?.addEventListener("click", () => {
     const nextJob = dripAutomationJobs()[0];
-    addShellEvent("Scheduled check previewed", `${nextJob.title} will prepare dossier review tasks through the OpenCodeGo route. No send or CRM card is unlocked.`, "review", true);
+    addShellEvent("Scheduled check previewed", `${nextJob.title} will prepare dossier review tasks through the review automation route. No send or CRM card is unlocked.`, "review", true);
   });
 }
 
@@ -6828,7 +6861,7 @@ function renderQueueView() {
         <ul class="mini-list">
           ${destinations.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></li>`).join("")}
         </ul>
-        <p class="copy">Podio remains CRM of record. Google Docs and Sheets are prepared as review artifacts until the operator approves a controlled write and readback pass.</p>
+        <p class="copy">Podio remains CRM of record. Google Docs and Sheets are prepared as review artifacts until the operator approves the handoff and readback pass.</p>
       </section>
     </div>
   `;
@@ -6851,7 +6884,7 @@ function renderAdminLoopView() {
   target.innerHTML = `
     <div class="loop-grid three">
       <section class="loop-panel"><p class="eyebrow">Admin</p><h2 class="loop-title">Workspace readiness</h2><ul class="mini-list"><li><strong>Podio</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Podio"), "Podio"))}</span></li><li><strong>Google</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Google"), "Google"))}</span></li><li><strong>Web Search</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Web Search"), "Web Search"))}</span></li></ul></section>
-      <section class="loop-panel"><p class="eyebrow">Automation</p><h2 class="loop-title">Scheduled work prep</h2><p class="copy">OpenCodeGo is staged as the current review route for scheduled dossier checks and drip preparation. A Hermes-based route can replace it after approval.</p><ul class="mini-list"><li><strong>Mode</strong><span>Review-only</span></li><li><strong>Runs</strong><span>Scheduled drip preparation and dossier packet checks</span></li><li><strong>Stop</strong><span>No live outreach or CRM card creation</span></li></ul></section>
+      <section class="loop-panel"><p class="eyebrow">Automation</p><h2 class="loop-title">Scheduled work prep</h2><p class="copy">Scheduled checks are staged as review preparation for dossier source notes and drip drafts. A background route can replace the review path after operator approval.</p><ul class="mini-list"><li><strong>Mode</strong><span>Review-only</span></li><li><strong>Runs</strong><span>Scheduled drip preparation and dossier packet checks</span></li><li><strong>Stop</strong><span>No live outreach or CRM card creation</span></li></ul></section>
       <section class="loop-panel"><p class="eyebrow">Analytics</p><h2 class="loop-title">Operator trail</h2><div class="admin-grid"><div class="admin-metric"><span>Commands</span><strong>${escapeHtml(state.shellCommandCount)}</strong></div><div class="admin-metric"><span>Blockers</span><strong>${escapeHtml(milestoneBlockers(state.dossier).length)}</strong></div><div class="admin-metric"><span>Events</span><strong>${escapeHtml(state.shellEvents.length)}</strong></div></div></section>
     </div>
   `;
@@ -6936,7 +6969,7 @@ function runShellCommand(command, source = null, freeform = "") {
   } else if (action === "record-blocker") {
     document.getElementById("statusExport").textContent = "handoff: [BLOCKED]";
     document.getElementById("topStatus").textContent = "Flag recorded: CRM handoff remains gated until access and readback proof.";
-    addShellEvent("Flag recorded", freeform || "CRM access, controlled write approval, and readback proof are still required.", "blocked");
+    addShellEvent("Flag recorded", freeform || "CRM access, handoff approval, and readback proof are still required.", "blocked");
   } else if (action === "stage-export") {
     state.railPreview = {
       title: "Handoff package prepared for review",
@@ -7042,7 +7075,7 @@ function setActiveShellView(view = "dashboard", label = "") {
     state.railOpen = true;
     setRailOpen(true);
     setDetailRailOpen(false);
-    document.getElementById("topStatus").textContent = `${label || activeViewLabel(nextView)} workspace selected.`;
+    document.getElementById("topStatus").textContent = "Dossiers workspace selected. Document packets open in the right Dossier rail.";
   } else if (nextView !== "find-estates") {
     state.railMode = "report";
     setRailOpen(false);
@@ -7089,7 +7122,7 @@ function syncRailContext(row) {
     context?.classList.remove("is-renaming");
     if (copy) {
       copy.setAttribute("aria-disabled", "true");
-      copy.setAttribute("aria-label", "No report rail selected");
+      copy.setAttribute("aria-label", state.railMode === "dossier" ? "No dossier rail selected" : "No report rail selected");
     }
     title.textContent = "No lead selected";
     meta.textContent = "Choose a file to review";
@@ -7100,14 +7133,16 @@ function syncRailContext(row) {
   }
   if (kicker) kicker.textContent = state.railMode === "dossier" ? "Dossier rail" : "Report rail";
   const railTitle = railNameFor(row);
+  const selectedDoc = state.railMode === "dossier" ? selectedDossierDocument(row) : null;
   if (copy) {
     copy.removeAttribute("aria-disabled");
-    copy.setAttribute("aria-label", `Rename report rail: ${railTitle}`);
+    copy.setAttribute("aria-label", state.railMode === "dossier"
+      ? `Dossier rail for ${row.leadName ?? railTitle}; ${selectedDoc?.title ?? "document packet"}`
+      : `Rename report rail: ${railTitle}`);
   }
-  const selectedDoc = state.railMode === "dossier" ? selectedDossierDocument(row) : null;
-  title.textContent = state.railMode === "dossier" ? (selectedDoc?.title ?? railTitle) : railTitle;
+  title.textContent = state.railMode === "dossier" ? (row.leadName ?? railTitle) : railTitle;
   title.title = state.railMode === "dossier" ? "Dossier document rail" : "Click to rename report rail";
-  meta.textContent = state.railMode === "dossier" ? `${row.leadName ?? row.title} · ${row.address}` : `${row.kind} · ${row.address}`;
+  meta.textContent = state.railMode === "dossier" ? `${selectedDoc?.title ?? "Discovery Dossier"} · ${selectedDoc?.type ?? "PDF packet"} · ${selectedDoc?.status ?? "Review"}` : `${row.kind} · ${row.address}`;
   if (input && !state.railRenaming) input.value = railTitle;
   pill.className = `pill ${row.tone}`;
   pill.textContent = row.tone === "blocked" ? "Blocked" : row.tone === "ready" ? "Ready" : "Review";
@@ -7124,9 +7159,17 @@ function syncRailTabs() {
 function setRailOpen(open, source = null) {
   state.railOpen = open;
   const rail = document.getElementById("researchRail");
-  const width = `min(${state.railWidth}px, 55vw, calc(100vw - 64px))`;
+  const targetRailWidth = state.railMode === "dossier" ? Math.max(state.railWidth, 560) : state.railWidth;
+  const width = `min(${targetRailWidth}px, 55vw, calc(100vw - 64px))`;
   const app = document.querySelector(".app");
   rail.dataset.mode = state.railMode;
+  rail.setAttribute("aria-label", state.railMode === "dossier" ? "HeirRight Dossier Rail" : "HeirRight Report Rail");
+  const resizer = document.getElementById("railResizer");
+  const closeButton = document.getElementById("closeRail");
+  const closeLabel = state.railMode === "dossier" ? "Close dossier rail" : "Close report rail";
+  resizer?.setAttribute("aria-label", state.railMode === "dossier" ? "Resize dossier rail" : "Resize report rail");
+  closeButton?.setAttribute("aria-label", closeLabel);
+  closeButton?.setAttribute("title", closeLabel);
   app?.style.setProperty("--active-rail-width", open ? width : "0px");
   rail.dataset.open = open ? "true" : "false";
   rail.style.width = width;
@@ -7683,7 +7726,7 @@ function railDocsHtml(row, dossier) {
         <li><strong>App</strong><span>${escapeHtml(podioModel?.app ?? "Leads")}</span></li>
         <li><strong>Pipeline</strong><span>${escapeHtml((podioModel?.pipelineStages ?? ["Marketing", "Acquisition", "Disposition"]).join(" / "))}</span></li>
         <li><strong>Prepared fields</strong><span>${escapeHtml(mappedFieldCount)} lead fields mapped from the current packet</span></li>
-        <li><strong>Controlled test</strong><span>${escapeHtml(podio?.classification === "ready_for_controlled_validation" ? "Ready for approval and readback" : "Blocked until live access is configured")}</span></li>
+        <li><strong>Readiness check</strong><span>${escapeHtml(podio?.classification === "ready_for_controlled_validation" ? "Ready for approval and readback" : "Blocked until live access is configured")}</span></li>
       </ul>
     </section>
     <section class="glass-card rail-card">
@@ -7694,7 +7737,7 @@ function railDocsHtml(row, dossier) {
             <span class="rail-item-index">${String(index + 1).padStart(2, "0")}</span>
             <span>
               <span class="rail-item-title">${escapeHtml(check)}</span>
-              <span class="rail-item-copy">Must be proven after a controlled live test item is created.</span>
+              <span class="rail-item-copy">Must be proven after an approved sample card is created.</span>
             </span>
             ${statusPill("review", "Proof")}
           </article>
@@ -7716,7 +7759,7 @@ function railDocsHtml(row, dossier) {
           ${exportResults.map((result) => `
             <li>
               <strong>${escapeHtml(displayStatus(result.route))}</strong>
-              <span>${escapeHtml(result.message ?? "Handoff result recorded.")}</span>
+              <span>${escapeHtml(operatorBlockerText(result.message ?? "Handoff result recorded."))}</span>
               <span>${escapeHtml(handoffModeLabel(result.mode))} · readback ${result.readbackOk ? "passed" : "not proven"}</span>
             </li>
           `).join("")}
@@ -7797,7 +7840,7 @@ function operatorConnectionMessage(connection, name) {
   const raw = connection?.message ?? "";
   const hasSetupDetail = /[A-Z0-9]+_[A-Z0-9_]+|config|credential|missing|token|field map/i.test(raw);
   if (!raw || hasSetupDetail) {
-    if (name === "Podio") return "Podio is not connected yet. Keep CRM handoff prep-only until access, one approved test card, and confirmation are complete.";
+    if (name === "Podio") return "Podio is not connected yet. Keep CRM handoff prep-only until access, one approved sample card, and confirmation are complete.";
     if (name === "Google") return "Google Workspace handoff is not connected yet. Keep Docs and Sheets prep-only until destination approval is configured.";
     if (name === "Web Search") return "Public-source validation needs a fresh checked lead packet before promotion.";
   }
@@ -7839,7 +7882,7 @@ function updateConnectionStatuses() {
   setConnectionChip(
     "podioStatus",
     podioBlocked ? "blocked" : "review",
-    podioBlocked ? "Podio is not connected. Handoff package is prep-only." : "Podio package is prepared for a controlled test.",
+    podioBlocked ? "Podio is not connected. Handoff package is prep-only." : "Podio package is prepared for an approved sample-card check.",
     podioBlocked ? "Prep blocked" : "Prep ready"
   );
   setConnectionChip(
@@ -8047,10 +8090,10 @@ function exportRouteMeta(route) {
       copy: "Prepare the completed report and lead fields for Podio. Use this when the file is ready for CRM handoff review, before any production card is created."
     },
     "podio-test": {
-      label: "Podio test card",
-      status: "handoff: [PODIO TEST]",
-      title: "Send Podio test card",
-      copy: "Create one controlled test Lead contact card in Podio and confirm it comes back.",
+      label: "Podio readiness check",
+      status: "handoff: [PODIO CHECK]",
+      title: "Run Podio readiness check",
+      copy: "Create one approved sample Lead card in Podio and confirm it comes back.",
       dryRun: false,
       controlledTest: true
     },
@@ -8262,14 +8305,14 @@ async function chooseExportRoute(route, source = null) {
   state.railPreview = {
     title: meta.title,
     markdown: isControlledTest
-      ? `${meta.copy} This uses a generated test lead, not the loaded lead packet.`
+      ? `${meta.copy} This uses an approved sample lead, not the loaded lead packet.`
       : `${meta.copy} Preparing a review-only handoff package now. No live CRM card will be created from this demo surface.`,
     updatedAt: Date.now()
   };
   openReportRailForHandoff(source, "docs");
   document.getElementById("statusExport").textContent = meta.status;
   document.getElementById("topStatus").textContent = isControlledTest
-    ? "Sending a controlled test Lead contact card to Podio..."
+    ? "Checking Podio with an approved sample Lead card..."
     : `Preparing completed report handoff for ${meta.label}...`;
   try {
     const response = await fetch("/api/exports", {
@@ -8286,14 +8329,14 @@ async function chooseExportRoute(route, source = null) {
     const blockers = (result.blockers ?? []).filter((blocker) => !/skipped in dry-run mode/i.test(blocker));
     const testDelivered = isControlledTest && deliveredPodioTest(result);
     if (testDelivered) {
-      addShellEvent("Podio test card delivered", "A controlled test Lead contact card was created in Podio and read back successfully.", "ready", false);
+      addShellEvent("Podio readiness check delivered", "An approved sample Lead card was created in Podio and read back successfully.", "ready", false);
     } else if (result.ok) {
       addShellEvent(exportSuccessActivityTitle(), exportSuccessActivityCopy(meta.label), "review", false);
     }
     state.railPreview = testDelivered
       ? {
-          title: "Podio test card delivered",
-          markdown: "A controlled test Lead contact card was created in Podio and read back successfully.",
+          title: "Podio readiness check delivered",
+          markdown: "An approved sample Lead card was created in Podio and read back successfully.",
           updatedAt: Date.now()
         }
       : result.ok
@@ -8306,11 +8349,11 @@ async function chooseExportRoute(route, source = null) {
             title: `${meta.label} handoff blocked`,
             markdown: blockers.length
               ? blockers.map(operatorBlockerText).join(" ")
-              : "Approval, controlled write, and readback proof are required before a live handoff.",
+              : "Approval and readback proof are required before a live handoff.",
             updatedAt: Date.now()
           };
     document.getElementById("topStatus").textContent = testDelivered
-      ? "Podio test contact card delivered and readback confirmed."
+      ? "Podio sample card delivered and readback confirmed."
       : result.ok
         ? `${meta.label} handoff prepared for review. Live write and readback still need approval before any external record is created.`
         : blockers.length
@@ -8430,11 +8473,13 @@ function wireEvents() {
   document.getElementById("closeAgentDrawer").addEventListener("click", () => setActivityOpen(false));
   document.getElementById("railContextCopy").addEventListener("click", (event) => {
     if (event.target.id === "railRenameInput") return;
+    if (state.railMode === "dossier") return;
     if (state.railRenaming) return;
     startRailRename();
   });
   document.getElementById("railContextCopy").addEventListener("keydown", (event) => {
     if (event.target.id === "railRenameInput" || state.railRenaming) return;
+    if (state.railMode === "dossier") return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       startRailRename();
