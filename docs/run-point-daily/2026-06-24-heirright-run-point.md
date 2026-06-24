@@ -225,3 +225,33 @@ Alignment: aligned with gaps
 
 Required corrections before complete:
 - Incoming client document examples/templates remain external inputs for the final comprehensive packet.
+- Drips scheduled-work and product-loop backdrop follow-up:
+  - Hardened Drips, Queue, Admin, and Settings product-loop surfaces to the same `#202124` app backdrop and `#262626` loop-panel treatment already applied to Dashboard and Dossiers.
+  - Expanded Drips from a static prep list into a chatless scheduled-work control surface:
+    - Prepared drip sequences now reflect saved start delay, SMS cap, court-packet gate, no-contact hold, and review-owner gate.
+    - Added OpenCodeGo scheduled checks for Discovery dossier review, court packet review, and drip draft preparation while keeping Hermes as a later approved route.
+    - Added local preference controls and an operator note field; all persist in browser storage under `heirright:drip-settings`.
+    - The Dashboard Drips widget and the Dossier "Drip Schedule" embedded document now read from the same saved controls.
+  - Local proof:
+    - `pnpm build` passed.
+    - Browser proof on `http://localhost:4173` confirmed Drips canvas `rgb(32, 33, 36)`, Drips panels and setting cards `rgb(38, 38, 38)`, 6 Drips controls, 3 scheduled checks, saved next-business start delay, 3-SMS cap, court-packet override, operator note persistence after reload, Preview next check activity, Dashboard Drips reflection, and Dossier Drip Schedule iframe updates with the report rail closed.
+    - Malformed local Drips storage self-heals to bounded values: known start delay, 1-4 SMS cap, boolean gates, and 500-character operator note.
+    - Mobile proof at 390px confirmed Drips has no horizontal overflow and still renders 6 controls.
+  - Production deployment `dpl_9AdFw9ucG1QhcwwxtTdtWZKMqQyD` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias proof confirmed the same Drips styling, storage self-healing, persistence, Dashboard reflection, Dossier iframe propagation, report-rail lockout in Dossiers, no console/page errors, no 4xx responses, no visible `CRM write` phrasing, and no mobile horizontal overflow at 390px.
+
+## /solvys-heir-audit Drips Scheduled-Work Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local browser proof, live Vercel alias proof, and production deployment metadata.
+
+Backward: This pass strengthens S8/S9 workflow support without claiming live sends or live CRM card creation. Drips now behaves like a scheduled-work prep surface for dossier review, probate/court packet checks, and follow-up draft preparation, while preserving operator review, no-contact holds, owner stop rules, and CRM readback boundaries.
+
+UX pass: aligned with gaps. The operator sees saved cadence controls, scheduled checks, next action preview, and Drip Schedule document output in plain real estate workflow language. The remaining gap is not UI mechanics; it is the real client-provided document examples/templates and approved CRM/outreach credentials.
+
+Forward: Attach the incoming client examples to the 10-document packet and only then run any controlled Podio/readback work if credentials and explicit approval are available.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Incoming client document examples/templates remain external inputs for the final comprehensive packet.
+- Live outreach and production CRM card creation remain locked until credentials, approval, and readback proof exist.

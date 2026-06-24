@@ -4081,13 +4081,29 @@
     }
 
     #dashboardView,
-    body[data-theme] #dashboardView {
+    #dripsView,
+    #queueView,
+    #adminView,
+    #settingsView,
+    body[data-theme] #dashboardView,
+    body[data-theme] #dripsView,
+    body[data-theme] #queueView,
+    body[data-theme] #adminView,
+    body[data-theme] #settingsView {
       background: #202124;
       background-color: #202124;
     }
 
     #dashboardView .loop-panel,
-    body[data-theme] #dashboardView .loop-panel {
+    #dripsView .loop-panel,
+    #queueView .loop-panel,
+    #adminView .loop-panel,
+    #settingsView .loop-panel,
+    body[data-theme] #dashboardView .loop-panel,
+    body[data-theme] #dripsView .loop-panel,
+    body[data-theme] #queueView .loop-panel,
+    body[data-theme] #adminView .loop-panel,
+    body[data-theme] #settingsView .loop-panel {
       color: var(--text);
       background: #262626;
       background-color: #262626;
@@ -4099,10 +4115,26 @@
 
     #dashboardView .tracker-item,
     #dashboardView .drip-item,
+    #dripsView .drip-item,
+    #queueView .queue-item,
     body[data-theme] #dashboardView .tracker-item,
-    body[data-theme] #dashboardView .drip-item {
+    body[data-theme] #dashboardView .drip-item,
+    body[data-theme] #dripsView .drip-item,
+    body[data-theme] #queueView .queue-item {
       background: transparent;
       background-color: transparent;
+    }
+
+    #dripsView .setting-card,
+    #settingsView .setting-card,
+    body[data-theme] #dripsView .setting-card,
+    body[data-theme] #settingsView .setting-card {
+      background: #262626;
+      background-color: #262626;
+      border-color: rgba(235,235,245,.08);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
 
     #dashboardView .suggestion-chip,
@@ -4611,7 +4643,7 @@
                 <div>
                   <p class="eyebrow">Settings</p>
                   <h3 class="card-title">Lead-quality controls</h3>
-                  <p class="copy">Tune how the demo prioritizes review work. These controls do not unlock outreach, CRM writes, or paid-source research.</p>
+                  <p class="copy">Tune how the demo prioritizes review work. These controls do not unlock outreach, CRM card creation, or paid-source research.</p>
                 </div>
                 <div class="settings-grid">
                   <div class="setting-card">
@@ -4812,6 +4844,14 @@ const state = {
   discoveryCompleted: new Set(),
   discoveryNotes: {},
   discoveryPreferences: {},
+  dripSettings: {
+    startDelay: "same-day",
+    smsCap: "2",
+    reviewOwnerRequired: true,
+    requireCourtPacket: true,
+    holdNoContact: true,
+    operatorNote: ""
+  },
   shellSettings: {
     signalWeight: "3",
     taxThreshold: "2",
@@ -4830,6 +4870,7 @@ const railNamesKey = "heirright:rail-names";
 const themeKey = "heirright:theme";
 const shellSettingsKey = "heirright:shell-settings";
 const discoveryStateKey = "heirright:discovery-workflow-state";
+const dripSettingsKey = "heirright:drip-settings";
 const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 const columnMap = {
   address: '[data-column="address"]',
@@ -5428,6 +5469,7 @@ function loadSavedState() {
   }
   loadDiscoveryState();
   loadShellSettings();
+  loadDripSettings();
   state.shellEvents = defaultShellEvents();
   syncShellSettings();
   renderShellPanels();
@@ -5513,6 +5555,36 @@ function persistShellSettings(reason = "Settings changed") {
   localStorage.setItem(shellSettingsKey, JSON.stringify(state.shellSettings));
   addShellEvent(reason, "Lead-quality settings were updated locally. Review-only guardrails remain active.", "review", false);
   syncShellSettings();
+}
+
+function loadDripSettings() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(dripSettingsKey) ?? "{}");
+    state.dripSettings = normalizeDripSettings({ ...state.dripSettings, ...(stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {}) });
+    localStorage.setItem(dripSettingsKey, JSON.stringify(state.dripSettings));
+  } catch {
+    state.dripSettings = normalizeDripSettings(state.dripSettings);
+  }
+}
+
+function persistDripSettings(reason = "") {
+  state.dripSettings = normalizeDripSettings(state.dripSettings);
+  localStorage.setItem(dripSettingsKey, JSON.stringify(state.dripSettings));
+  if (reason) {
+    addShellEvent(reason, "Scheduled follow-up controls were saved locally. Live sends and CRM card creation remain locked.", "review", false);
+  }
+}
+
+function normalizeDripSettings(settings = {}) {
+  const smsCap = Math.max(1, Math.min(4, Number(settings.smsCap || 2)));
+  return {
+    startDelay: settings.startDelay === "next-business" ? "next-business" : "same-day",
+    smsCap: String(Number.isFinite(smsCap) ? smsCap : 2),
+    reviewOwnerRequired: settings.reviewOwnerRequired === false ? false : true,
+    requireCourtPacket: settings.requireCourtPacket === false ? false : true,
+    holdNoContact: settings.holdNoContact === false ? false : true,
+    operatorNote: String(settings.operatorNote ?? "").slice(0, 500)
+  };
 }
 
 function syncShellSettings() {
@@ -5789,10 +5861,47 @@ function dashboardSuggestions() {
 }
 
 function scheduledDrips() {
+  const settings = state.dripSettings;
+  const startDelay = settings.startDelay === "next-business" ? "Next business morning" : "Same day after review";
+  const smsCap = Math.max(1, Math.min(4, Number(settings.smsCap || 2)));
   return [
-    { title: "Heir warm follow-up", channel: "Email + SMS", cadence: "Day 1, Day 4, Day 9", status: "Prepared only" },
-    { title: "Probate document request", channel: "Email", cadence: "After court packet review", status: "Needs approval" },
-    { title: "No-contact hold", channel: "Internal task", cadence: "Until review clears", status: "Active guardrail" }
+    { title: "Heir warm follow-up", channel: "Email + SMS", cadence: `${startDelay}; Day 1, Day 4, Day 9`, status: "Prepared only", nextRun: "After dossier approval", guardrail: `${smsCap} SMS cap per heir each week` },
+    { title: "Probate document request", channel: "Email", cadence: settings.requireCourtPacket ? "After court packet review" : "After operator approval", status: "Needs approval", nextRun: "After court packet clears", guardrail: "Court packet must stay review-owned" },
+    { title: "No-contact hold", channel: "Internal task", cadence: settings.holdNoContact ? "Until review clears" : "Operator override required", status: "Active guardrail", nextRun: "Every queued dossier check", guardrail: "No-contact, company owner, recent sale, and source blocker stops stay active" }
+  ];
+}
+
+function dripStartDelayLabel(value = state.dripSettings.startDelay) {
+  return value === "next-business" ? "Next business morning" : "Same day after review";
+}
+
+function dripAutomationJobs() {
+  const reviewOwner = state.dripSettings.reviewOwnerRequired ? "Review owner required" : "Operator owner optional";
+  return [
+    {
+      title: "Discovery dossier check",
+      schedule: "Hourly during review hours",
+      route: "OpenCodeGo review route",
+      status: "Ready to prepare",
+      action: "Find completed dossiers that still need source notes, owner stop checks, or tax receipt notes.",
+      stop: reviewOwner
+    },
+    {
+      title: "Court packet check",
+      schedule: state.dripSettings.requireCourtPacket ? "After court packet review" : "After operator approval",
+      route: "OpenCodeGo review route",
+      status: "Held for approval",
+      action: "Prepare the probate document request task after docket status and page count are reviewed.",
+      stop: "No court request leaves review automatically"
+    },
+    {
+      title: "Drip draft prep",
+      schedule: dripStartDelayLabel(),
+      route: "OpenCodeGo now; Hermes after approval",
+      status: "Prepared only",
+      action: "Prepare email, SMS, and task drafts for the operator to review in Podio.",
+      stop: "No external send, no live CRM card"
+    }
   ];
 }
 
@@ -6041,11 +6150,11 @@ function outreachDraftHtml(row) {
 function dripScheduleHtml(row) {
   const drips = scheduledDrips();
   return pageShellHtml("Drip Schedule", row?.leadName ?? "Lead file", `
-    <p class="muted">Scheduled automations are prepared only. No email, SMS, or CRM write is sent from this demo surface.</p>
+    <p class="muted">Scheduled automations are prepared only. No email, SMS, or CRM card is created from this demo surface.</p>
     <h2>Prepared cadences</h2>
     <table>
-      <tr><th>Sequence</th><th>Channel</th><th>Cadence</th><th>Status</th></tr>
-      ${drips.map((drip) => `<tr><td>${escapeHtml(drip.title)}</td><td>${escapeHtml(drip.channel)}</td><td>${escapeHtml(drip.cadence)}</td><td>${escapeHtml(drip.status)}</td></tr>`).join("")}
+      <tr><th>Sequence</th><th>Channel</th><th>Cadence</th><th>Status</th><th>Guardrail</th></tr>
+      ${drips.map((drip) => `<tr><td>${escapeHtml(drip.title)}</td><td>${escapeHtml(drip.channel)}</td><td>${escapeHtml(drip.cadence)}</td><td>${escapeHtml(drip.status)}</td><td>${escapeHtml(drip.guardrail)}</td></tr>`).join("")}
     </table>
     <h2>Stop rules</h2>
     <ul>
@@ -6106,7 +6215,7 @@ function renderDashboardView() {
           </div>
         </div>
         ${state.dashboardActivityTab === "drips" ? `
-          <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}</span></li>`).join("")}</ul>
+          <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}; ${escapeHtml(drip.nextRun)}</span></li>`).join("")}</ul>
         ` : `
           <ul class="tracker-list">${recent.map((event) => `<li class="tracker-item">${trackerIcon(event.tone === "blocked" ? "flag" : "check")}<span><strong>${escapeHtml(event.title)}</strong><span>${escapeHtml(event.copy)}</span></span><span class="tracker-date">${escapeHtml(eventTime(event.at))}</span></li>`).join("")}</ul>
         `}
@@ -6228,32 +6337,54 @@ function renderDripsView() {
   const target = document.getElementById("dripsView");
   if (!target) return;
   const drips = scheduledDrips();
+  const jobs = dripAutomationJobs();
+  const settings = state.dripSettings;
   target.innerHTML = `
     <div class="loop-grid">
       <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Scheduled Automations</p><h2 class="loop-title">Drips</h2></div><span class="pill review">Prep only</span></div>
-        <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}</span></li>`).join("")}</ul>
+        <div class="loop-panel-head"><div><p class="eyebrow">Scheduled Work</p><h2 class="loop-title">Drips</h2></div><span class="pill review">Prep only</span></div>
+        <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}; ${escapeHtml(drip.nextRun)}</span><span>${escapeHtml(drip.guardrail)}</span></li>`).join("")}</ul>
       </section>
       <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Review Route</p><h2 class="loop-title">OpenCodeGo automation prep</h2></div><span class="pill blocked">No live send</span></div>
-        <p class="copy">This stages the review-only route for scheduled follow-up work. Every sequence stays inside operator review until contact approval and CRM confirmation are clear.</p>
+        <div class="loop-panel-head"><div><p class="eyebrow">Scheduled Checks</p><h2 class="loop-title">OpenCodeGo route</h2></div><span class="pill blocked">No live send</span></div>
+        <p class="copy">These checks run as review preparation beside the dossier workflow. They prepare tasks and drafts for the operator; they do not contact heirs or create CRM records.</p>
         <ul class="mini-list">
-          <li><strong>Trigger</strong><span>Lead reaches completed Discovery Dossier.</span></li>
-          <li><strong>Action</strong><span>Prepare Podio task, email draft, SMS draft, and confirmation checklist.</span></li>
-          <li><strong>Stop</strong><span>No external send until compliance and contact approval clear.</span></li>
+          ${jobs.map((job) => `<li><strong>${escapeHtml(job.title)}</strong><span>${escapeHtml(job.schedule)}; ${escapeHtml(job.status)}. ${escapeHtml(job.action)} ${escapeHtml(job.stop)}.</span></li>`).join("")}
         </ul>
+        <button class="btn primary solvys-liquid-glass" type="button" data-drip-preview>Preview next check</button>
       </section>
       <section class="loop-panel full">
-        <div class="loop-panel-head"><div><p class="eyebrow">Preferences</p><h2 class="loop-title">Cadence controls</h2></div></div>
+        <div class="loop-panel-head"><div><p class="eyebrow">Preferences</p><h2 class="loop-title">Cadence controls</h2></div><span class="pill neutral">Local</span></div>
         <div class="settings-grid">
-          <div class="setting-card"><label><strong>Start delay</strong><span>After dossier approval</span></label><select><option>Same day after review</option><option>Next business morning</option></select></div>
-          <div class="setting-card"><label><strong>SMS cap</strong><span>Messages per heir per week</span></label><input type="range" min="1" max="4" value="2"></div>
-          <div class="setting-card"><label class="toggle-line"><strong>Require review owner</strong><input type="checkbox" checked></label><span>Every drip needs an operator owner before export.</span></div>
+          <div class="setting-card"><label for="dripStartDelay"><strong>Start delay</strong><span>After dossier approval</span></label><select id="dripStartDelay" data-drip-setting="startDelay"><option value="same-day">Same day after review</option><option value="next-business">Next business morning</option></select></div>
+          <div class="setting-card"><label for="dripSmsCap"><strong>SMS cap</strong><span><span data-drip-sms-value>${escapeHtml(settings.smsCap)}</span> messages per heir per week</span></label><input id="dripSmsCap" data-drip-setting="smsCap" type="range" min="1" max="4" value="${escapeHtml(settings.smsCap)}"></div>
+          <div class="setting-card"><label class="toggle-line"><strong>Require review owner</strong><input id="dripReviewOwnerRequired" data-drip-setting="reviewOwnerRequired" type="checkbox" ${settings.reviewOwnerRequired ? "checked" : ""}></label><span>Every drip needs an operator owner before export.</span></div>
+          <div class="setting-card"><label class="toggle-line"><strong>Require court packet</strong><input id="dripRequireCourtPacket" data-drip-setting="requireCourtPacket" type="checkbox" ${settings.requireCourtPacket ? "checked" : ""}></label><span>Probate request drafts wait for docket status and page-count review.</span></div>
+          <div class="setting-card"><label class="toggle-line"><strong>Hold no-contact leads</strong><input id="dripHoldNoContact" data-drip-setting="holdNoContact" type="checkbox" ${settings.holdNoContact ? "checked" : ""}></label><span>No-contact, company-owned, source-blocked, and recent-sale leads stay out of drips.</span></div>
+          <div class="setting-card"><label for="dripOperatorNote"><strong>Operator note</strong><span>Saved with the scheduled-work prep controls</span></label><textarea id="dripOperatorNote" class="discovery-notes" data-drip-setting="operatorNote" rows="3" placeholder="Example: keep SMS paused until the court packet is reviewed.">${escapeHtml(settings.operatorNote)}</textarea></div>
         </div>
       </section>
     </div>
   `;
+  const startDelay = target.querySelector("#dripStartDelay");
+  if (startDelay) startDelay.value = settings.startDelay;
   enhanceSelectMenus(target);
+  target.querySelectorAll("[data-drip-setting]").forEach((control) => {
+    const update = () => {
+      const key = control.dataset.dripSetting;
+      if (!key) return;
+      state.dripSettings[key] = control.type === "checkbox" ? control.checked : control.value;
+      const smsValue = target.querySelector("[data-drip-sms-value]");
+      if (smsValue) smsValue.textContent = state.dripSettings.smsCap;
+      persistDripSettings();
+    };
+    control.addEventListener(control.type === "range" || control.tagName === "TEXTAREA" ? "input" : "change", update);
+    control.addEventListener("change", () => persistDripSettings("Drip controls saved"));
+  });
+  target.querySelector("[data-drip-preview]")?.addEventListener("click", () => {
+    const nextJob = dripAutomationJobs()[0];
+    addShellEvent("Scheduled check previewed", `${nextJob.title} will prepare dossier review tasks through the OpenCodeGo route. No send or CRM card is unlocked.`, "review", true);
+  });
 }
 
 function renderQueueView() {
@@ -6283,7 +6414,7 @@ function renderQueueView() {
     </div>
   `;
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
-    addShellEvent("Batch staged", "Selected dossier packets were staged for batch export prep. Live CRM write remains locked.", "review", true);
+    addShellEvent("Batch staged", "Selected dossier packets were staged for batch export prep. Live CRM card creation remains locked.", "review", true);
   });
 }
 
@@ -6293,7 +6424,7 @@ function renderAdminLoopView() {
   target.innerHTML = `
     <div class="loop-grid three">
       <section class="loop-panel"><p class="eyebrow">Admin</p><h2 class="loop-title">Workspace readiness</h2><ul class="mini-list"><li><strong>Podio</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Podio"), "Podio"))}</span></li><li><strong>Google</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Google"), "Google"))}</span></li><li><strong>Web Search</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Web Search"), "Web Search"))}</span></li></ul></section>
-      <section class="loop-panel"><p class="eyebrow">Automation</p><h2 class="loop-title">Scheduled work prep</h2><p class="copy">OpenCodeGo is staged as the current review route for scheduled dossier checks and drip preparation. A Hermes-based route can replace it after approval.</p><ul class="mini-list"><li><strong>Mode</strong><span>Review-only</span></li><li><strong>Runs</strong><span>Scheduled drip preparation and dossier packet checks</span></li><li><strong>Stop</strong><span>No live outreach or CRM writes</span></li></ul></section>
+      <section class="loop-panel"><p class="eyebrow">Automation</p><h2 class="loop-title">Scheduled work prep</h2><p class="copy">OpenCodeGo is staged as the current review route for scheduled dossier checks and drip preparation. A Hermes-based route can replace it after approval.</p><ul class="mini-list"><li><strong>Mode</strong><span>Review-only</span></li><li><strong>Runs</strong><span>Scheduled drip preparation and dossier packet checks</span></li><li><strong>Stop</strong><span>No live outreach or CRM card creation</span></li></ul></section>
       <section class="loop-panel"><p class="eyebrow">Analytics</p><h2 class="loop-title">Operator trail</h2><div class="admin-grid"><div class="admin-metric"><span>Commands</span><strong>${escapeHtml(state.shellCommandCount)}</strong></div><div class="admin-metric"><span>Blockers</span><strong>${escapeHtml(milestoneBlockers(state.dossier).length)}</strong></div><div class="admin-metric"><span>Events</span><strong>${escapeHtml(state.shellEvents.length)}</strong></div></div></section>
     </div>
   `;
@@ -7668,7 +7799,7 @@ async function chooseExportRoute(route, source = null) {
     title: meta.title,
     markdown: isControlledTest
       ? `${meta.copy} This uses a generated test lead, not the loaded lead packet.`
-      : `${meta.copy} Preparing a review-only handoff package now. No live CRM write will be attempted from this demo surface.`,
+      : `${meta.copy} Preparing a review-only handoff package now. No live CRM card will be created from this demo surface.`,
     updatedAt: Date.now()
   };
   openRailWithContinuity(source, "docs");
@@ -7698,7 +7829,7 @@ async function chooseExportRoute(route, source = null) {
     document.getElementById("topStatus").textContent = testDelivered
       ? "Podio test contact card delivered and readback confirmed."
       : result.ok
-        ? `${meta.label} handoff prepared for review. Live readback still needs approval before any CRM write.`
+        ? `${meta.label} handoff prepared for review. Live readback still needs approval before any CRM card is created.`
         : blockers.length
           ? `${meta.label} handoff has ${blockers.length} blocker${blockers.length === 1 ? "" : "s"}.`
           : `${meta.label} handoff is blocked.`;
