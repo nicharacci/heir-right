@@ -764,7 +764,9 @@
     }
 
     body[data-theme="dark"] tbody tr:hover td { background: rgba(58,58,60,.24); }
-    body[data-theme="dark"] tbody tr.is-selected td {
+    body[data-theme="dark"] tbody tr.is-selected td,
+    body[data-theme="dark"] tbody tr.is-current td,
+    body[data-theme="dark"] tbody tr.is-batch-selected td {
       background: rgba(99,99,102,.20);
       border-color: transparent;
     }
@@ -774,7 +776,8 @@
       border-color: var(--line-strong);
     }
 
-    body[data-theme="dark"] tr.is-selected .select-box {
+    body[data-theme="dark"] tr.is-selected .select-box,
+    body[data-theme="dark"] .select-box.is-checked {
       color: #1c1c1e;
       background: #f5f5f7;
       border-color: #f5f5f7;
@@ -1142,6 +1145,10 @@
 
     .export-toggle svg:last-child {
       transition: transform .18s var(--ease);
+    }
+
+    .export-toggle-label {
+      white-space: nowrap;
     }
 
     .export-menu[data-open="true"] .export-toggle svg:last-child {
@@ -1909,14 +1916,25 @@
 
     .dossier-table {
       width: 100%;
+      min-width: 0;
       border-collapse: collapse;
+      table-layout: fixed;
     }
+
+    .dossier-table .col-check { width: 42px; }
+    .dossier-table .col-lead { width: 25%; }
+    .dossier-table .col-address { width: 30%; }
+    .dossier-table .col-score { width: 70px; }
+    .dossier-table .col-classification { width: 112px; }
+    .dossier-table .col-next { width: 112px; }
 
     .dossier-table tr {
       cursor: pointer;
     }
 
-    .dossier-table tr.is-selected {
+    .dossier-table tr.is-selected,
+    .dossier-table tr.is-current,
+    .dossier-table tr.is-batch-selected {
       background: var(--ios-fill);
     }
 
@@ -1927,6 +1945,15 @@
       text-align: left;
       vertical-align: top;
       font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dossier-table .primary-text,
+    .dossier-table .secondary-text,
+    .dossier-table .next-link {
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .dossier-doc-grid {
@@ -2269,12 +2296,15 @@
       border-color: transparent;
     }
 
-    tbody tr.is-selected td {
+    tbody tr.is-selected td,
+    tbody tr.is-current td,
+    tbody tr.is-batch-selected td {
       background: rgba(118,118,128,.12);
       border-color: transparent;
     }
 
     .select-box {
+      position: relative;
       width: 18px;
       height: 18px;
       display: inline-grid;
@@ -2286,11 +2316,37 @@
       font-size: 11px;
       font-weight: 800;
       line-height: 1;
+      cursor: pointer;
+      user-select: none;
     }
 
-    tr.is-selected .select-box {
+    .select-box input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .select-checkmark {
+      position: relative;
+      z-index: 1;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    tr.is-selected .select-box,
+    .select-box.is-checked,
+    .select-box.is-mixed {
       border-color: var(--accent);
       background: var(--accent);
+    }
+
+    .select-box.is-checked .select-checkmark,
+    .select-box.is-mixed .select-checkmark {
+      opacity: 1;
     }
 
     .primary-text {
@@ -3917,8 +3973,7 @@
     .tracker-item + .tracker-item::before,
     .dossier-doc + .dossier-doc::before,
     .drip-item + .drip-item::before,
-    .queue-item + .queue-item::before,
-    .dossier-table tr + tr::before {
+    .queue-item + .queue-item::before {
       content: "";
       position: absolute;
       left: 8px;
@@ -4095,12 +4150,20 @@
     }
 
     tbody tr.is-selected td,
+    tbody tr.is-current td,
+    tbody tr.is-batch-selected td,
     body[data-theme="dark"] tbody tr.is-selected td,
-    .dossier-table tr.is-selected {
+    body[data-theme="dark"] tbody tr.is-current td,
+    body[data-theme="dark"] tbody tr.is-batch-selected td,
+    .dossier-table tr.is-selected,
+    .dossier-table tr.is-current,
+    .dossier-table tr.is-batch-selected {
       background: rgba(255,255,255,.065);
     }
 
     tr.is-selected .select-box,
+    .select-box.is-checked,
+    .select-box.is-mixed,
     body[data-theme="dark"] tr.is-selected .select-box {
       color: var(--text);
       background: rgba(255,255,255,.10);
@@ -4495,10 +4558,14 @@
         <div id="exportMenu" class="export-menu" data-open="false">
           <button id="exportToggle" class="btn primary export-toggle solvys-liquid-glass" type="button" aria-haspopup="menu" aria-expanded="false">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v11m0-11 4 4m-4-4-4 4M6 11v8h12v-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Prep export
+            <span id="exportToggleLabel" class="export-toggle-label">Prep export</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div id="exportPopover" class="export-popover solvys-liquid-glass-strong t-dropdown" data-origin="top-right" role="menu" aria-label="Choose handoff route">
+            <button class="export-option" type="button" role="menuitem" data-export-route="queue">
+              <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h8M8 14h5M17 14l2 2 3-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <span><strong>Add to Queue</strong><span>Stage selected leads for one batch export review.</span></span>
+            </button>
             <button class="export-option" type="button" role="menuitem" data-export-route="google">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Z" stroke="currentColor" stroke-width="1.7"/><path d="m5 8 7 5 7-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
               <span><strong>Google Workspace</strong><span>Prepare the completed report package for Docs or Sheets review.</span></span>
@@ -4693,7 +4760,7 @@
               <table>
                 <thead>
                   <tr>
-                    <th style="width: 42px;"><span class="select-box" aria-hidden="true"></span></th>
+                    <th style="width: 42px;"><span id="resultsSelectAllMount"></span></th>
                     <th>Last Name, First Initial</th>
                     <th data-column="address">Property address</th>
                     <th data-column="score">Score</th>
@@ -4927,6 +4994,8 @@ const state = {
   rows: [],
   filteredRows: [],
   selectedId: null,
+  selectedIds: new Set(),
+  queueIds: new Set(),
   railOpen: false,
   railMode: "report",
   detailRailOpen: true,
@@ -5484,6 +5553,131 @@ function buildRows(data, dossier) {
 
 function selectedRow() {
   return state.rows.find((row) => row.id === state.selectedId) ?? state.rows[0] ?? null;
+}
+
+function rowById(id) {
+  return state.rows.find((row) => row.id === id) ?? null;
+}
+
+function pruneBatchSets() {
+  const valid = new Set(state.rows.map((row) => row.id));
+  [...state.selectedIds].forEach((id) => {
+    if (!valid.has(id)) state.selectedIds.delete(id);
+  });
+  [...state.queueIds].forEach((id) => {
+    if (!valid.has(id)) state.queueIds.delete(id);
+  });
+}
+
+function checkedRows() {
+  pruneBatchSets();
+  return state.rows.filter((row) => state.selectedIds.has(row.id));
+}
+
+function queuedRows() {
+  pruneBatchSets();
+  return state.rows.filter((row) => state.queueIds.has(row.id));
+}
+
+function rowsForBatchAction() {
+  const checked = checkedRows();
+  if (checked.length) return checked;
+  const row = selectedRow();
+  return row ? [row] : [];
+}
+
+function checkboxHtml(id, label, checked = false, attrs = "") {
+  const mark = checked ? "✓" : "";
+  return `<label class="select-box ${checked ? "is-checked" : ""}" aria-label="${escapeHtml(label)}"><input type="checkbox" ${attrs} ${checked ? "checked" : ""}><span class="select-checkmark" aria-hidden="true">${mark}</span></label>`;
+}
+
+function selectAllCheckboxHtml(rows, scope = "results") {
+  const ids = rows.map((row) => row.id);
+  const checkedCount = ids.filter((id) => state.selectedIds.has(id)).length;
+  const allChecked = ids.length > 0 && checkedCount === ids.length;
+  const partial = checkedCount > 0 && !allChecked;
+  const mark = allChecked ? "✓" : partial ? "–" : "";
+  return `<label class="select-box ${allChecked ? "is-checked" : ""} ${partial ? "is-mixed" : ""}" aria-label="Select all visible leads"><input type="checkbox" data-select-visible="${escapeHtml(scope)}" ${allChecked ? "checked" : ""}><span class="select-checkmark" aria-hidden="true">${mark}</span></label>`;
+}
+
+function checkedLeadSummary() {
+  const count = checkedRows().length;
+  return `${count} selected`;
+}
+
+function syncBatchExportControls() {
+  const count = checkedRows().length;
+  const label = document.getElementById("exportToggleLabel");
+  const menu = document.getElementById("exportMenu");
+  if (label) label.textContent = count ? `Batch export (${count})` : "Prep export";
+  if (menu) menu.dataset.mode = count ? "batch" : "single";
+}
+
+function syncSelectionLabels() {
+  const selection = document.getElementById("selectionState");
+  if (selection) selection.textContent = checkedLeadSummary();
+  syncBatchExportControls();
+}
+
+function setLeadChecked(id, checked) {
+  if (!rowById(id)) return;
+  if (checked) state.selectedIds.add(id);
+  else state.selectedIds.delete(id);
+  syncSelectionLabels();
+}
+
+function setVisibleLeadChecked(rows, checked) {
+  rows.forEach((row) => {
+    if (checked) state.selectedIds.add(row.id);
+    else state.selectedIds.delete(row.id);
+  });
+  syncSelectionLabels();
+}
+
+function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
+  const validRows = rows.filter(Boolean);
+  if (!validRows.length) {
+    document.getElementById("topStatus").textContent = "Select at least one lead before adding to the batch queue.";
+    return;
+  }
+  validRows.forEach((row) => state.queueIds.add(row.id));
+  const count = validRows.length;
+  state.railPreview = {
+    title: `${count} lead${count === 1 ? "" : "s"} added to Queue`,
+    markdown: "The selected dossier packets are staged for batch export review. No live Podio card, Google Doc, Google Sheet row, email, or SMS was created.",
+    updatedAt: Date.now()
+  };
+  document.getElementById("statusExport").textContent = `handoff: [${count} QUEUED]`;
+  document.getElementById("topStatus").textContent = `${count} lead${count === 1 ? "" : "s"} added to Queue for batch export review.`;
+  addShellEvent("Leads added to Queue", `${count} dossier packet${count === 1 ? "" : "s"} staged for batch export review. Live writes remain locked.`, "review", true);
+  renderCurrentLoopView();
+  renderShellPanels();
+  renderRail();
+  if (source) source.blur?.();
+}
+
+function wireBatchSelection(root, rowSelector, scope = "results") {
+  root.querySelectorAll("[data-row-select]").forEach((input) => {
+    input.addEventListener("click", (event) => event.stopPropagation());
+    input.addEventListener("change", (event) => {
+      event.stopPropagation();
+      setLeadChecked(input.dataset.rowSelect, input.checked);
+      renderCurrentLoopView();
+      if (state.activeView === "find-estates") renderResults();
+    });
+  });
+  root.querySelectorAll(`[data-select-visible="${scope}"]`).forEach((input) => {
+    input.addEventListener("click", (event) => event.stopPropagation());
+    input.addEventListener("change", (event) => {
+      event.stopPropagation();
+      const rows = [...root.querySelectorAll(rowSelector)]
+        .map((rowEl) => rowById(rowEl.dataset.rowId || rowEl.dataset.dossierRow))
+        .filter(Boolean);
+      setVisibleLeadChecked(rows, input.checked);
+      renderCurrentLoopView();
+      if (state.activeView === "find-estates") renderResults();
+    });
+  });
 }
 
 function dossierForRow(row = selectedRow()) {
@@ -6098,15 +6292,15 @@ function dripAutomationJobs() {
 }
 
 function queueItems() {
-  const rows = state.rows.length ? state.rows : [];
-  const selected = selectedRow();
-  const sourceRows = rows.length ? rows : selected ? [selected] : [];
+  const queued = queuedRows();
+  const checked = checkedRows();
+  const sourceRows = queued.length ? queued : checked;
   return sourceRows.map((row, index) => ({
     id: row.id,
     title: row.leadName || row.title,
     copy: `${row.address || "Address needs review"} - ${row.next || "Review next action"}`,
     route: index % 2 === 0 ? "Podio batch prep" : "Google + Podio prep",
-    status: row.tone === "ready" ? "Ready for review" : row.tone === "blocked" ? "Blocked" : "Needs source notes"
+    status: queued.length ? "Queued for batch" : row.tone === "ready" ? "Ready for review" : row.tone === "blocked" ? "Blocked" : "Selected, not queued"
   }));
 }
 
@@ -6210,7 +6404,17 @@ function queueReadinessItems() {
   const missing = row?.missing ?? buildMissingSections(dossier ?? {});
   const blockers = exportBlockerItems();
   const reviewTasks = taskCount(dossier);
+  const queuedCount = queuedRows().length;
+  const selectedCount = checkedRows().length;
   return [
+    {
+      title: "Batch selection",
+      copy: queuedCount
+        ? `${queuedCount} lead${queuedCount === 1 ? "" : "s"} are in the Queue for batch export prep.`
+        : selectedCount
+          ? `${selectedCount} selected lead${selectedCount === 1 ? "" : "s"} can be added to Queue before export prep.`
+          : "No leads are queued yet. Select leads from Estate Search or Dossiers, then choose Add to Queue."
+    },
     {
       title: "Dossier documents",
       copy: `${docs.length} document${docs.length === 1 ? "" : "s"} are staged from the Dossier rail for batch review.`
@@ -6742,11 +6946,24 @@ function renderDossiersView() {
         </div>
         <div class="dossier-list-scroll">
           <table class="dossier-table">
-            <thead><tr><th style="width: 42px;"></th><th>Last Name, First Initial</th><th>Property address</th><th>Score</th><th>Classification</th><th>Next step</th></tr></thead>
+            <colgroup>
+              <col class="col-check">
+              <col class="col-lead">
+              <col class="col-address">
+              <col class="col-score">
+              <col class="col-classification">
+              <col class="col-next">
+            </colgroup>
+            <thead><tr><th>${selectAllCheckboxHtml(rows, "dossiers")}</th><th>Last Name, First Initial</th><th>Property address</th><th>Score</th><th>Classification</th><th>Next step</th></tr></thead>
             <tbody>
               ${rows.map((item) => {
                 const address = addressDisplayParts(item.address, item.county);
-                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${item.id === state.selectedId ? "is-selected" : ""}"><td><span class="select-box">${item.id === state.selectedId ? "✓" : ""}</span></td><td><span class="primary-text">${escapeHtml(item.leadName)}</span></td><td><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td><td><span class="score ${escapeHtml(item.tone)}">${escapeHtml(item.score)}</span></td><td><span class="classification">${escapeHtml(evidenceClassification(item.evidence))}</span></td><td>${escapeHtml(item.next)}</td></tr>`;
+                const checked = state.selectedIds.has(item.id);
+                const classes = [
+                  item.id === state.selectedId ? "is-current" : "",
+                  checked ? "is-batch-selected" : ""
+                ].filter(Boolean).join(" ");
+                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${classes}"><td>${checkboxHtml(item.id, `Select ${item.leadName} for batch export`, checked, `data-row-select="${escapeHtml(item.id)}"`)}</td><td><span class="primary-text">${escapeHtml(item.leadName)}</span></td><td><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td><td><span class="score ${escapeHtml(item.tone)}">${escapeHtml(item.score)}</span></td><td><span class="classification">${escapeHtml(evidenceClassification(item.evidence))}</span></td><td><span class="next-link">${escapeHtml(item.next)}</span></td></tr>`;
               }).join("") || `<tr><td colspan="6"><span class="primary-text">No dossier loaded.</span><span class="secondary-text">Load latest or pull a fresh public-record batch.</span></td></tr>`}
             </tbody>
           </table>
@@ -6766,6 +6983,7 @@ function renderDossiersView() {
       updateFooterLeadContext(selectedRow());
     });
   });
+  wireBatchSelection(target, "[data-dossier-row]", "dossiers");
   if (state.activeView === "dossiers") {
     state.railMode = "dossier";
     renderRail();
@@ -6894,7 +7112,7 @@ function renderQueueView() {
   target.innerHTML = `
     <div class="loop-grid">
       <section class="loop-panel full">
-        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch handoff prep</h2></div><button class="btn primary" type="button" data-queue-stage>Stage batch</button></div>
+        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch handoff prep</h2></div><button class="btn primary" type="button" data-queue-stage ${items.length ? "" : "disabled"}>Stage batch</button></div>
         <p class="copy">Use this queue after dossier review to stage the documents, CRM fields, and spreadsheet row as one batch. Nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
         <ul class="queue-list">
           ${items.map((item, index) => `<li class="queue-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Estate Search and select leads before staging a batch.</span></li>`}
@@ -6917,15 +7135,23 @@ function renderQueueView() {
     </div>
   `;
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
+    const actionRows = queuedRows().length ? queuedRows() : checkedRows();
+    if (!actionRows.length) {
+      document.getElementById("topStatus").textContent = "Select leads before staging a batch export package.";
+      return;
+    }
+    actionRows.forEach((row) => state.queueIds.add(row.id));
+    const count = actionRows.length;
     state.railPreview = {
-      title: "Batch handoff package prepared",
+      title: `${count} lead${count === 1 ? "" : "s"} staged for batch handoff`,
       markdown: "Dossier packets, Podio fields and tasks, Google Docs body, and Google Sheets row are staged for operator review. No live write was attempted.",
       updatedAt: Date.now()
     };
-    document.getElementById("statusExport").textContent = "handoff: [BATCH PREPARED]";
-    document.getElementById("topStatus").textContent = "Batch handoff package prepared for operator review. Live writes remain locked.";
-    addShellEvent("Batch handoff package prepared", "Dossier packets are ready for operator review. Live Podio, Google Docs, Google Sheets, email, and SMS actions remain locked until approval and readback proof.", "review", true);
+    document.getElementById("statusExport").textContent = `handoff: [${count} BATCH PREPARED]`;
+    document.getElementById("topStatus").textContent = `${count} lead${count === 1 ? "" : "s"} staged for batch export review. Live writes remain locked.`;
+    addShellEvent("Batch handoff package prepared", `${count} dossier packet${count === 1 ? " is" : "s are"} ready for operator review. Live Podio, Google Docs, Google Sheets, email, and SMS actions remain locked until approval and readback proof.`, "review", true);
     renderShellPanels();
+    renderQueueView();
   });
 }
 
@@ -7478,7 +7704,9 @@ function applyFilters() {
 function renderResults() {
   const rows = state.filteredRows;
   document.getElementById("resultsCount").innerHTML = `<strong>${rows.length}</strong> result${rows.length === 1 ? "" : "s"}`;
-  document.getElementById("selectionState").textContent = state.selectedId ? "1 selected" : "0 selected";
+  const selectAllMount = document.getElementById("resultsSelectAllMount");
+  if (selectAllMount) selectAllMount.innerHTML = selectAllCheckboxHtml(rows, "results");
+  syncSelectionLabels();
   const body = document.getElementById("resultsBody");
   if (!rows.length) {
     body.innerHTML = `<tr><td colspan="6"><span class="primary-text">No estate files match these filters.</span><span class="secondary-text">Try showing all missing info or lowering minimum evidence.</span></td></tr>`;
@@ -7486,9 +7714,14 @@ function renderResults() {
   }
   body.innerHTML = rows.map((row) => {
     const addressParts = addressDisplayParts(row.address, row.county);
+    const checked = state.selectedIds.has(row.id);
+    const classes = [
+      row.id === state.selectedId ? "is-current" : "",
+      checked ? "is-batch-selected" : ""
+    ].filter(Boolean).join(" ");
     return `
-      <tr data-row-id="${escapeHtml(row.id)}" class="${row.id === state.selectedId ? "is-selected" : ""}">
-        <td><span class="select-box">${row.id === state.selectedId ? "✓" : ""}</span></td>
+      <tr data-row-id="${escapeHtml(row.id)}" class="${classes}">
+        <td>${checkboxHtml(row.id, `Select ${row.leadName} for batch export`, checked, `data-row-select="${escapeHtml(row.id)}"`)}</td>
         <td>
           <span class="primary-text">${escapeHtml(row.leadName)}</span>
         </td>
@@ -7523,6 +7756,7 @@ function renderResults() {
       openRailPreview(row?.missing[0]?.id ?? "tax", button);
     });
   });
+  wireBatchSelection(document, "[data-row-id]", "results");
   applyColumnVisibility();
 }
 
@@ -7845,6 +8079,7 @@ function renderAll() {
   renderSummary();
   applyFilters();
   renderCurrentLoopView();
+  syncBatchExportControls();
 }
 
 function connectionVisibleState(tone, status) {
@@ -7962,6 +8197,7 @@ function renderLoadedState(data, dossier) {
   state.data = data;
   state.dossier = dossier;
   state.rows = buildRows(data, dossier);
+  pruneBatchSets();
   state.selectedId = state.selectedId ?? state.rows[0]?.id ?? null;
   document.getElementById("topStatus").textContent = `${data.facts?.length ?? 0} evidence items loaded from the latest lead review.`;
   updateFooterLeadContext(selectedRow());
@@ -8037,6 +8273,8 @@ async function loadRun() {
     state.rows = [];
     state.filteredRows = [];
     state.selectedId = null;
+    state.selectedIds.clear();
+    state.queueIds.clear();
     document.getElementById("topStatus").textContent = error.message;
     document.getElementById("resultsBody").innerHTML = `<tr><td colspan="6"><span class="primary-text">No lead packet loaded.</span><span class="secondary-text">${escapeHtml(error.message)}</span></td></tr>`;
     updateFooterLeadContext(null);
@@ -8347,8 +8585,14 @@ function deliveredPodioTest(result) {
 }
 
 async function chooseExportRoute(route, source = null) {
-  const meta = exportRouteMeta(route);
   setExportMenuOpen(false);
+  if (route === "queue") {
+    state.exportRoute = "queue";
+    addRowsToQueue(rowsForBatchAction(), source);
+    syncBatchExportControls();
+    return;
+  }
+  const meta = exportRouteMeta(route);
   if (!state.dossier) {
     document.getElementById("topStatus").textContent = "Load the latest lead packet before choosing a handoff route.";
     document.getElementById("statusExport").textContent = "handoff: [WAITING]";
@@ -8357,18 +8601,26 @@ async function chooseExportRoute(route, source = null) {
   state.exportRoute = route;
   state.exportResult = null;
   const isControlledTest = Boolean(meta.controlledTest);
+  const batchRows = rowsForBatchAction();
+  const checkedCount = checkedRows().length;
+  const isBatch = checkedCount > 0 && !isControlledTest;
+  const batchCopy = isBatch
+    ? ` Preparing a ${checkedCount}-lead batch handoff package now. No live CRM card, Google Doc, Google Sheet row, email, or SMS will be created from this demo surface.`
+    : " Preparing a review-only handoff package now. No live CRM card will be created from this demo surface.";
   state.railPreview = {
-    title: meta.title,
+    title: isBatch ? `${meta.title} Batch` : meta.title,
     markdown: isControlledTest
       ? `${meta.copy} This uses an approved sample lead, not the loaded lead packet.`
-      : `${meta.copy} Preparing a review-only handoff package now. No live CRM card will be created from this demo surface.`,
+      : `${meta.copy}${batchCopy}`,
     updatedAt: Date.now()
   };
   openReportRailForHandoff(source, "docs");
   document.getElementById("statusExport").textContent = meta.status;
   document.getElementById("topStatus").textContent = isControlledTest
     ? "Checking Podio with an approved sample Lead card..."
-    : `Preparing completed report handoff for ${meta.label}...`;
+    : isBatch
+      ? `Preparing ${checkedCount} selected leads for ${meta.label} batch export review...`
+      : `Preparing completed report handoff for ${meta.label}...`;
   try {
     const response = await fetch("/api/exports", {
       method: "POST",
@@ -8377,6 +8629,8 @@ async function chooseExportRoute(route, source = null) {
         routes: routesForExport(route),
         dryRun: meta.dryRun === false ? false : true,
         controlledTest: isControlledTest,
+        batch: isBatch,
+        leadIds: batchRows.map((row) => row.id),
       }),
     });
     const result = await response.json();
@@ -8410,7 +8664,9 @@ async function chooseExportRoute(route, source = null) {
     document.getElementById("topStatus").textContent = testDelivered
       ? "Podio sample card delivered and readback confirmed."
       : result.ok
-        ? `${meta.label} handoff prepared for review. Live write and readback still need approval before any external record is created.`
+        ? isBatch
+          ? `${checkedCount} selected leads prepared for ${meta.label} batch export review. Live writes and readback still need approval before any external record is created.`
+          : `${meta.label} handoff prepared for review. Live write and readback still need approval before any external record is created.`
         : blockers.length
           ? `${meta.label} handoff has ${blockers.length} blocker${blockers.length === 1 ? "" : "s"}.`
           : `${meta.label} handoff is blocked.`;
@@ -8603,7 +8859,7 @@ function wireEvents() {
     const clickedInsideRail = clickPath.some((item) => item?.id === "researchRail");
     closeAllEnhancedSelects(event.target.closest?.(".select-enhanced"));
     const rail = document.getElementById("researchRail");
-    const railOpener = event.target.closest?.('[data-shell-nav], [data-shell-nav-shortcut], #rightRailToggle, #exportMenu, #exportToggle, [data-export-route], [data-row-id], [data-open-next], [data-chip], [data-rail-chip], [data-dossier-row], [data-dossier-doc]');
+    const railOpener = event.target.closest?.('[data-shell-nav], [data-shell-nav-shortcut], #rightRailToggle, #exportMenu, #exportToggle, [data-export-route], [data-row-id], [data-open-next], [data-chip], [data-rail-chip], [data-dossier-row], [data-dossier-doc], .select-box, [data-row-select], [data-select-visible]');
     if (state.railOpen && rail && !clickedInsideRail && !rail.contains(event.target) && !railOpener) {
       setRailOpen(false);
     }

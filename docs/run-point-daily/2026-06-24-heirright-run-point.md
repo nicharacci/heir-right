@@ -323,6 +323,35 @@ Required corrections before complete:
     - Production deployment `dpl_DBtm2JqEFPiPzcKrjaB6RpcQea2b` is aliased to `https://heirright-landing-demo.vercel.app`.
     - Live alias proof confirmed `/health` 200, Dashboard subtab animation/copy, Dossier `data-mode="dossier"` rail open with 10 docs and no main-view reader, Completed Lead Report North Star sections, row switching, pop-out rendering, normal Report rail isolation in Find Estates, no console/page errors, and no failed responses.
 
+## /solvys-heir-audit Dossier Batch Selection And Table Alignment Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local rebuilt browser proof, and current Dossier/Queue product loop.
+
+Backward: This pass supports S7/S9 by fixing the Dossiers list row shift, adding real checkbox-based lead selection, and turning the top export control into batch export mode when leads are selected. The dropdown now starts with `Add to Queue`, and the Queue tab displays queued leads instead of pretending every lead is already queued.
+
+UX pass: aligned with gaps. Root cause was a generated `::before` divider on `.dossier-table tr + tr`, which the browser treated like an extra table cell and shifted every row after the first. The Dossier table now uses fixed columns with no phantom table-cell divider. Current/open row state is separate from checked batch state, so checkboxes only look checked when the user actually selects leads.
+
+Forward: Deploy the batch-selection pass, rerun live alias proof, then keep Podio/Google/email/SMS writes locked until approved access and readback proof exist.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until approved access, approval, and confirmation readback exist.
+
+Dossier batch-selection cleanup:
+- Added checked-lead and queued-lead state so row selection no longer doubles as batch selection.
+- Added real checkbox controls for visible-row select-all and per-row selection in Find Estates and Dossiers.
+- Replaced the top `Prep export` label with `Batch export (N)` whenever leads are checked.
+- Added `Add to Queue` as the first export dropdown option.
+- Queue now lists queued leads, enables `Stage batch` only when there is something to stage, and keeps live writes locked.
+- Local proof:
+  - `pnpm build` passed from `probate-lead-engine/apps/artifact`.
+  - `git diff --check` passed.
+  - In-app Browser geometry proof after rebuild confirmed all six Dossier table columns had stable left positions across all rows and no console/page errors. Browser-control later reset during checkbox interaction, so the interaction proof used the bundled Playwright runtime against the same local server.
+  - Bundled Playwright proof at 1433x994 selected all three Dossier rows, confirmed `Batch export (3)`, confirmed `Add to Queue` was the first dropdown option, added three leads to Queue, staged the batch, found no console/page errors, and saved `/tmp/heirright-batch-queue-qa.png`.
+  - Production deployment `dpl_Fksg8nsd38LBZ91ijzwnrNYvvm3R` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias proof at 1433x994 selected all three Dossier rows, confirmed all Dossier table columns stayed aligned, confirmed the current/open row checkbox did not appear checked before batch selection, confirmed `Batch export (3)`, confirmed `Add to Queue` was the first dropdown option, added three leads to Queue, staged the batch, found no console/page errors, found no failed responses, and saved `/tmp/heirright-live-batch-queue-qa-final.png`.
+
 ## /solvys-heir-audit North Star Dossier Rail Follow-up
 
 Source checked: HeirRight deal-flow checklist, current artifact source, local browser proof, live Vercel alias proof, client-provided Deborah Cheatham PDF, and client-provided Constance E. White PDF.
