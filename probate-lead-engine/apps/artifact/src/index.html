@@ -5627,7 +5627,7 @@ function exportSuccessActivityTitle() {
 
 function exportSuccessActivityCopy(destination = "your integrated CRM") {
   const target = String(destination || "handoff queue").trim();
-  return `The completed report package is prepared for ${target} review. No live Podio card, Google Doc, Google Sheet row, email, or SMS is created until approval and readback proof clear.`;
+  return `The completed report package is prepared for ${target} review. No live Podio card, Google Doc, Google Sheet row, email, or SMS is created until approval and readback proof are complete.`;
 }
 
 function signalWeightLabel(value) {
@@ -6337,7 +6337,7 @@ function completedLeadReportHtml(row, dossier) {
   const reviewGate = report?.reviewGate ?? {};
   return pageShellHtml("Completed Lead Report", row?.leadName ?? dossier?.summary?.estateName ?? "Lead file", `
     <p class="muted">Prepared from the live public-record lead packet. North Star anchors: Deborah Cheatham complex family-tree packet and Constance E. White simpler family-tree packet.</p>
-    <div class="notice"><strong>Internal draft.</strong> External outreach, offers, Podio writes, Google Docs exports, and Google Sheets updates remain blocked until operator approval and readback proof clear.</div>
+    <div class="notice"><strong>Internal draft.</strong> External outreach, offers, Podio writes, Google Docs exports, and Google Sheets updates remain blocked until operator approval and readback proof are complete.</div>
     <div class="facts">
       <div class="fact"><span>Date added</span><strong>${escapeHtml(formatPacketDate(dossier?.generatedAt ?? report?.generatedAt))}</strong></div>
       <div class="fact"><span>Report status</span><strong>${escapeHtml(displayStatus(reviewGate.reportStatus, "Review"))}</strong></div>

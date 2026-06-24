@@ -350,12 +350,13 @@ Required corrections before complete:
     - Chrome proof on `http://localhost:4173` confirmed Dashboard has no old export-success wording, Queue shows batch handoff prep and all three destinations, Queue stage sets `handoff: [BATCH PREPARED]` without opening a rail, Dossiers remains `data-mode="dossier"` before/after Google prep, Find Estates opens the normal Report rail in `report` mode, and no old export-success phrases remain.
     - Browser proof reported no console/page errors and no failed responses.
     - API proof on `POST /api/exports` with Google + Podio dry-run returned `ok: true` with `dry_run` routes and explicit live Google/Podio readback/setup blockers.
-  - Production deployment `dpl_JAtwgviuj7xUKxyhzF7pcYT9pipt` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Production deployment `dpl_G1DwGRFYBkUshXSbAEmWzvNmsMK6` is aliased to `https://heirright-landing-demo.vercel.app`.
   - Live alias proof:
     - `/health` returned 200 with auth disabled for the demo.
     - `POST /api/exports` with Google + Podio dry-run returned `ok: true`, `dry_run` routes, and explicit live Google/Podio blockers.
     - Chrome proof on the live alias confirmed Dashboard has no old export-success wording, Queue shows batch handoff prep and all three destinations, Queue stage does not open a rail, Dossiers remains `data-mode="dossier"` before/after Google prep, Find Estates opens the normal Report rail in `report` mode, and no old export-success phrases remain.
     - Mobile-width proof confirmed Queue and Dossier rail render without horizontal overflow, Dossiers opens in `data-mode="dossier"`, and browser proof reported no console/page errors or failed responses.
+    - Focused final browser proof confirmed rendered activity and Report rail copy use `readback proof are complete`, Dossier rail stays open in `dossier` mode during export prep, and Find Estates still opens the normal Report rail.
 
 ## /solvys-heir-audit Export And Queue Handoff Follow-up
 
