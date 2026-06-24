@@ -82,3 +82,8 @@ Required corrections before complete:
   - Hardened every Dossiers document card, including selected state, to `#262626`.
   - Production deployment `dpl_Ck2PNfvZZ4bkjiAH4RD49FQvcaKt` is aliased to `https://heirright-landing-demo.vercel.app`.
   - Live alias verification confirmed the annotated Dossiers/sidebar selectors compute to the requested colors with no console/page errors.
+- Header hierarchy follow-up:
+  - Set the Dossiers result count to `#616161` at `0.5` opacity.
+  - Set the Dossiers reader lead/title header text to `#787878`.
+  - Production deployment `dpl_H5Bq2xbCezVfQryh8PVyrZNfJe7j` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias verification confirmed the annotated header selectors compute to the requested colors with no console/page errors.
