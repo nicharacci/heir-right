@@ -91,7 +91,7 @@ Required corrections before complete:
 ## HEI-001 Run-Point Continuation
 
 - Branch: `v2.5.4/heirright-discovery-dossiers-2026-06-24`.
-- Pushed remote branch: `origin/v2.5.4/heirright-discovery-dossiers-2026-06-24` at `a858196`.
+- Pushed remote branch: `origin/v2.5.4/heirright-discovery-dossiers-2026-06-24`; implementation closeout commit `a858196` is included, followed by handoff bookkeeping.
 - Previous-day touchups reviewed:
   - `docs/run-point-daily/2026-06-23-heirright-live-leads.md`: live Miami-Dade fresh-batch loop was implemented and proved with non-placeholder leads.
   - `docs/run-point-daily/2026-06-23-heirright-podio-ui-test.md`: UI-driven controlled Podio test export is wired, but live delivery remains blocked by missing Podio config and approval.
