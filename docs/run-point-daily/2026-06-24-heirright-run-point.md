@@ -87,3 +87,9 @@ Required corrections before complete:
   - Set the Dossiers reader lead/title header text to `#787878`.
   - Production deployment `dpl_H5Bq2xbCezVfQryh8PVyrZNfJe7j` is aliased to `https://heirright-landing-demo.vercel.app`.
   - Live alias verification confirmed the annotated header selectors compute to the requested colors with no console/page errors.
+- Dashboard discoloring follow-up:
+  - Hardened `#dashboardView` to `#202124`.
+  - Hardened Dashboard loop panels and preferred suggestion chips to `#262626`, leaving tracker/drip rows transparent so fading divider lines carry hierarchy.
+  - Kept secondary Dashboard actions unbordered/transparent.
+  - Production deployment `dpl_Fck4yTE85HsLo6r14DeXFWP1Pm4z` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias verification confirmed Dashboard canvas `rgb(32, 33, 36)`, loop panels `rgb(38, 38, 38)`, suggestion chips `rgb(38, 38, 38)`, transparent tracker rows, and no console/page errors.

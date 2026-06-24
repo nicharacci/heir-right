@@ -4080,6 +4080,51 @@
       color: #787878;
     }
 
+    #dashboardView,
+    body[data-theme] #dashboardView {
+      background: #202124;
+      background-color: #202124;
+    }
+
+    #dashboardView .loop-panel,
+    body[data-theme] #dashboardView .loop-panel {
+      color: var(--text);
+      background: #262626;
+      background-color: #262626;
+      border-color: rgba(235,235,245,.08);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    #dashboardView .tracker-item,
+    #dashboardView .drip-item,
+    body[data-theme] #dashboardView .tracker-item,
+    body[data-theme] #dashboardView .drip-item {
+      background: transparent;
+      background-color: transparent;
+    }
+
+    #dashboardView .suggestion-chip,
+    body[data-theme] #dashboardView .suggestion-chip {
+      background: #262626;
+      background-color: #262626;
+      border-color: rgba(235,235,245,.08);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    #dashboardView .suggestion-chip:hover,
+    #dashboardView .suggestion-chip:focus-visible,
+    body[data-theme] #dashboardView .suggestion-chip:hover,
+    body[data-theme] #dashboardView .suggestion-chip:focus-visible {
+      background: #2b2b2b;
+      background-color: #2b2b2b;
+      border-color: rgba(235,235,245,.16);
+      outline: 0;
+    }
+
     .next-link,
     body[data-theme="dark"] .next-link {
       color: var(--text);
