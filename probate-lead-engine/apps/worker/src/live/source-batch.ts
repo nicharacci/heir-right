@@ -596,6 +596,40 @@ export function persistFreshLeadBatchOutputs(result: FreshLeadBatchResult): Reco
     persistOutput(latestDossierOutput);
     outputs.latestRun = latestRunOutput.path;
     outputs.latestDossier = latestDossierOutput.path;
+
+    if (result.latestRun.dossier.completedLeadReport) {
+      const completedReportMarkdown = textOutput(
+        "completed-lead-report.md",
+        result.latestRun.dossier.completedLeadReport.formats.markdown,
+        "text/markdown; charset=utf-8",
+      );
+      const completedReportHtml = textOutput(
+        "completed-lead-report.html",
+        result.latestRun.dossier.completedLeadReport.formats.html,
+        "text/html; charset=utf-8",
+      );
+      persistOutput(completedReportMarkdown);
+      persistOutput(completedReportHtml);
+      outputs.completedReportMarkdown = completedReportMarkdown.path;
+      outputs.completedReportHtml = completedReportHtml.path;
+    }
+
+    if (result.latestRun.dossier.documentPacket) {
+      const summaryMarkdown = textOutput(
+        "internal-summary.md",
+        result.latestRun.dossier.documentPacket.formats.markdown,
+        "text/markdown; charset=utf-8",
+      );
+      const summaryHtml = textOutput(
+        "internal-summary.html",
+        result.latestRun.dossier.documentPacket.formats.html,
+        "text/html; charset=utf-8",
+      );
+      persistOutput(summaryMarkdown);
+      persistOutput(summaryHtml);
+      outputs.summaryMarkdown = summaryMarkdown.path;
+      outputs.summaryHtml = summaryHtml.path;
+    }
   }
 
   return outputs;

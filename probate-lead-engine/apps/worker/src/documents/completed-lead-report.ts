@@ -28,10 +28,16 @@ function uniqueFlags(flags: ReviewFlag[]): ReviewFlag[] {
 
 function claimText(value: unknown, fallback = "Needs review"): string {
   if (value === null || value === undefined || value === "") return fallback;
+  if (Array.isArray(value)) {
+    const items = value
+      .map((item) => claimText(item, ""))
+      .filter(Boolean);
+    return items.length ? items.join(", ") : fallback;
+  }
   if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, item]) => item !== null && item !== undefined && item !== "")
-      .map(([key, item]) => `${key}: ${String(item)}`);
+      .map(([key, item]) => `${humanStatus(key)}: ${claimText(item, "")}`);
     return entries.length ? entries.join("; ") : fallback;
   }
   return String(value);
@@ -47,10 +53,23 @@ function formatPercent(field: OfferProfitField): string {
   return `${field.value}%`;
 }
 
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "Needs review";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-US");
+}
+
 function humanStatus(value: string): string {
   return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function reviewNote(field: OfferProfitField, fallback = "Operator review required"): string {
+  return field.note
+    ?? field.reviewFlags.slice(0, 2).map(humanStatus).join("; ")
+    ?? fallback;
 }
 
 function buildLeadBucket(dossier: RawDossier): LeadBucket {
@@ -325,26 +344,127 @@ function buildSummaries(dossier: RawDossier) {
 }
 
 function renderOfferTable(offerMath: CompletedLeadReport["offerMath"]): string[] {
-  const rows: Array<[string, string]> = [
-    ["As-is value", formatMoney(offerMath.asIsValue)],
-    ["Taxes due", formatMoney(offerMath.taxesDue)],
-    ["Liens", formatMoney(offerMath.liens)],
-    ["Mortgages", formatMoney(offerMath.mortgages)],
-    ["Selling costs", formatMoney(offerMath.sellingCosts)],
-    ["Probate costs", formatMoney(offerMath.probateCosts)],
-    ["Partition costs", formatMoney(offerMath.partitionCosts)],
-    ["Post-equity value", formatMoney(offerMath.postEquityValue)],
-    ["Number of heirs", offerMath.heirCount.value === null ? "Needs review" : String(offerMath.heirCount.value)],
-    ["Equity per heir", formatMoney(offerMath.equityPerHeir)],
-    ["Buy percentage", formatPercent(offerMath.buyPercentage)],
-    ["Offer amount", formatMoney(offerMath.offerAmount)],
-    ["Estimated profit", formatMoney(offerMath.profit)],
-    ["Minimum net profit", formatMoney(offerMath.minimumNetProfit)],
+  const rows: Array<[string, string, string, string]> = [
+    ["As-is value", "", formatMoney(offerMath.asIsValue), reviewNote(offerMath.asIsValue, "Comp or appraisal input required")],
+    ["Taxes due", "", formatMoney(offerMath.taxesDue), reviewNote(offerMath.taxesDue, "Tax amount due must be captured")],
+    ["Liens", "", formatMoney(offerMath.liens), reviewNote(offerMath.liens, "Lien amount must be confirmed")],
+    ["Mortgages", "", formatMoney(offerMath.mortgages), reviewNote(offerMath.mortgages, "Mortgage balance must be confirmed")],
+    ["Selling costs", "", formatMoney(offerMath.sellingCosts), reviewNote(offerMath.sellingCosts, "Operator closing-cost assumption required")],
+    ["Probate costs", "", formatMoney(offerMath.probateCosts), reviewNote(offerMath.probateCosts, "Court/admin cost estimate required")],
+    ["Partition costs", "", formatMoney(offerMath.partitionCosts), reviewNote(offerMath.partitionCosts, "Litigation-cost assumption required")],
+    ["Post equity value", "", formatMoney(offerMath.postEquityValue), reviewNote(offerMath.postEquityValue, "Computed after deductions are known")],
+    ["Amount per heir $$", "", formatMoney(offerMath.equityPerHeir), reviewNote(offerMath.equityPerHeir, "Needs confirmed equity and heir count")],
+    ["# of heirs on board", "", offerMath.heirCount.value === null ? "Needs review" : String(offerMath.heirCount.value), reviewNote(offerMath.heirCount, "Heir count is a hypothesis until reviewed")],
+    ["Profit", "", formatMoney(offerMath.profit), reviewNote(offerMath.profit, "Draft only until underwriting clears")],
+    ["Offer per heir", formatPercent(offerMath.buyPercentage), formatMoney(offerMath.offerAmount), reviewNote(offerMath.offerAmount, "Draft offer blocked until review")],
+    ["Min profit", "", formatMoney(offerMath.minimumNetProfit), reviewNote(offerMath.minimumNetProfit, "Minimum net placeholder for operator review")],
+    ["$100,000 net", "", "Benchmark", "North Star packet comparison row retained for deal review"],
   ];
   return [
-    "| Field | Value |",
+    "| Description | Percentage | Total | Review note |",
+    "| --- | --- | --- | --- |",
+    ...rows.map(([label, percentage, total, note]) => `| ${label} | ${percentage} | ${total} | ${note} |`),
+  ];
+}
+
+function renderSourceChecklist(report: {
+  researchChecklist: ResearchStepChecklistItem[];
+}): string[] {
+  return [
+    "| Source step | Status | Note |",
+    "| --- | --- | --- |",
+    ...report.researchChecklist.map((step) => `| ${step.label} | ${humanStatus(step.status)} | ${step.note} |`),
+  ];
+}
+
+function renderContactMatrix(contacts: ContactPlaceholderEntry[]): string[] {
+  if (!contacts.length) {
+    return [
+      "| Name | Relationship | Phone numbers | Email | Current / history address | Confidence / next action |",
+      "| --- | --- | --- | --- | --- | --- |",
+      "| Needs review | Heir/contact research not started | Needs approved enrichment | Needs approved enrichment | Needs approved enrichment | Build the family-tree hypothesis before outreach. |",
+    ];
+  }
+
+  return [
+    "| Name | Relationship | Phone numbers | Email | Current / history address | Confidence / next action |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...contacts.map((contact, index) => {
+      const name = contact.name ?? `Potential ${humanStatus(contact.role)} ${index + 1}`;
+      const phones = contact.phones.length ? contact.phones.join(", ") : "Needs approved enrichment";
+      const emails = contact.emails.length ? contact.emails.join(", ") : "Needs approved enrichment";
+      const addresses = contact.addresses.length ? contact.addresses.join("; ") : "Needs approved enrichment";
+      return `| ${name} | ${humanStatus(contact.role)} | ${phones} | ${emails} | ${addresses} | ${contact.note} |`;
+    }),
+  ];
+}
+
+function renderSourceLinks(sourceLinks: CompletedLeadReport["sourceLinks"]): string[] {
+  if (!sourceLinks.length) return ["- No source URLs captured in this run."];
+  return sourceLinks.map((link) => {
+    const label = `${link.label} (${link.source})`;
+    return link.url ? `- [${label}](${link.url})` : `- ${label} - URL needs review`;
+  });
+}
+
+function hydrateRenderedLinks(renderedMarkdown: string, sourceLinks: CompletedLeadReport["sourceLinks"]): string {
+  let linkIndex = 0;
+  return renderedMarkdown.replace(
+    /<button([^>]*data-streamdown="link"[^>]*)>(.*?)<\/button>/g,
+    (_match, attrs: string, content: string) => {
+      const link = sourceLinks[linkIndex++];
+      if (!link?.url) return `<span${attrs}>${content}</span>`;
+      return `<a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer noopener" data-streamdown="link">${content}</a>`;
+    },
+  );
+}
+
+function renderPodioGoogleSection(dossier: RawDossier, report: {
+  leadQualityProfile: LeadQualityProfile;
+  offerMath: CompletedLeadReport["offerMath"];
+  reviewGate: ReportReviewGate;
+}): string[] {
+  const crmPayload = dossier.crm.payload as { appModel?: { fields?: Record<string, unknown> }; podioReadiness?: { blockers?: string[] } } | undefined;
+  const fields = crmPayload?.appModel?.fields ?? {};
+  const sheetRow = [
+    dossier.summary.estateName ?? dossier.summary.displayName,
+    claimText(dossier.property.address.value),
+    claimText(dossier.property.county.value),
+    claimText(dossier.property.parcelId.value),
+    humanStatus(report.reviewGate.reportStatus),
+    humanStatus(report.leadQualityProfile.leadBucket),
+    report.offerMath.heirCount.value === null ? "Needs review" : String(report.offerMath.heirCount.value),
+    formatMoney(report.offerMath.offerAmount),
+    dossier.summary.nextBestAction,
+  ];
+
+  return [
+    "## Podio And Google Handoff Prep",
+    "No live Podio card, Google Doc, Google Sheet row, email, or SMS is created by this report. This section is the prepared handoff shape.",
+    "",
+    "Podio field map:",
+    "",
+    "| Field | Prepared value |",
     "| --- | --- |",
-    ...rows.map(([label, value]) => `| ${label} | ${value} |`),
+    `| Title | ${claimText(fields.title ?? dossier.summary.displayName)} |`,
+    `| Estate name | ${claimText(fields.estate_name ?? dossier.summary.estateName ?? dossier.summary.displayName)} |`,
+    `| Property address | ${claimText(fields.property_address ?? dossier.property.address.value)} |`,
+    `| Owner name | ${claimText(fields.owner_name ?? dossier.property.ownerName.value)} |`,
+    `| County | ${claimText(fields.county ?? dossier.property.county.value)} |`,
+    `| Folio | ${claimText(fields.folio ?? dossier.property.parcelId.value)} |`,
+    `| Dossier status | ${humanStatus(String(fields.dossier_status ?? dossier.operatorQueue.state))} |`,
+    `| Lead bucket | ${humanStatus(report.leadQualityProfile.leadBucket)} |`,
+    "",
+    "Google Sheets row:",
+    "",
+    "| Estate | Property | County | Folio | Report | Bucket | Heirs | Offer | Next action |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    `| ${sheetRow.join(" | ")} |`,
+    "",
+    "Handoff blockers:",
+    ...(crmPayload?.podioReadiness?.blockers?.length
+      ? crmPayload.podioReadiness.blockers.map((blocker) => `- ${blocker}`)
+      : ["- Approval and readback proof are still required before live writes."]),
   ];
 }
 
@@ -383,50 +503,67 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
   const backstory = buildBackstory(dossier);
 
   const lines = [
-    `# Completed Lead Report - ${dossier.summary.displayName}`,
+    `# ${dossier.summary.displayName} Family-Tree Discovery Dossier`,
     "",
-    "> **INTERNAL DRAFT** — Human review required. External outreach, offers, and compliance claims are blocked.",
+    "> **REVIEW DRAFT** - Human review required. External outreach, offers, compliance claims, Podio writes, Google Docs creation, Google Sheets insertion, email, and SMS are blocked until approval and readback proof are complete.",
     "",
-    `Date added: ${new Date(dossier.generatedAt).toLocaleDateString("en-US")}`,
+    `Date added: ${formatDate(dossier.generatedAt)}`,
+    `Report generated: ${formatDate(nowIso())}`,
     `Report status: ${humanStatus(reviewGate.reportStatus)}`,
     `Underwriting status: ${humanStatus(reviewGate.underwritingStatus)}`,
+    `Document readiness: ${humanStatus(reviewGate.documentReadiness)}`,
     `Outreach readiness: ${humanStatus(reviewGate.outreachReadiness)}`,
     `External use blocked: ${reviewGate.externalUseBlocked ? "yes" : "no"}`,
     "",
-    "## Client Report Snapshot",
-    `Property: ${claimText(dossier.property.address.value)}`,
-    `Owner / estate: ${claimText(dossier.summary.estateName ?? dossier.property.ownerName.value)}`,
-    `County: ${claimText(dossier.property.county.value)}`,
-    `Folio: ${claimText(dossier.property.parcelId.value)}`,
-    `Possible heirs / contacts: ${contactPlaceholders.length}`,
-    `Offer status: ${offerMath.offerAmount.note ?? formatMoney(offerMath.offerAmount)}`,
-    `Open sections: ${missingData.join(", ") || "No open sections beyond review."}`,
+    "## Property Address",
+    claimText(dossier.property.address.value),
     "",
-    "## Backstory",
+    "## Lead Snapshot",
+    "| Field | Value |",
+    "| --- | --- |",
+    `| Owner / estate | ${claimText(dossier.summary.estateName ?? dossier.property.ownerName.value)} |`,
+    `| Owner DOB | ${claimText(dossier.marriageDeathIndicators.dateOfBirth.value)} |`,
+    `| Owner DOD | ${claimText(dossier.marriageDeathIndicators.dateOfDeath.value)} |`,
+    `| Obituary status | ${claimText(dossier.marriageDeathIndicators.obituaryLink.value, "Not found in the current public-source run; manual obituary search required.")} |`,
+    `| County | ${claimText(dossier.property.county.value)} |`,
+    `| Folio / parcel | ${claimText(dossier.property.parcelId.value)} |`,
+    `| Case / file | ${claimText(dossier.property.caseNumber.value, "Needs probate/court search")} |`,
+    `| Lead bucket | ${humanStatus(leadQualityProfile.leadBucket)} |`,
+    `| Possible heirs / contacts | ${contactPlaceholders.length} review row${contactPlaceholders.length === 1 ? "" : "s"} |`,
+    `| Next action | ${dossier.summary.nextBestAction} |`,
+    "",
+    "## Offer / Profit",
+    ...renderOfferTable(offerMath),
+    "",
+    "_Offer math is draft-only. Unknown values stay visible until the operator confirms as-is value, tax amount due, liens, mortgages, costs, and heir count._",
+    "",
+    "## Back Story",
     backstory,
     "",
-    "## Research Step Checklist",
-    ...researchChecklist.map((step) => `- [${step.status === "complete" ? "x" : " "}] ${step.label} (${step.status}) — ${step.note}`),
-    "",
-    "## Property Summary",
+    "## Property And Deed Notes",
     summaries.propertySummary,
     "",
-    "## Tax Summary",
-    summaries.taxSummary,
-    "",
-    "## Deed / Title Summary",
     summaries.deedSummary,
     "",
-    "## Probate Summary",
+    "## Tax Notes",
+    summaries.taxSummary,
+    "",
+    "## Probate And Court Notes",
     summaries.probateSummary,
     "",
-    "## Family Tree Hypothesis",
+    "## Family Tree And Contact Matrix",
     summaries.familyTreeSummary,
     "",
-    "## Contact Placeholders",
-    ...contactPlaceholders.map((contact) => `- ${contact.role}${contact.name ? `: ${contact.name}` : ""} — ${contact.note}`),
+    ...renderContactMatrix(contactPlaceholders),
     "",
-    ...renderOutreachSection(dossier),
+    "## Source Notes Review",
+    ...renderSourceChecklist({ researchChecklist }),
+    "",
+    "## Source Links",
+    ...renderSourceLinks(sourceLinks),
+    "",
+    "## Missing Data",
+    ...(missingData.length ? missingData.map((item) => `- ${item}`) : ["- No critical missing-data items flagged beyond review placeholders."]),
     "",
     "## Lead Quality Profile",
     `Lead bucket: ${humanStatus(leadQualityProfile.leadBucket)}`,
@@ -435,32 +572,23 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
     `Missing signals: ${leadQualityProfile.missingSignals.join(", ") || "None recorded"}`,
     `Reason codes: ${leadQualityProfile.reasonCodes.join(", ") || "None"}`,
     "",
-    "## Offer / Profit Math",
-    ...renderOfferTable(offerMath),
+    ...renderPodioGoogleSection(dossier, { leadQualityProfile, offerMath, reviewGate }),
     "",
-    "_Offer math is draft-only. Unknown values remain placeholders until operator review._",
-    "",
-    "## Missing Data",
-    ...(missingData.length ? missingData.map((item) => `- ${item}`) : ["- No critical missing-data items flagged beyond review placeholders."]),
-    "",
-    "## Source Links",
-    ...(sourceLinks.length
-      ? sourceLinks.map((link) => `- [${link.label}](${link.url}) (${link.source})`)
-      : ["- No source URLs captured in this run."]),
+    ...renderOutreachSection(dossier),
     "",
     "## Review Flags",
     ...uniqueFlags([
       ...reviewGate.reviewFlags,
       ...leadQualityProfile.reviewFlags,
       ...offerMath.reviewFlags,
-    ]).map((flag) => `- ${flag}`),
+    ]).map((flag) => `- ${humanStatus(flag)}`),
     "",
     "## Next Action",
     dossier.summary.nextBestAction,
   ];
 
   const markdown = lines.join("\n");
-  const renderedMarkdown = await renderMarkdownWithStreamdown(markdown);
+  const renderedMarkdown = hydrateRenderedLinks(await renderMarkdownWithStreamdown(markdown), sourceLinks);
   const html = `<!doctype html>
 <html lang="en">
 <head>

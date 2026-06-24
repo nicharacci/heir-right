@@ -83,10 +83,14 @@ async function main(): Promise<void> {
   if (!result.dossier.documentPacket?.formats.markdown) failures.push("Internal summary markdown missing.");
   if (!result.dossier.documentPacket?.formats.html.includes("streamdown-doc")) failures.push("Streamdown HTML output missing.");
   if (result.dossier.documentPacket?.renderer !== "streamdown") failures.push("Document packet renderer is not Streamdown.");
-  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Completed Lead Report")) failures.push("Completed lead report markdown missing.");
+  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Family-Tree Discovery Dossier")) failures.push("Completed lead report North Star title missing.");
   if (!result.dossier.completedLeadReport?.formats.markdown.includes("Date added:")) failures.push("Completed lead report date-added line missing.");
-  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Client Report Snapshot")) failures.push("Completed lead report client snapshot missing.");
-  if (!result.dossier.completedLeadReport?.formats.html.includes("Internal draft")) failures.push("Completed lead report review banner missing.");
+  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Lead Snapshot")) failures.push("Completed lead report lead snapshot missing.");
+  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Offer / Profit")) failures.push("Completed lead report offer/profit table missing.");
+  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Source Links")) failures.push("Completed lead report source links missing.");
+  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Podio And Google Handoff Prep")) failures.push("Completed lead report handoff prep missing.");
+  if (!result.dossier.completedLeadReport?.formats.html.includes("REVIEW DRAFT")) failures.push("Completed lead report review banner missing.");
+  if (!result.dossier.completedLeadReport?.formats.html.includes("<a href=")) failures.push("Completed lead report HTML source anchors missing.");
   if (!result.dossier.completedLeadReport?.reviewGate.externalUseBlocked) failures.push("Completed lead report external-use gate missing.");
   if (!result.dossier.completedLeadReport?.offerMath.reviewFlags.includes("UNDERWRITING_REVIEW_REQUIRED")) failures.push("Offer math underwriting review flag missing.");
   if (!result.dossier.completedLeadReport?.researchChecklist.length) failures.push("Completed lead report research checklist missing.");

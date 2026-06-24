@@ -390,6 +390,48 @@ Alignment: aligned with gaps
 Required corrections before complete:
 - Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until credentials, approval, and readback proof exist.
 
+## /solvys-heir-audit Live Lead North Star Dossier Follow-up
+
+Source checked: Constance North Star packet, Annie Hawkins live Miami-Dade Property Appraiser source run, current completed-report renderer, current Dossier rail source, local browser proof, and PDF annotation proof.
+
+Backward: This pass takes the North Star family-tree packet shape and applies it to a live public-source lead without fabricating enrichment. The selected live lead is Estate of Annie Hawkins at 131 NW 67 ST, Miami, FL 33150-0000, folio `01-3113-008-0130`. The report now renders title/date/property identity, offer/profit table, back story, property/deed notes, tax notes, probate/court notes, family-tree/contact matrix, source notes, source links, Podio fields, Google Sheets row, outreach blockers, review flags, and next action.
+
+UX pass: aligned with gaps. The Dossiers tab opens the Annie dossier in the specialized right rail, the Completed Lead Report document renders in the embedded reader, and the Source Links section contains real clickable anchors instead of inert link-looking buttons. The rail iframe permits clicked document links to open without enabling scripts.
+
+Forward: The next production-data step is approved enrichment/manual source capture for DOB/DOD, obituary/probate facts, tax amount/payer/receipt facts, phone/email/address history, and confirmed heir count. Until that approval exists, the app correctly keeps those values as review-gated instead of inventing Constance-style contact data.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Enrichment/manual source facts remain blocked by approval and source access.
+- Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until credentials, approval, and readback proof exist.
+
+- Live dossier artifact package:
+  - `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-family-tree-discovery-dossier.md`
+  - `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-family-tree-discovery-dossier.html`
+  - `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-family-tree-discovery-dossier.pdf`
+  - `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-source-run.json`
+  - `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-vs-constance-north-star-review.md`
+- Renderer and app fixes:
+  - Expanded completed lead reports into the North Star family-tree dossier structure.
+  - Persisted completed-report Markdown and HTML from the live fresh-batch output path.
+  - Hydrated Streamdown-rendered report links into real anchors.
+  - Added clickable Source Links to the in-app Completed Lead Report rail document.
+  - Updated the Dossier iframe sandbox to allow clicked public-record links to open while keeping scripts disabled.
+  - Updated the production demo latest-run fixture to the Annie Hawkins dossier.
+- Proof:
+  - `pnpm build` passed.
+  - `pnpm --filter @ple/worker fresh:batch -- --owner="EST OF" --limit=6` passed with 48 external Miami-Dade records, 6 accepted live seeds, 0 rejected candidates, and first live lead `ANNIE HAWKINS EST OF`.
+  - Completed Annie PDF has 10 pages and 10 `/Link` annotations; the Constance sample PDF has 4 pages and 0 PDF annotations.
+  - Local Dossier rail E2E on `http://localhost:4173` passed with Annie selected, Completed Lead Report open, Offer / Profit Table visible, Source Links visible, Podio Lead Fields visible, 10 source anchors, no page errors, and no console errors.
+  - Browser click proof opened the first source link popup to the Miami-Dade Property Appraiser proxy URL containing folio `0131130080130`.
+  - Production deployment `dpl_CHQ47zDxeQFjR1VEUQGf3tUsWpaE` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias proof confirmed `/health` 200, Annie selected in Dossiers, Completed Lead Report open in the Dossier rail, Offer / Profit Table visible, Source Links visible, Podio Lead Fields visible, 10 source anchors, first source-link popup to the Miami-Dade Property Appraiser URL for folio `0131130080130`, and no failed HTTP responses. Playwright console collection reports sandboxed utility-script blocks because the embedded reader intentionally does not allow scripts; the iframe `srcdoc` itself contains no script tags.
+  - Screenshot proof:
+    - `docs/run-point-daily/screenshots/2026-06-24-annie-hawkins-local-dossier-rail.png`
+    - `docs/run-point-daily/screenshots/2026-06-24-annie-hawkins-report-source-links.png`
+    - `docs/run-point-daily/screenshots/2026-06-24-annie-hawkins-live-source-links.png`
+
 ## /solvys-heir-audit Dossier Packet Language Follow-up
 
 Source checked: HeirRight deal-flow checklist, current artifact source, local Dossier document browser proof, Deborah/Constance North Star packet notes, and existing deployment notes.

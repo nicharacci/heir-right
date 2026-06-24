@@ -6482,6 +6482,7 @@ function pageShellHtml(title, kicker, body) {
           .fact strong { display: block; margin-top: 3px; font-size: 15px; }
           .status { font-weight: 700; }
           .small { color: #6e7681; font-size: 12px; }
+          .source-links a { color: #185abc; font-weight: 700; overflow-wrap: anywhere; }
           code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
           @media (max-width: 720px) { body { padding: 16px; } .page { padding: 22px; } .two-col, .facts { grid-template-columns: 1fr; } }
         </style>
@@ -6563,6 +6564,18 @@ function sourceChecklistRows(report) {
   return checklist.length
     ? checklist.map((step) => `<tr><td>${escapeHtml(step.label ?? "Review step")}</td><td>${escapeHtml(displayStatus(step.status))}</td><td>${escapeHtml(step.note ?? "Review source evidence.")}</td></tr>`).join("")
     : `<tr><td>Source checklist</td><td>Needs review</td><td>Run Discovery to populate source-backed checks.</td></tr>`;
+}
+
+function sourceLinkItems(report) {
+  const links = report?.sourceLinks ?? [];
+  return links.length
+    ? links.map((link) => {
+      const label = `${link.label ?? "Source record"}${link.source ? ` (${displayStatus(link.source)})` : ""}`;
+      return link.url
+        ? `<li><a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(label)}</a></li>`
+        : `<li>${escapeHtml(label)} - URL needs review</li>`;
+    }).join("")
+    : "<li>No source URLs are attached to this report yet.</li>";
 }
 
 function contactMatrixRows(report, dossier) {
@@ -6673,6 +6686,8 @@ function completedLeadReportHtml(row, dossier) {
         <thead><tr><th>Step</th><th>Status</th><th>Note</th></tr></thead>
         <tbody>${sourceChecklistRows(report)}</tbody>
       </table>
+      <h2>Source Links</h2>
+      <ul class="source-links">${sourceLinkItems(report)}</ul>
       <h2>Open Data</h2>
       <ul>${missing.length ? missing.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>No critical missing-data items flagged beyond review placeholders.</li>"}</ul>
     </div>
@@ -7018,7 +7033,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
       </section>
       <section class="glass-card rail-card">
         <div class="pdf-toolbar"><span>${escapeHtml(selectedDoc?.type ?? "PDF packet")} - ${escapeHtml(selectedDoc?.status ?? "Review")}</span><span class="tracker-date">Embedded PDF reader</span></div>
-        <iframe class="pdf-reader" title="${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}" sandbox="" srcdoc="${escapeHtml(selectedDoc?.body ?? "")}"></iframe>
+        <iframe class="pdf-reader" title="${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}" sandbox="allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation" srcdoc="${escapeHtml(selectedDoc?.body ?? "")}"></iframe>
       </section>
     </div>
   `;
