@@ -16,9 +16,23 @@ const readbackEvidenceMarkdownOutput = join(__dirname, "..", "worker", "output",
 const thirtyDayMilestoneEvidenceJsonOutput = join(__dirname, "..", "worker", "output", "thirty-day-milestone-evidence.json");
 const thirtyDayMilestoneEvidenceMarkdownOutput = join(__dirname, "..", "worker", "output", "thirty-day-milestone-evidence.md");
 const thirtyDayReviewScriptOutput = join(__dirname, "..", "worker", "output", "thirty-day-review-script.md");
+const distWorkerOutput = join(root, "latest-run.json");
+const distDailyRunOutput = join(root, "daily-run.json");
+const distQualificationReviewJsonOutput = join(root, "qualification-review.json");
+const distQualificationReviewMarkdownOutput = join(root, "qualification-review.md");
+const distFreshLeadBatchOutput = join(root, "fresh-lead-batch.json");
+const distReadbackEvidenceJsonOutput = join(root, "readback-evidence.json");
+const distReadbackEvidenceMarkdownOutput = join(root, "readback-evidence.md");
+const distThirtyDayMilestoneEvidenceJsonOutput = join(root, "thirty-day-milestone-evidence.json");
+const distThirtyDayMilestoneEvidenceMarkdownOutput = join(root, "thirty-day-milestone-evidence.md");
+const distThirtyDayReviewScriptOutput = join(root, "thirty-day-review-script.md");
 const sessionCookie = process.env.AUTH_SESSION_COOKIE || "hr_session";
 const stateCookie = process.env.AUTH_STATE_COOKIE || "hr_oauth_state";
 const sessionTtlSeconds = Number(process.env.AUTH_SESSION_TTL_SECONDS || 60 * 60 * 12);
+
+function firstExistingPath(...paths) {
+  return paths.find((path) => existsSync(path));
+}
 
 function splitList(value) {
   return String(value || "")
@@ -230,8 +244,8 @@ function localConnectionStatuses() {
   const checkedAt = new Date().toISOString();
   const missingPodio = podioMissingControlledTestConfig();
   const podioApproved = process.env.PODIO_LIVE_WRITE_APPROVED === "true";
-  const freshBatchExists = existsSync(freshLeadBatchOutput);
-  const latestRunExists = existsSync(workerOutput);
+  const freshBatchExists = Boolean(firstExistingPath(freshLeadBatchOutput, distFreshLeadBatchOutput));
+  const latestRunExists = Boolean(firstExistingPath(workerOutput, distWorkerOutput));
   return [
     {
       name: "Podio",
@@ -412,7 +426,8 @@ async function handleLocalExport(req, res) {
     }
     return;
   }
-  if (!existsSync(workerOutput)) {
+  const latestRunPath = firstExistingPath(workerOutput, distWorkerOutput);
+  if (!latestRunPath) {
     sendJson(res, 404, { ok: false, error: "Run the worker dry pipeline first." });
     return;
   }
@@ -420,7 +435,7 @@ async function handleLocalExport(req, res) {
   sendJson(res, 200, {
     ok: results.every((result) => result.ok),
     generatedAt: new Date().toISOString(),
-    dossierId: JSON.parse(readFileSync(workerOutput, "utf8")).dossier?.id ?? "latest",
+    dossierId: JSON.parse(readFileSync(latestRunPath, "utf8")).dossier?.id ?? "latest",
     routes: results,
     blockers: results.flatMap((result) => result.blockers),
   });
@@ -520,7 +535,7 @@ async function handleCallback(req, res, url) {
   }
 }
 
-createServer((req, res) => {
+function handleRequest(req, res) {
   const url = new URL(req.url || "/", originFor(req));
 
   if (url.pathname === "/health") {
@@ -594,22 +609,24 @@ createServer((req, res) => {
   }
 
   if (url.pathname === "/fresh-lead-batch.json") {
-    if (!existsSync(freshLeadBatchOutput)) {
+    const freshBatchPath = firstExistingPath(freshLeadBatchOutput, distFreshLeadBatchOutput);
+    if (!freshBatchPath) {
       sendJson(res, 404, { error: "Pull a fresh lead batch first." });
       return;
     }
     res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
-    res.end(readFileSync(freshLeadBatchOutput));
+    res.end(readFileSync(freshBatchPath));
     return;
   }
 
   if (url.pathname === "/latest-run.json") {
-    if (!existsSync(workerOutput)) {
+    const latestRunPath = firstExistingPath(workerOutput, distWorkerOutput);
+    if (!latestRunPath) {
       sendJson(res, 404, { error: "Run the worker dry pipeline first." });
       return;
     }
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(readFileSync(workerOutput));
+    res.end(readFileSync(latestRunPath));
     return;
   }
 
@@ -621,18 +638,21 @@ createServer((req, res) => {
         res.end(response.body);
         return;
       }
-      if (!existsSync(dailyRunOutput)) {
+      const dailyRunPath = firstExistingPath(dailyRunOutput, distDailyRunOutput);
+      if (!dailyRunPath) {
         sendJson(res, 404, { error: "Run the daily production review first." });
         return;
       }
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
-      res.end(readFileSync(dailyRunOutput));
+      res.end(readFileSync(dailyRunPath));
     }).catch((error) => sendJson(res, 502, { ok: false, error: error.message }));
     return;
   }
 
   if (url.pathname === "/qualification-review.json" || url.pathname === "/qualification-review.md") {
-    const localPath = url.pathname.endsWith(".md") ? qualificationReviewMarkdownOutput : qualificationReviewJsonOutput;
+    const localPath = url.pathname.endsWith(".md")
+      ? firstExistingPath(qualificationReviewMarkdownOutput, distQualificationReviewMarkdownOutput)
+      : firstExistingPath(qualificationReviewJsonOutput, distQualificationReviewJsonOutput);
     const contentType = url.pathname.endsWith(".md") ? "text/markdown; charset=utf-8" : "application/json; charset=utf-8";
     const proxied = proxyWorkerJson(url.pathname);
     proxied.then((response) => {
@@ -641,7 +661,7 @@ createServer((req, res) => {
         res.end(response.body);
         return;
       }
-      if (!existsSync(localPath)) {
+      if (!localPath) {
         sendJson(res, 404, { error: "Run the daily production review first." });
         return;
       }
@@ -652,7 +672,9 @@ createServer((req, res) => {
   }
 
   if (url.pathname === "/readback-evidence.json" || url.pathname === "/readback-evidence.md") {
-    const localPath = url.pathname.endsWith(".md") ? readbackEvidenceMarkdownOutput : readbackEvidenceJsonOutput;
+    const localPath = url.pathname.endsWith(".md")
+      ? firstExistingPath(readbackEvidenceMarkdownOutput, distReadbackEvidenceMarkdownOutput)
+      : firstExistingPath(readbackEvidenceJsonOutput, distReadbackEvidenceJsonOutput);
     const contentType = url.pathname.endsWith(".md") ? "text/markdown; charset=utf-8" : "application/json; charset=utf-8";
     const proxied = proxyWorkerJson(url.pathname);
     proxied.then((response) => {
@@ -661,7 +683,7 @@ createServer((req, res) => {
         res.end(response.body);
         return;
       }
-      if (!existsSync(localPath)) {
+      if (!localPath) {
         sendJson(res, 404, { error: "Run the export or 30-Day milestone review first." });
         return;
       }
@@ -672,9 +694,11 @@ createServer((req, res) => {
   }
 
   if (url.pathname === "/thirty-day-milestone-evidence.json" || url.pathname === "/thirty-day-milestone-evidence.md") {
-    const localPath = url.pathname.endsWith(".md") ? thirtyDayMilestoneEvidenceMarkdownOutput : thirtyDayMilestoneEvidenceJsonOutput;
+    const localPath = url.pathname.endsWith(".md")
+      ? firstExistingPath(thirtyDayMilestoneEvidenceMarkdownOutput, distThirtyDayMilestoneEvidenceMarkdownOutput)
+      : firstExistingPath(thirtyDayMilestoneEvidenceJsonOutput, distThirtyDayMilestoneEvidenceJsonOutput);
     const contentType = url.pathname.endsWith(".md") ? "text/markdown; charset=utf-8" : "application/json; charset=utf-8";
-    if (!existsSync(localPath)) {
+    if (!localPath) {
       sendJson(res, 404, { error: "Run the 30-Day milestone review first." });
       return;
     }
@@ -684,18 +708,25 @@ createServer((req, res) => {
   }
 
   if (url.pathname === "/thirty-day-review-script.md") {
-    if (!existsSync(thirtyDayReviewScriptOutput)) {
+    const reviewScriptPath = firstExistingPath(thirtyDayReviewScriptOutput, distThirtyDayReviewScriptOutput);
+    if (!reviewScriptPath) {
       sendJson(res, 404, { error: "Run the 30-Day milestone review first." });
       return;
     }
     res.writeHead(200, { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-store" });
-    res.end(readFileSync(thirtyDayReviewScriptOutput));
+    res.end(readFileSync(reviewScriptPath));
     return;
   }
 
   const html = readFileSync(join(root, "index.html"), "utf8");
   res.writeHead(200, { "content-type": "text/html" });
   res.end(html);
-}).listen(port, () => {
-  console.log(`HeirRight artifact listening on http://localhost:${port}`);
-});
+}
+
+if (require.main === module) {
+  createServer(handleRequest).listen(port, () => {
+    console.log(`HeirRight artifact listening on http://localhost:${port}`);
+  });
+}
+
+module.exports = { handleRequest };

@@ -87,6 +87,82 @@ Required corrections before complete:
   - Set the Dossiers reader lead/title header text to `#787878`.
   - Production deployment `dpl_H5Bq2xbCezVfQryh8PVyrZNfJe7j` is aliased to `https://heirright-landing-demo.vercel.app`.
   - Live alias verification confirmed the annotated header selectors compute to the requested colors with no console/page errors.
+
+## HEI-001 Run-Point Continuation
+
+- Branch: `v2.5.4/heirright-discovery-dossiers-2026-06-24`.
+- Remote branch before closeout: `origin/v2.5.4/heirright-discovery-dossiers-2026-06-24` at `6173f99`.
+- Previous-day touchups reviewed:
+  - `docs/run-point-daily/2026-06-23-heirright-live-leads.md`: live Miami-Dade fresh-batch loop was implemented and proved with non-placeholder leads.
+  - `docs/run-point-daily/2026-06-23-heirright-podio-ui-test.md`: UI-driven controlled Podio test export is wired, but live delivery remains blocked by missing Podio config and approval.
+  - Linear live read failed with `oauth_token_invalid_grant`; repo-local tickets and handoff notes remained the fallback source.
+- Sprint or milestone batches worked:
+  - S21 Discovery Dossiers Product Loop: repo-verified current branch tip and rendered Dashboard color follow-up.
+  - S21 production-hosting hardening: validated artifact build/server fallback changes that let API routes serve built `dist` outputs when worker output files are absent in the deployed artifact context.
+- Tickets touched:
+  - Repo-local S21 brief and daily handoff only; no live Linear mutation because reauthentication is required.
+- Repo evidence:
+  - `probate-lead-engine/apps/artifact/build.js` copies `fresh-lead-batch.json` and can derive built `latest-run.json` / `daily-run.json` from the fresh batch when present.
+  - `probate-lead-engine/apps/artifact/server.js` exports `handleRequest` for Vercel wrappers and checks built `dist` files as fallbacks for latest run, daily run, qualification review, readback evidence, milestone evidence, and review script routes.
+  - Root Vercel wrappers under `probate-lead-engine/api/` were already committed on this branch.
+  - Existing uncommitted `postgres` dependency and duplicate `probate-lead-engine/apps/artifact/api/` wrappers were not treated as validated S21 work; they remain separate dirty state unless a later pass confirms they are needed.
+- Validation commands and results:
+  - `pnpm build` from `probate-lead-engine/`: passed.
+  - `pnpm --filter @ple/worker test`: passed with `ok: true`, 49 facts, and refreshed worker outputs.
+  - `pnpm --filter @ple/worker run:dry -- --address="20611 NW 33rd Pl, Miami Gardens, FL 33056" --owner="Fresh public-source lead"`: passed with `status: ready_for_review`, `operatorQueueState: manual_review`, and source-evidence review flags preserved.
+  - `pnpm --filter @ple/artifact build`: passed and wrote `apps/artifact/dist/index.html`.
+  - Local server `AUTH_REQUIRED=false PORT=4175 pnpm --filter @ple/artifact dev`: passed after port 4173 was already occupied.
+  - `curl` checks against `http://localhost:4175/health`, `/latest-run.json`, and `/api/connections/status`: all returned `200`.
+  - `apps/artifact/dist/latest-run.json` exists and resolves to the live external Hawkins dossier from the previous fresh-batch proof.
+  - Headless Chrome screenshot `/tmp/heirright-dashboard-2026-06-24.png`: Dashboard rendered with dark hardening, readable task panels, and no visible text overlap at 1440px.
+- Source packet boundary:
+  - Canonical repo path `HeirRight Workflow. pdf.pdf` is still missing.
+  - Fallback source checked: `/Users/tifos/Desktop/HRight/HeirRight Workflow. pdf.pdf` extracted text and `/Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md`.
+  - Example packet checked: `AMARANTHE MOREAU EST OF EST OF ACHILLE V MOREAU Family Tree.pdf`; the packet shape still requires tax payer, deed/title, probate, heirs, offer/profit, and backstory evidence before a lead can be treated as complete.
+
+## /solvys-heir-audit - Run-Point Continuation
+
+Source checked: fallback workflow PDF extracted text, Amaranthe example packet text, HeirRight deal-flow checklist, S21 brief, June 23 and June 24 handoff notes, current repo diff.
+
+Backward: Verified S21 product-loop and hosting-hardening work against the workflow steps it supports: operator dashboard triage, Find Estates source review, Discovery Dossier phases for owner/property, tax, deed/title, court/probate, heirs/contact, manual research, document prep, and CRM handoff. The dry-run stayed in manual review and did not promote a generic seed as a qualified lead.
+
+UX pass: aligned with gaps. Dashboard and dossier surfaces are operator-readable and avoid developer-console language, but live Podio write/readback, live outreach, paid/manual source automation, and legal/compliance claims remain blocked.
+
+Forward: Next work should attach the real incoming document templates/examples to the Dossiers model and complete controlled Podio readback only after credentials, test contact values, and explicit live-write approval are present.
+
+Alignment: aligned with gaps.
+
+Required corrections before complete:
+- Push the validated branch after committing the handoff and artifact fallback work.
+- Keep Linear reauthentication, Podio credentials/config, controlled live-write approval, Google destination config, and canonical workflow PDF placement as blockers.
+
+## 11 AM Review Packet
+
+What was done:
+
+- S21 product-loop work was verified on the existing same-day branch.
+- Artifact hosting fallback behavior was validated locally so built review outputs can be served by the artifact API path.
+- Required worker and artifact smoke gates passed.
+- Source review stayed tied to the HeirRight workflow packet and Amaranthe completed-lead shape.
+
+What was not done:
+
+- No live Podio card was created.
+- No Google Workspace export was created.
+- No live outreach, paid-source automation, legal claim, or production CRM write was attempted.
+- Live Linear issue updates were not possible because the app connection needs reauthentication.
+
+What needs Sam's review:
+
+- Reauthenticate Linear for the HeirRight workspace if live ticket updates are needed.
+- Provide Podio credentials/config, controlled test phone/email, lead point profile ID, and explicit live-write approval before another controlled Podio readback.
+- Confirm the real document templates/examples that should populate the Dossiers document model.
+- Place the canonical workflow PDF in the repo path if the audit source should stop depending on the Desktop fallback.
+
+Tomorrow's recommended sprints:
+
+- Finish the Dossiers document-template attachment pass using the real examples.
+- Then run the controlled Podio readback sprint only if credentials and live-write approval are available; otherwise continue with document packet/readback-proof surfaces that remain prep-only.
 - Dashboard discoloring follow-up:
   - Hardened `#dashboardView` to `#202124`.
   - Hardened Dashboard loop panels and preferred suggestion chips to `#262626`, leaving tracker/drip rows transparent so fading divider lines carry hierarchy.
