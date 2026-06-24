@@ -338,6 +338,40 @@ Alignment: aligned with gaps
 Required corrections before complete:
 - Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until credentials, approval, and readback proof exist.
 
+## /solvys-heir-audit Dossier Packet Language Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local Dossier document browser proof, Deborah/Constance North Star packet notes, and existing deployment notes.
+
+Backward: This pass supports S7/S8/S9 by making the 10-document Dossier packet read like an operator review packet instead of an internal data dump. The work keeps the North Star report shape while preserving review gates for source evidence, Podio, Google Docs, Google Sheets, email, and SMS.
+
+UX pass: aligned with gaps. Embedded Dossier documents now use `Review Draft`, plain source-note wording, approval/readback wording, and curated county-record facts. The Tax History Packet no longer renders the full intake seed, raw source URLs, or review-code strings.
+
+Forward: Deploy this packet-language pass, rerun the live 10-document Dossier audit, then keep live writes locked until approved access and confirmation readback exist.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until approved access, approval, and confirmation readback exist.
+- The live packet can render source-backed public-record data, but unverified fields must remain review items until a human clears them.
+
+Dossier packet language cleanup:
+- Added operator-safe status labels for review-code values such as manual review, source review, source evidence needed, and contact research not run.
+- Added an operator-safe fact formatter that hides raw source URLs, raw IDs, confidence plumbing, seed batch details, and setup labels from embedded Dossier documents.
+- Filtered Source Notes and Tax History Packet facts so raw intake seed records and search-link records do not appear in the operator packet.
+- Replaced `controlled-write`, `source refs`, `raw public-source shell`, and `Internal Draft` wording with approval/readback, source notes, public-record review packet, and Review Draft language.
+
+Local proof:
+- `pnpm build` passed from `probate-lead-engine/apps/artifact`.
+- `git diff --check` passed.
+- Chrome proof on `http://localhost:4173` opened all 10 Dossier documents by document ID in the right rail and found no `Internal Review Codes`, `Internal Source Appendix`, `NO_ENRICHMENT_RUN`, `SOURCE_HEALTH_ONLY`, `HUMAN_REVIEW_REQUIRED`, `MISSING_`, `raw public-source shell`, `placeholder-only`, `JSON`, `payload`, `source refs`, `dry-run`, `configured`, `credentials`, `token`, `schema`, `endpoint`, `controlled-write`, `RawId`, `SourceUrl`, `ConfirmedSourceFacts`, or `SeedBatch` text.
+- Local document proof reported no console/page errors and no failed responses.
+
+Production proof:
+- Production deployment `dpl_9grTtg7xAjRr7MZM5j4jERtquUMN` is aliased to `https://heirright-landing-demo.vercel.app`.
+- Vercel inspect reported production status `Ready`.
+- Chrome proof on `https://heirright-landing-demo.vercel.app` opened all 10 Dossier documents by document ID in the right rail and found no `Internal Review Codes`, `Internal Source Appendix`, `NO_ENRICHMENT_RUN`, `SOURCE_HEALTH_ONLY`, `HUMAN_REVIEW_REQUIRED`, `MISSING_`, `raw public-source shell`, `placeholder-only`, `JSON`, `payload`, `source refs`, `dry-run`, `configured`, `credentials`, `token`, `schema`, `endpoint`, `controlled-write`, `RawId`, `SourceUrl`, `ConfirmedSourceFacts`, or `SeedBatch` text.
+- Live document proof reported no console/page errors and no failed responses.
+
 ## /solvys-heir-audit Operator API And Dossier Rail Follow-up
 
 Source checked: HeirRight deal-flow checklist, current artifact source, local API proof, local Chrome proof, and the current Dossiers rail screenshot.

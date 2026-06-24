@@ -5139,11 +5139,34 @@ function displayStatus(value, fallback = "Needs review") {
     configured_batch: "Approved Batch",
     default_review_seeds: "Review Seeds",
     dry_run: "Prep only",
+    human_review_required: "Operator review",
+    internal_draft: "Review Draft",
+    manual_or_browser_extraction_required: "Needs source review",
+    manual_review_required: "Needs manual review",
+    no_enrichment_run: "Contact research not run",
     not_configured: "Needs setup",
     ready_for_controlled_validation: "Ready for approval",
+    source_evidence_required: "Source evidence needed",
+    source_health_only: "Source availability checked",
   };
   if (operatorLabels[key]) return operatorLabels[key];
   return raw.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function operatorPlainText(value) {
+  return String(value ?? "")
+    .replace(/\bmanual_or_browser_extraction_required\b/gi, "Needs source review")
+    .replace(/\bmanual_review_required\b/gi, "Needs manual review")
+    .replace(/\bNO_ENRICHMENT_RUN\b/g, "Contact research has not run")
+    .replace(/\bSOURCE_HEALTH_ONLY\b/g, "Source availability checked")
+    .replace(/\bHUMAN_REVIEW_REQUIRED\b/g, "Operator review required")
+    .replace(/\bSOURCE_EVIDENCE_REQUIRED\b/g, "Source evidence needed")
+    .replace(/\bMISSING_([A-Z0-9_]+)\b/g, (_match, label) => `Missing ${displayStatus(label)}`)
+    .replace(/\bsource refs?\b/gi, "source notes")
+    .replace(/\bcontrolled-write\b/gi, "approval")
+    .replace(/\braw public-source shell\b/gi, "public-record review packet")
+    .replace(/\bplaceholder-only\b/gi, "review-only")
+    .replace(/\bInternal Draft\b/g, "Review Draft");
 }
 
 function formatSourceFactValue(value, fallback = "Needs review") {
@@ -5153,13 +5176,27 @@ function formatSourceFactValue(value, fallback = "Needs review") {
     return value.map((item) => formatSourceFactValue(item, "")).filter(Boolean).join("; ") || fallback;
   }
   if (typeof value === "object") {
+    const skippedKeys = /^(sourceUrl|rawId|finalUrl|url|confirmedSourceFacts|confidence|approvalMarker|seedBatchId|seedSourceLabel|sourceOwner|clientAppName)$/i;
     const parts = Object.entries(value)
+      .filter(([key]) => !skippedKeys.test(key))
       .filter(([, item]) => item !== null && item !== undefined && item !== "")
       .map(([key, item]) => `${displayStatus(key)}: ${formatSourceFactValue(item, "")}`)
       .filter((item) => !item.endsWith(": "));
     return parts.join("; ") || fallback;
   }
-  return String(value);
+  const text = operatorPlainText(value);
+  if (/^https?:\/\//i.test(text)) return "Source link recorded";
+  return text;
+}
+
+function operatorDocumentFacts(facts = []) {
+  const blockedFactTypes = /^(intake_seed|source_search_url|source_governance_catalog)$/i;
+  return facts.filter((fact) => {
+    if (blockedFactTypes.test(String(fact.factType ?? ""))) return false;
+    const rendered = formatSourceFactValue(fact.value, "");
+    if (!rendered || rendered === "Needs review") return false;
+    return !/ConfirmedSourceFacts|SourceUrl|RawId|SeedBatch|ApprovalMarker|clientAppName/i.test(rendered);
+  });
 }
 
 function formatMoney(value, currency = "USD") {
@@ -5290,7 +5327,7 @@ function buildMissingSections(dossier) {
       short: "CRM handoff",
       type: "podio",
       source: "CRM prep",
-      copy: "Prepare the CRM handoff package, missing setup list, controlled-write steps, and readback checks.",
+      copy: "Prepare the CRM handoff package, missing setup list, approval steps, and readback checks.",
       tasks: (dossier.crm?.payload?.podioReadiness?.blockers ?? []).map((blocker) => ({ title: "Podio access", nextAction: blocker }))
     }
   ];
@@ -6353,7 +6390,7 @@ function podioFieldRows(row, dossier, report) {
     ["offer_math", fields.offer_math ? "Mapped for review" : "Needs Podio field map"],
     ["outreach_workflow", fields.outreach_workflow ? "Mapped for review" : "Prepared only"]
   ];
-  return rows.map(([field, value]) => `<tr><th><code>${escapeHtml(field)}</code></th><td>${escapeHtml(formatSourceFactValue(value))}</td></tr>`).join("");
+  return rows.map(([field, value]) => `<tr><th>${escapeHtml(displayStatus(field))}</th><td>${escapeHtml(formatSourceFactValue(value))}</td></tr>`).join("");
 }
 
 function googleSheetsRow(row, dossier, report) {
@@ -6378,7 +6415,7 @@ function completedLeadReportHtml(row, dossier) {
   const reviewGate = report?.reviewGate ?? {};
   return pageShellHtml("Completed Lead Report", row?.leadName ?? dossier?.summary?.estateName ?? "Lead file", `
     <p class="muted">Prepared from the live public-record lead packet. North Star anchors: Deborah Cheatham complex family-tree packet and Constance E. White simpler family-tree packet.</p>
-    <div class="notice"><strong>Internal draft.</strong> External outreach, offers, Podio writes, Google Docs exports, and Google Sheets updates remain blocked until operator approval and readback proof are complete.</div>
+    <div class="notice"><strong>Review draft.</strong> External outreach, offers, Podio writes, Google Docs exports, and Google Sheets updates remain blocked until operator approval and readback proof are complete.</div>
     <div class="facts">
       <div class="fact"><span>Date added</span><strong>${escapeHtml(formatPacketDate(dossier?.generatedAt ?? report?.generatedAt))}</strong></div>
       <div class="fact"><span>Report status</span><strong>${escapeHtml(displayStatus(reviewGate.reportStatus, "Review"))}</strong></div>
@@ -6402,7 +6439,7 @@ function completedLeadReportHtml(row, dossier) {
 
     <div class="section">
       <h2>Back Story</h2>
-      ${paragraphBlock(report?.backstory, dossier?.narrative ?? "Back story needs review from public-record notes.")}
+      ${paragraphBlock(operatorPlainText(report?.backstory ?? dossier?.narrative), "Back story needs review from public-record notes.")}
     </div>
 
     <div class="section two-col">
@@ -6478,12 +6515,14 @@ function discoveryDossierHtml(row, dossier) {
 }
 
 function sourceNotesHtml(row, dossier) {
-  const facts = state.data?.facts ?? [];
+  const facts = operatorDocumentFacts(state.data?.facts ?? [])
+    .filter((fact) => !/offer_|source_governance_catalog/i.test(String(fact.factType ?? "")))
+    .slice(0, 16);
   const coverage = qualificationDecision(dossier)?.coverage ?? [];
   return pageShellHtml("Source Notes", row?.leadName ?? "Lead file", `
     <p class="muted">County-record and workflow checks remain visible so placeholders never count as confirmed facts.</p>
     <h2>Coverage</h2>
-    <ul>${coverage.map((area) => `<li><strong>${escapeHtml(area.label)}</strong> - ${escapeHtml(displayStatus(area.status))}: ${escapeHtml(area.nextAction)}</li>`).join("") || "<li>Run qualification review to populate coverage.</li>"}</ul>
+    <ul>${coverage.map((area) => `<li><strong>${escapeHtml(area.label)}</strong> - ${escapeHtml(displayStatus(area.status))}: ${escapeHtml(operatorPlainText(area.nextAction))}</li>`).join("") || "<li>Run qualification review to populate coverage.</li>"}</ul>
     <h2>Facts</h2>
     <ul>${facts.slice(0, 12).map((fact) => `<li><strong>${escapeHtml(displayStatus(fact.factType, "Source fact"))}</strong> - ${escapeHtml(formatSourceFactValue(fact.value))}</li>`).join("") || "<li>No facts loaded yet.</li>"}</ul>
   `);
@@ -6516,7 +6555,7 @@ function deedTitleNotesHtml(row, dossier) {
       <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Miami-Dade County, FL"))}</td></tr>
     </table>
     <h2>Title review tasks</h2>
-    <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Review task")}</strong> - ${escapeHtml(task.nextAction ?? task.reason ?? "Record the official-record note.")}</li>`).join("") || "<li>Owner chain is staged for review; no deed blocker is recorded in the current packet.</li>"}</ul>
+    <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Review task")}</strong> - ${escapeHtml(operatorPlainText(task.nextAction ?? task.reason ?? "Record the official-record note."))}</li>`).join("") || "<li>Owner chain is staged for review; no deed blocker is recorded in the current packet.</li>"}</ul>
     <h2>Operator checks</h2>
     <ol>
       <li>Confirm vesting, transfer path, and any company-owned stop rule.</li>
@@ -6528,18 +6567,18 @@ function deedTitleNotesHtml(row, dossier) {
 
 function taxHistoryHtml(row, dossier) {
   const tasks = dossier?.taxHistory?.reviewTasks ?? [];
-  const facts = (state.data?.facts ?? [])
-    .filter((fact) => /tax|assessment|folio|parcel|receipt|payer/i.test(`${fact.source ?? ""} ${fact.factType ?? ""} ${formatSourceFactValue(fact.value ?? "")}`))
+  const facts = operatorDocumentFacts(state.data?.facts ?? [])
+    .filter((fact) => /tax|assessment|receipt|payer|folio|parcel/i.test(`${fact.source ?? ""} ${fact.factType ?? ""}`))
     .slice(0, 10);
   return pageShellHtml("Tax History Packet", row?.leadName ?? "Lead file", `
     <p class="muted">Tax collector notes for unpaid years, payer history, receipt status, reassessment, and lien review.</p>
     <table>
       <tr><th>Property</th><td>${escapeHtml(row?.address ?? "Needs review")}</td></tr>
       <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? "Needs review")}</td></tr>
-      <tr><th>Next tax action</th><td>${escapeHtml(tasks[0]?.nextAction ?? tasks[0]?.reason ?? "Confirm unpaid years, amount due, and who paid the taxes.")}</td></tr>
+      <tr><th>Next tax action</th><td>${escapeHtml(operatorPlainText(tasks[0]?.nextAction ?? tasks[0]?.reason ?? "Confirm unpaid years, amount due, and who paid the taxes."))}</td></tr>
     </table>
     <h2>Tax tasks</h2>
-    <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Tax review")}</strong> - ${escapeHtml(task.nextAction ?? task.reason ?? "Capture tax status from the collector record.")}</li>`).join("") || "<li>No open tax blocker is recorded; preserve receipt and payer notes during review.</li>"}</ul>
+    <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Tax review")}</strong> - ${escapeHtml(operatorPlainText(task.nextAction ?? task.reason ?? "Capture tax status from the collector record."))}</li>`).join("") || "<li>No open tax blocker is recorded; preserve receipt and payer notes during review.</li>"}</ul>
     <h2>Tax-related source facts</h2>
     <ul>${facts.map((fact) => `<li><strong>${escapeHtml(displayStatus(fact.factType, "Tax fact"))}</strong> - ${escapeHtml(formatSourceFactValue(fact.value))}</li>`).join("") || "<li>Tax facts need review from the live source packet before this document is final.</li>"}</ul>
   `);
@@ -6562,7 +6601,7 @@ function heirContactMatrixHtml(row, dossier) {
     <h2>Potential contact records</h2>
     <ul>${contacts.slice(0, 12).map((contact, index) => `<li><strong>${escapeHtml(contact.name ?? contact.label ?? `Contact ${index + 1}`)}</strong> - ${escapeHtml(contact.relationship ?? contact.role ?? contact.status ?? "Relationship needs review")}</li>`).join("") || "<li>No contact records are confirmed yet; build from obituary, probate, family tree, and approved sources.</li>"}</ul>
     <h2>Open contact checks</h2>
-    <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Contact review")}</strong> - ${escapeHtml(task.nextAction ?? task.reason ?? "Confirm heir/contact confidence.")}</li>`).join("") || "<li>Confirm heir roles, phone/address confidence, and no-contact gates before outreach.</li>"}</ul>
+    <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Contact review")}</strong> - ${escapeHtml(operatorPlainText(task.nextAction ?? task.reason ?? "Confirm heir/contact confidence."))}</li>`).join("") || "<li>Confirm heir roles, phone/address confidence, and no-contact gates before outreach.</li>"}</ul>
   `);
 }
 
