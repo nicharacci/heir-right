@@ -200,3 +200,28 @@ Required corrections before complete:
   - Production deployment `dpl_GADV1RFY5U24LXgURAmqoAfWRtqZ` proved the clean tracked tree deploys and removed `postgres` during Vercel install.
   - Production deployment `dpl_Ak5mZCu4bFtvM1CzzuBSkZkryQ23` is aliased to `https://heirright-landing-demo.vercel.app` with `/health` returning 200.
   - Live alias verification confirmed `/health`, `/api/connections/status`, and `/api/exports` return 200; Dossiers still renders 10 documents without the report rail; Admin/Drips operator copy stays sanitized; and no console/page errors occurred.
+- Discovery workflow persistence follow-up:
+  - Persisted the guided Discovery workflow state in local browser storage: current phase, completed phases, operator notes, and per-phase preference controls now survive reloads and closing the wizard.
+  - Fixed the Discovery step-status display so a phase only marks its own steps complete after that phase is complete, instead of inheriting done states from the total completed-phase count.
+  - Local proof:
+    - `pnpm build` passed.
+    - `pnpm --filter @ple/artifact build` passed.
+    - Browser proof on the local artifact server completed Owner and Property, saved preference toggles and notes, advanced to Tax History, reloaded, and reopened Discovery with the Tax History phase, notes, preferences, completed phase, and 14% progress intact.
+  - Production deployment `dpl_BLEFnaVykfsQ4JRgqY5zuEQYAdFQ` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias proof confirmed the same Discovery persistence behavior on the public URL with no console/page errors.
+  - Live Dossiers regression after the Discovery deploy confirmed Dossiers still opens as the active product-loop view, renders 3 leads and 10 documents, keeps the report rail closed, updates the embedded iframe reader when selecting Tax History Packet, and reports no console/page errors or 4xx responses.
+
+## /solvys-heir-audit Discovery Persistence Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local browser proof, and live Vercel alias proof.
+
+Backward: Discovery now preserves operator preferences, notes, current phase, and completed phases for the dossier-preparation workflow. This keeps owner/property and tax-history work from being lost when the operator closes the wizard or reloads before handoff.
+
+UX pass: aligned with gaps. Preference controls are stateful, close-after-complete remains available, and Dossiers continues to keep finished documents inside the product loop without exposing the report rail.
+
+Forward: The next production pass should replace the generic packet bodies with the client-provided seven to ten document examples/templates when they arrive.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Incoming client document examples/templates remain external inputs for the final comprehensive packet.

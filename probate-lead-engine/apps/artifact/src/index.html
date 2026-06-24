@@ -4811,6 +4811,7 @@ const state = {
   discoveryPhaseIndex: 0,
   discoveryCompleted: new Set(),
   discoveryNotes: {},
+  discoveryPreferences: {},
   shellSettings: {
     signalWeight: "3",
     taxThreshold: "2",
@@ -4828,6 +4829,7 @@ const filledKey = "heirright:filled-report-gaps";
 const railNamesKey = "heirright:rail-names";
 const themeKey = "heirright:theme";
 const shellSettingsKey = "heirright:shell-settings";
+const discoveryStateKey = "heirright:discovery-workflow-state";
 const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 const columnMap = {
   address: '[data-column="address"]',
@@ -5424,6 +5426,7 @@ function loadSavedState() {
   } catch {
     state.railNames = {};
   }
+  loadDiscoveryState();
   loadShellSettings();
   state.shellEvents = defaultShellEvents();
   syncShellSettings();
@@ -5432,6 +5435,33 @@ function loadSavedState() {
 
 function persistFilled() {
   localStorage.setItem(filledKey, JSON.stringify([...state.filled]));
+}
+
+function loadDiscoveryState() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(discoveryStateKey) ?? "{}");
+    const completed = Array.isArray(stored.completed) ? stored.completed.map(String) : [];
+    const phaseIndex = Number(stored.phaseIndex);
+    state.discoveryCompleted = new Set(completed.filter((phaseId) => discoveryPhases.some((phase) => phase.id === phaseId)));
+    state.discoveryPhaseIndex = Number.isFinite(phaseIndex)
+      ? Math.max(0, Math.min(discoveryPhases.length - 1, phaseIndex))
+      : state.discoveryPhaseIndex;
+    state.discoveryNotes = stored.notes && typeof stored.notes === "object" && !Array.isArray(stored.notes) ? stored.notes : {};
+    state.discoveryPreferences = stored.preferences && typeof stored.preferences === "object" && !Array.isArray(stored.preferences) ? stored.preferences : {};
+  } catch {
+    state.discoveryCompleted = new Set();
+    state.discoveryNotes = {};
+    state.discoveryPreferences = {};
+  }
+}
+
+function persistDiscoveryState() {
+  localStorage.setItem(discoveryStateKey, JSON.stringify({
+    phaseIndex: state.discoveryPhaseIndex,
+    completed: [...state.discoveryCompleted],
+    notes: state.discoveryNotes,
+    preferences: state.discoveryPreferences
+  }));
 }
 
 function defaultShellEvents() {
@@ -5710,6 +5740,18 @@ function discoveryProgress() {
 
 function phaseIsComplete(phaseId = currentDiscoveryPhase().id) {
   return state.discoveryCompleted.has(phaseId);
+}
+
+function discoveryPreferenceKey(phaseId, index) {
+  return `${phaseId}:${index}`;
+}
+
+function discoveryPreferenceChecked(phaseId, index) {
+  const key = discoveryPreferenceKey(phaseId, index);
+  if (Object.prototype.hasOwnProperty.call(state.discoveryPreferences, key)) {
+    return Boolean(state.discoveryPreferences[key]);
+  }
+  return index < 2;
 }
 
 function dashboardMilestones() {
@@ -6569,12 +6611,14 @@ function closeDiscoveryWizard() {
     markdown: `${currentDiscoveryPhase().label} is saved locally for this review session. Continue from the fuse when ready.`,
     updatedAt: Date.now()
   };
+  persistDiscoveryState();
   renderRail();
 }
 
 function completeDiscoveryPhase() {
   const phase = currentDiscoveryPhase();
   state.discoveryCompleted.add(phase.id);
+  persistDiscoveryState();
   addShellEvent(`${phase.label} complete`, `${phase.summary} The operator can close Discovery or continue to the next phase.`, "ready", false);
   renderRail();
   renderCurrentLoopView();
@@ -6583,6 +6627,7 @@ function completeDiscoveryPhase() {
 function advanceDiscoveryPhase(direction = 1) {
   const next = Math.max(0, Math.min(discoveryPhases.length - 1, state.discoveryPhaseIndex + direction));
   state.discoveryPhaseIndex = next;
+  persistDiscoveryState();
   renderRail();
 }
 
@@ -6620,7 +6665,7 @@ function renderDiscoveryWizard(row, dossier) {
               <article class="rail-item">
                 <span class="rail-item-index">${String(index + 1).padStart(2, "0")}</span>
                 <span><span class="rail-item-title">${escapeHtml(step)}</span><span class="rail-item-copy">${escapeHtml(missing[index]?.copy ?? "Record the source note or blocker before moving forward.")}</span></span>
-                ${statusPill(index < state.discoveryCompleted.size ? "ready" : "review", index < state.discoveryCompleted.size ? "Done" : "Check")}
+                ${statusPill(phaseComplete ? "ready" : "review", phaseComplete ? "Done" : "Check")}
               </article>
             `).join("")}
           </div>
@@ -6630,7 +6675,7 @@ function renderDiscoveryWizard(row, dossier) {
           <div class="preference-grid">
             ${phase.preferences.map((preference, index) => `
               <div class="preference-card">
-                <label>${escapeHtml(preference)}<input type="checkbox" ${index < 2 ? "checked" : ""}></label>
+                <label>${escapeHtml(preference)}<input type="checkbox" data-discovery-preference="${escapeHtml(discoveryPreferenceKey(phase.id, index))}" ${discoveryPreferenceChecked(phase.id, index) ? "checked" : ""}></label>
                 <span class="copy">${index === 0 ? "Default for this workflow." : index === 1 ? "Recommended for the current lead." : "Optional operator preference."}</span>
               </div>
             `).join("")}
@@ -6855,6 +6900,14 @@ function renderRail() {
     content.querySelector("[data-discovery-next]")?.addEventListener("click", () => advanceDiscoveryPhase(1));
     content.querySelector("[data-discovery-notes]")?.addEventListener("input", (event) => {
       state.discoveryNotes[event.target.dataset.discoveryNotes] = event.target.value;
+      persistDiscoveryState();
+    });
+    content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
+      input.addEventListener("change", (event) => {
+        state.discoveryPreferences[event.target.dataset.discoveryPreference] = event.target.checked;
+        persistDiscoveryState();
+        addShellEvent("Discovery preference saved", "The phase preference was saved for this review session.", "review", false);
+      });
     });
     setRailOpen(true);
     return;
