@@ -5622,11 +5622,12 @@ function defaultShellEvents() {
 }
 
 function exportSuccessActivityTitle() {
-  return "Your Report Is Ready";
+  return "Handoff Package Prepared";
 }
 
 function exportSuccessActivityCopy(destination = "your integrated CRM") {
-  return `Your Estate Prospect(s) have been exported successfully. Please check ${destination} to continue working. The completed report package is ready for follow-up, review notes, and next-step outreach.`;
+  const target = String(destination || "handoff queue").trim();
+  return `The completed report package is prepared for ${target} review. No live Podio card, Google Doc, Google Sheet row, email, or SMS is created until approval and readback proof clear.`;
 }
 
 function signalWeightLabel(value) {
@@ -6114,6 +6115,62 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
       copy: "Batch export fields, tasks, drip route, and readback checklist.",
       status: "Prep only",
       body: crmHandoffHtml(row, dossier)
+    }
+  ];
+}
+
+function exportBlockerItems(result = state.exportResult) {
+  return uniqueItems((result?.blockers ?? [])
+    .filter((blocker) => !/skipped in dry-run mode/i.test(blocker))
+    .map(operatorBlockerText));
+}
+
+function queueReadinessItems() {
+  const row = selectedRow();
+  const dossier = dossierForRow(row);
+  const docs = dossierDocuments(row, dossier);
+  const missing = row?.missing ?? buildMissingSections(dossier ?? {});
+  const blockers = exportBlockerItems();
+  const reviewTasks = taskCount(dossier);
+  return [
+    {
+      title: "Dossier documents",
+      copy: `${docs.length} document${docs.length === 1 ? "" : "s"} are staged from the Dossier rail for batch review.`
+    },
+    {
+      title: "Source-backed gaps",
+      copy: missing.length
+        ? `${missing.length} section${missing.length === 1 ? "" : "s"} still need source notes before handoff.`
+        : "No open dossier sections are visible for the selected lead."
+    },
+    {
+      title: "Review tasks",
+      copy: reviewTasks
+        ? `${reviewTasks} operator task${reviewTasks === 1 ? "" : "s"} remain attached to the packet.`
+        : "No additional operator tasks are attached to this packet."
+    },
+    {
+      title: "Readback proof",
+      copy: blockers.length
+        ? `${blockers.length} live handoff blocker${blockers.length === 1 ? "" : "s"} remain before a production write.`
+        : "Prepared package only; controlled write and readback proof are still required before live writes."
+    }
+  ];
+}
+
+function queueDestinationItems() {
+  return [
+    {
+      title: "Podio fields and tasks",
+      copy: "Maps estate, property, offer math, dossier status, drip route, and review-owner tasks for CRM handoff."
+    },
+    {
+      title: "Google Docs body",
+      copy: "Stages the completed lead report and Discovery Dossier attachments for document review."
+    },
+    {
+      title: "Google Sheets row",
+      copy: "Stages one row per lead with source status, offer math, queue state, and handoff blockers."
     }
   ];
 }
@@ -6747,30 +6804,44 @@ function renderQueueView() {
   const target = document.getElementById("queueView");
   if (!target) return;
   const items = queueItems();
+  const readiness = queueReadinessItems();
+  const destinations = queueDestinationItems();
+  const blockers = exportBlockerItems();
   target.innerHTML = `
     <div class="loop-grid">
       <section class="loop-panel full">
-        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch export prep</h2></div><button class="btn primary" type="button" data-queue-stage>Stage batch</button></div>
+        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch handoff prep</h2></div><button class="btn primary" type="button" data-queue-stage>Stage batch</button></div>
+        <p class="copy">Use this queue after dossier review to stage the documents, CRM fields, and spreadsheet row as one batch. Nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
         <ul class="queue-list">
-          ${items.map((item, index) => `<li class="queue-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Find Estates and select leads before staging a batch.</span></li>`}
+          ${items.map((item, index) => `<li class="queue-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Estate Search and select leads before staging a batch.</span></li>`}
         </ul>
       </section>
       <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Export Guardrails</p><h2 class="loop-title">Before Podio</h2></div></div>
+        <div class="loop-panel-head"><div><p class="eyebrow">Readiness</p><h2 class="loop-title">Before handoff</h2></div><span class="pill review">Review</span></div>
         <ul class="mini-list">
-          <li><strong>Discovery</strong><span>Each lead needs a dossier packet and source notes.</span></li>
-          <li><strong>Readback</strong><span>Controlled write and CRM readback must pass before live claim.</span></li>
-          <li><strong>Batch</strong><span>Queue export is batch-first, not one-off report rail export.</span></li>
+          ${readiness.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></li>`).join("")}
+          ${blockers.slice(0, 3).map((blocker) => `<li><strong>Live handoff blocker</strong><span>${escapeHtml(blocker)}</span></li>`).join("")}
         </ul>
       </section>
       <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Destination</p><h2 class="loop-title">Podio prep</h2></div><span class="pill review">Prepared</span></div>
-        <p class="copy">Podio remains CRM of record for now. This queue prepares fields, tasks, and documents without writing production data.</p>
+        <div class="loop-panel-head"><div><p class="eyebrow">Destinations</p><h2 class="loop-title">Podio and Google prep</h2></div><span class="pill review">Prepared only</span></div>
+        <ul class="mini-list">
+          ${destinations.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></li>`).join("")}
+        </ul>
+        <p class="copy">Podio remains CRM of record. Google Docs and Sheets are prepared as review artifacts until the operator approves a controlled write and readback pass.</p>
       </section>
     </div>
   `;
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
-    addShellEvent("Batch staged", "Selected dossier packets were staged for batch export prep. Live CRM card creation remains locked.", "review", true);
+    state.railPreview = {
+      title: "Batch handoff package prepared",
+      markdown: "Dossier packets, Podio fields and tasks, Google Docs body, and Google Sheets row are staged for operator review. No live write was attempted.",
+      updatedAt: Date.now()
+    };
+    document.getElementById("statusExport").textContent = "handoff: [BATCH PREPARED]";
+    document.getElementById("topStatus").textContent = "Batch handoff package prepared for operator review. Live writes remain locked.";
+    addShellEvent("Batch handoff package prepared", "Dossier packets are ready for operator review. Live Podio, Google Docs, Google Sheets, email, and SMS actions remain locked until approval and readback proof.", "review", true);
+    renderShellPanels();
   });
 }
 
@@ -6850,6 +6921,12 @@ function shellCommandCopy(command) {
   return "note";
 }
 
+function openReportRailForHandoff(source = null, tab = "docs") {
+  if (state.activeView === "find-estates") {
+    openRailWithContinuity(source, tab);
+  }
+}
+
 function runShellCommand(command, source = null, freeform = "") {
   const action = shellCommandCopy(command);
   state.shellCommandCount += 1;
@@ -6863,12 +6940,12 @@ function runShellCommand(command, source = null, freeform = "") {
   } else if (action === "stage-export") {
     state.railPreview = {
       title: "Handoff package prepared for review",
-      markdown: "The handoff package is prepared in review-only mode. No live Podio or Google write was attempted.",
+      markdown: "The handoff package is prepared in review-only mode. No live Podio card, Google Doc, Google Sheet row, email, or SMS was created.",
       updatedAt: Date.now()
     };
     document.getElementById("statusExport").textContent = "handoff: [PREPARED]";
-    addShellEvent(exportSuccessActivityTitle(), exportSuccessActivityCopy("your integrated CRM"), "ready", false);
-    openRailWithContinuity(source, "docs");
+    addShellEvent(exportSuccessActivityTitle(), exportSuccessActivityCopy("your integrated CRM"), "review", false);
+    openReportRailForHandoff(source, "docs");
   } else if (action === "linear-sync") {
     document.getElementById("topStatus").textContent = "The project plan remains the source of truth for S11.";
     addShellEvent("Project plan sync noted", "Sprint state stays anchored to the project plan; the shell only mirrors local review context.", "ready", false);
@@ -7961,13 +8038,13 @@ function exportRouteMeta(route) {
       label: "Google Workspace",
       status: "handoff: [GOOGLE]",
       title: "Prepare Google Workspace handoff",
-      copy: "Prepare the completed report for Google Docs or Sheets review. Use this when the team needs a clean document package before outreach."
+      copy: "Prepare the completed report for Google Docs or Sheets review. Use this when the team needs a clean document package before outreach; no live file is created from the demo surface."
     },
     podio: {
       label: "Podio",
       status: "handoff: [PODIO]",
       title: "Prepare Podio handoff",
-      copy: "Prepare the completed report and lead fields for Podio. Use this when the file is ready for CRM handoff."
+      copy: "Prepare the completed report and lead fields for Podio. Use this when the file is ready for CRM handoff review, before any production card is created."
     },
     "podio-test": {
       label: "Podio test card",
@@ -7981,7 +8058,7 @@ function exportRouteMeta(route) {
       label: "Google + Podio",
       status: "handoff: [GOOGLE + PODIO]",
       title: "Prepare Google + Podio handoff",
-      copy: "Prepare one completed report package for Google Workspace review and Podio handoff."
+      copy: "Prepare one completed report package for Google Workspace review and Podio handoff; live writes stay locked until approval and readback proof."
     }
   };
   return routes[route] ?? routes.both;
@@ -8189,7 +8266,7 @@ async function chooseExportRoute(route, source = null) {
       : `${meta.copy} Preparing a review-only handoff package now. No live CRM card will be created from this demo surface.`,
     updatedAt: Date.now()
   };
-  openRailWithContinuity(source, "docs");
+  openReportRailForHandoff(source, "docs");
   document.getElementById("statusExport").textContent = meta.status;
   document.getElementById("topStatus").textContent = isControlledTest
     ? "Sending a controlled test Lead contact card to Podio..."
@@ -8211,12 +8288,31 @@ async function chooseExportRoute(route, source = null) {
     if (testDelivered) {
       addShellEvent("Podio test card delivered", "A controlled test Lead contact card was created in Podio and read back successfully.", "ready", false);
     } else if (result.ok) {
-      addShellEvent(exportSuccessActivityTitle(), exportSuccessActivityCopy(meta.label), "ready", false);
+      addShellEvent(exportSuccessActivityTitle(), exportSuccessActivityCopy(meta.label), "review", false);
     }
+    state.railPreview = testDelivered
+      ? {
+          title: "Podio test card delivered",
+          markdown: "A controlled test Lead contact card was created in Podio and read back successfully.",
+          updatedAt: Date.now()
+        }
+      : result.ok
+        ? {
+            title: exportSuccessActivityTitle(),
+            markdown: exportSuccessActivityCopy(meta.label),
+            updatedAt: Date.now()
+          }
+        : {
+            title: `${meta.label} handoff blocked`,
+            markdown: blockers.length
+              ? blockers.map(operatorBlockerText).join(" ")
+              : "Approval, controlled write, and readback proof are required before a live handoff.",
+            updatedAt: Date.now()
+          };
     document.getElementById("topStatus").textContent = testDelivered
       ? "Podio test contact card delivered and readback confirmed."
       : result.ok
-        ? `${meta.label} handoff prepared for review. Live readback still needs approval before any CRM card is created.`
+        ? `${meta.label} handoff prepared for review. Live write and readback still need approval before any external record is created.`
         : blockers.length
           ? `${meta.label} handoff has ${blockers.length} blocker${blockers.length === 1 ? "" : "s"}.`
           : `${meta.label} handoff is blocked.`;
@@ -8407,7 +8503,7 @@ function wireEvents() {
     const clickedInsideRail = clickPath.some((item) => item?.id === "researchRail");
     closeAllEnhancedSelects(event.target.closest?.(".select-enhanced"));
     const rail = document.getElementById("researchRail");
-    const railOpener = event.target.closest?.('[data-shell-nav], [data-shell-nav-shortcut], #rightRailToggle, [data-row-id], [data-open-next], [data-chip], [data-rail-chip], [data-dossier-row], [data-dossier-doc]');
+    const railOpener = event.target.closest?.('[data-shell-nav], [data-shell-nav-shortcut], #rightRailToggle, #exportMenu, #exportToggle, [data-export-route], [data-row-id], [data-open-next], [data-chip], [data-rail-chip], [data-dossier-row], [data-dossier-doc]');
     if (state.railOpen && rail && !clickedInsideRail && !rail.contains(event.target) && !railOpener) {
       setRailOpen(false);
     }

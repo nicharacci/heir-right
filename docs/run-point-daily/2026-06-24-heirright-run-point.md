@@ -338,3 +338,37 @@ Alignment: aligned with gaps
 Required corrections before complete:
 - Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until credentials, approval, and readback proof exist.
 - The new PDFs are visual anchors; their pages are image-based and still need human/client review before any field is treated as confirmed source truth.
+
+- Export / Queue handoff hardening follow-up:
+  - Replaced the old `Your Report Is Ready` / `exported successfully` activity language with `Handoff Package Prepared` and explicit review-only copy for Podio, Google Docs, Google Sheets, email, and SMS.
+  - Expanded Queue into a batch handoff prep surface with readiness, Dossier document count, source-backed gaps, operator task count, live handoff blockers, Podio fields/tasks, Google Docs body, and Google Sheets row.
+  - Kept Queue staging inside the product loop without opening the Report rail.
+  - Preserved the specialized Dossier rail during export prep and limited Report rail export previews to Find Estates.
+  - Updated export route previews after `/api/exports` returns so the Report rail shows the prepared/blocked result, not a premature route title.
+  - Local proof:
+    - `pnpm build` passed from `probate-lead-engine`.
+    - Chrome proof on `http://localhost:4173` confirmed Dashboard has no old export-success wording, Queue shows batch handoff prep and all three destinations, Queue stage sets `handoff: [BATCH PREPARED]` without opening a rail, Dossiers remains `data-mode="dossier"` before/after Google prep, Find Estates opens the normal Report rail in `report` mode, and no old export-success phrases remain.
+    - Browser proof reported no console/page errors and no failed responses.
+    - API proof on `POST /api/exports` with Google + Podio dry-run returned `ok: true` with `dry_run` routes and explicit live Google/Podio readback/setup blockers.
+  - Production deployment `dpl_JAtwgviuj7xUKxyhzF7pcYT9pipt` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias proof:
+    - `/health` returned 200 with auth disabled for the demo.
+    - `POST /api/exports` with Google + Podio dry-run returned `ok: true`, `dry_run` routes, and explicit live Google/Podio blockers.
+    - Chrome proof on the live alias confirmed Dashboard has no old export-success wording, Queue shows batch handoff prep and all three destinations, Queue stage does not open a rail, Dossiers remains `data-mode="dossier"` before/after Google prep, Find Estates opens the normal Report rail in `report` mode, and no old export-success phrases remain.
+    - Mobile-width proof confirmed Queue and Dossier rail render without horizontal overflow, Dossiers opens in `data-mode="dossier"`, and browser proof reported no console/page errors or failed responses.
+
+## /solvys-heir-audit Export And Queue Handoff Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local Chrome proof, local `/api/exports` dry-run proof, and existing deployment notes.
+
+Backward: This pass supports S7/S8/S9 by making Queue and export prep accurate to the real document-preparation product loop. The operator can stage packet content for Podio and Google destinations without the interface pretending that a live CRM card, Doc, Sheet row, email, or SMS was created.
+
+UX pass: aligned with gaps. The handoff path now reads as a batch-prep console, keeps Dossiers in its specialized rail, and uses the normal Report rail only from Find Estates.
+
+Forward: Deploy this handoff hardening pass, run live alias proof, then keep production writes locked until approved credentials and readback proof exist.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until credentials, approval, and readback proof exist.
+- Queue currently prepares the handoff package in-app; credentialed write/readback validation remains external to this pass.
