@@ -1563,6 +1563,8 @@
 
     .app[data-active-view="dossiers"] .research-rail {
       display: flex;
+      top: 16px;
+      bottom: 16px;
     }
 
     .app[data-active-view="dashboard"] .workbench,
@@ -5131,7 +5133,17 @@ function leadNameInitialLabel(...candidates) {
 
 function displayStatus(value, fallback = "Needs review") {
   if (!value) return fallback;
-  return String(value).replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const raw = String(value);
+  const key = raw.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const operatorLabels = {
+    configured_batch: "Approved Batch",
+    default_review_seeds: "Review Seeds",
+    dry_run: "Prep only",
+    not_configured: "Needs setup",
+    ready_for_controlled_validation: "Ready for approval",
+  };
+  if (operatorLabels[key]) return operatorLabels[key];
+  return raw.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatSourceFactValue(value, fallback = "Needs review") {
@@ -6585,7 +6597,7 @@ function dripScheduleHtml(row) {
 function crmHandoffHtml(row, dossier) {
   const podio = dossier?.crm?.payload?.podioReadiness ?? {};
   return pageShellHtml("CRM Handoff", row?.leadName ?? "Lead file", `
-    <p class="muted">Prepared for Podio batch export. No live Podio card is created until credentials, approval, and readback proof exist.</p>
+    <p class="muted">Prepared for Podio batch export. No live Podio card is created until access is approved and confirmation readback exists.</p>
     <table>
       <tr><th>Route</th><td>Podio batch prep</td></tr>
       <tr><th>Status</th><td>${escapeHtml(displayStatus(dossier?.crm?.status, "Prep only"))}</td></tr>
@@ -7067,6 +7079,7 @@ function setActiveShellView(view = "dashboard", label = "") {
   const app = document.querySelector(".app");
   const nextView = productViews.includes(view) ? view : "dashboard";
   const detail = document.querySelector(".detail");
+  const previousRailMode = state.railMode;
   state.activeView = nextView;
   if (app) app.dataset.activeView = nextView;
   if (detail) detail.setAttribute("aria-hidden", "true");
@@ -7083,6 +7096,9 @@ function setActiveShellView(view = "dashboard", label = "") {
     document.getElementById("topStatus").textContent = `${label || activeViewLabel(nextView)} workspace selected.`;
   } else {
     state.railMode = "report";
+    if (previousRailMode === "dossier") {
+      setRailOpen(false);
+    }
     setDetailRailOpen(false);
     document.getElementById("topStatus").textContent = "Find Estates workspace selected. Open a lead, then begin Discovery from the rail.";
   }
@@ -7624,7 +7640,7 @@ function railFlowHtml(row, dossier) {
             </span>
             ${statusPill(area.status === "extracted" ? "ready" : area.status === "partial" ? "review" : "blocked", `${area.earned}/${area.weight}`)}
           </article>
-        `).join("") || `<p class="copy">Qualification coverage appears after the worker writes the S18 packet.</p>`}
+        `).join("") || `<p class="copy">Qualification coverage appears after the daily review packet is prepared.</p>`}
       </div>
     </section>
     <section class="glass-card rail-card">
@@ -7726,7 +7742,7 @@ function railDocsHtml(row, dossier) {
         <li><strong>App</strong><span>${escapeHtml(podioModel?.app ?? "Leads")}</span></li>
         <li><strong>Pipeline</strong><span>${escapeHtml((podioModel?.pipelineStages ?? ["Marketing", "Acquisition", "Disposition"]).join(" / "))}</span></li>
         <li><strong>Prepared fields</strong><span>${escapeHtml(mappedFieldCount)} lead fields mapped from the current packet</span></li>
-        <li><strong>Readiness check</strong><span>${escapeHtml(podio?.classification === "ready_for_controlled_validation" ? "Ready for approval and readback" : "Blocked until live access is configured")}</span></li>
+        <li><strong>Readiness check</strong><span>${escapeHtml(podio?.classification === "ready_for_controlled_validation" ? "Ready for approval and readback" : "Blocked until live access is approved")}</span></li>
       </ul>
     </section>
     <section class="glass-card rail-card">
@@ -7841,7 +7857,7 @@ function operatorConnectionMessage(connection, name) {
   const hasSetupDetail = /[A-Z0-9]+_[A-Z0-9_]+|config|credential|missing|token|field map/i.test(raw);
   if (!raw || hasSetupDetail) {
     if (name === "Podio") return "Podio is not connected yet. Keep CRM handoff prep-only until access, one approved sample card, and confirmation are complete.";
-    if (name === "Google") return "Google Workspace handoff is not connected yet. Keep Docs and Sheets prep-only until destination approval is configured.";
+    if (name === "Google") return "Google Workspace handoff is not connected yet. Keep Docs and Sheets prep-only until destination approval is complete.";
     if (name === "Web Search") return "Public-source validation needs a fresh checked lead packet before promotion.";
   }
   return raw;

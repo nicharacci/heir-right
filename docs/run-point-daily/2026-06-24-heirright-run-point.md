@@ -338,6 +338,48 @@ Alignment: aligned with gaps
 Required corrections before complete:
 - Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until credentials, approval, and readback proof exist.
 
+## /solvys-heir-audit Operator API And Dossier Rail Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local API proof, local Chrome proof, and the current Dossiers rail screenshot.
+
+Backward: This pass supports S8/S9 by removing internal setup wording from the operator-facing readiness paths while keeping the app honest about blocked live handoff. It also fixes the product-loop handoff from Dossiers back to Estate Search so the specialized Dossier rail cannot intercept Estate Search row clicks.
+
+UX pass: aligned with gaps. Dossiers now renders as a left finished-dossier list plus right-side Dossier rail, aligned to the same top edge. Leaving Dossiers closes that specialized rail, returns it to Report rail mode, and lets Estate Search rows open the normal Report rail again.
+
+Forward: Deploy this operator-language and rail-handoff pass, run live alias proof, then keep production writes locked until approved access and confirmation readback exist.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until approved access, approval, and confirmation readback exist.
+- Queue and export prep remain prepared-only until the client provides approved destinations and readback proof.
+
+- Operator API and Dossier rail proof:
+  - Replaced local status/export fallback messages that exposed raw setup keys, `dry-run` wording, route internals, and setup jargon with plain Podio/Google handoff setup language.
+  - Re-labeled prepared handoff routes as `review` mode instead of returning `dry_run` mode in the local artifact response.
+  - Updated `/health` to report `signInReady` instead of exposing the internal auth setup label.
+  - Added operator status labels so packet values like `not_configured` render as `Needs setup`.
+  - Closed the Dossier rail when the operator moves back to Estate Search so the Report rail can reopen from row selection.
+  - Aligned the Dossier rail top and bottom to the finished-dossier list.
+  - Local proof:
+    - `pnpm build` passed from `probate-lead-engine/apps/artifact`.
+    - `git diff --check` passed.
+    - `GET /api/connections/status` returned HTTP 200 with no forbidden internal terms and plain blocked setup messages for Podio and Google.
+    - `POST /api/exports` with Google + Podio prepared handoff returned HTTP 200, `mode: review`, confirmation-readback blockers, and no raw setup keys or internal route language.
+    - Chrome proof on `http://localhost:4173` confirmed every sidebar tab, dashboard subtabs, the Dossier rail, and the Report rail tabs render with no forbidden internal terms, no console/page errors, and no failed responses.
+    - Chrome geometry proof confirmed Dossiers list `{x:76,y:80,width:781,height:838}` and right rail `{x:873,y:80,width:560,height:838}`, with `readerIsRightRail: true` and `sharedTop: true`.
+    - Chrome handoff proof confirmed switching Dossiers -> Estate Search leaves the rail in `mode: report`, `open: false`, and `pointerEvents: none`, then Estate Search row selection opens the normal Report rail.
+    - Screenshot proof: `docs/run-point-daily/screenshots/2026-06-24-dossier-rail-local.png`.
+  - Production deployment `dpl_1496zL8L128uVPc98RDmb31ihr6V` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias proof:
+    - `/health` returned HTTP 200 with `signInReady: false` and no forbidden setup/internal terms.
+    - `GET /api/connections/status` returned HTTP 200 with no forbidden setup/internal terms and plain blocked setup messages for Podio and Google.
+    - `POST /api/exports` with Google + Podio prepared handoff returned HTTP 200, `mode: review`, confirmation-readback blockers, and no raw setup keys or internal route language.
+    - Chrome proof on `https://heirright-landing-demo.vercel.app` confirmed every sidebar tab, dashboard subtabs, the Dossier rail, and the Report rail tabs render with no forbidden internal terms, no console/page errors, and no failed responses.
+    - Chrome geometry proof confirmed Dossiers list `{x:76,y:80,width:781,height:838}` and right rail `{x:873,y:80,width:560,height:838}`, with `readerIsRightRail: true` and `sharedTop: true`.
+    - Chrome handoff proof confirmed switching Dossiers -> Estate Search leaves the rail in `mode: report`, `open: false`, and `pointerEvents: none`, then Estate Search row selection opens the normal Report rail.
+    - Screenshot proof: `docs/run-point-daily/screenshots/2026-06-24-dossier-rail-live.png`.
+
 - Dossier rail annotation and readiness cleanup:
   - Converted the shared right rail into a mode-aware Dossier rail with Dossier-specific aria labels, close/resize labels, context copy, and no report-tab segment inside Dossiers.
   - Moved the selected document heading and pop-out control into a Dossier document toolbar, keeping the finished dossier list as the main left workspace and the document packet/PDF reader in the right rail.

@@ -171,7 +171,7 @@ function escapeHtml(value) {
 function loginPage(req, message = "Sign in with your HeirRight Google account to review lead packets.") {
   const configured = oauthConfigured(req);
   const domainText = allowedDomains().join(", ") || "heirright.com";
-  const emailText = allowedEmails().join(", ") || "configured Solvys admin emails";
+  const emailText = allowedEmails().join(", ") || "approved Solvys admin emails";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -194,7 +194,7 @@ function loginPage(req, message = "Sign in with your HeirRight Google account to
   <main>
     <h1>HeirRight Beta</h1>
     <p>${escapeHtml(message)}</p>
-    ${configured ? `<a href="/auth/login">Continue with Google</a>` : `<p><strong>Google OAuth is not configured yet.</strong></p>`}
+    ${configured ? `<a href="/auth/login">Continue with Google</a>` : `<p><strong>Google sign-in is not set up yet.</strong></p>`}
     <p class="meta">Allowed domain: <code>${escapeHtml(domainText)}</code><br>Solvys admin access: <code>${escapeHtml(emailText)}</code></p>
   </main>
 </body>
@@ -240,6 +240,19 @@ function podioMissingControlledTestConfig() {
   ]));
 }
 
+function operatorAccessList(items) {
+  return (items ?? []).map((item) => String(item || "")
+    .replace(/PODIO_FIELD_MAP_JSON or PODIO_APP_ID=24265877/g, "Podio field map or verified Leads app")
+    .replace(/PODIO_ACCESS_TOKEN/g, "Podio access")
+    .replace(/PODIO_APP_ID/g, "Podio Leads app")
+    .replace(/PODIO_TEST_PHONE/g, "approved sample phone")
+    .replace(/PODIO_TEST_EMAIL/g, "approved sample email")
+    .replace(/PODIO_LEAD_POINT_PROFILE_ID/g, "approved Lead profile")
+    .replace(/GOOGLE_WORKSPACE_ACCESS_TOKEN/g, "Google Workspace access")
+    .replace(/GOOGLE_TRACKING_SHEET_ID/g, "Google tracking Sheet")
+  ).join(", ");
+}
+
 function localConnectionStatuses() {
   const checkedAt = new Date().toISOString();
   const missingPodio = podioMissingControlledTestConfig();
@@ -255,7 +268,7 @@ function localConnectionStatuses() {
         ? podioApproved
           ? "Podio handoff access and approval are present."
           : "Podio handoff access is present; final approval still needs confirmation."
-        : `Podio export/readback config is missing: ${missingPodio.join(", ")}.`,
+        : `Podio handoff setup is incomplete: ${operatorAccessList(missingPodio)}.`,
       checkedAt,
     },
     {
@@ -264,18 +277,18 @@ function localConnectionStatuses() {
       mode: hasAll(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"]) ? "live" : "blocked",
       message: hasAll(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"])
         ? "Google Workspace handoff access is present; final approval still needs confirmation."
-        : "Google Drive/Docs/Sheets export config is missing.",
+        : "Google Workspace handoff setup is incomplete.",
       checkedAt,
     },
     {
       name: "Web Search",
       ok: freshBatchExists || latestRunExists,
-      mode: freshBatchExists ? "live" : latestRunExists ? "dry_run" : "blocked",
+      mode: freshBatchExists ? "live" : latestRunExists ? "review" : "blocked",
       message: freshBatchExists
         ? "A live external public-source lead batch has been pulled and persisted."
         : latestRunExists
           ? "Public source checks are represented in the latest lead packet."
-        : "Run the worker before validating public source status.",
+        : "Public-source status needs a fresh lead packet before validation.",
       checkedAt,
     },
   ];
@@ -339,12 +352,12 @@ function localExportRoute(route, dryRun) {
     return {
       route,
       ok: true,
-      mode: "dry_run",
-      externalId: `dry-${route}-${Date.now()}`,
+      mode: "review",
+      externalId: `review-${route}-${Date.now()}`,
       readbackOk: false,
       blockers: [
-        `Live ${routeName} readback skipped in dry-run mode.`,
-        ...(missing.length ? [`Live ${routeName} setup still needed before approval and readback: ${missing.join(", ")}`] : []),
+        `${routeName} confirmation readback has not run yet.`,
+        ...(missing.length ? [`Live ${routeName} setup still needed before approval and readback: ${operatorAccessList(missing)}`] : []),
       ],
       message: `${routeName} handoff package is prepared from the latest lead packet. No live write was attempted.`,
     };
@@ -355,8 +368,8 @@ function localExportRoute(route, dryRun) {
       ok: false,
       mode: "blocked",
       readbackOk: false,
-      blockers: [`Set HEIRRIGHT_WORKER_URL or WORKER_API_URL so the UI can call the real ${routeName} export endpoint.`],
-      message: `${routeName} export cannot run from the local artifact server alone.`,
+      blockers: [`${routeName} handoff needs an approved destination before live readback can run.`],
+      message: `${routeName} handoff package is prepared for review; live write was not attempted.`,
     };
   }
   if (missing.length) {
@@ -365,20 +378,20 @@ function localExportRoute(route, dryRun) {
       ok: false,
       mode: "blocked",
       readbackOk: false,
-      blockers: [`Missing ${routeName} export config: ${missing.join(", ")}`],
-      message: `${routeName} export is blocked until credentials and readback config are available.`,
+      blockers: [`${routeName} setup still needed before approval and readback: ${operatorAccessList(missing)}`],
+      message: `${routeName} handoff is blocked until approved access and readback are available.`,
     };
   }
   return {
     route,
     ok: true,
-    mode: dryRun ? "dry_run" : "live",
-    externalId: `${dryRun ? "dry" : "ready"}-${route}-${Date.now()}`,
+    mode: dryRun ? "review" : "live",
+    externalId: `${dryRun ? "review" : "ready"}-${route}-${Date.now()}`,
     readbackOk: !dryRun,
-    blockers: dryRun ? [`${routeName} live readback skipped in dry-run mode.`] : [],
+    blockers: dryRun ? [`${routeName} confirmation readback has not run yet.`] : [],
     message: dryRun
-      ? `${routeName} export package is prepared for controlled live validation.`
-      : `${routeName} export config is present; route is ready for controlled live validation.`,
+      ? `${routeName} handoff package is prepared for approval and live readback.`
+      : `${routeName} handoff access is present; route is ready for approval and live readback.`,
   };
 }
 
@@ -473,7 +486,7 @@ async function handleLocalExport(req, res) {
   }
   const latestRunPath = firstExistingPath(workerOutput, distWorkerOutput);
   if (!latestRunPath) {
-    sendJson(res, 404, { ok: false, error: "Run the worker dry pipeline first." });
+    sendJson(res, 404, { ok: false, error: "Load the latest lead packet first." });
     return;
   }
   const results = Array.from(new Set(routes)).map((route) => localExportRoute(route, dryRun));
@@ -510,7 +523,7 @@ async function handleFreshLeadBatch(req, res) {
 
 async function handleLogin(req, res) {
   if (!oauthConfigured(req)) {
-    sendHtml(res, 503, loginPage(req, "Google OAuth credentials are missing. Add the client ID, client secret, redirect URI, and session secret before beta access opens."));
+    sendHtml(res, 503, loginPage(req, "Google sign-in setup is incomplete. Add the approved access details before beta access opens."));
     return;
   }
 
@@ -588,7 +601,7 @@ function handleRequest(req, res) {
       ok: true,
       service: "heirright-artifact",
       authRequired: authRequired(),
-      authConfigured: oauthConfigured(req),
+      signInReady: oauthConfigured(req),
     });
     return;
   }
@@ -667,7 +680,7 @@ function handleRequest(req, res) {
   if (url.pathname === "/latest-run.json") {
     const latestRunPath = firstExistingPath(workerOutput, distWorkerOutput);
     if (!latestRunPath) {
-      sendJson(res, 404, { error: "Run the worker dry pipeline first." });
+      sendJson(res, 404, { error: "Load the latest lead packet first." });
       return;
     }
     res.writeHead(200, { "content-type": "application/json" });
