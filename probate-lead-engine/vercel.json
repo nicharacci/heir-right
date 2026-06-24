@@ -1,0 +1,16 @@
+{
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": "apps/artifact/dist",
+  "rewrites": [
+    {
+      "source": "/auth/:path*",
+      "destination": "/api/auth/:path*"
+    }
+  ],
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 60
+    }
+  }
+}

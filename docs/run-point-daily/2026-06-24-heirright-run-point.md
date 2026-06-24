@@ -43,6 +43,12 @@ S21 Discovery Dossiers Product Loop
   - Queue staged a batch prep action.
   - Mobile fresh load at 390px had no horizontal overflow and opened Dashboard with the sidebar hidden as expected.
   - Browser console/page errors: none.
+- Production deploy:
+  - First deploy failed because the pre-existing Vercel config referenced `api/**/*.js` without root-level API functions.
+  - Added root Vercel wrappers for `/api/connections/status`, `/api/leads/fresh-batch`, `/api/exports`, and `/auth/*`.
+  - Added an inline favicon to remove the browser `/favicon.ico` 404.
+  - Final deployment `dpl_9RwEgXeg2KF4gFJayDiM4PYUnd94` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live browser verification on the alias passed with Dashboard, Find Estates, Discovery wizard, Dossiers reader, 6 dossier documents, report rail hidden in Dossiers, no console errors, no page errors, and no 4xx responses.
 
 ## /solvys-heir-audit
 
