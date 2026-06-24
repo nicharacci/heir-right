@@ -64,3 +64,16 @@ Alignment: aligned with gaps
 
 Required corrections before complete:
 - none local; external blockers remain credentials, approval, and incoming document examples.
+
+## Visual-System Addendum
+
+- Applied the blended-backdrop correction from browser annotations across the artifact app, using `#202124` for the sidebar cap, sidebar navigation rail, results toolbar, table header, workbench, product-loop tabs, and structural app surfaces.
+- Replaced the remaining spotty light panel fills with tinted dark Liquid Glass cards, fading divider rules, and transparent alternative actions; preferred actions remain glass or primary CTA surfaces.
+- Added a local Nucleo-style line icon resolver for the product-loop sidebar and Dashboard tracker icons without adding a remote icon runtime.
+- Extended the treatment to popovers, activity drawer rows, rail context plates, settings controls, selected row indicators, and mobile breakpoints.
+- Verification:
+  - `pnpm build` passed after the patch.
+  - Local Chrome/Playwright verification passed across Dashboard, Find Estates, Dossiers, Drips, Queue, Admin, and Settings with no console/page errors.
+  - Mobile 390px verification passed with Dashboard collapsed to one column and no horizontal overflow.
+  - Production deployment `dpl_3Pa1Qd12W584dJzNB2dNhKiLG2Ci` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias verification confirmed `.sidebar-top`, `.nav-list`, `.results-toolbar`, and `thead tr` compute to `rgb(32, 33, 36)` and the Dashboard/Dossiers product-loop surfaces still render without the report rail in Dossiers.
