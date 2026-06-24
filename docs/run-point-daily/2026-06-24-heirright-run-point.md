@@ -255,6 +255,33 @@ Alignment: aligned with gaps
 Required corrections before complete:
 - Incoming client document examples/templates remain external inputs for the final comprehensive packet.
 - Live outreach and production CRM card creation remain locked until credentials, approval, and readback proof exist.
+
+- Blended backdrop visual follow-up:
+  - Collapsed the dark theme substrate and glass tint source to `#202124` so the app no longer mixes `#1c1c1e`, `#2c2c2e`, `#202124`, and `#262626` across the main work areas.
+  - Moved Dashboard, Drips, Queue, Admin, Settings, and Dossiers structural panels to the same `#202124` backdrop with fading divider lines and rounded iOS-style panel borders.
+  - Kept dossier document tiles as the annotated `#262626` document controls, while leaving dashboard rows transparent and using subtle liquid-glass treatment only for preferred productivity chips and the search control.
+  - Local proof:
+    - `pnpm build` passed.
+    - Browser proof on `http://localhost:4173` confirmed Dashboard panels, Dossiers view, Dossier list panel, and Dossier reader panel compute to `rgb(32, 33, 36)`.
+    - Dashboard rows compute transparent with divider hierarchy; suggestion chips keep a subtle glass fill on the same dark substrate; search control computes to `rgba(32, 33, 36, 0.78)`.
+    - Dossiers loaded 3 rendered rows and 10 document controls, selected Tax History Packet into the embedded reader, and kept the report rail closed.
+    - Clean browser pass reported no console/page errors and no failed responses.
+
+## /solvys-heir-audit Blended Backdrop Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local Chrome browser proof, and existing run-point deployment notes.
+
+Backward: This pass supports the product-loop UX around S7/S8/S9 by making the Dashboard and Dossiers work areas read as one organized real estate workbench instead of separate gray blocks. It preserves the dossier document controls and the Dossiers no-report-rail loop while reducing visual noise for a non-technical operator.
+
+UX pass: aligned with gaps. The operator sees one dark-gray surface, fading hierarchy lines, clear selected document controls, and subtle preferred-action glass without extra developer-facing language.
+
+Forward: Deploy the blended backdrop pass, then re-run live alias proof and keep the remaining gaps limited to incoming client document examples/templates and approved CRM/outreach credentials.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Incoming client document examples/templates remain external inputs for the final comprehensive packet.
+- Live outreach and production CRM card creation remain locked until credentials, approval, and readback proof exist.
 - Dossier document language cleanup follow-up:
   - Replaced raw object-shaped source fact rendering in Source Notes and Tax History Packet with plain operator-readable field labels and values.
   - Replaced raw Podio setup names in the CRM Handoff document and report-rail handoff readiness with plain labels: Podio access, Podio Leads app, and Podio field map.
@@ -280,3 +307,34 @@ Alignment: aligned with gaps
 Required corrections before complete:
 - Incoming client document examples/templates remain external inputs for the final comprehensive packet.
 - Live outreach and production CRM card creation remain locked until credentials, approval, and readback proof exist.
+
+- North Star dossier rail follow-up:
+  - Copied the client-provided Deborah Cheatham and Constance E. White family-tree PDFs into `docs/north-star-packets/` as durable reference anchors.
+  - Added `docs/north-star-packets/README.md` to capture the report structure these packets anchor: property identity, date-added metadata, Offer / Profit math, owner DOB/DOD and obituary status, back story, public-record notes, heir/contact matrix, and Podio / Google Docs / Google Sheets export posture.
+  - Moved Dossiers document review out of the main Dossiers canvas and into the right-side rail, sharing the Report rail mechanics while keeping the normal report rail out of the Dossiers product loop.
+  - Added a North-Star-style Completed Lead Report renderer in the Dossier rail with Offer / Profit table, Back Story, source review checklist, contact matrix, Podio fields, Google Sheets row, and explicit review-only export gates.
+  - Dashboard annotation fixes: Activities / Drips subtab content now transitions, the Recent Activity CTA reads `Open Estate Search`, and Suggestions now reads `Next Actions`.
+  - Local proof:
+    - `pnpm build` passed.
+    - Browser proof on `http://localhost:4173` confirmed Dashboard subtab animation `loopSubtabIn`, `Open Estate Search`, `Next Actions`, Dashboard panel backdrop `rgb(32, 33, 36)`, Dossiers `data-mode="dossier"` rail open with 10 document controls, no Dossier reader/doc grid inside the main Dossiers view, and normal Report rail still available only from Find Estates.
+    - Iframe proof confirmed the Completed Lead Report `srcdoc` contains North Star anchors, Offer / Profit Table, Back Story, Podio Lead Fields, Google Sheets Row, and `$100,000 Net`.
+    - Row-switch proof confirmed clicking Bryant changes the Dossier rail context and keeps the rail open; pop-out proof confirmed the separate document window contains the North Star Completed Lead Report.
+    - Mobile render proof at 390px confirmed the Dossier rail renders 10 docs with no horizontal overflow.
+    - Production deployment `dpl_DBtm2JqEFPiPzcKrjaB6RpcQea2b` is aliased to `https://heirright-landing-demo.vercel.app`.
+    - Live alias proof confirmed `/health` 200, Dashboard subtab animation/copy, Dossier `data-mode="dossier"` rail open with 10 docs and no main-view reader, Completed Lead Report North Star sections, row switching, pop-out rendering, normal Report rail isolation in Find Estates, no console/page errors, and no failed responses.
+
+## /solvys-heir-audit North Star Dossier Rail Follow-up
+
+Source checked: HeirRight deal-flow checklist, current artifact source, local browser proof, live Vercel alias proof, client-provided Deborah Cheatham PDF, and client-provided Constance E. White PDF.
+
+Backward: This pass corrects the Dossiers layout to use a specialized right-side rail rather than a second main-content reader, while preserving the product-loop rule that the normal Report rail is not available inside Dossiers.
+
+UX pass: aligned with gaps. The Dossier tab now behaves like a finished packet review workspace: list on the left, document packet in the rail, embedded PDF-style reader, pop-out option, and export-ready report sections grounded in the North Star packet structure.
+
+Forward: Refine the report renderer against the next client examples when they arrive, then run controlled Podio/Google readback only after credentials and explicit approval exist.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until credentials, approval, and readback proof exist.
+- The new PDFs are visual anchors; their pages are image-based and still need human/client review before any field is treated as confirmed source truth.

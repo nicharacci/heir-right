@@ -68,11 +68,11 @@
 
     body[data-theme="dark"] {
       color-scheme: dark;
-      --page: #1c1c1e;
-      --page-2: #2c2c2e;
-      --glass: rgba(44, 44, 46, .76);
-      --glass-strong: rgba(58, 58, 60, .90);
-      --glass-soft: rgba(44, 44, 46, .56);
+      --page: #202124;
+      --page-2: #202124;
+      --glass: rgba(32, 33, 36, .78);
+      --glass-strong: rgba(32, 33, 36, .92);
+      --glass-soft: rgba(32, 33, 36, .58);
       --line: rgba(235, 235, 245, .12);
       --line-strong: rgba(235, 235, 245, .20);
       --divider-line: linear-gradient(90deg, transparent, rgba(235, 235, 245, .16) 12%, rgba(235, 235, 245, .16) 88%, transparent);
@@ -101,8 +101,8 @@
       --red-soft: rgba(255, 105, 97, .14);
       --solvys-lg-tint-source: var(--page-2);
       --solvys-lg-rim-source: rgba(235, 235, 245, .30);
-      --solvys-lg-dark-plate: rgb(28 28 30);
-      --solvys-lg-bg: color-mix(in srgb, var(--solvys-lg-tint) 42%, transparent);
+      --solvys-lg-dark-plate: rgb(32 33 36);
+      --solvys-lg-bg: color-mix(in srgb, var(--solvys-lg-tint) 32%, transparent);
       --solvys-lg-border: color-mix(in srgb, var(--solvys-lg-rim) 56%, transparent);
       --solvys-lg-backdrop-filter: blur(19px) contrast(1.08) brightness(.94) saturate(1.06);
       --solvys-lg-shadow:
@@ -1535,7 +1535,7 @@
       display: none;
     }
 
-    .app[data-active-view]:not([data-active-view="find-estates"]) .research-rail {
+    .app[data-active-view]:not([data-active-view="find-estates"]):not([data-active-view="dossiers"]) .research-rail {
       display: none !important;
     }
 
@@ -1554,6 +1554,15 @@
     .app[data-active-view="admin"] [data-view-panel="admin"],
     .app[data-active-view="settings"] [data-view-panel="settings"] {
       display: block;
+    }
+
+    .app[data-active-view="dossiers"] #dossiersView {
+      padding-right: calc(var(--active-rail-width, min(388px, 55vw, calc(100vw - 64px))) + 16px);
+      transition: padding-right .42s var(--ease-out);
+    }
+
+    .app[data-active-view="dossiers"] .research-rail {
+      display: flex;
     }
 
     .app[data-active-view="dashboard"] .workbench,
@@ -1858,6 +1867,10 @@
       min-height: 0;
     }
 
+    .dossier-shell.is-list-only {
+      grid-template-columns: minmax(420px, 1fr);
+    }
+
     .dossier-list-panel,
     .dossier-reader-panel {
       min-width: 0;
@@ -1868,6 +1881,12 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       background: rgba(255,255,255,.38);
+    }
+
+    .dossier-rail-content {
+      display: grid;
+      gap: 12px;
+      align-content: start;
     }
 
     .dossier-list-head,
@@ -1915,6 +1934,32 @@
       padding: 12px;
     }
 
+    .research-rail .dossier-doc-grid {
+      padding: 0;
+    }
+
+    .research-rail[data-mode="dossier"] .rail-tabs {
+      grid-template-columns: auto;
+      justify-content: end;
+      min-height: 36px;
+    }
+
+    .research-rail[data-mode="dossier"] .rail-segment {
+      display: none;
+    }
+
+    .research-rail[data-mode="dossier"] .rail-context-kicker::before {
+      content: "Dossier rail";
+    }
+
+    .research-rail[data-mode="dossier"] .rail-context-kicker {
+      font-size: 0;
+    }
+
+    .research-rail[data-mode="dossier"] .rail-context-kicker::before {
+      font-size: 10px;
+    }
+
     .dossier-doc {
       text-align: left;
       cursor: pointer;
@@ -1942,6 +1987,21 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       background: white;
+    }
+
+    .research-rail .pdf-reader {
+      width: 100%;
+      min-height: min(520px, 58vh);
+      margin: 0;
+    }
+
+    .loop-tab-content {
+      animation: loopSubtabIn .26s var(--ease-out);
+    }
+
+    @keyframes loopSubtabIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .discovery-strip {
@@ -2949,7 +3009,7 @@
       top: 0;
       right: 0;
       bottom: 23px;
-      z-index: 28;
+      z-index: 68;
       min-width: 0;
       height: auto;
       display: flex;
@@ -4099,15 +4159,20 @@
     #queueView .loop-panel,
     #adminView .loop-panel,
     #settingsView .loop-panel,
+    .dossier-list-panel,
+    .dossier-reader-panel,
     body[data-theme] #dashboardView .loop-panel,
     body[data-theme] #dripsView .loop-panel,
     body[data-theme] #queueView .loop-panel,
     body[data-theme] #adminView .loop-panel,
-    body[data-theme] #settingsView .loop-panel {
+    body[data-theme] #settingsView .loop-panel,
+    body[data-theme] .dossier-list-panel,
+    body[data-theme] .dossier-reader-panel {
       color: var(--text);
-      background: #262626;
-      background-color: #262626;
+      background: #202124;
+      background-color: #202124;
       border-color: rgba(235,235,245,.08);
+      border-radius: 16px;
       box-shadow: none;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
@@ -4123,14 +4188,15 @@
     body[data-theme] #queueView .queue-item {
       background: transparent;
       background-color: transparent;
+      border-color: transparent;
     }
 
     #dripsView .setting-card,
     #settingsView .setting-card,
     body[data-theme] #dripsView .setting-card,
     body[data-theme] #settingsView .setting-card {
-      background: #262626;
-      background-color: #262626;
+      background: #202124;
+      background-color: #202124;
       border-color: rgba(235,235,245,.08);
       box-shadow: none;
       backdrop-filter: none;
@@ -4139,22 +4205,34 @@
 
     #dashboardView .suggestion-chip,
     body[data-theme] #dashboardView .suggestion-chip {
-      background: #262626;
-      background-color: #262626;
-      border-color: rgba(235,235,245,.08);
-      box-shadow: none;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.016)),
+        rgba(32,33,36,.86);
+      background-color: #202124;
+      border-color: rgba(235,235,245,.105);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.07);
+      backdrop-filter: blur(14px) saturate(1.04);
+      -webkit-backdrop-filter: blur(14px) saturate(1.04);
     }
 
     #dashboardView .suggestion-chip:hover,
     #dashboardView .suggestion-chip:focus-visible,
     body[data-theme] #dashboardView .suggestion-chip:hover,
     body[data-theme] #dashboardView .suggestion-chip:focus-visible {
-      background: #2b2b2b;
-      background-color: #2b2b2b;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.068), rgba(255,255,255,.022)),
+        rgba(32,33,36,.92);
+      background-color: #202124;
       border-color: rgba(235,235,245,.16);
       outline: 0;
+    }
+
+    .topbar .search-control.solvys-liquid-glass,
+    body[data-theme] .topbar .search-control.solvys-liquid-glass {
+      --solvys-lg-tint-source: rgb(32 33 36);
+      --solvys-lg-rim-source: rgba(235, 235, 245, .24);
+      background: rgba(32,33,36,.78);
+      border-color: rgba(235,235,245,.18);
     }
 
     .next-link,
@@ -4257,6 +4335,9 @@
       }
       .loop-view {
         padding: 14px 12px 76px;
+      }
+      .app[data-active-view="dossiers"] #dossiersView {
+        padding-right: 12px;
       }
       .dossier-shell {
         height: auto;
@@ -4824,6 +4905,7 @@ const state = {
   filteredRows: [],
   selectedId: null,
   railOpen: false,
+  railMode: "report",
   detailRailOpen: true,
   railTab: "flow",
   railWidth: 388,
@@ -5967,7 +6049,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
       type: "Rendered report",
       copy: "Lead report draft with offer, source notes, and review gate.",
       status: report?.reviewGate?.externalUseBlocked ? "Review blocked" : "Prepared",
-      body: report?.formats?.html ?? dossier?.documentPacket?.formats?.html ?? discoveryDossierHtml(row, dossier)
+      body: completedLeadReportHtml(row, dossier)
     },
     {
       id: "source-notes",
@@ -6053,11 +6135,229 @@ function pageShellHtml(title, kicker, body) {
           ul { padding-left: 18px; }
           li { margin: 6px 0; }
           .muted { color: #6e7681; }
+          .notice { margin: 18px 0; padding: 12px 14px; border: 1px solid #d8d5ca; border-radius: 8px; background: #fbfaf5; color: #3f4854; }
+          .section { margin-top: 22px; padding-top: 16px; border-top: 1px solid #e5e0d6; }
+          .two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+          .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+          .fact { padding: 10px; border: 1px solid #e5e0d6; border-radius: 8px; background: #fbfaf5; }
+          .fact span { display: block; color: #6e7681; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+          .fact strong { display: block; margin-top: 3px; font-size: 15px; }
+          .status { font-weight: 700; }
+          .small { color: #6e7681; font-size: 12px; }
+          code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+          @media (max-width: 720px) { body { padding: 16px; } .page { padding: 22px; } .two-col, .facts { grid-template-columns: 1fr; } }
         </style>
       </head>
       <body><main class="page"><div class="kicker">${escapeHtml(kicker)}</div><h1>${escapeHtml(title)}</h1>${body}</main></body>
     </html>
   `;
+}
+
+function formatPacketDate(value) {
+  if (!value) return "Needs review";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("en-US");
+}
+
+function moneyClaimValue(claim, fallback = "Needs review") {
+  if (!claim || claim.value === null || claim.value === undefined || claim.value === "") return fallback;
+  const value = Number(claim.value);
+  if (Number.isNaN(value)) return String(claim.value);
+  const symbol = claim.currency === "USD" || !claim.currency ? "$" : `${claim.currency} `;
+  return `${symbol}${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+function percentClaimValue(claim, fallback = "Needs review") {
+  if (!claim || claim.value === null || claim.value === undefined || claim.value === "") return fallback;
+  const value = Number(claim.value);
+  if (Number.isNaN(value)) return String(claim.value);
+  return `${value.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
+}
+
+function countClaimValue(claim, fallback = "Needs review") {
+  if (!claim || claim.value === null || claim.value === undefined || claim.value === "") return fallback;
+  return Number.isNaN(Number(claim.value)) ? String(claim.value) : Number(claim.value).toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+function reportClaimNote(claim, fallback = "Source review required") {
+  return claim?.note || claim?.reviewFlags?.slice(0, 2).map(displayStatus).join("; ") || fallback;
+}
+
+function paragraphBlock(text, fallback = "Needs review.") {
+  const lines = String(text || fallback).split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  return lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("");
+}
+
+function offerProfitRows(report) {
+  const math = report?.offerMath ?? {};
+  return [
+    ["As-Is Value", "", moneyClaimValue(math.asIsValue), reportClaimNote(math.asIsValue, "Comp or appraisal input required.")],
+    ["Taxes Due", "", moneyClaimValue(math.taxesDue), reportClaimNote(math.taxesDue, "Tax amount due must be captured.")],
+    ["Liens", "", moneyClaimValue(math.liens), reportClaimNote(math.liens, "Lien amount must be confirmed.")],
+    ["Mortgages", "", moneyClaimValue(math.mortgages), reportClaimNote(math.mortgages, "Mortgage balance must be confirmed.")],
+    ["Selling Costs", "", moneyClaimValue(math.sellingCosts), reportClaimNote(math.sellingCosts, "Operator closing-cost assumption required.")],
+    ["Probate Costs", "", moneyClaimValue(math.probateCosts), reportClaimNote(math.probateCosts, "Court/admin cost estimate required.")],
+    ["Partition Costs", "", moneyClaimValue(math.partitionCosts), reportClaimNote(math.partitionCosts, "Litigation-cost assumption required.")],
+    ["Post Equity Value", "", moneyClaimValue(math.postEquityValue), reportClaimNote(math.postEquityValue, "Computed after deductions are known.")],
+    ["Amount per heir $$", "", moneyClaimValue(math.equityPerHeir), reportClaimNote(math.equityPerHeir, "Needs confirmed equity and heir count.")],
+    ["# of heirs on board", "", countClaimValue(math.heirCount), reportClaimNote(math.heirCount, "Heir count comes from the current family-tree hypothesis.")],
+    ["Profit", "", moneyClaimValue(math.profit), reportClaimNote(math.profit, "Draft only until underwriting clears.")],
+    ["Offer per heir", percentClaimValue(math.buyPercentage), moneyClaimValue(math.offerAmount), reportClaimNote(math.offerAmount, "Draft offer blocked until review.")],
+    ["Min Profit", "", moneyClaimValue(math.minimumNetProfit), reportClaimNote(math.minimumNetProfit, "Minimum net placeholder for operator review.")],
+    ["$100,000 Net", "", "Benchmark", "North Star packet comparison row retained for deal review."]
+  ];
+}
+
+function offerProfitTable(report) {
+  return `
+    <table>
+      <thead><tr><th>Description</th><th>Percentage</th><th>Total</th><th>Review note</th></tr></thead>
+      <tbody>
+        ${offerProfitRows(report).map(([label, pct, total, note]) => `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(pct)}</td><td>${escapeHtml(total)}</td><td>${escapeHtml(note)}</td></tr>`).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function sourceChecklistRows(report) {
+  const checklist = report?.researchChecklist ?? [];
+  return checklist.length
+    ? checklist.map((step) => `<tr><td>${escapeHtml(step.label ?? "Review step")}</td><td>${escapeHtml(displayStatus(step.status))}</td><td>${escapeHtml(step.note ?? "Review source evidence.")}</td></tr>`).join("")
+    : `<tr><td>Source checklist</td><td>Needs review</td><td>Run Discovery to populate source-backed checks.</td></tr>`;
+}
+
+function contactMatrixRows(report, dossier) {
+  const contacts = report?.contactPlaceholders ?? dossier?.familyTree?.hypothesis?.value?.nodes ?? [];
+  if (!contacts.length) {
+    return `<tr><td colspan="5">No confirmed contacts yet. Build this from obituary, probate, family tree, approved paid sources, and operator notes.</td></tr>`;
+  }
+  return contacts.slice(0, 18).map((contact, index) => {
+    const name = contact.name || contact.label || `${displayStatus(contact.role, "Contact")} ${index + 1}`;
+    const phones = (contact.phones ?? []).join(", ") || "Needs review";
+    const emails = (contact.emails ?? []).join(", ") || "Needs review";
+    const addresses = (contact.addresses ?? []).join("; ") || "Needs review";
+    return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(displayStatus(contact.role, "Relationship"))}</td><td>${escapeHtml(phones)}</td><td>${escapeHtml(emails)}</td><td>${escapeHtml(addresses)}<br><span class="small">${escapeHtml(contact.note ?? "Relationship/source confidence needs review.")}</span></td></tr>`;
+  }).join("");
+}
+
+function podioFieldRows(row, dossier, report) {
+  const fields = dossier?.crm?.payload?.appModel?.fields ?? {};
+  const rows = [
+    ["title", fields.title ?? dossier?.summary?.displayName ?? row?.leadName],
+    ["estate_name", fields.estate_name ?? dossier?.summary?.estateName ?? row?.owner],
+    ["property_address", fields.property_address ?? row?.address],
+    ["owner_name", fields.owner_name ?? row?.owner],
+    ["county", fields.county ?? row?.county],
+    ["parcel_id", fields.parcel_id ?? row?.parcel],
+    ["dossier_status", fields.dossier_status ?? dossier?.operatorQueue?.state],
+    ["lead_bucket", fields.lead_bucket ?? report?.leadQualityProfile?.leadBucket],
+    ["offer_math", fields.offer_math ? "Mapped payload ready" : "Needs Podio field map"],
+    ["outreach_workflow", fields.outreach_workflow ? "Mapped payload ready" : "Prepared only"]
+  ];
+  return rows.map(([field, value]) => `<tr><th><code>${escapeHtml(field)}</code></th><td>${escapeHtml(formatSourceFactValue(value))}</td></tr>`).join("");
+}
+
+function googleSheetsRow(row, dossier, report) {
+  return [
+    dossier?.summary?.estateName ?? row?.owner ?? row?.leadName,
+    row?.address ?? claimValue(dossier?.property?.address),
+    row?.county ?? claimValue(dossier?.property?.county),
+    row?.parcel ?? claimValue(dossier?.property?.parcelId),
+    displayStatus(report?.reviewGate?.reportStatus, "Review"),
+    displayStatus(report?.leadQualityProfile?.leadBucket, "Unbucketed"),
+    countClaimValue(report?.offerMath?.heirCount),
+    moneyClaimValue(report?.offerMath?.offerAmount),
+    row?.next ?? dossier?.summary?.nextBestAction ?? "Review source packet"
+  ];
+}
+
+function completedLeadReportHtml(row, dossier) {
+  const report = dossier?.completedLeadReport;
+  const property = dossier?.property ?? {};
+  const sheetRow = googleSheetsRow(row, dossier, report);
+  const missing = report?.missingData ?? buildMissingSections(dossier ?? {}).map((item) => item.label);
+  const reviewGate = report?.reviewGate ?? {};
+  return pageShellHtml("Completed Lead Report", row?.leadName ?? dossier?.summary?.estateName ?? "Lead file", `
+    <p class="muted">Prepared from the live public-record lead packet. North Star anchors: Deborah Cheatham complex family-tree packet and Constance E. White simpler family-tree packet.</p>
+    <div class="notice"><strong>Internal draft.</strong> External outreach, offers, Podio writes, Google Docs exports, and Google Sheets updates remain blocked until operator approval and readback proof clear.</div>
+    <div class="facts">
+      <div class="fact"><span>Date added</span><strong>${escapeHtml(formatPacketDate(dossier?.generatedAt ?? report?.generatedAt))}</strong></div>
+      <div class="fact"><span>Report status</span><strong>${escapeHtml(displayStatus(reviewGate.reportStatus, "Review"))}</strong></div>
+      <div class="fact"><span>External use</span><strong>${escapeHtml(reviewGate.externalUseBlocked ? "Blocked" : "Ready for approval")}</strong></div>
+    </div>
+    <table>
+      <tr><th>Owner / estate</th><td>${escapeHtml(row?.owner ?? claimValue(property.ownerName, "Needs review"))}</td></tr>
+      <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
+      <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Needs review"))}</td></tr>
+      <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? claimValue(property.parcelId, "Needs review"))}</td></tr>
+      <tr><th>Case / file</th><td>${escapeHtml(row?.file ?? claimValue(property.caseNumber, "Needs review"))}</td></tr>
+      <tr><th>Owner DOB / DOD</th><td>Needs review from vital, obituary, memorial, or probate source notes.</td></tr>
+      <tr><th>Obituary status</th><td>Needs review. Preserve the link or explicit "not found" note before outreach.</td></tr>
+    </table>
+
+    <div class="section">
+      <h2>Offer / Profit Table</h2>
+      <p class="muted">Mirrors the client packet structure while keeping unverified values visible instead of silently filling them.</p>
+      ${offerProfitTable(report)}
+    </div>
+
+    <div class="section">
+      <h2>Back Story</h2>
+      ${paragraphBlock(report?.backstory, dossier?.narrative ?? "Back story needs review from public-record notes.")}
+    </div>
+
+    <div class="section two-col">
+      <div>
+        <h2>Property / Deed</h2>
+        ${paragraphBlock(report?.propertySummary, "Property summary needs review.")}
+        ${paragraphBlock(report?.deedSummary, "Deed and title notes need review.")}
+      </div>
+      <div>
+        <h2>Taxes / Probate</h2>
+        ${paragraphBlock(report?.taxSummary, "Tax summary needs review.")}
+        ${paragraphBlock(report?.probateSummary, "Probate summary needs review.")}
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Family Tree And Contact Matrix</h2>
+      ${paragraphBlock(report?.familyTreeSummary, "Family-tree hypothesis needs review.")}
+      <table>
+        <thead><tr><th>Name</th><th>Relationship</th><th>Phone numbers</th><th>Email</th><th>Current / history address</th></tr></thead>
+        <tbody>${contactMatrixRows(report, dossier)}</tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Source Notes Review</h2>
+      <table>
+        <thead><tr><th>Step</th><th>Status</th><th>Note</th></tr></thead>
+        <tbody>${sourceChecklistRows(report)}</tbody>
+      </table>
+      <h2>Open Data</h2>
+      <ul>${missing.length ? missing.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>No critical missing-data items flagged beyond review placeholders.</li>"}</ul>
+    </div>
+
+    <div class="section">
+      <h2>Podio Lead Fields</h2>
+      <table>${podioFieldRows(row, dossier, report)}</table>
+    </div>
+
+    <div class="section">
+      <h2>Google Sheets Row</h2>
+      <table>
+        <tr><th>Estate</th><th>Property</th><th>County</th><th>Folio</th><th>Report</th><th>Bucket</th><th>Heirs</th><th>Offer</th><th>Next action</th></tr>
+        <tr>${sheetRow.map((value) => `<td>${escapeHtml(formatSourceFactValue(value))}</td>`).join("")}</tr>
+      </table>
+      <p class="small">Google Docs export target: completed lead report body plus Discovery Dossier attachments. Google Sheets target: one row per lead with source-backed status, offer math, and queue state.</p>
+    </div>
+
+    <div class="section">
+      <h2>Next Action</h2>
+      <p class="status">${escapeHtml(dossier?.summary?.nextBestAction ?? row?.next ?? "Resolve review flags before export or outreach.")}</p>
+    </div>
+  `);
 }
 
 function discoveryDossierHtml(row, dossier) {
@@ -6245,16 +6545,18 @@ function renderDashboardView() {
             <button class="loop-tab" type="button" data-dashboard-tab="drips" aria-pressed="${state.dashboardActivityTab === "drips"}">Drips</button>
           </div>
         </div>
+        <div class="loop-tab-content" data-dashboard-content="${escapeHtml(state.dashboardActivityTab)}">
         ${state.dashboardActivityTab === "drips" ? `
           <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}; ${escapeHtml(drip.nextRun)}</span></li>`).join("")}</ul>
         ` : `
           <ul class="tracker-list">${recent.map((event) => `<li class="tracker-item">${trackerIcon(event.tone === "blocked" ? "flag" : "check")}<span><strong>${escapeHtml(event.title)}</strong><span>${escapeHtml(event.copy)}</span></span><span class="tracker-date">${escapeHtml(eventTime(event.at))}</span></li>`).join("")}</ul>
         `}
+        </div>
       </section>
       <section class="loop-panel full">
         <div class="loop-panel-head">
           <div><p class="eyebrow">Recent Activity</p><h2 class="loop-title">Leads opened before logout</h2></div>
-          <button class="btn" type="button" data-shell-nav-shortcut="find-estates">Open Find Estates</button>
+          <button class="btn" type="button" data-shell-nav-shortcut="find-estates">Open Estate Search</button>
         </div>
         <ul class="tracker-list">
           ${(state.rows.length ? state.rows.slice(0, 4) : [{ leadName: "No lead selected", address: "Load latest or pull a fresh batch", next: "Begin with public records", tone: "review" }]).map((row) => `
@@ -6268,7 +6570,7 @@ function renderDashboardView() {
       </section>
       <section class="loop-panel full">
         <div class="loop-panel-head">
-          <div><p class="eyebrow">Suggestions</p><h2 class="loop-title">Productivity chips</h2></div>
+          <div><p class="eyebrow">Suggestions</p><h2 class="loop-title">Next Actions</h2></div>
         </div>
         <div class="suggestion-list">
           ${dashboardSuggestions().map(([title, copy]) => `<button class="suggestion-chip" type="button" data-suggestion="${escapeHtml(title)}"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(copy)}</span></button>`).join("")}
@@ -6294,11 +6596,8 @@ function renderDossiersView() {
   const target = document.getElementById("dossiersView");
   if (!target) return;
   const rows = state.filteredRows.length ? state.filteredRows : state.rows;
-  const row = selectedRow();
-  const docs = dossierDocuments(row, dossierForRow(row));
-  const selectedDoc = selectedDossierDocument(row);
   target.innerHTML = `
-    <div class="dossier-shell">
+    <div class="dossier-shell is-list-only">
       <section class="dossier-list-panel">
         <div class="dossier-list-head">
           <div><p class="eyebrow">Dossiers</p><h2 class="loop-title">Finished dossier list</h2></div>
@@ -6316,39 +6615,65 @@ function renderDossiersView() {
           </table>
         </div>
       </section>
-      <section class="dossier-reader-panel">
-        <div class="dossier-reader-head">
-          <div><p class="eyebrow">${escapeHtml(row?.leadName ?? "No lead")}</p><h2 class="loop-title">${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}</h2></div>
-          <button class="btn" type="button" data-popout-doc="${escapeHtml(selectedDoc?.id ?? "discovery-dossier")}">Pop out</button>
-        </div>
-        <div class="dossier-reader-scroll">
-          <div class="dossier-doc-grid">
-            ${docs.map((doc) => `<button class="dossier-doc ${doc.id === selectedDoc?.id ? "is-selected" : ""}" type="button" data-dossier-doc="${escapeHtml(doc.id)}"><strong>${escapeHtml(doc.title)}</strong><span>${escapeHtml(doc.type)} - ${escapeHtml(doc.status)}</span><span>${escapeHtml(doc.copy)}</span></button>`).join("")}
-          </div>
-          <div class="pdf-toolbar"><span>${escapeHtml(selectedDoc?.type ?? "PDF packet")} - ${escapeHtml(selectedDoc?.status ?? "Review")}</span><span class="tracker-date">Embedded PDF reader</span></div>
-          <iframe class="pdf-reader" title="${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}" sandbox="" srcdoc="${escapeHtml(selectedDoc?.body ?? "")}"></iframe>
-        </div>
-      </section>
     </div>
   `;
   target.querySelectorAll("[data-dossier-row]").forEach((rowButton) => {
     rowButton.addEventListener("click", () => {
       state.selectedId = rowButton.dataset.dossierRow;
       state.selectedDossierDocId = "discovery-dossier";
-      addShellEvent("Dossier opened", "The lead documents opened inside Dossiers without using the report rail.", "ready", false);
+      state.railMode = "dossier";
+      state.railOpen = true;
+      addShellEvent("Dossier rail opened", "The lead documents opened in the Dossier rail with the report rail kept out of this product loop.", "ready", false);
       renderDossiersView();
+      renderRail();
       updateFooterLeadContext(selectedRow());
     });
   });
-  target.querySelectorAll("[data-dossier-doc]").forEach((button) => {
+  if (state.activeView === "dossiers") {
+    state.railMode = "dossier";
+    renderRail();
+  }
+}
+
+function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
+  const content = document.getElementById("railContent");
+  const docs = dossierDocuments(row, dossier);
+  const selectedDoc = selectedDossierDocument(row);
+  syncRailContext(row);
+  syncRailTabs();
+  if (!content) return;
+  if (!row || !dossier) {
+    content.innerHTML = `<section class="glass-card rail-title-card"><h2 class="rail-title">Dossier rail</h2><p class="copy">Load the latest lead packet, then choose a dossier to review the documents.</p></section>`;
+    setRailOpen(state.railOpen);
+    return;
+  }
+  content.innerHTML = `
+    <div class="dossier-rail-content">
+      <section class="glass-card rail-card">
+        <div class="loop-panel-head">
+          <div><p class="eyebrow">${escapeHtml(row.leadName ?? "Lead")}</p><h2 class="rail-title">${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}</h2></div>
+          <button class="btn" type="button" data-popout-doc="${escapeHtml(selectedDoc?.id ?? "discovery-dossier")}">Pop out</button>
+        </div>
+        <div class="dossier-doc-grid">
+          ${docs.map((doc) => `<button class="dossier-doc ${doc.id === selectedDoc?.id ? "is-selected" : ""}" type="button" data-dossier-doc="${escapeHtml(doc.id)}"><strong>${escapeHtml(doc.title)}</strong><span>${escapeHtml(doc.type)} - ${escapeHtml(doc.status)}</span><span>${escapeHtml(doc.copy)}</span></button>`).join("")}
+        </div>
+      </section>
+      <section class="glass-card rail-card">
+        <div class="pdf-toolbar"><span>${escapeHtml(selectedDoc?.type ?? "PDF packet")} - ${escapeHtml(selectedDoc?.status ?? "Review")}</span><span class="tracker-date">Embedded PDF reader</span></div>
+        <iframe class="pdf-reader" title="${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}" sandbox="" srcdoc="${escapeHtml(selectedDoc?.body ?? "")}"></iframe>
+      </section>
+    </div>
+  `;
+  content.querySelectorAll("[data-dossier-doc]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedDossierDocId = button.dataset.dossierDoc;
-      renderDossiersView();
+      renderRail();
     });
   });
-  target.querySelectorAll("[data-popout-doc]").forEach((button) => {
+  content.querySelectorAll("[data-popout-doc]").forEach((button) => {
     button.addEventListener("click", () => popOutDossierDocument(button.dataset.popoutDoc));
   });
+  setRailOpen(state.railOpen);
 }
 
 function popOutDossierDocument(docId) {
@@ -6635,17 +6960,25 @@ function setActiveShellView(view = "dashboard", label = "") {
   state.activeView = nextView;
   if (app) app.dataset.activeView = nextView;
   if (detail) detail.setAttribute("aria-hidden", "true");
-  if (nextView !== "find-estates") {
+  if (nextView === "dossiers") {
+    state.railMode = "dossier";
+    state.railOpen = true;
+    setRailOpen(true);
+    setDetailRailOpen(false);
+    document.getElementById("topStatus").textContent = `${label || activeViewLabel(nextView)} workspace selected.`;
+  } else if (nextView !== "find-estates") {
+    state.railMode = "report";
     setRailOpen(false);
     setDetailRailOpen(false);
     document.getElementById("topStatus").textContent = `${label || activeViewLabel(nextView)} workspace selected.`;
   } else {
+    state.railMode = "report";
     setDetailRailOpen(false);
     document.getElementById("topStatus").textContent = "Find Estates workspace selected. Open a lead, then begin Discovery from the rail.";
   }
   const toggle = document.getElementById("rightRailToggle");
   if (toggle) {
-    const toggleLabel = nextView === "find-estates" ? "Return to Dashboard" : "Open Find Estates";
+    const toggleLabel = nextView === "find-estates" ? "Return to Dashboard" : nextView === "dossiers" ? "Toggle dossier rail" : "Open Estate Search";
     toggle.setAttribute("aria-label", toggleLabel);
     toggle.setAttribute("title", toggleLabel);
     toggle.setAttribute("aria-pressed", nextView === "find-estates" ? "true" : "false");
@@ -6654,6 +6987,13 @@ function setActiveShellView(view = "dashboard", label = "") {
 }
 
 function toggleRightRail() {
+  if (state.activeView === "dossiers") {
+    state.railMode = "dossier";
+    state.railOpen = !state.railOpen;
+    renderRail();
+    setRailOpen(state.railOpen);
+    return;
+  }
   if (state.railOpen) setRailOpen(false);
   const target = state.activeView === "find-estates" ? "dashboard" : "find-estates";
   document.querySelector(`[data-shell-nav="${target}"]`)?.click();
@@ -6667,6 +7007,7 @@ function syncRailContext(row) {
   const pill = document.getElementById("railContextPill");
   const input = document.getElementById("railRenameInput");
   if (!title || !meta || !pill) return;
+  const kicker = document.querySelector(".rail-context-kicker");
   if (!row) {
     context?.classList.remove("is-renaming");
     if (copy) {
@@ -6675,18 +7016,21 @@ function syncRailContext(row) {
     }
     title.textContent = "No lead selected";
     meta.textContent = "Choose a file to review";
+    if (kicker) kicker.textContent = state.railMode === "dossier" ? "Dossier rail" : "Report rail";
     pill.className = "pill neutral";
     pill.textContent = "Waiting";
     return;
   }
+  if (kicker) kicker.textContent = state.railMode === "dossier" ? "Dossier rail" : "Report rail";
   const railTitle = railNameFor(row);
   if (copy) {
     copy.removeAttribute("aria-disabled");
     copy.setAttribute("aria-label", `Rename report rail: ${railTitle}`);
   }
-  title.textContent = railTitle;
-  title.title = "Click to rename report rail";
-  meta.textContent = `${row.kind} · ${row.address}`;
+  const selectedDoc = state.railMode === "dossier" ? selectedDossierDocument(row) : null;
+  title.textContent = state.railMode === "dossier" ? (selectedDoc?.title ?? railTitle) : railTitle;
+  title.title = state.railMode === "dossier" ? "Dossier document rail" : "Click to rename report rail";
+  meta.textContent = state.railMode === "dossier" ? `${row.leadName ?? row.title} · ${row.address}` : `${row.kind} · ${row.address}`;
   if (input && !state.railRenaming) input.value = railTitle;
   pill.className = `pill ${row.tone}`;
   pill.textContent = row.tone === "blocked" ? "Blocked" : row.tone === "ready" ? "Ready" : "Review";
@@ -6695,6 +7039,8 @@ function syncRailContext(row) {
 function syncRailTabs() {
   document.querySelectorAll("[data-rail-tab]").forEach((button) => {
     button.setAttribute("aria-pressed", button.dataset.railTab === state.railTab ? "true" : "false");
+    button.setAttribute("aria-hidden", state.railMode === "dossier" ? "true" : "false");
+    button.tabIndex = state.railMode === "dossier" ? -1 : 0;
   });
 }
 
@@ -6702,6 +7048,9 @@ function setRailOpen(open, source = null) {
   state.railOpen = open;
   const rail = document.getElementById("researchRail");
   const width = `min(${state.railWidth}px, 55vw, calc(100vw - 64px))`;
+  const app = document.querySelector(".app");
+  rail.dataset.mode = state.railMode;
+  app?.style.setProperty("--active-rail-width", open ? width : "0px");
   rail.dataset.open = open ? "true" : "false";
   rail.style.width = width;
   rail.style.marginRight = open ? "0" : `calc(-1 * ${width})`;
@@ -6724,6 +7073,7 @@ function setRailTab(tab) {
 }
 
 function openRailWithContinuity(source = null, tab = state.railTab) {
+  state.railMode = "report";
   state.railTab = tab;
   setDetailRailOpen(false);
   syncRailTabs();
@@ -7047,6 +7397,12 @@ function renderRail() {
   const row = selectedRow();
   const dossier = dossierForRow(row);
   const content = document.getElementById("railContent");
+  if (state.activeView === "dossiers" || state.railMode === "dossier") {
+    state.railMode = "dossier";
+    renderDossierRail(row, dossier);
+    return;
+  }
+  state.railMode = "report";
   syncRailTabs();
   syncRailContext(row);
   if (!row || !dossier) {
@@ -7884,8 +8240,11 @@ async function chooseExportRoute(route, source = null) {
 
 function openUtilityRail(kind, source = null) {
   if (state.activeView === "dossiers") {
-    document.getElementById("topStatus").textContent = "Dossiers keep documents in the product loop. Use Find Estates to open the report rail.";
-    addShellEvent("Report rail held", "Dossiers does not open the report rail; select a document in the dossier reader instead.", "review", false);
+    state.railMode = "dossier";
+    state.railOpen = true;
+    renderRail();
+    document.getElementById("topStatus").textContent = "Dossiers use the Dossier rail for document review. Estate Search opens the report rail.";
+    addShellEvent("Report rail held", "Dossiers keeps the document packet in its specialized rail instead of opening the report rail.", "review", false);
     return;
   }
   if (state.activeView !== "find-estates") {
@@ -7938,7 +8297,7 @@ function wireEvents() {
       addShellEvent(
         `${label} selected`,
         button.dataset.shellNav === "find-estates"
-          ? "Find Estates opens the public-record lead list and Discovery report rail."
+          ? "Estate Search opens the public-record lead list and Discovery report rail."
           : button.dataset.shellNav === "dossiers"
           ? "Dossiers opens finished document packets without the report rail."
           : button.dataset.shellNav === "drips"
@@ -8048,7 +8407,7 @@ function wireEvents() {
     const clickedInsideRail = clickPath.some((item) => item?.id === "researchRail");
     closeAllEnhancedSelects(event.target.closest?.(".select-enhanced"));
     const rail = document.getElementById("researchRail");
-    const railOpener = event.target.closest?.('[data-row-id], [data-open-next], [data-chip], [data-rail-chip]');
+    const railOpener = event.target.closest?.('[data-shell-nav], [data-shell-nav-shortcut], #rightRailToggle, [data-row-id], [data-open-next], [data-chip], [data-rail-chip], [data-dossier-row], [data-dossier-doc]');
     if (state.railOpen && rail && !clickedInsideRail && !rail.contains(event.target) && !railOpener) {
       setRailOpen(false);
     }
@@ -8058,7 +8417,7 @@ function wireEvents() {
   });
   document.getElementById("closeRail").addEventListener("click", () => {
     setRailOpen(false);
-    setDetailRailOpen(true);
+    if (state.activeView === "find-estates") setDetailRailOpen(true);
   });
   document.getElementById("rightRailToggle").addEventListener("click", toggleRightRail);
   document.getElementById("saveSearch").addEventListener("click", () => {
