@@ -91,7 +91,7 @@ Required corrections before complete:
 ## HEI-001 Run-Point Continuation
 
 - Branch: `v2.5.4/heirright-discovery-dossiers-2026-06-24`.
-- Remote branch before closeout: `origin/v2.5.4/heirright-discovery-dossiers-2026-06-24` at `6173f99`.
+- Pushed remote branch: `origin/v2.5.4/heirright-discovery-dossiers-2026-06-24` at `a858196`.
 - Previous-day touchups reviewed:
   - `docs/run-point-daily/2026-06-23-heirright-live-leads.md`: live Miami-Dade fresh-batch loop was implemented and proved with non-placeholder leads.
   - `docs/run-point-daily/2026-06-23-heirright-podio-ui-test.md`: UI-driven controlled Podio test export is wired, but live delivery remains blocked by missing Podio config and approval.
@@ -133,7 +133,6 @@ Forward: Next work should attach the real incoming document templates/examples t
 Alignment: aligned with gaps.
 
 Required corrections before complete:
-- Push the validated branch after committing the handoff and artifact fallback work.
 - Keep Linear reauthentication, Podio credentials/config, controlled live-write approval, Google destination config, and canonical workflow PDF placement as blockers.
 
 ## 11 AM Review Packet
