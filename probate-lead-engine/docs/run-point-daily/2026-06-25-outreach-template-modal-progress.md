@@ -33,6 +33,8 @@ Implemented the Close-style template creation popup for the Outreach section. Th
 - Opened New SMS Template.
 - Confirmed Podio required fields, SMS attachment guardrail, variable tags, and Submit for Approval.
 - Confirmed the attachment picker is visible on open with both Browse existing files and Upload from your computer above the sticky footer.
+- Confirmed paperclip and attachment actions do not reset the modal scroll to the top.
 - Switched to Email and confirmed the email subject field and title.
 - Submitted the template and confirmed the operator-trail event.
 - Screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-template-modal-local.png`.
+- Scroll-stability screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-template-modal-no-scroll-jump-local.png`.

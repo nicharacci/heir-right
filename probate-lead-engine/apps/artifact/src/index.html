@@ -4813,7 +4813,7 @@
       width: min(430px, calc(100% - 28px));
       position: absolute;
       left: 18px;
-      bottom: 180px;
+      bottom: 104px;
       z-index: 3;
       overflow: hidden;
       border-radius: 16px;
@@ -8077,7 +8077,23 @@ function outreachTemplateVariables() {
   ];
 }
 
-function renderOutreachTemplateModal() {
+function outreachModalScrollTop() {
+  const scroll = document.querySelector("#outreachTemplateModalMount .outreach-modal-scroll");
+  return Number(scroll?.scrollTop ?? 0);
+}
+
+function restoreOutreachModalScroll(scrollTop) {
+  if (!Number.isFinite(scrollTop)) return;
+  const restore = () => {
+    const scroll = document.querySelector("#outreachTemplateModalMount .outreach-modal-scroll");
+    if (scroll) scroll.scrollTop = scrollTop;
+  };
+  window.requestAnimationFrame(restore);
+  window.requestAnimationFrame(() => window.requestAnimationFrame(restore));
+  window.setTimeout(restore, 140);
+}
+
+function renderOutreachTemplateModal(options = {}) {
   const mount = document.getElementById("outreachTemplateModalMount");
   if (!mount) return;
   const modal = state.outreachTemplateModal;
@@ -8218,6 +8234,14 @@ function renderOutreachTemplateModal() {
     </div>
   `;
 
+  const scroll = mount.querySelector(".outreach-modal-scroll");
+  if (scroll && Number.isFinite(options.scrollTop)) {
+    scroll.scrollTop = options.scrollTop;
+    window.requestAnimationFrame(() => {
+      scroll.scrollTop = options.scrollTop;
+    });
+  }
+
   const body = mount.querySelector("#templateBody");
   const counter = mount.querySelector("[data-template-counter]");
   body?.addEventListener("input", () => {
@@ -8229,23 +8253,33 @@ function renderOutreachTemplateModal() {
   mount.querySelectorAll("[data-close-outreach-template]").forEach((button) => button.addEventListener("click", closeOutreachTemplateModal));
   mount.querySelectorAll("[data-template-channel]").forEach((button) => {
     button.addEventListener("click", () => {
+      const scrollTop = outreachModalScrollTop();
       state.outreachTemplateModal.channel = button.dataset.templateChannel === "email" ? "email" : "sms";
       state.outreachTemplateModal.attachmentsOpen = state.outreachTemplateModal.channel === "sms";
-      renderOutreachTemplateModal();
+      renderOutreachTemplateModal({ scrollTop });
     });
   });
   mount.querySelector("[data-template-attachment]")?.addEventListener("click", () => {
+    const scrollTop = outreachModalScrollTop();
     state.outreachTemplateModal.attachmentsOpen = !state.outreachTemplateModal.attachmentsOpen;
-    renderOutreachTemplateModal();
+    renderOutreachTemplateModal({ scrollTop });
   });
   mount.querySelector("[data-template-insert-var]")?.addEventListener("click", () => {
+    const scrollTop = outreachModalScrollTop();
     addShellEvent("Template variable menu opened", "Discovery dossier fields are available as Podio template variables for outreach personalization.", "review", false);
+    restoreOutreachModalScroll(scrollTop);
   });
   mount.querySelector("[data-template-tags]")?.addEventListener("click", () => {
+    const scrollTop = outreachModalScrollTop();
     addShellEvent("Template tags reviewed", "Use contact, lead, dossier, heir, and user tags so Podio can personalize the approved template.", "review", false);
+    restoreOutreachModalScroll(scrollTop);
   });
   mount.querySelectorAll("[data-template-attach-existing], [data-template-attach-upload]").forEach((button) => {
-    button.addEventListener("click", () => addShellEvent("Template attachment staged", "Attachment selection is recorded for Podio preparation. SMS delivery remains limited to US, CA, and AU numbers.", "review", true));
+    button.addEventListener("click", () => {
+      const scrollTop = outreachModalScrollTop();
+      addShellEvent("Template attachment staged", "Attachment selection is recorded for Podio preparation. SMS delivery remains limited to US, CA, and AU numbers.", "review", false);
+      restoreOutreachModalScroll(scrollTop);
+    });
   });
   mount.querySelector("[data-save-outreach-template]")?.addEventListener("click", () => {
     const name = mount.querySelector("#templateName")?.value?.trim() || seed.name;
