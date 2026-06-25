@@ -216,7 +216,7 @@ export interface SeedValidationReport {
   nextActions: string[];
 }
 
-export type SourceCoverageAreaKey = "property" | "tax" | "deed_title" | "probate" | "family_tree_offer";
+export type SourceCoverageAreaKey = "property" | "tax" | "deed_title" | "probate" | "family_tree_contacts" | "family_tree_offer";
 export type SourceCoverageAreaStatus = "extracted" | "partial" | "blocked";
 
 export interface SourceCoverageArea {
@@ -968,7 +968,7 @@ export type LeadBucket = "qualified" | "bonus_warm" | "generic_seed" | "disquali
 
 export interface ReportReviewGate {
   reportStatus: ReportReviewStatus;
-  underwritingStatus: UnderwritingReviewStatus;
+  underwritingStatus?: UnderwritingReviewStatus;
   documentReadiness: DocumentReadinessStatus;
   outreachReadiness: OutreachReadinessStatus;
   externalUseBlocked: boolean;
@@ -1124,7 +1124,7 @@ export interface CompletedLeadReport {
   sourceLinks: Array<{ label: string; url?: string; source: SourceKey }>;
   reviewFlags: ReviewFlag[];
   leadQualityProfile: LeadQualityProfile;
-  offerMath: OfferProfitMath;
+  offerMath?: OfferProfitMath;
   formats: {
     markdown: string;
     html: string;
@@ -1253,5 +1253,7 @@ export interface IntakeSeed {
   seedSourceLabel?: string;
   sourceOwner?: string;
   approvalMarker?: string;
+  includeDealMath?: boolean;
+  includeSkipTrace?: boolean;
   confirmedSourceFacts?: ConfirmedSourceFactInput[];
 }

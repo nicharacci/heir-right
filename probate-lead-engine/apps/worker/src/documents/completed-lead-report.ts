@@ -4,6 +4,7 @@ import type {
   LeadBucket,
   LeadQualityProfile,
   OfferProfitField,
+  OfferProfitMath,
   RawDossier,
   ReportReviewGate,
   ResearchStepChecklistItem,
@@ -24,6 +25,29 @@ function escapeHtml(value: string): string {
 
 function uniqueFlags(flags: ReviewFlag[]): ReviewFlag[] {
   return Array.from(new Set(flags));
+}
+
+const DEAL_FACT_TYPES = new Set([
+  "offer_as_is_value",
+  "offer_heir_count",
+  "offer_buy_percentage",
+  "offer_minimum_net_profit",
+]);
+
+const DEAL_REVIEW_FLAGS = new Set<ReviewFlag>([
+  "MISSING_OFFER_MATH_FACT",
+  "UNDERWRITING_REVIEW_REQUIRED",
+]);
+
+function hasDealInput(dossier: RawDossier): boolean {
+  return dossier.audit.facts.some((fact) => (
+    DEAL_FACT_TYPES.has(fact.factType)
+  ));
+}
+
+function filterDealReviewFlags(flags: ReviewFlag[], includeDealSection: boolean): ReviewFlag[] {
+  if (includeDealSection) return flags;
+  return flags.filter((flag) => !DEAL_REVIEW_FLAGS.has(flag));
 }
 
 function claimText(value: unknown, fallback = "Needs review"): string {
@@ -117,25 +141,30 @@ function buildLeadQualityProfile(dossier: RawDossier): LeadQualityProfile {
   };
 }
 
-function buildReviewGate(dossier: RawDossier, offerReviewFlags: ReviewFlag[]): ReportReviewGate {
+function buildReviewGate(dossier: RawDossier, offerReviewFlags: ReviewFlag[], includeDealSection: boolean): ReportReviewGate {
   const blocked = dossier.workflow.status === "stop"
     || dossier.operatorQueue.state === "disqualified"
     || dossier.operatorQueue.state === "blocked";
+  const activeOfferReviewFlags = filterDealReviewFlags(offerReviewFlags, includeDealSection);
 
   return {
     reportStatus: "internal_draft",
-    underwritingStatus: offerReviewFlags.includes("MISSING_OFFER_MATH_FACT") ? "draft" : "pending_review",
+    ...(includeDealSection
+      ? { underwritingStatus: activeOfferReviewFlags.includes("MISSING_OFFER_MATH_FACT") ? "draft" as const : "pending_review" as const }
+      : {}),
     documentReadiness: "draft_only",
     outreachReadiness: blocked ? "blocked" : "pending_review",
     externalUseBlocked: true,
     reviewerPlaceholder: "Assign operator reviewer before external use.",
-    approvalPlaceholder: "Compliance/operator approval required before outreach or offers.",
+    approvalPlaceholder: includeDealSection
+      ? "Compliance/operator approval required before outreach or offers."
+      : "Operator approval required before CRM handoff or external use.",
     reviewFlags: uniqueFlags([
       "REPORT_REVIEW_REQUIRED",
       "HUMAN_REVIEW_REQUIRED",
       "OUTREACH_BLOCKED",
-      ...offerReviewFlags,
-      ...dossier.audit.reviewFlags,
+      ...activeOfferReviewFlags,
+      ...filterDealReviewFlags(dossier.audit.reviewFlags, includeDealSection),
     ]),
   };
 }
@@ -153,7 +182,7 @@ function profileHasContactEvidence(profile: Record<string, unknown>): boolean {
   return Boolean(profile.likelyCurrentAddress) || phones.length > 0 || emails.length > 0 || addressHistory.length > 0;
 }
 
-function buildResearchChecklist(dossier: RawDossier): ResearchStepChecklistItem[] {
+function buildResearchChecklist(dossier: RawDossier, includeDealSection: boolean): ResearchStepChecklistItem[] {
   const familyNodeCount = dossier.familyTree.hypothesis.value?.nodes.length ?? 0;
   const contactProfiles = enrichedContactProfiles(dossier);
   const hasEnrichedContacts = contactProfiles.some(profileHasContactEvidence);
@@ -181,7 +210,7 @@ function buildResearchChecklist(dossier: RawDossier): ResearchStepChecklistItem[
     reviewFlags: input.reviewFlags,
   });
 
-  return [
+  const checklist: ResearchStepChecklistItem[] = [
     step({
       code: "PROPERTY",
       label: "Property appraiser search",
@@ -247,7 +276,9 @@ function buildResearchChecklist(dossier: RawDossier): ResearchStepChecklistItem[
       sourceRefs: dossier.familyTree.hypothesis.sourceRefs,
       reviewFlags: contactReviewFlags,
     }),
-    step({
+  ];
+  if (includeDealSection) {
+    checklist.push(step({
       code: "OFFER_MATH",
       label: "Offer / profit underwriting",
       complete: false,
@@ -255,8 +286,9 @@ function buildResearchChecklist(dossier: RawDossier): ResearchStepChecklistItem[
       note: "Offer math remains draft until operator confirms as-is value and heir count.",
       sourceRefs: dossier.taxHistory.amountDue.sourceRefs,
       reviewFlags: ["MISSING_OFFER_MATH_FACT", "UNDERWRITING_REVIEW_REQUIRED"],
-    }),
-  ];
+    }));
+  }
+  return checklist;
 }
 
 function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholderEntry[] {
@@ -341,7 +373,7 @@ function buildSourceLinks(dossier: RawDossier): Array<{ label: string; url?: str
   return Array.from(links.values());
 }
 
-function buildMissingData(dossier: RawDossier, offerMath: CompletedLeadReport["offerMath"]): string[] {
+function buildMissingData(dossier: RawDossier, offerMath: OfferProfitMath, includeDealSection: boolean): string[] {
   const missing: string[] = [];
   if (!dossier.property.address.value) missing.push("Property address");
   if (!dossier.property.parcelId.value) missing.push("Parcel/folio");
@@ -350,8 +382,8 @@ function buildMissingData(dossier: RawDossier, offerMath: CompletedLeadReport["o
   if (!dossier.probateDocket.caseNumber.value) missing.push("Probate case number");
   if (!dossier.marriageDeathIndicators.dateOfDeath.value) missing.push("Date of death");
   if (!dossier.familyTree.hypothesis.value?.nodes.length) missing.push("Family tree hypothesis nodes");
-  if (offerMath.asIsValue.value === null) missing.push("As-is value");
-  if (offerMath.heirCount.value === null) missing.push("Confirmed heir count");
+  if (includeDealSection && offerMath.asIsValue.value === null) missing.push("As-is value");
+  if (includeDealSection && offerMath.heirCount.value === null) missing.push("Confirmed heir count");
   return missing;
 }
 
@@ -421,7 +453,7 @@ function buildSummaries(dossier: RawDossier) {
   };
 }
 
-function renderOfferTable(offerMath: CompletedLeadReport["offerMath"]): string[] {
+function renderOfferTable(offerMath: OfferProfitMath): string[] {
   const rows: Array<[string, string, string, string]> = [
     ["As-is value", "", formatMoney(offerMath.asIsValue), reviewNote(offerMath.asIsValue, "Comp or appraisal input required")],
     ["Taxes due", "", formatMoney(offerMath.taxesDue), reviewNote(offerMath.taxesDue, "Tax amount due must be captured")],
@@ -480,15 +512,16 @@ function renderContactMatrix(contacts: ContactPlaceholderEntry[]): string[] {
 function renderFamilyTreePacketHtml(input: {
   dossier: RawDossier;
   contacts: ContactPlaceholderEntry[];
-  offerMath: CompletedLeadReport["offerMath"];
+  offerMath: OfferProfitMath;
   backstory: string;
   researchChecklist: ResearchStepChecklistItem[];
+  includeDealSection: boolean;
 }): string {
-  const { dossier, contacts, offerMath, backstory } = input;
+  const { dossier, contacts, offerMath, backstory, includeDealSection } = input;
   const title = (dossier.summary.estateName ?? dossier.property.ownerName.value ?? dossier.summary.displayName).toUpperCase();
   const propertyAddress = displayAddress(dossier.property.address.value);
   const ownerName = claimText(dossier.property.ownerName.value ?? dossier.summary.estateName, "Needs review");
-  const moneyValue = (field: CompletedLeadReport["offerMath"]["asIsValue"]) => field.value === null ? "" : formatMoney(field);
+  const moneyValue = (field: OfferProfitMath["asIsValue"]) => field.value === null ? "" : formatMoney(field);
   const offerRows: Array<[string, string, string, "normal" | "blue" | "yellow"]> = [
     ["As-Is Value", "", moneyValue(offerMath.asIsValue), "normal"],
     ["Taxes Due", "", moneyValue(offerMath.taxesDue), "normal"],
@@ -523,6 +556,39 @@ function renderFamilyTreePacketHtml(input: {
     const emails = contact.emails.length ? contact.emails.map((email) => `<p><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>`).join("") : "<p>Needs approved enrichment</p>";
     return `<section class="person"><h3>${index + 1}. ${name}</h3>${age}<p>Likely Current Address: ${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "Needs approved enrichment"))}</p><h4>Address (County/Parish/Borough) History:</h4>${history}<h4>Phone number:</h4>${phones}<h4>Email Address:</h4>${emails}</section>`;
   }).join("");
+  const packetSummaryRows: Array<[string, string]> = [
+    ["Owner / estate", ownerName],
+    ["Folio", claimText(dossier.property.parcelId.value)],
+    ["Property", propertyAddress],
+    ["Deed / OR book-page", claimText(dossier.deedHistory.orBookPage.value)],
+    ["Tax review", claimText(dossier.taxHistory.sourceStatus.value)],
+    ["Probate review", claimText(dossier.probateDocket.sourceStatus.value)],
+    ["Contact enrichment", contactChecklist?.note ?? "Verified contact enrichment still needs review."],
+  ];
+  const packetSummaryTable = includeDealSection
+    ? `<table class="offer">
+    <tr class="bar"><th colspan="3">Offer/Profit</th></tr>
+    <tr><th>Description</th><th>Percentage</th><th>Total</th></tr>
+    ${offerRows.map(([label, percentage, total, tone]) => `<tr class="${tone}"><td><strong>${escapeHtml(label)}</strong></td><td>${escapeHtml(percentage)}</td><td>${escapeHtml(total)}</td></tr>`).join("")}
+  </table>`
+    : `<table class="packet-summary">
+    <tr class="bar"><th colspan="2">Discovery Summary</th></tr>
+    ${packetSummaryRows.map(([label, value]) => `<tr><td><strong>${escapeHtml(label)}</strong></td><td>${escapeHtml(value)}</td></tr>`).join("")}
+  </table>`;
+  const tableStyles = includeDealSection
+    ? `table.offer, table.packet-summary { border-collapse: collapse; width: 470px; margin: 0 auto 24px; font-size: 14px; }
+  .offer th, .offer td, .packet-summary th, .packet-summary td { border: 1px solid #111; height: 21px; padding: 1px 8px; text-align: center; }
+  .offer .bar th { background: #43abd6; font-weight: 700; }
+  .offer .blue td:first-child { background: #13a3d8; font-weight: 700; }
+  .offer .yellow td:first-child { background: #ffc20a; }
+  .packet-summary .bar th { background: #43abd6; font-weight: 700; }
+  .packet-summary td:first-child { width: 36%; text-align: left; }
+  .packet-summary td:last-child { text-align: left; }`
+    : `table.packet-summary { border-collapse: collapse; width: 470px; margin: 0 auto 24px; font-size: 14px; }
+  .packet-summary th, .packet-summary td { border: 1px solid #111; height: 21px; padding: 1px 8px; text-align: center; }
+  .packet-summary .bar th { background: #43abd6; font-weight: 700; }
+  .packet-summary td:first-child { width: 36%; text-align: left; }
+  .packet-summary td:last-child { text-align: left; }`;
 
   return `<!doctype html>
 <html lang="en">
@@ -540,11 +606,7 @@ function renderFamilyTreePacketHtml(input: {
   .date { text-align: center; margin-bottom: 56px; }
   .property { text-align: left; margin: 0 auto 8px; width: 470px; }
   a { color: #06e; text-decoration: underline; }
-  table.offer { border-collapse: collapse; width: 470px; margin: 0 auto 24px; font-size: 14px; }
-  .offer th, .offer td { border: 1px solid #111; height: 21px; padding: 1px 8px; text-align: center; }
-  .offer .bar th { background: #43abd6; font-weight: 700; }
-  .offer .blue td:first-child { background: #13a3d8; font-weight: 700; }
-  .offer .yellow td:first-child { background: #ffc20a; }
+  ${tableStyles}
   .summary { width: 470px; margin: 0 auto 28px; }
   .summary p { margin: 4px 0; }
   .status { width: 470px; margin: 0 auto 28px; border-top: 1px solid #777; border-bottom: 1px solid #777; padding: 10px 0; }
@@ -566,11 +628,7 @@ function renderFamilyTreePacketHtml(input: {
   <p class="subtitle">Family tree</p>
   <p class="date">Date added: ${escapeHtml(formatShortDate(dossier.generatedAt))}</p>
   <p class="property">Property Address: <a href="${escapeHtml(sourceLink)}">${escapeHtml(propertyAddress)}</a></p>
-  <table class="offer">
-    <tr class="bar"><th colspan="3">Offer/Profit</th></tr>
-    <tr><th>Description</th><th>Percentage</th><th>Total</th></tr>
-    ${offerRows.map(([label, percentage, total, tone]) => `<tr class="${tone}"><td><strong>${escapeHtml(label)}</strong></td><td>${escapeHtml(percentage)}</td><td>${escapeHtml(total)}</td></tr>`).join("")}
-  </table>
+  ${packetSummaryTable}
   <section class="summary">
     <p><strong>${escapeHtml(ownerName)}</strong></p>
     <p>DOB: ${escapeHtml(claimText(dossier.marriageDeathIndicators.dateOfBirth.value, "Needs review"))}</p>
@@ -630,6 +688,12 @@ const packageSections: PackageSection[] = [
   { id: "next-action", title: "Next Action", copy: "The next operator step." },
 ];
 
+function sectionsForPacket(includeDealSection: boolean): PackageSection[] {
+  return includeDealSection
+    ? packageSections
+    : packageSections.filter((section) => section.id !== "offer-profit");
+}
+
 function renderPackageContents(sections: PackageSection[]): string[] {
   return [
     "## Document Package Table Of Contents",
@@ -669,12 +733,14 @@ function hydrateRenderedLinks(
 
 function renderPodioGoogleSection(dossier: RawDossier, report: {
   leadQualityProfile: LeadQualityProfile;
-  offerMath: CompletedLeadReport["offerMath"];
+  offerMath: OfferProfitMath;
   reviewGate: ReportReviewGate;
+  includeDealSection: boolean;
+  contactCount: number;
 }): string[] {
   const crmPayload = dossier.crm.payload as { appModel?: { fields?: Record<string, unknown> }; podioReadiness?: { blockers?: string[] } } | undefined;
   const fields = crmPayload?.appModel?.fields ?? {};
-  const sheetRow = [
+  const sheetRow = report.includeDealSection ? [
     dossier.summary.estateName ?? dossier.summary.displayName,
     claimText(dossier.property.address.value),
     claimText(dossier.property.county.value),
@@ -684,7 +750,22 @@ function renderPodioGoogleSection(dossier: RawDossier, report: {
     report.offerMath.heirCount.value === null ? "Needs review" : String(report.offerMath.heirCount.value),
     formatMoney(report.offerMath.offerAmount),
     dossier.summary.nextBestAction,
+  ] : [
+    dossier.summary.estateName ?? dossier.summary.displayName,
+    claimText(dossier.property.address.value),
+    claimText(dossier.property.county.value),
+    claimText(dossier.property.parcelId.value),
+    humanStatus(report.reviewGate.reportStatus),
+    humanStatus(report.leadQualityProfile.leadBucket),
+    `${report.contactCount} contact review row${report.contactCount === 1 ? "" : "s"}`,
+    dossier.summary.nextBestAction,
   ];
+  const sheetHeader = report.includeDealSection
+    ? "| Estate | Property | County | Folio | Report | Bucket | Heirs | Offer | Next action |"
+    : "| Estate | Property | County | Folio | Report | Bucket | Contacts | Next action |";
+  const sheetRule = report.includeDealSection
+    ? "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+    : "| --- | --- | --- | --- | --- | --- | --- | --- |";
 
   return [
     "## Podio And Google Handoff Prep",
@@ -705,8 +786,8 @@ function renderPodioGoogleSection(dossier: RawDossier, report: {
     "",
     "Google Sheets row:",
     "",
-    "| Estate | Property | County | Folio | Report | Bucket | Heirs | Offer | Next action |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    sheetHeader,
+    sheetRule,
     `| ${sheetRow.join(" | ")} |`,
     "",
     "Handoff blockers:",
@@ -716,8 +797,18 @@ function renderPodioGoogleSection(dossier: RawDossier, report: {
   ];
 }
 
-function renderOutreachSection(dossier: RawDossier): string[] {
+function renderOutreachSection(dossier: RawDossier, includeDealSection: boolean): string[] {
   const outreach = dossier.outreach;
+  const hideDealText = (value: string) => !/offer|underwriting/i.test(value);
+  const assets = includeDealSection
+    ? outreach.assets
+    : outreach.assets.filter((asset) => hideDealText(`${asset.title} ${asset.intendedUse}`));
+  const blockers = includeDealSection
+    ? outreach.readiness.blockers
+    : outreach.readiness.blockers.filter(hideDealText);
+  const followUpTasks = includeDealSection
+    ? outreach.followUpTasks
+    : outreach.followUpTasks.filter((task) => hideDealText(`${task.title} ${task.description}`));
   return [
     "## Outreach Drafts And Follow-Up",
     `Outreach status: ${humanStatus(outreach.readiness.status)}`,
@@ -725,45 +816,58 @@ function renderOutreachSection(dossier: RawDossier): string[] {
     `No-auto-send guard: ${outreach.noAutoSendGuard.enabled ? "Enabled" : "Missing"}`,
     "",
     "Draft assets:",
-    ...outreach.assets.map((asset) => `- ${asset.title} (${asset.status}, ${asset.language}) — ${asset.intendedUse}`),
+    ...(assets.length
+      ? assets.map((asset) => `- ${asset.title} (${asset.status}, ${asset.language}) — ${asset.intendedUse}`)
+      : ["- No discovery-only outreach assets are staged in this packet."]),
     "",
     "Readiness blockers:",
-    ...(outreach.readiness.blockers.length
-      ? outreach.readiness.blockers.map((blocker) => `- ${blocker}`)
+    ...(blockers.length
+      ? blockers.map((blocker) => `- ${blocker}`)
       : ["- No outreach blockers recorded."]),
     "",
     "Manual follow-up tasks:",
-    ...outreach.followUpTasks.map((task) => `- ${task.title} — ${task.description}`),
+    ...(followUpTasks.length
+      ? followUpTasks.map((task) => `- ${task.title} — ${task.description}`)
+      : ["- No discovery-only follow-up tasks are staged in this packet."]),
     "",
-    "_These scripts are draft reference material only. Calls, texts, emails, letters, and offers remain manual and blocked until compliance/operator approval._",
+    includeDealSection
+      ? "_These scripts are draft reference material only. Calls, texts, emails, letters, and offers remain manual and blocked until compliance/operator approval._"
+      : "_These scripts are draft reference material only. Calls, texts, emails, and letters remain manual and blocked until compliance/operator approval._",
   ];
 }
 
 export async function generateCompletedLeadReport(dossier: RawDossier): Promise<CompletedLeadReport> {
   const offerMath = buildOfferProfitMath(dossier);
+  const includeDealSection = hasDealInput(dossier);
   const leadQualityProfile = buildLeadQualityProfile(dossier);
-  const reviewGate = buildReviewGate(dossier, offerMath.reviewFlags);
-  const researchChecklist = buildResearchChecklist(dossier);
+  const reviewGate = buildReviewGate(dossier, offerMath.reviewFlags, includeDealSection);
+  const researchChecklist = buildResearchChecklist(dossier, includeDealSection);
   const contactPlaceholders = buildContactPlaceholders(dossier);
   const sourceLinks = buildSourceLinks(dossier);
-  const missingData = buildMissingData(dossier, offerMath);
+  const missingData = buildMissingData(dossier, offerMath, includeDealSection);
   const summaries = buildSummaries(dossier);
   const backstory = buildBackstory(dossier);
+  const sections = sectionsForPacket(includeDealSection);
+  const bannerCopy = includeDealSection
+    ? "Internal draft — review required before outreach or offers"
+    : "Internal discovery draft — review required before CRM handoff";
 
   const lines = [
     `# ${dossier.summary.displayName} Family-Tree Discovery Dossier`,
     "",
-    "> **REVIEW DRAFT** - Human review required. External outreach, offers, compliance claims, Podio writes, Google Docs creation, Google Sheets insertion, email, and SMS are blocked until approval and readback proof are complete.",
+    includeDealSection
+      ? "> **REVIEW DRAFT** - Human review required. External outreach, offers, compliance claims, Podio writes, Google Docs creation, Google Sheets insertion, email, and SMS are blocked until approval and readback proof are complete."
+      : "> **DISCOVERY DRAFT** - Human review required. CRM handoff, Podio writes, Google Docs creation, Google Sheets insertion, email, and SMS are blocked until approval and readback proof are complete.",
     "",
     `Date added: ${formatDate(dossier.generatedAt)}`,
     `Report generated: ${formatDate(nowIso())}`,
     `Report status: ${humanStatus(reviewGate.reportStatus)}`,
-    `Underwriting status: ${humanStatus(reviewGate.underwritingStatus)}`,
+    ...(includeDealSection ? [`Underwriting status: ${humanStatus(reviewGate.underwritingStatus ?? "not_started")}`] : []),
     `Document readiness: ${humanStatus(reviewGate.documentReadiness)}`,
     `Outreach readiness: ${humanStatus(reviewGate.outreachReadiness)}`,
     `External use blocked: ${reviewGate.externalUseBlocked ? "yes" : "no"}`,
     "",
-    ...renderPackageContents(packageSections),
+    ...renderPackageContents(sections),
     "",
     "## Property Address",
     claimText(dossier.property.address.value),
@@ -782,11 +886,13 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
     `| Possible heirs / contacts | ${contactPlaceholders.length} review row${contactPlaceholders.length === 1 ? "" : "s"} |`,
     `| Next action | ${dossier.summary.nextBestAction} |`,
     "",
-    "## Offer / Profit",
-    ...renderOfferTable(offerMath),
-    "",
-    "_Offer math is draft-only. Unknown values stay visible until the operator confirms as-is value, tax amount due, liens, mortgages, costs, and heir count._",
-    "",
+    ...(includeDealSection ? [
+      "## Offer / Profit",
+      ...renderOfferTable(offerMath),
+      "",
+      "_Offer math is draft-only. Unknown values stay visible until the operator confirms as-is value, tax amount due, liens, mortgages, costs, and heir count._",
+      "",
+    ] : []),
     "## Back Story",
     backstory,
     "",
@@ -822,15 +928,15 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
     `Missing signals: ${leadQualityProfile.missingSignals.join(", ") || "None recorded"}`,
     `Reason codes: ${leadQualityProfile.reasonCodes.join(", ") || "None"}`,
     "",
-    ...renderPodioGoogleSection(dossier, { leadQualityProfile, offerMath, reviewGate }),
+    ...renderPodioGoogleSection(dossier, { leadQualityProfile, offerMath, reviewGate, includeDealSection, contactCount: contactPlaceholders.length }),
     "",
-    ...renderOutreachSection(dossier),
+    ...renderOutreachSection(dossier, includeDealSection),
     "",
     "## Review Flags",
     ...uniqueFlags([
       ...reviewGate.reviewFlags,
       ...leadQualityProfile.reviewFlags,
-      ...offerMath.reviewFlags,
+      ...filterDealReviewFlags(offerMath.reviewFlags, includeDealSection),
     ]).map((flag) => `- ${humanStatus(flag)}`),
     "",
     "## Next Action",
@@ -838,7 +944,7 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
   ];
 
   const markdown = lines.join("\n");
-  const renderedMarkdown = hydrateRenderedLinks(await renderMarkdownWithStreamdown(markdown), sourceLinks, packageSections);
+  const renderedMarkdown = hydrateRenderedLinks(await renderMarkdownWithStreamdown(markdown), sourceLinks, sections);
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -914,13 +1020,13 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
 </style>
 </head>
 <body>
-<div class="banner">Internal draft — review required before outreach or offers</div>
+<div class="banner">${escapeHtml(bannerCopy)}</div>
 <main>
 ${renderedMarkdown}
 </main>
 </body>
 </html>`;
-  const familyTreeHtml = renderFamilyTreePacketHtml({ dossier, contacts: contactPlaceholders, offerMath, backstory, researchChecklist });
+  const familyTreeHtml = renderFamilyTreePacketHtml({ dossier, contacts: contactPlaceholders, offerMath, backstory, researchChecklist, includeDealSection });
 
   return {
     id: `report-${slug(dossier.summary.displayName)}-${Date.now()}`,
@@ -940,14 +1046,14 @@ ${renderedMarkdown}
     reviewFlags: uniqueFlags([
       ...reviewGate.reviewFlags,
       ...leadQualityProfile.reviewFlags,
-      ...offerMath.reviewFlags,
-      ...dossier.outreach.readiness.reviewFlags,
+      ...filterDealReviewFlags(offerMath.reviewFlags, includeDealSection),
+      ...filterDealReviewFlags(dossier.outreach.readiness.reviewFlags, includeDealSection),
       ...dossier.outreach.noAutoSendGuard.reviewFlags,
       "REPORT_REVIEW_REQUIRED",
       "OUTREACH_BLOCKED",
     ]),
     leadQualityProfile,
-    offerMath,
+    ...(includeDealSection ? { offerMath } : {}),
     formats: { markdown, html, familyTreeHtml },
   };
 }

@@ -13,6 +13,7 @@ const ACTIONS: Record<SourceCoverageAreaKey, string> = {
   tax: "Capture unpaid tax years, amount due, receipt status, and payer identity from tax records.",
   deed_title: "Capture latest deed, OR book/page or instrument number, recent sale, and title-friction signals.",
   probate: "Search probate/civil/family dockets and record case status, affidavit status, and document availability.",
+  family_tree_contacts: "Replace intake placeholders with sourced heir/contact facts and operator-reviewed contact inputs.",
   family_tree_offer: "Replace intake placeholders with sourced heir/contact facts and operator-reviewed offer inputs.",
 };
 
@@ -50,7 +51,19 @@ function area(input: { key: SourceCoverageAreaKey; label: string; fields: Covera
   };
 }
 
+const DEAL_FACT_TYPES = new Set([
+  "offer_as_is_value",
+  "offer_heir_count",
+  "offer_buy_percentage",
+  "offer_minimum_net_profit",
+]);
+
+function includesDealMath(dossier: CoverageInput): boolean {
+  return dossier.audit.facts.some((fact) => DEAL_FACT_TYPES.has(fact.factType));
+}
+
 export function buildSourceCoverageProfile(dossier: CoverageInput): SourceCoverageProfile {
+  const includeDealMath = includesDealMath(dossier);
   const areas = [
     area({
       key: "property",
@@ -100,8 +113,8 @@ export function buildSourceCoverageProfile(dossier: CoverageInput): SourceCovera
       ],
     }),
     area({
-      key: "family_tree_offer",
-      label: "Family tree and offer inputs",
+      key: includeDealMath ? "family_tree_offer" : "family_tree_contacts",
+      label: includeDealMath ? "Family tree and offer inputs" : "Family tree and contacts",
       fields: [
         { label: "date of death", claim: dossier.marriageDeathIndicators.dateOfDeath },
         { label: "obituary link", claim: dossier.marriageDeathIndicators.obituaryLink },

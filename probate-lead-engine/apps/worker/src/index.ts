@@ -166,8 +166,8 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
     fetchMarriageDeathIndicatorFacts(runId, seed),
     fetchFamilyTreeHypothesisFacts(runId, seed),
     fetchSourceGovernanceFacts(runId, seed),
-    fetchOfferProfitInputFacts(runId, seed),
-    fetchSkipTraceFacts(runId, seed, options.env),
+    seed.includeDealMath === false ? Promise.resolve([]) : fetchOfferProfitInputFacts(runId, seed),
+    seed.includeSkipTrace === false ? Promise.resolve([]) : fetchSkipTraceFacts(runId, seed, options.env),
   ]);
   const facts = [
     ...intakeFacts(runId, seed),

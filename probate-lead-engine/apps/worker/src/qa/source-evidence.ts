@@ -75,7 +75,7 @@ export function runSourceEvidenceQa(dossier: Omit<RawDossier, "evidenceQa" | "so
     checkClaim({ code: "FAMILY_TREE_HYPOTHESIS", label: "Family tree hypothesis", claim: dossier.familyTree.hypothesis }),
     checkClaim({ code: "SOURCE_GOVERNANCE", label: "Source governance catalog", claim: dossier.sourceGovernance.catalog }),
   ];
-  if (dossier.completedLeadReport) {
+  if (dossier.completedLeadReport?.offerMath) {
     checks.push({
       code: "OFFER_AS_IS_VALUE",
       label: "As-is value",
@@ -86,6 +86,8 @@ export function runSourceEvidenceQa(dossier: Omit<RawDossier, "evidenceQa" | "so
       sourceRefs: dossier.completedLeadReport.offerMath.asIsValue.sourceRefs,
       reviewFlags: dossier.completedLeadReport.offerMath.asIsValue.reviewFlags,
     });
+  }
+  if (dossier.completedLeadReport) {
     checks.push({
       code: "REPORT_REVIEW_GATE",
       label: "Report review gate",

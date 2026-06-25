@@ -16,12 +16,13 @@ import type {
 import { nowIso, slug } from "../lib";
 
 const REQUIRED_COVERAGE_SCORE = 70;
-const AREA_ORDER: SourceCoverageAreaKey[] = ["property", "tax", "deed_title", "probate", "family_tree_offer"];
+const AREA_ORDER: SourceCoverageAreaKey[] = ["property", "tax", "deed_title", "probate", "family_tree_contacts", "family_tree_offer"];
 const AREA_LABELS: Record<SourceCoverageAreaKey, string> = {
   property: "Property",
   tax: "Tax",
   deed_title: "Deed and title",
   probate: "Probate",
+  family_tree_contacts: "Family tree and contacts",
   family_tree_offer: "Family tree and offer",
 };
 const AREA_WEIGHTS: Record<SourceCoverageAreaKey, number> = {
@@ -29,6 +30,7 @@ const AREA_WEIGHTS: Record<SourceCoverageAreaKey, number> = {
   tax: 18,
   deed_title: 22,
   probate: 22,
+  family_tree_contacts: 14,
   family_tree_offer: 14,
 };
 
@@ -73,7 +75,8 @@ function earnedScore(area: SourceCoverageArea, weight: number): number {
 }
 
 function coverageBreakdown(profile: SourceCoverageProfile): QualificationCoverageScore[] {
-  return AREA_ORDER.map((key) => {
+  const availableKeys = new Set(profile.areas.map((area) => area.key));
+  return AREA_ORDER.filter((key) => availableKeys.has(key) || (key !== "family_tree_contacts" && key !== "family_tree_offer")).map((key) => {
     const area = areaFor(profile, key);
     const weight = AREA_WEIGHTS[key];
     return {

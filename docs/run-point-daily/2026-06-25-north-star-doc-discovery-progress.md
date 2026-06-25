@@ -145,3 +145,35 @@ Do not present Annie Hawkins as a completed contact dossier until the credential
   - address-history section present.
   - refreshed PDF size: 309,664 bytes.
   - refreshed PDF timestamp: `2026-06-25T22:21:45.762Z`.
+
+## 2026-06-25 19:09 EDT - Annie Hawkins discovery-only packet finalized
+
+Goal written for this pass: complete the Annie Hawkins discovery document package with contact enrichment, matching the North Star family-tree packet shape, while explicitly removing offer/profit/underwriting language because no real deal terms exist.
+
+What changed:
+- Added an `includeDealMath` intake switch and threaded it through the worker so discovery-only packets do not render offer/profit tables, offer tasks, underwriting review copy, or `offer_math` Podio payload fields.
+- Kept normal deal-packet behavior intact when offer facts are present; the validation sample still exercises that path.
+- Made tax/title review-task copy deal-aware so unpaid-tax and title-friction gaps read as discovery/document-prep gates when no deal facts exist.
+- Made outreach readiness and Podio dry-run payloads deal-aware so discovery-only handoff language contains no offer/profit/underwriting blockers.
+- Preserved the Apify skip-trace contact-enrichment facts from the successful actor run as confirmed source facts for Annie, with live token use disabled for deterministic demo regeneration.
+
+Final Annie proof:
+- Final run id: `run-1782429443350-annie-hawkins-est-of`.
+- Output packet: `probate-lead-engine/apps/worker/output/family-tree-discovery-report.pdf`.
+- PDF metadata: 11 pages; title `ANNIE HAWKINS EST OF Family tree`.
+- Family-tree packet contains: Discovery Summary, Table of Contents, Back Story, Possible heirs, address-history section, phone section, email section, and Source review.
+- Redacted contact proof: 3 enriched contact profiles; phone counts `[15, 51, 26]`; email counts `[8, 0, 8]`; address-history counts `[23, 38, 32]`.
+- Skip-trace proof: `NO_ENRICHMENT_RUN` and `SKIP_TRACE_NOT_CONFIGURED` are not present in the final Annie facts.
+- Deal-language proof: generated report, family-tree HTML, latest dossier JSON, and Podio dry-run payload have zero user-facing offer/profit/underwriting elements for Annie; discovery-only reports omit `offerMath` and use `family_tree_contacts`.
+
+Source-backed gates left visible instead of faked:
+- Miami-Dade Property Appraiser facts are captured for owner, folio, property, deed/OR book-page, assessed values, taxable values, and property characteristics.
+- Miami-Dade Tax Collector payment/receipt lookup hit Cloudflare and remains an operator receipt-review step.
+- Miami-Dade Clerk Official Records and OCS search routes were identified, but direct worker extraction is browser/captcha-gated; probate/court status remains manual review until a browser-backed pass is approved.
+
+Verification:
+- `pnpm --filter @ple/types build` passed.
+- `pnpm --filter @ple/worker build` passed.
+- `pnpm --filter @ple/worker test` passed before restoring Annie as the app-facing output.
+- `git diff --check` passed.
+- Generated PDF was rendered by headless Chrome and previewed with Quick Look at `/tmp/heirright-annie-final-preview/family-tree-discovery-report.pdf.png`.

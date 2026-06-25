@@ -18,6 +18,16 @@ function valueFor<T>(facts: SourceFact[], factType: SourceFact["factType"]): T |
 }
 
 const BLOCKING_SOURCE_FACT_FLAGS: ReviewFlag[] = ["SOURCE_EVIDENCE_REQUIRED", "SOURCE_HEALTH_ONLY", "SOURCE_BLOCKED"];
+const DEAL_FACT_TYPES = new Set<SourceFact["factType"]>([
+  "offer_as_is_value",
+  "offer_heir_count",
+  "offer_buy_percentage",
+  "offer_minimum_net_profit",
+]);
+
+function hasDealInput(facts: SourceFact[]): boolean {
+  return facts.some((fact) => DEAL_FACT_TYPES.has(fact.factType));
+}
 
 function isSourceBackedFact(fact: SourceFact): boolean {
   if (fact.value === null || fact.value === undefined || fact.value === "") return false;
@@ -91,6 +101,7 @@ function combineClaims(claims: Array<DossierClaim<unknown>>): DossierClaim<unkno
 }
 
 export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier {
+  const includeDealMath = hasDealInput(facts);
   const address = claim<string>(facts, "property_address", "MISSING_PROPERTY_FACT");
   const ownerName = claim<string>(facts, "property_owner", "MISSING_OWNER_FACT");
   const estateName = optionalClaim<string>(facts, "estate_name");
@@ -125,7 +136,9 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
         code: "TAX_AMOUNT_DUE",
         title: "Capture tax amount due",
         source: "tax_collector",
-        reason: "Offer math and lead-quality review need the unpaid-tax amount instead of a placeholder.",
+        reason: includeDealMath
+          ? "Offer math and lead-quality review need the unpaid-tax amount instead of a placeholder."
+          : "Lead-quality review needs the unpaid-tax amount instead of a placeholder.",
         nextAction: "Record amount due, currency, and tax years from the source record.",
         claim: amountDue,
         fallbackFlags: ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
@@ -238,7 +251,9 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
         code: "TITLE_FRICTION",
         title: "Check mortgage, lien, Lis Pendens, and foreclosure signals",
         source: "official_records",
-        reason: "Title-friction signals affect both lead quality and offer math.",
+        reason: includeDealMath
+          ? "Title-friction signals affect both lead quality and offer math."
+          : "Title-friction signals affect lead quality and document-prep routing.",
         nextAction: "Record each signal as present, absent, or still blocked by extraction limits.",
         claim: combineClaims([mortgageSignal, lienSignal, lisPendensSignal, foreclosureSignal]),
         fallbackFlags: ["MISSING_TITLE_FACT", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
@@ -386,12 +401,15 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
     ]),
   };
   const workflow = evaluateWorkflowRules(facts);
+  const hasEnrichedContacts = facts.some((item) => item.factType === "enriched_contact_profile");
+  const sourceBackedFactTypes = new Set(facts.filter(isSourceBackedFact).map((item) => item.factType));
+  const effectiveFacts = facts.filter((item) => isSourceBackedFact(item) || !sourceBackedFactTypes.has(item.factType));
   const auditFlags = Array.from(new Set(
-    facts
+    effectiveFacts
       .flatMap((item) => item.reviewFlags)
       .concat(workflow.reviewFlags)
-      .concat(["NO_ENRICHMENT_RUN"] as ReviewFlag[]),
-  ));
+      .concat(hasEnrichedContacts ? [] : (["NO_ENRICHMENT_RUN"] as ReviewFlag[])),
+  )).filter((flag) => !hasEnrichedContacts || flag !== "NO_ENRICHMENT_RUN");
   const titleFacts = facts.filter((item) => item.factType === "title_signal" || item.factType === "official_records_status");
   const titleEvents: DossierEvent[] = titleFacts.map((item, index) => ({
     id: `${runId}:title:${index + 1}`,

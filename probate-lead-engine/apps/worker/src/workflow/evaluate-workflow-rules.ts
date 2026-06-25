@@ -27,6 +27,14 @@ function valueFor<T>(facts: SourceFact[], factType: SourceFact["factType"]): T |
   return item ? (item.value as T) : null;
 }
 
+const BLOCKING_SOURCE_FACT_FLAGS: ReviewFlag[] = ["SOURCE_EVIDENCE_REQUIRED", "SOURCE_HEALTH_ONLY", "SOURCE_BLOCKED"];
+
+function isSourceBackedFact(fact: SourceFact): boolean {
+  if (fact.value === null || fact.value === undefined || fact.value === "") return false;
+  if (fact.source === "intake" || fact.source === "document_packet" || fact.source === "podio") return false;
+  return !fact.reviewFlags.some((flag) => BLOCKING_SOURCE_FACT_FLAGS.includes(flag));
+}
+
 function rule(input: {
   code: WorkflowRuleResult["code"];
   label: string;
@@ -235,8 +243,10 @@ function evaluateLeadQuality(facts: SourceFact[], settings: LeadQualitySettings)
 
 function evaluateSourceEvidence(facts: SourceFact[]): WorkflowRuleResult {
   const sourceRefs = facts.map((item) => sourceRef(item.source, item.rawId, item.fetchedAt));
-  const missingFactFlags = facts.flatMap((item) => item.reviewFlags).filter((flag) => flag.startsWith("MISSING_"));
-  const sourceHealthOnly = facts.some((item) => item.reviewFlags.includes("SOURCE_HEALTH_ONLY"));
+  const sourceBackedFactTypes = new Set(facts.filter(isSourceBackedFact).map((item) => item.factType));
+  const effectiveFacts = facts.filter((item) => isSourceBackedFact(item) || !sourceBackedFactTypes.has(item.factType));
+  const missingFactFlags = effectiveFacts.flatMap((item) => item.reviewFlags).filter((flag) => flag.startsWith("MISSING_"));
+  const sourceHealthOnly = effectiveFacts.some((item) => item.reviewFlags.includes("SOURCE_HEALTH_ONLY"));
 
   if (missingFactFlags.length || sourceHealthOnly) {
     return rule({

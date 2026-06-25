@@ -92,7 +92,7 @@ async function main(): Promise<void> {
   if (!result.dossier.completedLeadReport?.formats.html.includes("REVIEW DRAFT")) failures.push("Completed lead report review banner missing.");
   if (!result.dossier.completedLeadReport?.formats.html.includes("<a href=")) failures.push("Completed lead report HTML source anchors missing.");
   if (!result.dossier.completedLeadReport?.reviewGate.externalUseBlocked) failures.push("Completed lead report external-use gate missing.");
-  if (!result.dossier.completedLeadReport?.offerMath.reviewFlags.includes("UNDERWRITING_REVIEW_REQUIRED")) failures.push("Offer math underwriting review flag missing.");
+  if (!result.dossier.completedLeadReport?.offerMath?.reviewFlags.includes("UNDERWRITING_REVIEW_REQUIRED")) failures.push("Offer math underwriting review flag missing.");
   if (!result.dossier.completedLeadReport?.researchChecklist.length) failures.push("Completed lead report research checklist missing.");
   if (!result.dossier.completedLeadReport?.leadQualityProfile.leadBucket) failures.push("Lead quality profile bucket missing.");
   if (!result.facts.some((item) => item.factType === "offer_buy_percentage")) failures.push("Offer buy percentage fact missing.");
