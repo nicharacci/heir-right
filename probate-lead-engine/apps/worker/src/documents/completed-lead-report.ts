@@ -140,7 +140,30 @@ function buildReviewGate(dossier: RawDossier, offerReviewFlags: ReviewFlag[]): R
   };
 }
 
+function enrichedContactProfiles(dossier: RawDossier): Record<string, unknown>[] {
+  return dossier.audit.facts
+    .filter((item) => item.factType === "enriched_contact_profile" && item.value && typeof item.value === "object")
+    .map((item) => item.value as Record<string, unknown>);
+}
+
+function profileHasContactEvidence(profile: Record<string, unknown>): boolean {
+  const phones = Array.isArray(profile.phones) ? profile.phones.filter(Boolean) : [];
+  const emails = Array.isArray(profile.emails) ? profile.emails.filter(Boolean) : [];
+  const addressHistory = Array.isArray(profile.addressHistory) ? profile.addressHistory.filter(Boolean) : [];
+  return Boolean(profile.likelyCurrentAddress) || phones.length > 0 || emails.length > 0 || addressHistory.length > 0;
+}
+
 function buildResearchChecklist(dossier: RawDossier): ResearchStepChecklistItem[] {
+  const familyNodeCount = dossier.familyTree.hypothesis.value?.nodes.length ?? 0;
+  const contactProfiles = enrichedContactProfiles(dossier);
+  const hasEnrichedContacts = contactProfiles.some(profileHasContactEvidence);
+  const skipTraceFlags = uniqueFlags(dossier.audit.facts
+    .filter((item) => item.factType === "skip_trace_status" || item.factType === "enriched_contact_profile")
+    .flatMap((item) => item.reviewFlags));
+  const contactReviewFlags = uniqueFlags([
+    ...skipTraceFlags,
+    ...(hasEnrichedContacts ? [] : (["NO_ENRICHMENT_RUN", "CONTACT_REVIEW_REQUIRED", "HUMAN_REVIEW_REQUIRED"] as ReviewFlag[])),
+  ]);
   const step = (input: {
     code: string;
     label: string;
@@ -207,20 +230,22 @@ function buildResearchChecklist(dossier: RawDossier): ResearchStepChecklistItem[
     step({
       code: "FAMILY_TREE",
       label: "Family tree hypothesis",
-      complete: (dossier.familyTree.hypothesis.value?.nodes.length ?? 0) > 0,
+      complete: familyNodeCount > 0,
       partial: dossier.familyTree.sourceStatus.value !== null,
-      note: `${dossier.familyTree.hypothesis.value?.nodes.length ?? 0} relationship nodes recorded as hypothesis only.`,
+      note: `${familyNodeCount} relationship nodes recorded as hypothesis only.`,
       sourceRefs: dossier.familyTree.hypothesis.sourceRefs,
       reviewFlags: dossier.familyTree.reviewTasks.flatMap((task) => task.reviewFlags),
     }),
     step({
       code: "CONTACTS",
-      label: "Contact placeholders",
-      complete: (dossier.familyTree.hypothesis.value?.nodes.some((node) => node.contactPlaceholder) ?? false),
-      partial: (dossier.familyTree.hypothesis.value?.nodes.length ?? 0) > 0,
-      note: "Contact placeholders remain draft until enrichment or manual capture.",
+      label: "Verified contact enrichment",
+      complete: hasEnrichedContacts,
+      partial: familyNodeCount > 0 || contactProfiles.length > 0,
+      note: hasEnrichedContacts
+        ? `${contactProfiles.length} contact profile${contactProfiles.length === 1 ? "" : "s"} include address history, phone, email, or current-address evidence.`
+        : "Contact research is blocked until approved skip-trace or manual source capture returns real people, address history, phones, or emails.",
       sourceRefs: dossier.familyTree.hypothesis.sourceRefs,
-      reviewFlags: ["NO_ENRICHMENT_RUN", "HUMAN_REVIEW_REQUIRED"],
+      reviewFlags: contactReviewFlags,
     }),
     step({
       code: "OFFER_MATH",
@@ -457,6 +482,7 @@ function renderFamilyTreePacketHtml(input: {
   contacts: ContactPlaceholderEntry[];
   offerMath: CompletedLeadReport["offerMath"];
   backstory: string;
+  researchChecklist: ResearchStepChecklistItem[];
 }): string {
   const { dossier, contacts, offerMath, backstory } = input;
   const title = (dossier.summary.estateName ?? dossier.property.ownerName.value ?? dossier.summary.displayName).toUpperCase();
@@ -485,6 +511,8 @@ function renderFamilyTreePacketHtml(input: {
     ["", "", "", "yellow"],
   ];
   const sourceLink = input.dossier.completedLeadReport?.sourceLinks.find((link) => link.url)?.url ?? "#";
+  const contactChecklist = input.researchChecklist.find((step) => step.code === "CONTACTS");
+  const openChecklist = input.researchChecklist.filter((step) => step.status !== "complete");
   const contactBlocks = contacts.map((contact, index) => {
     const name = escapeHtml(contact.name ?? `Possible heir ${index + 1}`);
     const age = contact.age ? `<p>(${contact.age})</p>` : "";
@@ -519,6 +547,8 @@ function renderFamilyTreePacketHtml(input: {
   .offer .yellow td:first-child { background: #ffc20a; }
   .summary { width: 470px; margin: 0 auto 28px; }
   .summary p { margin: 4px 0; }
+  .status { width: 470px; margin: 0 auto 28px; border-top: 1px solid #777; border-bottom: 1px solid #777; padding: 10px 0; }
+  .status p { margin: 4px 0; }
   .story { margin-top: 10px; }
   .person { page-break-inside: avoid; margin-top: 28px; }
   .person h3 { margin: 0 0 4px; font-size: 16px; }
@@ -547,6 +577,10 @@ function renderFamilyTreePacketHtml(input: {
     <p>DOD: ${escapeHtml(claimText(dossier.marriageDeathIndicators.dateOfDeath.value, "Needs review"))}</p>
     <p>Obituary ${dossier.marriageDeathIndicators.obituaryLink.value ? `<a href="${escapeHtml(dossier.marriageDeathIndicators.obituaryLink.value)}">Found</a>` : `not found - <a href="https://www.intelius.com/">Intelius</a>`}</p>
   </section>
+  <section class="status">
+    <p><strong>Discovery status:</strong> ${openChecklist.length ? `${openChecklist.length} open section${openChecklist.length === 1 ? "" : "s"}` : "Ready for operator review"}</p>
+    <p><strong>Contact enrichment:</strong> ${escapeHtml(contactChecklist?.status ? humanStatus(contactChecklist.status) : "Needs review")} - ${escapeHtml(contactChecklist?.note ?? "Verified contact enrichment still needs review.")}</p>
+  </section>
   <section class="toc">
     <h2>Table of Contents</h2>
     <ol>
@@ -557,7 +591,7 @@ function renderFamilyTreePacketHtml(input: {
   </section>
   <section id="back-story" class="story"><p><strong>Back Story:</strong> ${escapeHtml(backstory).replace(/\n\n/g, "</p><p>")}</p></section>
   <section id="possible-heirs"><h2>Possible heirs:</h2>${contactBlocks}</section>
-  <section id="source-review"><h2>Source review</h2><p>This packet is generated from public-record and configured skip-trace facts. Missing contact rows remain blocked until provider credentials or approved manual source capture are available.</p></section>
+  <section id="source-review"><h2>Source review</h2><p>This packet is generated from public-record and configured skip-trace facts. Missing contact rows remain blocked until provider credentials or approved manual source capture are available.</p><p>${escapeHtml(contactChecklist?.note ?? "Verified contact enrichment still needs review.")}</p></section>
 </main>
 </body>
 </html>`;
@@ -886,7 +920,7 @@ ${renderedMarkdown}
 </main>
 </body>
 </html>`;
-  const familyTreeHtml = renderFamilyTreePacketHtml({ dossier, contacts: contactPlaceholders, offerMath, backstory });
+  const familyTreeHtml = renderFamilyTreePacketHtml({ dossier, contacts: contactPlaceholders, offerMath, backstory, researchChecklist });
 
   return {
     id: `report-${slug(dossier.summary.displayName)}-${Date.now()}`,

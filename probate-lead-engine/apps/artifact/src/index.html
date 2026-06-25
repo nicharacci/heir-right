@@ -5772,6 +5772,7 @@ function freshBatchRowFromRun(run, index) {
   const caseNumber = claimValue(dossier.property?.caseNumber, dossier.summary?.caseNumber ?? "Internal report");
   const county = claimValue(dossier.property?.county, run.seed?.county ?? "miami-dade");
   const parcel = claimValue(dossier.property?.parcelId, run.seed?.parcelId ?? "Folio needs review");
+  const contactGate = contactEnrichmentGate(dossier);
 
   return {
     id: `live-${run.runId}`,
@@ -5786,8 +5787,9 @@ function freshBatchRowFromRun(run, index) {
     score: baseScore,
     evidence: Math.min(sourceFactCount, 9),
     evidenceTotal: 9,
-    status: qTone === "neutral" ? decision.tone : qTone,
-    next: missing[0]?.label ?? decision.next,
+    status: contactGate?.status ?? (qTone === "neutral" ? decision.tone : qTone),
+    next: contactGate?.next ?? missing[0]?.label ?? decision.next,
+    classification: contactGate?.classification,
     missing,
     search: `${estate} ${owner} ${leadName} ${address} ${caseNumber} ${county} ${parcel} ${decision.label} ${qualification?.label ?? ""} ${(qualification?.reasonCodes ?? []).join(" ")} ${missing.map((item) => item.label).join(" ")}`,
     leadType: "probate",
@@ -5819,6 +5821,7 @@ function buildRows(data, dossier) {
   const caseNumber = claimValue(dossier.property?.caseNumber, dossier.summary?.caseNumber ?? "Case needs review");
   const county = claimValue(dossier.property?.county, data.seed?.county ?? "miami-dade");
   const parcel = claimValue(dossier.property?.parcelId, "Folio needs review");
+  const contactGate = contactEnrichmentGate(dossier);
   const rows = [
     {
       id: "estate",
@@ -5833,8 +5836,9 @@ function buildRows(data, dossier) {
       score: baseScore,
       evidence: qualification?.coverage?.filter((area) => area.status === "extracted").length ?? Math.min(facts, 9),
       evidenceTotal: qualification?.coverage?.length ?? 9,
-      status: qTone === "neutral" ? decision.tone : qTone,
-      next: missing[0]?.label ?? decision.next,
+      status: contactGate?.status ?? (qTone === "neutral" ? decision.tone : qTone),
+      next: contactGate?.next ?? missing[0]?.label ?? decision.next,
+      classification: contactGate?.classification,
       missing,
       search: `${estate} ${owner} ${leadName} ${address} ${caseNumber} ${county} ${parcel} ${decision.label} ${qualification?.label ?? ""} ${(qualification?.reasonCodes ?? []).join(" ")} ${missing.map((item) => item.label).join(" ")}`,
       leadType: "probate"
@@ -5854,6 +5858,7 @@ function buildRows(data, dossier) {
       evidenceTotal: 9,
       status: dossier.completedLeadReport?.reviewGate?.externalUseBlocked ? "blocked" : "review",
       next: "Fill missing report sections",
+      classification: contactGate?.classification,
       missing,
       search: `completed lead report internal draft offer math ${leadName} ${address} ${missing.map((item) => item.label).join(" ")}`,
       leadType: "probate"
@@ -5891,7 +5896,8 @@ function buildRows(data, dossier) {
       evidence: Math.min(dossier.outreach?.assets?.length ?? 0, 9),
       evidenceTotal: 9,
       status: "blocked",
-      next: "Add phone numbers",
+      next: contactGate?.next ?? "Add phone numbers",
+      classification: contactGate?.classification,
       missing: missing.filter((item) => ["phones", "podio", "heirs"].includes(item.type)),
       search: `outreach phones calls texts emails podio manual follow up ${leadName} ${address}`,
       leadType: "outreach"
@@ -7472,7 +7478,7 @@ function renderDossiersView() {
                   item.id === state.selectedId ? "is-current" : "",
                   checked ? "is-batch-selected" : ""
                 ].filter(Boolean).join(" ");
-                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${classes}"><td>${checkboxHtml(item.id, `Select ${item.leadName} for batch export`, checked, `data-row-select="${escapeHtml(item.id)}"`)}</td><td><span class="primary-text">${escapeHtml(item.leadName)}</span></td><td><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td><td><span class="score ${escapeHtml(item.tone)}">${escapeHtml(item.score)}</span></td><td><span class="classification">${escapeHtml(evidenceClassification(item.evidence))}</span></td><td><span class="next-link solvys-liquid-glass" title="${escapeHtml(item.next)}">${escapeHtml(conciseNextStep(item.next))}</span></td></tr>`;
+                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${classes}"><td>${checkboxHtml(item.id, `Select ${item.leadName} for batch export`, checked, `data-row-select="${escapeHtml(item.id)}"`)}</td><td><span class="primary-text">${escapeHtml(item.leadName)}</span></td><td><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td><td><span class="score ${escapeHtml(item.tone)}">${escapeHtml(item.score)}</span></td><td><span class="classification">${escapeHtml(rowClassification(item))}</span></td><td><span class="next-link solvys-liquid-glass" title="${escapeHtml(item.next)}">${escapeHtml(conciseNextStep(item.next))}</span></td></tr>`;
               }).join("") || `<tr><td colspan="6"><span class="primary-text">No dossier loaded.</span><span class="secondary-text">Load latest or pull a fresh public-record batch.</span></td></tr>`}
             </tbody>
           </table>
@@ -8239,7 +8245,9 @@ function conciseNextStep(value) {
     .replace(/^Add tax history$/i, "Tax history")
     .replace(/^Check probate status$/i, "Probate")
     .replace(/^Add phone numbers$/i, "Phone numbers")
-    .replace(/^Prepare CRM handoff$/i, "CRM handoff");
+    .replace(/^Prepare CRM handoff$/i, "CRM handoff")
+    .replace(/^Connect skip trace$/i, "Connect trace")
+    .replace(/^Run skip trace$/i, "Run trace");
 }
 
 function evidenceClassification(evidence) {
@@ -8247,6 +8255,49 @@ function evidenceClassification(evidence) {
   if (value >= 8) return "Enriched";
   if (value >= 5) return "Fully Scouted";
   return "Basic Scouting";
+}
+
+function dossierReviewFlags(dossier = {}) {
+  const directFlags = dossier.audit?.reviewFlags ?? [];
+  const factFlags = (dossier.audit?.facts ?? []).flatMap((fact) => fact.reviewFlags ?? []);
+  return [...new Set([...directFlags, ...factFlags])];
+}
+
+function dossierHasVerifiedContactData(dossier = {}) {
+  return (dossier.audit?.facts ?? []).some((fact) => {
+    if (fact.factType !== "enriched_contact_profile" || !fact.value || typeof fact.value !== "object") return false;
+    const profile = fact.value;
+    const phones = Array.isArray(profile.phones) ? profile.phones.filter(Boolean) : [];
+    const emails = Array.isArray(profile.emails) ? profile.emails.filter(Boolean) : [];
+    const addressHistory = Array.isArray(profile.addressHistory) ? profile.addressHistory.filter(Boolean) : [];
+    return Boolean(profile.likelyCurrentAddress) || phones.length > 0 || emails.length > 0 || addressHistory.length > 0;
+  });
+}
+
+function contactEnrichmentGate(dossier = {}) {
+  if (dossierHasVerifiedContactData(dossier)) {
+    return { classification: "Contact verified", status: null, next: null };
+  }
+  const flags = dossierReviewFlags(dossier);
+  if (flags.includes("MISSING_SKIPTRACE_CONFIG")) {
+    return {
+      classification: "Skip trace needed",
+      status: "blocked",
+      next: "Connect skip trace"
+    };
+  }
+  if (flags.includes("NO_ENRICHMENT_RUN") || flags.includes("CONTACT_REVIEW_REQUIRED")) {
+    return {
+      classification: "Needs contacts",
+      status: "review",
+      next: "Run skip trace"
+    };
+  }
+  return null;
+}
+
+function rowClassification(row) {
+  return row.classification || evidenceClassification(row.evidence);
 }
 
 function addressDisplayParts(address, fallback = "") {
@@ -8342,7 +8393,7 @@ function renderResults() {
           <span class="secondary-text">${escapeHtml(addressParts.locality)}</span>
         </td>
         <td data-column="score"><span class="score ${escapeHtml(row.tone)}">${escapeHtml(row.score)}</span></td>
-        <td data-column="evidence"><span class="classification">${escapeHtml(evidenceClassification(row.evidence))}</span></td>
+        <td data-column="evidence"><span class="classification">${escapeHtml(rowClassification(row))}</span></td>
         <td data-column="next"><button class="next-link solvys-liquid-glass" type="button" title="${escapeHtml(row.next)}" data-open-next="${escapeHtml(row.id)}">${escapeHtml(conciseNextStep(row.next))}</button></td>
       </tr>
     `;

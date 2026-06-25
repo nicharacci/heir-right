@@ -13,6 +13,10 @@ Complete HeirRight document discovery so a live lead can render a family-tree pa
 - Wired skip-trace facts into `runDryPipeline`.
 - Updated the completed lead report contact mapping to consume enriched contact profiles when present.
 - Added `output/family-tree-discovery-report.html` as a North Star-shaped packet view.
+- Added a hard UI and report truth gate so Annie Hawkins cannot display as `Enriched` or completed when skip-trace/contact enrichment has not run.
+- Changed the report research checklist `CONTACTS` step to `Verified contact enrichment`; it only completes when real contact evidence exists.
+- Added Discovery status and Contact enrichment lines inside the family-tree packet itself so the exported packet carries the blocker without relying on surrounding UI.
+- Updated Find Estates and Dossiers rows to show `Skip trace needed` / `Connect trace` or `Needs contacts` / `Run trace` when contact data is absent.
 - Generated local Annie Hawkins proof files:
   - `apps/worker/output/family-tree-discovery-report.html`
   - `apps/worker/output/family-tree-discovery-report.pdf`
@@ -35,6 +39,12 @@ Complete HeirRight document discovery so a live lead can render a family-tree pa
   - Reader contains `Family tree`, the North Star offer/profit table, Table of Contents, and the Intelius link.
   - Reader no longer contains unavailable zip suffixes (`-0000`).
   - Screenshot: `probate-lead-engine/docs/run-point-daily/screenshots/2026-06-25-north-star-dossier-rail-reader-local.png`.
+- Contact gate proof confirmed:
+  - Dossiers row for Annie reads `Skip trace needed`.
+  - Next-step chip reads `Connect trace` and fits the row.
+  - Embedded packet contains the family-tree packet, offer/profit table, Table of Contents, and the contact-enrichment blocker.
+  - Embedded packet and row do not contain unavailable zip suffixes (`-0000`).
+  - Screenshot: `probate-lead-engine/docs/run-point-daily/screenshots/2026-06-25-annie-contact-gate-local.png`.
 
 ## Blocker
 
@@ -52,6 +62,5 @@ The Apify actor documentation shows it can return current/past addresses, phone 
 
 1. Validate the Apify provider payload against a real approved token.
 2. Normalize returned people into heir rows with current address, address history, phone numbers, and emails.
-3. Add a hard completion gate: packets with no enriched contacts cannot be marked completed.
-4. Hook `family-tree-discovery-report.html` into the Dossier rail embedded PDF/reader flow.
-5. Deploy and verify on `https://heirright-landing-demo.vercel.app/`.
+3. Validate provider output against the Constance / Deborah examples and iterate the packet until the actual contact rows, address histories, phones, and emails match that level of completion.
+4. Deploy and verify on `https://heirright-landing-demo.vercel.app/`.
