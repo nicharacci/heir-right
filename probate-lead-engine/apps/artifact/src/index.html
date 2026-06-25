@@ -1967,16 +1967,6 @@
       padding: 0;
     }
 
-    .research-rail[data-mode="dossier"] .rail-tabs {
-      grid-template-columns: auto;
-      justify-content: end;
-      min-height: 36px;
-    }
-
-    .research-rail[data-mode="dossier"] .rail-segment {
-      display: none;
-    }
-
     .research-rail[data-mode="dossier"] .rail-context-kicker::before {
       content: "Dossier rail";
     }
@@ -2014,6 +2004,14 @@
       text-align: left;
       cursor: pointer;
       transition: background .18s var(--ease), border-color .18s var(--ease);
+    }
+
+    .dossier-flow-step {
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+    }
+
+    .dossier-flow-step .step-status {
+      justify-self: end;
     }
 
     .dossier-doc.is-selected {
@@ -3088,7 +3086,7 @@
       top: 0;
       right: 0;
       bottom: 23px;
-      z-index: 68;
+      z-index: 120;
       min-width: 0;
       height: auto;
       display: flex;
@@ -4118,6 +4116,22 @@
       transition: transform .18s var(--ease), background .18s var(--ease), color .18s var(--ease);
     }
 
+    .next-link,
+    body[data-theme] .next-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      max-width: 100%;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      line-height: 1;
+      white-space: nowrap;
+      color: var(--text);
+      text-align: center;
+    }
+
     .suggestion-chip:hover {
       transform: translateY(-1px);
       background:
@@ -4316,6 +4330,78 @@
     .dossier-doc.is-selected,
     body[data-theme] .dossier-doc.is-selected {
       border-color: rgba(235,235,245,.26);
+    }
+
+    .connection-card {
+      grid-column: 1 / -1;
+      border: 1px solid rgba(235,235,245,.10);
+      border-radius: 16px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)),
+        rgba(32,33,36,.78);
+      backdrop-filter: blur(18px) saturate(1.06);
+      -webkit-backdrop-filter: blur(18px) saturate(1.06);
+    }
+
+    .connection-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+    }
+
+    .connection-row + .connection-row::before {
+      content: "";
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      top: 0;
+      height: 1px;
+      background: var(--divider-line);
+    }
+
+    .connection-source {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .connection-state {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .connection-state::before {
+      content: "✕";
+      display: inline-grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      color: #ff7a8a;
+      border: 1px solid rgba(255,122,138,.58);
+      background: rgba(255,69,58,.12);
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .connection-state.is-connected {
+      color: #79e2a1;
+    }
+
+    .connection-state.is-connected::before {
+      content: "✓";
+      color: #79e2a1;
+      border-color: rgba(121,226,161,.58);
+      background: rgba(48,209,88,.12);
     }
 
     .dossier-list-head .results-count {
@@ -5153,6 +5239,10 @@ const state = {
   detailRailOpen: true,
   railTab: "flow",
   railWidth: 388,
+  railResizing: false,
+  activeRailPointerId: undefined,
+  suppressRailOutsideCloseOnce: false,
+  suppressRailOutsideCloseUntil: 0,
   filterWidth: 320,
   filterCollapsed: false,
   railPreview: null,
@@ -5303,6 +5393,10 @@ function renderSession(session) {
   accountChip.title = user?.email ? `Signed in as ${user.email}. Click to sign out.` : "Beta access session";
 }
 
+function cleanDisplayValue(value) {
+  return String(value ?? "").replace(/\b(\d{5})-0000\b/g, "$1");
+}
+
 async function loadSession() {
   try {
     const response = await fetch("/auth/session", { cache: "no-store" });
@@ -5318,11 +5412,11 @@ async function loadSession() {
 }
 
 function claimValue(claim, fallback = "Needs review") {
-  if (!claim || claim.value === null || claim.value === undefined || claim.value === "") return fallback;
+  if (!claim || claim.value === null || claim.value === undefined || claim.value === "") return cleanDisplayValue(fallback);
   if (typeof claim.value === "object") {
-    return Object.values(claim.value).filter(Boolean).join(" / ") || fallback;
+    return cleanDisplayValue(Object.values(claim.value).filter(Boolean).join(" / ") || fallback);
   }
-  return String(claim.value);
+  return cleanDisplayValue(claim.value);
 }
 
 function titleCaseNamePart(value) {
@@ -5375,7 +5469,7 @@ function displayStatus(value, fallback = "Needs review") {
 }
 
 function operatorPlainText(value) {
-  return String(value ?? "")
+  return cleanDisplayValue(value)
     .replace(/\bmanual_or_browser_extraction_required\b/gi, "Needs source review")
     .replace(/\bmanual_review_required\b/gi, "Needs manual review")
     .replace(/\bNO_ENRICHMENT_RUN\b/g, "Contact research has not run")
@@ -6440,26 +6534,34 @@ function discoveryPreferenceChecked(phaseId, index) {
 
 function dashboardMilestones() {
   const row = selectedRow();
-  const missing = row?.missing?.length ?? buildMissingSections(state.dossier ?? {}).length;
-  const qualified = qualificationReview()?.summary?.qualified ?? state.dailyRun?.qualifiedLeadCount ?? 0;
+  const rows = state.rows;
+  const dossier = dossierForRow(row);
+  const missing = row?.missing?.length ?? buildMissingSections(dossier ?? state.dossier ?? {}).length;
+  const review = qualificationReview();
+  const qualified = review?.summary?.qualified ?? state.dailyRun?.qualifiedLeadCount ?? rows.filter((item) => item.tone === "ready").length;
+  const reviewed = review?.summary?.review ?? state.dailyRun?.reviewLeadCount ?? rows.filter((item) => item.tone !== "ready").length;
+  const raw = state.freshBatch?.acceptedSeedCount ?? state.dailyRun?.rawLeadCount ?? rows.length;
+  const sourceGaps = state.dailyRun?.sourceCoverageSummary?.blockedAreaCount ?? milestoneBlockers(dossier).filter((blocker) => /county-record|source|property, tax, deed|report section/i.test(blocker)).length;
+  const openReviews = taskCount(dossier ?? state.dossier ?? {});
+  const queued = queuedRows().length;
   return [
     {
       icon: "clock",
-      title: "Weekly document packet",
-      copy: `10-document dossier packet is staged; ${missing} source section${missing === 1 ? "" : "s"} still need review before handoff.`,
-      date: "This week"
+      title: "Live lead packet",
+      copy: `${raw} live lead${raw === 1 ? "" : "s"} loaded; ${qualified} ready, ${reviewed} still in review.`,
+      date: `${qualified}/${Math.max(raw, 1)} ready`
     },
     {
       icon: "route",
-      title: "Prospecting phase review",
-      copy: "Pull fresh public-record leads, then begin Discovery on each accepted estate.",
-      date: "Next"
+      title: "Source gaps to clear",
+      copy: `${sourceGaps} county-record check${sourceGaps === 1 ? "" : "s"} still need property, tax, deed, probate, or heir facts.`,
+      date: sourceGaps ? "Review" : "Clear"
     },
     {
       icon: "flag",
-      title: "Monthly deal milestone",
-      copy: `${qualified} lead${qualified === 1 ? "" : "s"} currently count as ready. Keep blocked gates visible.`,
-      date: "30 days"
+      title: "Dossier handoff blockers",
+      copy: `${missing} report section${missing === 1 ? "" : "s"}, ${openReviews} review task${openReviews === 1 ? "" : "s"}, ${queued} queued for handoff.`,
+      date: queued ? "Queued" : "Next"
     }
   ];
 }
@@ -6624,63 +6726,40 @@ function exportBlockerItems(result = state.exportResult) {
 }
 
 function queueReadinessItems() {
-  const row = selectedRow();
-  const dossier = dossierForRow(row);
-  const docs = dossierDocuments(row, dossier);
-  const missing = row?.missing ?? buildMissingSections(dossier ?? {});
-  const blockers = exportBlockerItems();
-  const reviewTasks = taskCount(dossier);
-  const queuedCount = queuedRows().length;
-  const selectedCount = checkedRows().length;
-  return [
-    {
-      title: "Batch selection",
-      copy: queuedCount
-        ? `${queuedCount} lead${queuedCount === 1 ? "" : "s"} are in the Queue for batch export prep.`
-        : selectedCount
-          ? `${selectedCount} selected lead${selectedCount === 1 ? "" : "s"} can be added to Queue before export prep.`
-          : "No leads are queued yet. Select leads from Estate Search or Dossiers, then choose Add to Queue."
-    },
-    {
-      title: "Dossier documents",
-      copy: `${docs.length} document${docs.length === 1 ? "" : "s"} are staged from the Dossier rail for batch review.`
-    },
-    {
-      title: "Source-backed gaps",
-      copy: missing.length
-        ? `${missing.length} section${missing.length === 1 ? "" : "s"} still need source notes before handoff.`
-        : "No open dossier sections are visible for the selected lead."
-    },
-    {
-      title: "Review tasks",
-      copy: reviewTasks
-        ? `${reviewTasks} operator task${reviewTasks === 1 ? "" : "s"} remain attached to the packet.`
-        : "No additional operator tasks are attached to this packet."
-    },
-    {
-      title: "Readback proof",
-      copy: blockers.length
-        ? `${blockers.length} live handoff blocker${blockers.length === 1 ? "" : "s"} remain before a production write.`
-        : "Prepared package only; approval and readback proof are still required before live writes."
-    }
-  ];
+  const queued = queuedRows();
+  if (!queued.length) {
+    return [{
+      title: "No leads queued",
+      copy: "Add selected Estate Search or Dossier leads to Queue before reviewing handoff stages."
+    }];
+  }
+  return queued.map((row) => {
+    const dossier = dossierForRow(row);
+    const missing = row?.missing ?? buildMissingSections(dossier ?? {});
+    const reviewTasks = taskCount(dossier);
+    const stages = [
+      missing.length ? `${missing.length} source-backed section${missing.length === 1 ? "" : "s"}` : "",
+      reviewTasks ? `${reviewTasks} review task${reviewTasks === 1 ? "" : "s"}` : "",
+      row.tone === "ready" ? "handoff readback" : "qualification review"
+    ].filter(Boolean);
+    return {
+      title: row.leadName || row.title,
+      copy: stages.join(" • ")
+    };
+  });
 }
 
 function queueDestinationItems() {
-  return [
-    {
-      title: "Podio fields and tasks",
-      copy: "Maps estate, property, offer math, dossier status, drip route, and review-owner tasks for CRM handoff."
-    },
-    {
-      title: "Google Docs body",
-      copy: "Stages the completed lead report and Discovery Dossier attachments for document review."
-    },
-    {
-      title: "Google Sheets row",
-      copy: "Stages one row per lead with source status, offer math, queue state, and handoff blockers."
-    }
-  ];
+  const names = ["Podio", "Google Workspace"];
+  return names.map((name) => {
+    const connection = connectionByName(name === "Google Workspace" ? "Google" : name);
+    const connected = Boolean(connection?.connected);
+    return {
+      title: name,
+      connected,
+      status: connected ? "Connected" : "Not connected"
+    };
+  });
 }
 
 function pageShellHtml(title, kicker, body) {
@@ -7230,7 +7309,7 @@ function renderDossiersView() {
                   item.id === state.selectedId ? "is-current" : "",
                   checked ? "is-batch-selected" : ""
                 ].filter(Boolean).join(" ");
-                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${classes}"><td>${checkboxHtml(item.id, `Select ${item.leadName} for batch export`, checked, `data-row-select="${escapeHtml(item.id)}"`)}</td><td><span class="primary-text">${escapeHtml(item.leadName)}</span></td><td><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td><td><span class="score ${escapeHtml(item.tone)}">${escapeHtml(item.score)}</span></td><td><span class="classification">${escapeHtml(evidenceClassification(item.evidence))}</span></td><td><span class="next-link">${escapeHtml(item.next)}</span></td></tr>`;
+                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${classes}"><td>${checkboxHtml(item.id, `Select ${item.leadName} for batch export`, checked, `data-row-select="${escapeHtml(item.id)}"`)}</td><td><span class="primary-text">${escapeHtml(item.leadName)}</span></td><td><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td><td><span class="score ${escapeHtml(item.tone)}">${escapeHtml(item.score)}</span></td><td><span class="classification">${escapeHtml(evidenceClassification(item.evidence))}</span></td><td><span class="next-link solvys-liquid-glass" title="${escapeHtml(item.next)}">${escapeHtml(conciseNextStep(item.next))}</span></td></tr>`;
               }).join("") || `<tr><td colspan="6"><span class="primary-text">No dossier loaded.</span><span class="secondary-text">Load latest or pull a fresh public-record batch.</span></td></tr>`}
             </tbody>
           </table>
@@ -7261,6 +7340,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   const content = document.getElementById("railContent");
   const docs = dossierDocuments(row, dossier);
   const selectedDoc = selectedDossierDocument(row);
+  const qualification = qualificationDecision(dossier);
   syncRailContext(row);
   syncRailTabs();
   if (!content) return;
@@ -7269,12 +7349,49 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
     setRailOpen(state.railOpen);
     return;
   }
-  content.innerHTML = `
-    <div class="dossier-rail-content">
+  const titleCard = `
+    <section class="glass-card rail-title-card">
+      <div class="rail-title-row">
+        <div>
+          <p class="eyebrow">Document packet</p>
+          <h2 class="rail-title">Dossier prep workflow</h2>
+          <p class="copy">Review each prepared document, complete source-backed stages, then approve the PDF packet for handoff.</p>
+        </div>
+        ${statusPill(row.tone, row.tone === "blocked" ? "Blocked" : row.tone === "ready" ? "Ready" : "Review")}
+      </div>
+      ${discoveryStripHtml(row, dossier)}
+    </section>
+  `;
+  let bodyHtml = "";
+  if (state.railTab === "timeline") {
+    bodyHtml = `
+      <section class="glass-card rail-card">
+        <h3>Quality &amp; Score</h3>
+        <ul class="mini-list">
+          <li><strong>Status</strong><span>${escapeHtml(qualificationLabel(qualification))}</span></li>
+          <li><strong>Source score</strong><span>${escapeHtml(qualificationScoreText(qualification))}</span></li>
+          <li><strong>Next action</strong><span>${escapeHtml(qualification?.nextAction ?? "Run the daily qualification packet.")}</span></li>
+        </ul>
+        <div>
+          ${(qualification?.coverage ?? []).map((area, index) => `
+            <article class="rail-item">
+              <span class="rail-item-index">${String(index + 1).padStart(2, "0")}</span>
+              <span>
+                <span class="rail-item-title">${escapeHtml(area.label)}</span>
+                <span class="rail-item-copy">${escapeHtml(area.nextAction)}</span>
+              </span>
+              ${statusPill(area.status === "extracted" ? "ready" : area.status === "partial" ? "review" : "blocked", `${area.earned}/${area.weight}`)}
+            </article>
+          `).join("") || `<p class="copy">Qualification coverage appears after the daily review packet is prepared.</p>`}
+        </div>
+      </section>
+    `;
+  } else if (state.railTab === "docs") {
+    bodyHtml = `
       <section class="glass-card rail-card">
         <div class="dossier-rail-toolbar">
           <div>
-            <p class="eyebrow">Document packet</p>
+            <p class="eyebrow">Docs</p>
             <h2 class="rail-title">${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}</h2>
             <p class="copy">${escapeHtml(selectedDoc?.type ?? "PDF packet")} - ${escapeHtml(selectedDoc?.status ?? "Review")}</p>
           </div>
@@ -7288,11 +7405,33 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
         <div class="pdf-toolbar"><span>${escapeHtml(selectedDoc?.type ?? "PDF packet")} - ${escapeHtml(selectedDoc?.status ?? "Review")}</span><span class="tracker-date">Embedded PDF reader</span></div>
         <iframe class="pdf-reader" title="${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}" sandbox="allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation" srcdoc="${escapeHtml(selectedDoc?.body ?? "")}"></iframe>
       </section>
-    </div>
-  `;
+    `;
+  } else {
+    bodyHtml = `
+      <section class="glass-card rail-card">
+        <h3>Documents to complete</h3>
+        <p class="copy">Work the full document-prep process in order. Open a document in Docs when a step needs review.</p>
+        <div>
+          ${docs.map((doc, index) => `
+            <article class="rail-item dossier-flow-step">
+              <span class="rail-item-index">${String(index + 1).padStart(2, "0")}</span>
+              <span>
+                <span class="rail-item-title">${escapeHtml(doc.title)}</span>
+                <span class="rail-item-copy">${escapeHtml(doc.type)} - ${escapeHtml(doc.status)}. ${escapeHtml(doc.copy)}</span>
+              </span>
+              <button class="btn" type="button" data-dossier-doc="${escapeHtml(doc.id)}">Review</button>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+  content.innerHTML = titleCard + bodyHtml;
+  content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
   content.querySelectorAll("[data-dossier-doc]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedDossierDocId = button.dataset.dossierDoc;
+      state.railTab = "docs";
       renderRail();
     });
   });
@@ -7386,18 +7525,14 @@ function renderQueueView() {
         </ul>
       </section>
       <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Readiness</p><h2 class="loop-title">Before handoff</h2></div><span class="pill review">Review</span></div>
+        <div class="loop-panel-head"><div><p class="eyebrow">Readiness</p><h2 class="loop-title">Needs Review (Queued Items)</h2></div><span class="pill review">Review</span></div>
         <ul class="mini-list">
           ${readiness.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></li>`).join("")}
-          ${blockers.slice(0, 3).map((blocker) => `<li><strong>Live handoff blocker</strong><span>${escapeHtml(blocker)}</span></li>`).join("")}
+          ${queuedRows().length ? blockers.slice(0, 3).map((blocker) => `<li><strong>Live handoff blocker</strong><span>${escapeHtml(blocker)}</span></li>`).join("") : ""}
         </ul>
       </section>
-      <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Destinations</p><h2 class="loop-title">Podio and Google prep</h2></div><span class="pill review">Prepared only</span></div>
-        <ul class="mini-list">
-          ${destinations.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></li>`).join("")}
-        </ul>
-        <p class="copy">Podio remains CRM of record. Google Docs and Sheets are prepared as review artifacts until the operator approves the handoff and readback pass.</p>
+      <section class="connection-card">
+        ${destinations.map((item) => `<div class="connection-row"><span class="connection-source">${escapeHtml(item.title)}</span><span class="connection-state ${item.connected ? "is-connected" : ""}">${escapeHtml(item.status)}</span></div>`).join("")}
       </section>
     </div>
   `;
@@ -7535,9 +7670,22 @@ function runShellCommand(command, source = null, freeform = "") {
   renderShellPanels();
 }
 
+function railWidthBounds() {
+  const viewport = Math.max(360, window.innerWidth || 1440);
+  const preferredMin = state.railMode === "dossier" ? 560 : 360;
+  const available = Math.max(320, viewport - 96);
+  const modeRatio = state.railMode === "dossier" ? .72 : .64;
+  const max = Math.max(320, Math.min(available, Math.floor(viewport * modeRatio)));
+  return {
+    min: Math.min(preferredMin, max),
+    max
+  };
+}
+
 function clampRailWidth(value) {
-  const max = Math.max(320, Math.floor(window.innerWidth * .55));
-  return Math.min(max, Math.max(320, Math.round(value)));
+  const bounds = railWidthBounds();
+  const numeric = Number.isFinite(Number(value)) ? Number(value) : bounds.min;
+  return Math.min(bounds.max, Math.max(bounds.min, Math.round(numeric)));
 }
 
 function clampFilterWidth(value) {
@@ -7617,6 +7765,7 @@ function setActiveShellView(view = "dashboard", label = "") {
   if (detail) detail.setAttribute("aria-hidden", "true");
   if (nextView === "dossiers") {
     state.railMode = "dossier";
+    if (previousRailMode !== "dossier") state.railTab = "flow";
     state.railOpen = true;
     setRailOpen(true);
     setDetailRailOpen(false);
@@ -7699,16 +7848,20 @@ function syncRailContext(row) {
 function syncRailTabs() {
   document.querySelectorAll("[data-rail-tab]").forEach((button) => {
     button.setAttribute("aria-pressed", button.dataset.railTab === state.railTab ? "true" : "false");
-    button.setAttribute("aria-hidden", state.railMode === "dossier" ? "true" : "false");
-    button.tabIndex = state.railMode === "dossier" ? -1 : 0;
+    button.removeAttribute("aria-hidden");
+    button.tabIndex = 0;
+    const label = state.railMode === "dossier" && button.dataset.railTab === "timeline" ? "Quality & Score" : button.dataset.railTab === "flow" ? "Flow" : button.dataset.railTab === "docs" ? "Docs" : "Timeline";
+    const textNode = Array.from(button.childNodes).find((node) => node.nodeType === 3 && node.textContent.trim());
+    if (textNode) textNode.textContent = ` ${label}`;
   });
 }
 
 function setRailOpen(open, source = null) {
   state.railOpen = open;
   const rail = document.getElementById("researchRail");
-  const targetRailWidth = state.railMode === "dossier" ? Math.max(state.railWidth, 560) : state.railWidth;
-  const width = `min(${targetRailWidth}px, 55vw, calc(100vw - 64px))`;
+  state.railWidth = clampRailWidth(state.railMode === "dossier" ? Math.max(state.railWidth, 560) : state.railWidth);
+  const bounds = railWidthBounds();
+  const width = `${state.railWidth}px`;
   const app = document.querySelector(".app");
   rail.dataset.mode = state.railMode;
   rail.setAttribute("aria-label", state.railMode === "dossier" ? "HeirRight Dossier Rail" : "HeirRight Report Rail");
@@ -7718,6 +7871,10 @@ function setRailOpen(open, source = null) {
   resizer?.setAttribute("aria-label", state.railMode === "dossier" ? "Resize dossier rail" : "Resize report rail");
   closeButton?.setAttribute("aria-label", closeLabel);
   closeButton?.setAttribute("title", closeLabel);
+  resizer?.setAttribute("aria-valuemin", String(bounds.min));
+  resizer?.setAttribute("aria-valuemax", String(bounds.max));
+  resizer?.setAttribute("aria-valuenow", String(state.railWidth));
+  resizer?.setAttribute("aria-valuetext", `${state.railMode === "dossier" ? "Dossier" : "Report"} rail ${state.railWidth}px wide`);
   app?.style.setProperty("--active-rail-width", open ? width : "0px");
   rail.dataset.open = open ? "true" : "false";
   rail.style.width = width;
@@ -7897,6 +8054,15 @@ function statusPill(tone, label) {
   return `<span class="pill ${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
 }
 
+function conciseNextStep(value) {
+  const text = cleanDisplayValue(value || "Review").trim();
+  return text
+    .replace(/^Add tax history$/i, "Tax history")
+    .replace(/^Check probate status$/i, "Probate")
+    .replace(/^Add phone numbers$/i, "Phone numbers")
+    .replace(/^Prepare CRM handoff$/i, "CRM handoff");
+}
+
 function evidenceClassification(evidence) {
   const value = Number(evidence) || 0;
   if (value >= 8) return "Enriched";
@@ -7905,7 +8071,7 @@ function evidenceClassification(evidence) {
 }
 
 function addressDisplayParts(address, fallback = "") {
-  const text = String(address ?? "").trim();
+  const text = cleanDisplayValue(address).trim();
   const parts = text.split(",").map((part) => part.trim()).filter(Boolean);
   if (parts.length >= 2) {
     return {
@@ -7915,7 +8081,7 @@ function addressDisplayParts(address, fallback = "") {
   }
   return {
     street: text || "Address pending",
-    locality: String(fallback ?? "").trim()
+    locality: cleanDisplayValue(fallback).trim()
   };
 }
 
@@ -7998,7 +8164,7 @@ function renderResults() {
         </td>
         <td data-column="score"><span class="score ${escapeHtml(row.tone)}">${escapeHtml(row.score)}</span></td>
         <td data-column="evidence"><span class="classification">${escapeHtml(evidenceClassification(row.evidence))}</span></td>
-        <td data-column="next"><button class="next-link" type="button" data-open-next="${escapeHtml(row.id)}">${escapeHtml(row.next)}</button></td>
+        <td data-column="next"><button class="next-link solvys-liquid-glass" type="button" title="${escapeHtml(row.next)}" data-open-next="${escapeHtml(row.id)}">${escapeHtml(conciseNextStep(row.next))}</button></td>
       </tr>
     `;
   }).join("");
@@ -8518,7 +8684,7 @@ async function loadRun() {
       state.qualificationReview = state.dailyRun?.qualificationReview ?? await loadQualificationReview();
       renderLoadedState(freshBatch.latestRun, freshBatch.latestRun.dossier);
       const firstSeed = freshBatch.seeds?.[0] ?? {};
-      const firstLead = firstSeed.ownerName || firstSeed.estateName || firstSeed.propertyAddress || "live public-source lead";
+      const firstLead = firstSeed.ownerName || firstSeed.estateName || cleanDisplayValue(firstSeed.propertyAddress) || "live public-source lead";
       const summary = freshBatch.operatorSummary || `Pulled ${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead(s).`;
       document.getElementById("topStatus").textContent = `${summary} First lead: ${firstLead}.`;
       setFreshBatchStatus(`${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead${(freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length) === 1 ? "" : "s"} loaded from the latest Miami-Dade Property Appraiser pull.`, "ready");
@@ -8612,7 +8778,7 @@ async function pullFreshBatch(source = null) {
     renderLoadedState(result.latestRun, result.latestRun.dossier);
 
     const firstSeed = result.seeds?.[0] ?? {};
-    const firstLead = firstSeed.ownerName || firstSeed.estateName || firstSeed.propertyAddress || "live public-source lead";
+    const firstLead = firstSeed.ownerName || firstSeed.estateName || cleanDisplayValue(firstSeed.propertyAddress) || "live public-source lead";
     const summary = result.operatorSummary || `Pulled ${result.acceptedSeedCount ?? 0} live lead(s).`;
     document.getElementById("topStatus").textContent = `${summary} First lead: ${firstLead}.`;
     setFreshBatchStatus(`${result.acceptedSeedCount} live lead${result.acceptedSeedCount === 1 ? "" : "s"} pulled from Miami-Dade Property Appraiser.`, "ready");
@@ -9125,14 +9291,9 @@ function wireEvents() {
       openUtilityRail("report", reportTrigger);
       return;
     }
-    const clickPath = event.composedPath?.() ?? [];
-    const clickedInsideRail = clickPath.some((item) => item?.id === "researchRail");
     closeAllEnhancedSelects(event.target.closest?.(".select-enhanced"));
-    const rail = document.getElementById("researchRail");
-    const railOpener = event.target.closest?.('[data-shell-nav], [data-shell-nav-shortcut], #rightRailToggle, #exportMenu, #exportToggle, #floatingListControls, [data-export-route], [data-row-id], [data-open-next], [data-chip], [data-rail-chip], [data-dossier-row], [data-dossier-doc], .select-box, [data-row-select], [data-select-visible]');
-    if (state.railOpen && rail && !clickedInsideRail && !rail.contains(event.target) && !railOpener) {
-      setRailOpen(false);
-    }
+    const suppressRailOutsideClose = state.railResizing || state.suppressRailOutsideCloseOnce || Date.now() < state.suppressRailOutsideCloseUntil;
+    if (suppressRailOutsideClose) state.suppressRailOutsideCloseOnce = false;
     if (!document.getElementById("exportMenu").contains(event.target)) {
       setExportMenuOpen(false);
     }
@@ -9184,15 +9345,27 @@ function wireRailResize() {
   function resize(event) {
     state.railWidth = clampRailWidth(startWidth + startX - event.clientX);
     localStorage.setItem(railWidthKey, String(state.railWidth));
-    setRailOpen(state.railOpen);
+    setRailOpen(true);
   }
   function stopResize() {
+    state.railResizing = false;
+    state.suppressRailOutsideCloseOnce = true;
+    state.suppressRailOutsideCloseUntil = Date.now() + 900;
+    if (state.activeRailPointerId !== undefined) {
+      try { handle.releasePointerCapture(state.activeRailPointerId); } catch (error) {}
+      state.activeRailPointerId = undefined;
+    }
     document.body.style.userSelect = "";
     window.removeEventListener("pointermove", resize);
     window.removeEventListener("pointerup", stopResize);
   }
   handle.addEventListener("pointerdown", (event) => {
     event.preventDefault();
+    state.railResizing = true;
+    state.suppressRailOutsideCloseOnce = true;
+    state.suppressRailOutsideCloseUntil = Date.now() + 250;
+    state.activeRailPointerId = event.pointerId;
+    try { handle.setPointerCapture(event.pointerId); } catch (error) {}
     startX = event.clientX;
     startWidth = state.railWidth;
     document.body.style.userSelect = "none";
