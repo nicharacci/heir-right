@@ -4563,6 +4563,227 @@
       grid-template-columns: 1fr;
     }
 
+    .outreach-workspace {
+      display: grid;
+      grid-template-columns: minmax(220px, .46fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .outreach-column {
+      min-width: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .outreach-section-label {
+      margin: 0;
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .campaign-list,
+    .template-list,
+    .audit-list,
+    .variable-list {
+      display: grid;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .campaign-item,
+    .template-list-item,
+    .audit-item,
+    .variable-item {
+      position: relative;
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+      padding: 11px 8px;
+      color: var(--text);
+      background: transparent;
+      border: 0;
+      text-align: left;
+    }
+
+    .campaign-item,
+    .template-list-item {
+      cursor: pointer;
+    }
+
+    .campaign-item + .campaign-item::before,
+    .template-list-item + .template-list-item::before,
+    .audit-item + .audit-item::before,
+    .variable-item + .variable-item::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: 0;
+      height: 1px;
+      background: var(--divider-line);
+      pointer-events: none;
+    }
+
+    .campaign-item strong,
+    .template-list-item strong,
+    .audit-item strong,
+    .variable-item strong {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.25;
+    }
+
+    .campaign-item span,
+    .template-list-item span,
+    .audit-item span,
+    .variable-item span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.38;
+    }
+
+    .campaign-item.is-selected,
+    .template-list-item.is-selected {
+      border-radius: 12px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.025)),
+        rgba(74,144,245,.16);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .template-meta-row,
+    .template-action-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .template-action-row {
+      justify-content: flex-end;
+    }
+
+    .template-action-row .plain-action {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 7px 3px;
+    }
+
+    .outreach-editor-panel {
+      gap: 14px;
+    }
+
+    .template-preview-box {
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(235,235,245,.08);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)),
+        rgba(18,18,20,.62);
+    }
+
+    .template-preview-box pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+      font: 12px/1.5 var(--mono);
+    }
+
+    .approval-row {
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) minmax(130px, .6fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .approval-row label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .approval-row input,
+    .approval-row select {
+      width: 100%;
+      min-width: 0;
+      color: var(--text);
+      background: rgba(17,17,19,.78);
+      border: 1px solid rgba(235,235,245,.14);
+      border-radius: 12px;
+      padding: 10px 11px;
+      font: inherit;
+      outline: 0;
+    }
+
+    .outreach-toast-mount {
+      position: fixed;
+      right: 28px;
+      bottom: 88px;
+      z-index: 75;
+      width: min(420px, calc(100vw - 40px));
+      pointer-events: none;
+    }
+
+    .outreach-toast {
+      pointer-events: auto;
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 22px;
+      border: 1px solid rgba(235,235,245,.16);
+      color: #f5f5f7;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.045)),
+        rgba(38,38,38,.88);
+      box-shadow: 0 24px 62px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.16);
+      backdrop-filter: blur(26px) saturate(1.12);
+      -webkit-backdrop-filter: blur(26px) saturate(1.12);
+      opacity: 0;
+      transform: translate3d(0, 12px, 0) scale(.985);
+      animation: outreachToastIn .22s var(--ease-out) forwards;
+    }
+
+    @keyframes outreachToastIn {
+      to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    }
+
+    .outreach-toast strong {
+      font-size: 13px;
+    }
+
+    .outreach-toast p {
+      margin: 0;
+      color: rgba(245,245,247,.78);
+      line-height: 1.42;
+    }
+
+    .outreach-toast-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .outreach-actions {
       display: inline-flex;
       align-items: center;
@@ -4823,7 +5044,7 @@
       width: min(430px, calc(100% - 28px));
       position: absolute;
       left: 18px;
-      bottom: 180px;
+      bottom: 64px;
       z-index: 3;
       overflow: hidden;
       border-radius: 16px;
@@ -4908,6 +5129,11 @@
       .outreach-template-modal {
         width: 100%;
         max-height: calc(100vh - 28px);
+      }
+
+      .outreach-workspace,
+      .approval-row {
+        grid-template-columns: 1fr;
       }
 
       .template-form-grid,
@@ -5739,6 +5965,7 @@
   </section>
 </main>
 <div id="outreachTemplateModalMount"></div>
+<div id="outreachNotificationMount" class="outreach-toast-mount" aria-live="polite"></div>
 
 <script>
 const state = {
@@ -5793,8 +6020,18 @@ const state = {
   outreachTemplateModal: {
     open: false,
     channel: "sms",
-    attachmentsOpen: true
+    templateId: null,
+    attachmentsOpen: false
   },
+  outreachWorkspace: {
+    campaigns: [],
+    templates: [],
+    audit: []
+  },
+  selectedOutreachCampaignId: null,
+  selectedOutreachTemplateId: null,
+  outreachArchiveOpen: false,
+  outreachNotification: null,
   shellSettings: {
     signalWeight: "3",
     taxThreshold: "2",
@@ -5814,6 +6051,9 @@ const themeKey = "heirright:theme";
 const shellSettingsKey = "heirright:shell-settings";
 const discoveryStateKey = "heirright:discovery-workflow-state";
 const dripSettingsKey = "heirright:drip-settings";
+const outreachWorkspaceKey = "heirright:outreach-workspace";
+const outreachAllowedApprovers = ["sam@heirright.com", "joshua@heirright.com"];
+const outreachStatuses = ["Draft", "Ready", "Approved", "Sync to Podio", "Archived"];
 const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 const columnMap = {
   address: '[data-column="address"]',
@@ -6684,6 +6924,7 @@ function loadSavedState() {
   loadDiscoveryState();
   loadShellSettings();
   loadDripSettings();
+  loadOutreachWorkspace();
   state.shellEvents = defaultShellEvents();
   syncShellSettings();
   renderShellPanels();
@@ -6800,6 +7041,277 @@ function normalizeDripSettings(settings = {}) {
     holdNoContact: settings.holdNoContact === false ? false : true,
     operatorNote: String(settings.operatorNote ?? "").slice(0, 500)
   };
+}
+
+function isoNow() {
+  return new Date().toISOString();
+}
+
+function outreachId(prefix) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function outreachDelayDays(value) {
+  const numeric = Number(String(value || "").replace(/[^\d]/g, ""));
+  return [1, 3, 5, 7].includes(numeric) ? numeric : 1;
+}
+
+function currentActorEmail() {
+  return state.session?.user?.email || "operator@heirright.com";
+}
+
+function defaultOutreachWorkspace() {
+  const at = isoNow();
+  return {
+    campaigns: [
+      {
+        id: "campaign-heir-warm-follow-up",
+        name: "Heir warm follow-up",
+        description: "Initial reviewed outreach after Discovery is finished.",
+        status: "Draft",
+        defaultDelayDays: 1,
+        stopRules: ["No-contact hold", "Company owner", "Recent sale", "Source blocker", "Finished Discovery required"],
+        createdAt: at,
+        updatedAt: at,
+        archivedAt: ""
+      },
+      {
+        id: "campaign-probate-document-request",
+        name: "Probate document request",
+        description: "Court packet follow-up once docket status and page count are reviewed.",
+        status: "Draft",
+        defaultDelayDays: 3,
+        stopRules: ["Court packet not reviewed", "No approval owner", "Source blocker"],
+        createdAt: at,
+        updatedAt: at,
+        archivedAt: ""
+      }
+    ],
+    templates: [],
+    audit: []
+  };
+}
+
+function normalizeOutreachWorkspace(input = {}) {
+  const seed = defaultOutreachWorkspace();
+  const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const campaigns = Array.isArray(source.campaigns) && source.campaigns.length ? source.campaigns : seed.campaigns;
+  const templates = Array.isArray(source.templates) ? source.templates : seed.templates;
+  const audit = Array.isArray(source.audit) ? source.audit : seed.audit;
+  return {
+    campaigns: campaigns.map((campaign) => ({
+      id: String(campaign.id || outreachId("campaign")),
+      name: String(campaign.name || "Untitled campaign"),
+      description: String(campaign.description || ""),
+      status: outreachStatuses.includes(campaign.status) ? campaign.status : "Draft",
+      defaultDelayDays: outreachDelayDays(campaign.defaultDelayDays),
+      stopRules: Array.isArray(campaign.stopRules) ? campaign.stopRules.map(String).filter(Boolean) : [],
+      createdAt: campaign.createdAt || isoNow(),
+      updatedAt: campaign.updatedAt || isoNow(),
+      archivedAt: campaign.archivedAt || ""
+    })),
+    templates: templates.map((template) => normalizeOutreachTemplate(template)).filter(Boolean),
+    audit: audit.map((event) => ({
+      id: String(event.id || outreachId("audit")),
+      templateId: String(event.templateId || ""),
+      actorEmail: String(event.actorEmail || "operator@heirright.com"),
+      action: String(event.action || "Updated"),
+      summary: String(event.summary || "Template changed."),
+      at: event.at || isoNow()
+    })).filter((event) => event.templateId)
+  };
+}
+
+function normalizeOutreachTemplate(template = {}) {
+  if (!template || typeof template !== "object") return null;
+  const channel = template.channel === "email" ? "email" : "sms";
+  const seed = outreachTemplateSeed(channel);
+  const status = outreachStatuses.includes(template.status) ? template.status : "Draft";
+  const campaignId = template.campaignId || state.selectedOutreachCampaignId || "campaign-heir-warm-follow-up";
+  return {
+    id: String(template.id || outreachId("template")),
+    campaignId: String(campaignId),
+    channel,
+    name: String(template.name || seed.name),
+    subject: channel === "email" ? String(template.subject || seed.subject || "") : "",
+    body: String(template.body || seed.body),
+    status,
+    delayDays: outreachDelayDays(template.delayDays),
+    podioDestination: String(template.podioDestination || "Podio - Outreach Templates"),
+    approvalOwner: String(template.approvalOwner || "sam@heirright.com"),
+    stopRules: String(template.stopRules || "Stop if no-contact, company owner, recent sale, source blocker, finished discovery missing, or manual operator hold is active."),
+    variables: Array.isArray(template.variables) ? template.variables.map(String) : extractTemplateVariables(String(template.body || seed.body)),
+    customVariables: template.customVariables && typeof template.customVariables === "object" && !Array.isArray(template.customVariables) ? template.customVariables : {},
+    lastEditedBy: String(template.lastEditedBy || currentActorEmail()),
+    lastEditedAt: template.lastEditedAt || isoNow(),
+    approvedBy: String(template.approvedBy || ""),
+    approvedAt: template.approvedAt || "",
+    podioSyncState: String(template.podioSyncState || "Not synced"),
+    podioArtifactId: String(template.podioArtifactId || ""),
+    createdAt: template.createdAt || isoNow(),
+    updatedAt: template.updatedAt || isoNow(),
+    archivedAt: status === "Archived" ? (template.archivedAt || isoNow()) : (template.archivedAt || "")
+  };
+}
+
+function loadOutreachWorkspace() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(outreachWorkspaceKey) || "{}");
+    state.outreachWorkspace = normalizeOutreachWorkspace(stored);
+  } catch {
+    state.outreachWorkspace = normalizeOutreachWorkspace();
+  }
+  if (!state.selectedOutreachCampaignId || !state.outreachWorkspace.campaigns.some((campaign) => campaign.id === state.selectedOutreachCampaignId)) {
+    state.selectedOutreachCampaignId = state.outreachWorkspace.campaigns[0]?.id || null;
+  }
+  if (!state.selectedOutreachTemplateId || !state.outreachWorkspace.templates.some((template) => template.id === state.selectedOutreachTemplateId)) {
+    state.selectedOutreachTemplateId = activeOutreachTemplates()[0]?.id || state.outreachWorkspace.templates[0]?.id || null;
+  }
+  persistOutreachWorkspace();
+}
+
+function persistOutreachWorkspace(reason = "") {
+  localStorage.setItem(outreachWorkspaceKey, JSON.stringify(state.outreachWorkspace));
+  if (reason) addShellEvent(reason, "Outreach campaign and template changes were saved locally. Podio sync still requires approval and connection checks.", "review", false);
+}
+
+function selectedOutreachCampaign() {
+  return state.outreachWorkspace.campaigns.find((campaign) => campaign.id === state.selectedOutreachCampaignId) ?? state.outreachWorkspace.campaigns[0] ?? null;
+}
+
+function campaignById(id) {
+  return state.outreachWorkspace.campaigns.find((campaign) => campaign.id === id) ?? null;
+}
+
+function selectedOutreachTemplate() {
+  return state.outreachWorkspace.templates.find((template) => template.id === state.selectedOutreachTemplateId) ?? activeOutreachTemplates()[0] ?? archivedOutreachTemplates()[0] ?? null;
+}
+
+function activeOutreachTemplates(campaignId = state.selectedOutreachCampaignId) {
+  return state.outreachWorkspace.templates
+    .filter((template) => template.campaignId === campaignId && template.status !== "Archived")
+    .slice()
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+}
+
+function archivedOutreachTemplates(campaignId = state.selectedOutreachCampaignId) {
+  return state.outreachWorkspace.templates
+    .filter((template) => template.campaignId === campaignId && template.status === "Archived")
+    .slice()
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+}
+
+function outreachTemplateAudit(templateId) {
+  return state.outreachWorkspace.audit
+    .filter((event) => event.templateId === templateId)
+    .slice()
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)));
+}
+
+function addOutreachAudit(templateId, action, summary, actorEmail = currentActorEmail()) {
+  state.outreachWorkspace.audit.unshift({
+    id: outreachId("audit"),
+    templateId,
+    actorEmail,
+    action,
+    summary,
+    at: isoNow()
+  });
+  state.outreachWorkspace.audit = state.outreachWorkspace.audit.slice(0, 80);
+}
+
+function splitName(value = "") {
+  const cleaned = String(value || "").replace(/\s+/g, " ").trim();
+  const parts = cleaned.split(" ").filter(Boolean);
+  return {
+    first: parts[0] || "there",
+    full: cleaned || "Review contact"
+  };
+}
+
+function firstContactForDossier(dossier = state.dossier) {
+  const report = dossier?.completedLeadReport ?? {};
+  const contact = report.contactPlaceholders?.[0] ?? dossier?.familyTree?.hypothesis?.value?.nodes?.[0] ?? null;
+  const person = splitName(contact?.name || contact?.label || selectedRow()?.title || "Review contact");
+  return {
+    firstName: person.first,
+    fullName: person.full,
+    relationship: contact?.relationship || contact?.role || "Relationship needs review"
+  };
+}
+
+function normalizeVariableName(token = "") {
+  return String(token).replace(/[{}]/g, "").trim().replace(/\s+/g, " ");
+}
+
+function registryEntry(name, label, value, fallback = "Needs review") {
+  const display = cleanDisplayValue(value || fallback);
+  const resolved = Boolean(value) && !/needs review|missing|blocked|unknown/i.test(display);
+  return { name, token: `{{ ${name} }}`, label, value: display, resolved };
+}
+
+function outreachVariableRegistry(row = selectedRow(), dossier = dossierForRow(row) ?? state.dossier) {
+  const contact = firstContactForDossier(dossier);
+  const report = dossier?.completedLeadReport ?? {};
+  const offer = report?.offerMath ?? {};
+  const owner = dossier?.owner?.name?.value || dossier?.ownerName || row?.title;
+  const county = dossier?.county || dossier?.property?.county?.value || "Miami-Dade";
+  const phase = currentDiscoveryPhase()?.label || "Discovery review";
+  return [
+    registryEntry("contact.first_name", "Contact first name", contact.firstName),
+    registryEntry("contact.full_name", "Contact full name", contact.fullName),
+    registryEntry("lead.display_name", "Lead display name", row?.title || owner),
+    registryEntry("lead.owner_name", "Owner or estate", owner),
+    registryEntry("lead.folio", "Folio", row?.folio || dossier?.folio),
+    registryEntry("dossier.property_address", "Property address", row?.address || dossier?.property?.address?.value),
+    registryEntry("dossier.county", "County", county),
+    registryEntry("dossier.current_phase", "Current phase", phase),
+    registryEntry("dossier.tax_status", "Tax status", report?.taxStatus?.label || report?.taxStatus?.value || dossier?.taxHistory?.status),
+    registryEntry("dossier.probate_status", "Probate status", report?.probateStatus?.label || report?.probateStatus?.value || dossier?.probate?.status),
+    registryEntry("dossier.deed_status", "Deed status", report?.titleStatus?.label || report?.titleStatus?.value || dossier?.deed?.status),
+    registryEntry("heir.full_name", "Heir name", contact.fullName),
+    registryEntry("heir.relationship", "Heir relationship", contact.relationship),
+    registryEntry("offer.amount", "Offer amount", offer.offerAmount ? moneyClaimValue(offer.offerAmount) : ""),
+    registryEntry("campaign.name", "Campaign name", selectedOutreachCampaign()?.name || "Heir warm follow-up"),
+    registryEntry("user.from_name", "Sender name", state.session?.user?.name || "HeirRight"),
+    registryEntry("user.from_email", "Sender email", state.session?.user?.email || "sam@heirright.com"),
+    registryEntry("user.phone", "Sender phone", "(305) 555-0134"),
+    registryEntry("custom.note", "Custom note", "Operator note")
+  ];
+}
+
+function registryByName() {
+  return new Map(outreachVariableRegistry().map((entry) => [entry.name, entry]));
+}
+
+function extractTemplateVariables(text = "") {
+  const found = new Set();
+  String(text || "").replace(/{{\s*([^{}]+?)\s*}}/g, (_match, name) => {
+    found.add(normalizeVariableName(name));
+    return _match;
+  });
+  return [...found];
+}
+
+function unresolvedTemplateVariables(template) {
+  const registry = registryByName();
+  return extractTemplateVariables(`${template?.subject || ""}\n${template?.body || ""}`)
+    .map((name) => registry.get(name) || { name, token: `{{ ${name} }}`, label: name, value: "Missing variable", resolved: false })
+    .filter((entry) => !entry.resolved);
+}
+
+function renderTemplateText(value = "") {
+  const registry = registryByName();
+  return String(value || "").replace(/{{\s*([^{}]+?)\s*}}/g, (match, name) => {
+    const entry = registry.get(normalizeVariableName(name));
+    return entry?.resolved ? entry.value : `[${normalizeVariableName(name)}]`;
+  });
+}
+
+function templateSummary(template) {
+  if (!template) return "No template selected.";
+  const campaign = campaignById(template.campaignId);
+  return `${template.channel.toUpperCase()} - ${template.status} - ${template.delayDays} day${template.delayDays === 1 ? "" : "s"} - ${campaign?.name || "Campaign needed"}`;
 }
 
 function syncShellSettings() {
@@ -8045,6 +8557,7 @@ function outreachTemplateSeed(channel = state.outreachTemplateModal.channel) {
     return {
       title: "New Email Template",
       name: "Heir warm follow-up email",
+      subject: "Question about {{ dossier.property_address }}",
       body: "Hi {{ contact.first_name }},\n\nI am preparing the {{ dossier.property_address }} estate file for review and wanted to make sure the right family contact receives the packet.\n\nPlease reply with the best phone number for {{ heir.full_name }} or call {{ user.phone }}.\n\nSincerely,\n{{ user.from_name }}\n{{ user.from_email }}",
       limit: 4000
     };
@@ -8052,39 +8565,57 @@ function outreachTemplateSeed(channel = state.outreachTemplateModal.channel) {
   return {
     title: "New SMS Template",
     name: "Heir warm follow-up SMS",
+    subject: "",
     body: "Hi {{ contact.first_name }}, this is {{ user.from_name }} with HeirRight. I am preparing the {{ dossier.property_address }} estate file and need to confirm the best contact for {{ heir.full_name }}. Please call {{ user.phone }}.",
     limit: 1000
   };
 }
 
-function openOutreachTemplateModal(channel = "sms") {
+function openOutreachTemplateModal(channel = "sms", templateId = null) {
+  const template = templateId ? state.outreachWorkspace.templates.find((item) => item.id === templateId) : null;
+  const resolvedChannel = template?.channel || (channel === "email" ? "email" : "sms");
   state.outreachTemplateModal = {
     open: true,
-    channel,
-    attachmentsOpen: channel === "sms"
+    channel: resolvedChannel,
+    templateId: template?.id || null,
+    attachmentsOpen: false
   };
   renderOutreachTemplateModal();
 }
 
 function closeOutreachTemplateModal() {
   state.outreachTemplateModal.open = false;
+  state.outreachTemplateModal.templateId = null;
   renderOutreachTemplateModal();
 }
 
 function outreachTemplateVariables() {
-  return [
-    "{{ contact.first_name }}",
-    "{{ contact.full_name }}",
-    "{{ lead.display_name }}",
-    "{{ dossier.property_address }}",
-    "{{ dossier.county }}",
-    "{{ dossier.current_phase }}",
-    "{{ heir.full_name }}",
-    "{{ heir.relationship }}",
-    "{{ user.from_name }}",
-    "{{ user.from_email }}",
-    "{{ user.phone }}"
-  ];
+  return outreachVariableRegistry().map((entry) => entry.token);
+}
+
+function outreachCampaignOptions(selectedId) {
+  return state.outreachWorkspace.campaigns
+    .map((campaign) => `<option value="${escapeHtml(campaign.id)}" ${campaign.id === selectedId ? "selected" : ""}>${escapeHtml(campaign.name)}</option>`)
+    .join("");
+}
+
+function outreachStatusOptions(selectedStatus) {
+  return outreachStatuses
+    .map((status) => `<option value="${escapeHtml(status)}" ${status === selectedStatus ? "selected" : ""}>${escapeHtml(status)}</option>`)
+    .join("");
+}
+
+function outreachDelayOptions(selectedDelay) {
+  return [1, 3, 5, 7]
+    .map((days) => `<option value="${days}" ${days === Number(selectedDelay) ? "selected" : ""}>${days} day${days === 1 ? "" : "s"}</option>`)
+    .join("");
+}
+
+function outreachOwnerOptions(selectedOwner) {
+  const owners = [...outreachAllowedApprovers, "Available for approval"];
+  return owners
+    .map((owner) => `<option value="${escapeHtml(owner)}" ${owner === selectedOwner ? "selected" : ""}>${escapeHtml(owner)}</option>`)
+    .join("");
 }
 
 function outreachModalScrollTop() {
@@ -8100,7 +8631,81 @@ function restoreOutreachModalScroll(scrollTop) {
   };
   window.requestAnimationFrame(restore);
   window.requestAnimationFrame(() => window.requestAnimationFrame(restore));
+  window.setTimeout(restore, 0);
+  window.setTimeout(restore, 60);
   window.setTimeout(restore, 140);
+}
+
+function readOutreachTemplateForm(mount, nextStatus = null) {
+  const channel = state.outreachTemplateModal.channel === "email" ? "email" : "sms";
+  const existing = state.outreachTemplateModal.templateId
+    ? state.outreachWorkspace.templates.find((template) => template.id === state.outreachTemplateModal.templateId)
+    : null;
+  const seed = outreachTemplateSeed(channel);
+  const body = mount.querySelector("#templateBody")?.value || seed.body;
+  const subject = channel === "email" ? (mount.querySelector("#templateSubject")?.value || seed.subject || "") : "";
+  return normalizeOutreachTemplate({
+    ...(existing || {}),
+    id: existing?.id || outreachId("template"),
+    channel,
+    campaignId: mount.querySelector("#templateCampaign")?.value || state.selectedOutreachCampaignId || "campaign-heir-warm-follow-up",
+    podioDestination: mount.querySelector("#templatePodioApp")?.value || "Podio - Outreach Templates",
+    name: mount.querySelector("#templateName")?.value?.trim() || seed.name,
+    status: nextStatus || mount.querySelector("#templateStatus")?.value || existing?.status || "Draft",
+    subject,
+    body,
+    delayDays: outreachDelayDays(mount.querySelector("#templateDelay")?.value),
+    approvalOwner: mount.querySelector("#templateOwner")?.value || "sam@heirright.com",
+    stopRules: mount.querySelector("#templateStopRules")?.value || "",
+    variables: extractTemplateVariables(`${subject}\n${body}`),
+    lastEditedBy: currentActorEmail(),
+    lastEditedAt: isoNow(),
+    updatedAt: isoNow()
+  });
+}
+
+function upsertOutreachTemplate(template, action, summary) {
+  const index = state.outreachWorkspace.templates.findIndex((item) => item.id === template.id);
+  if (index >= 0) state.outreachWorkspace.templates[index] = template;
+  else state.outreachWorkspace.templates.unshift(template);
+  state.selectedOutreachCampaignId = template.campaignId;
+  state.selectedOutreachTemplateId = template.id;
+  addOutreachAudit(template.id, action, summary, template.lastEditedBy);
+  persistOutreachWorkspace();
+  renderCurrentLoopView();
+}
+
+function saveOutreachTemplateFromModal(mount, nextStatus) {
+  const template = readOutreachTemplateForm(mount, nextStatus);
+  const requiredMissing = [
+    template.name ? "" : "template name",
+    template.body ? "" : "body",
+    template.stopRules ? "" : "stop rules",
+    template.channel === "email" && !template.subject ? "subject" : ""
+  ].filter(Boolean);
+  if (nextStatus !== "Draft" && requiredMissing.length) {
+    showOutreachNotification({
+      tone: "blocked",
+      title: "Template still needs fields",
+      copy: `Add ${requiredMissing.join(", ")} before submitting for approval.`,
+      action: "edit"
+    });
+    return;
+  }
+  upsertOutreachTemplate(
+    template,
+    nextStatus === "Ready" ? "Submitted for approval" : "Draft saved",
+    nextStatus === "Ready" ? `${template.name} is ready for approver review.` : `${template.name} was saved as a draft.`
+  );
+  addShellEvent(
+    nextStatus === "Ready" ? "Template submitted for approval" : "Template draft saved",
+    nextStatus === "Ready"
+      ? `${template.name} is available for sam@heirright.com or joshua@heirright.com approval before Podio sync.`
+      : `${template.name} was saved as a ${template.channel.toUpperCase()} draft for Podio preparation. Approval is still required before sync.`,
+    "review",
+    false
+  );
+  closeOutreachTemplateModal();
 }
 
 function renderOutreachTemplateModal(options = {}) {
@@ -8111,10 +8716,23 @@ function renderOutreachTemplateModal(options = {}) {
     mount.innerHTML = "";
     return;
   }
-  const channel = modal.channel === "email" ? "email" : "sms";
+  const editing = modal.templateId ? state.outreachWorkspace.templates.find((template) => template.id === modal.templateId) : null;
+  const channel = editing?.channel || (modal.channel === "email" ? "email" : "sms");
   const seed = outreachTemplateSeed(channel);
-  const count = seed.body.length;
+  const template = normalizeOutreachTemplate({
+    ...(editing || {}),
+    channel,
+    campaignId: editing?.campaignId || state.selectedOutreachCampaignId || state.outreachWorkspace.campaigns[0]?.id,
+    name: editing?.name || seed.name,
+    subject: editing?.subject || seed.subject,
+    body: editing?.body || seed.body,
+    delayDays: editing?.delayDays || selectedOutreachCampaign()?.defaultDelayDays || 1,
+    status: editing?.status || "Draft"
+  });
+  const count = template.body.length;
   const isEmail = channel === "email";
+  const unresolved = unresolvedTemplateVariables(template);
+  const registry = outreachVariableRegistry();
   mount.innerHTML = `
     <div class="outreach-modal-layer" role="presentation" data-outreach-modal-layer>
       <section class="outreach-template-modal" role="dialog" aria-modal="true" aria-labelledby="outreachTemplateTitle">
@@ -8125,7 +8743,7 @@ function renderOutreachTemplateModal(options = {}) {
           </button>
           <div class="outreach-modal-title-row">
             <div>
-              <h2 id="outreachTemplateTitle">${escapeHtml(seed.title)}</h2>
+              <h2 id="outreachTemplateTitle">${escapeHtml(editing ? "Edit Template" : seed.title)}</h2>
               <p class="copy">Build the template here, then hand it to Podio after approval. Nothing sends from this screen.</p>
             </div>
             <div class="template-channel-switch" role="group" aria-label="Template channel">
@@ -8138,61 +8756,40 @@ function renderOutreachTemplateModal(options = {}) {
           <div class="template-form-grid">
             <div class="template-field">
               <label for="templateCampaign">Campaign</label>
-              <select id="templateCampaign">
-                <option>Heir warm follow-up</option>
-                <option>Probate document request</option>
-                <option>No-contact hold</option>
-              </select>
+              <select id="templateCampaign">${outreachCampaignOptions(template.campaignId)}</select>
               <span>Templates attach to a campaign before Podio sync.</span>
             </div>
             <div class="template-field">
               <label for="templatePodioApp">Podio destination</label>
               <select id="templatePodioApp">
-                <option>Podio - Outreach Templates</option>
-                <option>Podio - Probate Follow-Up</option>
-                <option>Resend fallback draft</option>
+                ${["Podio - Outreach Templates", "Podio - Probate Follow-Up", "Resend fallback draft"].map((value) => `<option value="${escapeHtml(value)}" ${value === template.podioDestination ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
               </select>
               <span>Podio remains the required automation path; Resend is fallback only.</span>
             </div>
             <div class="template-field">
               <label for="templateName">Name</label>
-              <input id="templateName" type="text" value="${escapeHtml(seed.name)}" autocomplete="off">
+              <input id="templateName" type="text" value="${escapeHtml(template.name)}" autocomplete="off">
               <span>Maps to Podio template name.</span>
             </div>
             <div class="template-field">
               <label for="templateStatus">Status</label>
-              <select id="templateStatus">
-                <option>Draft</option>
-                <option>Ready</option>
-                <option>Approved</option>
-                <option>Sync to Podio</option>
-                <option>Archived</option>
-              </select>
+              <select id="templateStatus">${outreachStatusOptions(template.status)}</select>
               <span>Approval gates live sync.</span>
             </div>
-            ${isEmail ? `<div class="template-field full"><label for="templateSubject">Subject</label><input id="templateSubject" type="text" value="Question about {{ dossier.property_address }}" autocomplete="off"><span>Required for email templates and written to the Podio subject field.</span></div>` : ""}
+            ${isEmail ? `<div class="template-field full"><label for="templateSubject">Subject</label><input id="templateSubject" type="text" value="${escapeHtml(template.subject)}" autocomplete="off"><span>Required for email templates and written to the Podio subject field.</span></div>` : ""}
             <div class="template-field">
               <label for="templateDelay">Delay after prior step</label>
-              <select id="templateDelay">
-                <option>1 day</option>
-                <option>3 days</option>
-                <option>5 days</option>
-                <option>7 days</option>
-              </select>
+              <select id="templateDelay">${outreachDelayOptions(template.delayDays)}</select>
               <span>Used when this template becomes part of a sequence.</span>
             </div>
             <div class="template-field">
               <label for="templateOwner">Approval owner</label>
-              <select id="templateOwner">
-                <option>sam@heirright.com</option>
-                <option>joshua@heirright.com</option>
-                <option>Available for approval</option>
-              </select>
+              <select id="templateOwner">${outreachOwnerOptions(template.approvalOwner)}</select>
               <span>Only approved owners can unlock Podio sync.</span>
             </div>
             <div class="template-field full">
               <label for="templateStopRules">Stop rules</label>
-              <textarea id="templateStopRules" rows="2">Stop if no-contact, company owner, recent sale, source blocker, finished discovery missing, or manual operator hold is active.</textarea>
+              <textarea id="templateStopRules" rows="2">${escapeHtml(template.stopRules)}</textarea>
               <span>Podio sequence rules and agent checks read this before preparation.</span>
             </div>
           </div>
@@ -8205,7 +8802,7 @@ function renderOutreachTemplateModal(options = {}) {
               </div>
             </div>
             <div class="template-body-editor">
-              <textarea id="templateBody" aria-label="Template body">${escapeHtml(seed.body)}</textarea>
+              <textarea id="templateBody" aria-label="Template body">${escapeHtml(template.body)}</textarea>
               <div class="template-editor-toolbar">
                 <div class="template-editor-icons">
                   <button class="template-editor-button" type="button" data-template-attachment aria-label="Add attachment" title="Add attachment">
@@ -8228,8 +8825,8 @@ function renderOutreachTemplateModal(options = {}) {
           </section>
           <section class="template-required-card" aria-label="Podio required fields">
             <div class="template-required-row"><strong>Podio fields</strong><span>Campaign, channel, template name, body, delay, stop rules, status, approval owner, and sync target are required before approval.</span></div>
-            <div class="template-required-row"><strong>Variables</strong><span>${outreachTemplateVariables().map(escapeHtml).join(", ")}</span></div>
-            <div class="template-required-row"><strong>Workflow</strong><span>Drafts can be saved with missing fields. Approval is blocked until required fields and stop rules are complete. Sync to Podio runs after approval only.</span></div>
+            <div class="template-required-row"><strong>Variables</strong><span>${registry.slice(0, 18).map((entry) => `${escapeHtml(entry.token)} ${entry.resolved ? "" : "(needs value)"}`).join(", ")}</span></div>
+            <div class="template-required-row"><strong>Approval block</strong><span>${unresolved.length ? `${unresolved.length} unresolved variable${unresolved.length === 1 ? "" : "s"} must resolve before approval: ${unresolved.map((entry) => escapeHtml(entry.token)).join(", ")}` : "Variables resolve for the selected dossier preview."}</span></div>
           </section>
         </div>
         <footer class="outreach-modal-foot">
@@ -8251,63 +8848,385 @@ function renderOutreachTemplateModal(options = {}) {
       scroll.scrollTop = options.scrollTop;
     });
   }
+  scroll?.addEventListener("scroll", () => {
+    if (state.outreachTemplateModal.attachmentsOpen) return;
+    if (Date.now() < Number(state.outreachTemplateModal.suppressScrollRememberUntil || 0)) return;
+    const previous = Number(state.outreachTemplateModal.lastScrollTop);
+    if (!Number.isFinite(previous) || Math.abs(scroll.scrollTop - previous) > 24) {
+      state.outreachTemplateModal.lastScrollTop = scroll.scrollTop;
+    }
+  }, { passive: true });
 
+  enhanceSelectMenus(mount);
   const body = mount.querySelector("#templateBody");
   const counter = mount.querySelector("[data-template-counter]");
+  const rememberModalScroll = () => {
+    const nextScrollTop = outreachModalScrollTop();
+    const previous = Number(state.outreachTemplateModal.lastScrollTop);
+    if (!Number.isFinite(previous) || Math.abs(nextScrollTop - previous) > 24) {
+      state.outreachTemplateModal.lastScrollTop = nextScrollTop;
+    }
+  };
+  const suppressModalFocusScroll = () => {
+    state.outreachTemplateModal.suppressScrollRememberUntil = Date.now() + 360;
+  };
   body?.addEventListener("input", () => {
     if (counter) counter.textContent = `${body.value.length} / ${seed.limit}`;
   });
   mount.querySelector("[data-outreach-modal-layer]")?.addEventListener("click", (event) => {
     if (event.target === event.currentTarget) closeOutreachTemplateModal();
   });
-  mount.querySelectorAll("[data-close-outreach-template]").forEach((button) => button.addEventListener("click", closeOutreachTemplateModal));
+  mount.querySelectorAll("[data-close-outreach-template]").forEach((button) => button.addEventListener("click", (event) => {
+    event.preventDefault();
+    closeOutreachTemplateModal();
+  }));
   mount.querySelectorAll("[data-template-channel]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
       const scrollTop = outreachModalScrollTop();
       state.outreachTemplateModal.channel = button.dataset.templateChannel === "email" ? "email" : "sms";
-      state.outreachTemplateModal.attachmentsOpen = state.outreachTemplateModal.channel === "sms";
+      state.outreachTemplateModal.templateId = null;
+      state.outreachTemplateModal.attachmentsOpen = false;
       renderOutreachTemplateModal({ scrollTop });
     });
   });
-  mount.querySelector("[data-template-attachment]")?.addEventListener("click", () => {
-    const scrollTop = outreachModalScrollTop();
+  mount.querySelector("[data-template-attachment]")?.addEventListener("pointerdown", rememberModalScroll);
+  mount.querySelector("[data-template-attachment]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    const scrollTop = state.outreachTemplateModal.lastScrollTop ?? outreachModalScrollTop();
     state.outreachTemplateModal.attachmentsOpen = !state.outreachTemplateModal.attachmentsOpen;
     renderOutreachTemplateModal({ scrollTop });
   });
-  mount.querySelector("[data-template-insert-var]")?.addEventListener("click", () => {
+  mount.querySelector("[data-template-insert-var]")?.addEventListener("click", (event) => {
+    event.preventDefault();
     const scrollTop = outreachModalScrollTop();
     addShellEvent("Template variable menu opened", "Discovery dossier fields are available as Podio template variables for outreach personalization.", "review", false);
     restoreOutreachModalScroll(scrollTop);
   });
-  mount.querySelector("[data-template-tags]")?.addEventListener("click", () => {
+  mount.querySelector("[data-template-tags]")?.addEventListener("click", (event) => {
+    event.preventDefault();
     const scrollTop = outreachModalScrollTop();
     addShellEvent("Template tags reviewed", "Use contact, lead, dossier, heir, and user tags so Podio can personalize the approved template.", "review", false);
     restoreOutreachModalScroll(scrollTop);
   });
   mount.querySelectorAll("[data-template-attach-existing], [data-template-attach-upload]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const scrollTop = outreachModalScrollTop();
+    button.addEventListener("mousedown", (event) => event.preventDefault());
+    button.addEventListener("pointerdown", suppressModalFocusScroll);
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      const scrollTop = state.outreachTemplateModal.lastScrollTop ?? outreachModalScrollTop();
       addShellEvent("Template attachment staged", "Attachment selection is recorded for Podio preparation. SMS delivery remains limited to US, CA, and AU numbers.", "review", false);
       restoreOutreachModalScroll(scrollTop);
     });
   });
-  mount.querySelector("[data-save-outreach-template]")?.addEventListener("click", () => {
-    const name = mount.querySelector("#templateName")?.value?.trim() || seed.name;
-    addShellEvent("Template draft saved", `${name} was saved as a ${channel.toUpperCase()} draft for Podio preparation. Approval is still required before sync.`, "review", true);
-    closeOutreachTemplateModal();
+  mount.querySelector("[data-save-outreach-template]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    saveOutreachTemplateFromModal(mount, "Draft");
   });
-  mount.querySelector("[data-submit-outreach-template]")?.addEventListener("click", () => {
-    const name = mount.querySelector("#templateName")?.value?.trim() || seed.name;
-    addShellEvent("Template submitted for approval", `${name} is available for sam@heirright.com or joshua@heirright.com approval before Podio sync.`, "review", true);
-    closeOutreachTemplateModal();
+  mount.querySelector("[data-submit-outreach-template]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    saveOutreachTemplateFromModal(mount, "Ready");
   });
+}
+
+function outreachStatusTone(status) {
+  if (status === "Approved" || status === "Sync to Podio") return "ready";
+  if (status === "Archived") return "neutral";
+  return "review";
+}
+
+function formatOutreachDate(value) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) return "Not edited yet";
+  return date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function renderOutreachNotification() {
+  const mount = document.getElementById("outreachNotificationMount");
+  if (!mount) return;
+  const note = state.outreachNotification;
+  if (!note) {
+    mount.innerHTML = "";
+    return;
+  }
+  mount.innerHTML = `
+    <section class="outreach-toast" role="status">
+      <strong>${escapeHtml(note.title)}</strong>
+      <p>${escapeHtml(note.copy)}</p>
+      <div class="outreach-toast-actions">
+        ${note.action === "settings" ? `<button class="btn quick" type="button" data-outreach-open-settings>Open Settings</button>` : ""}
+        ${note.action === "retry" ? `<button class="btn quick" type="button" data-outreach-retry-sync>Retry</button>` : ""}
+        <button class="btn primary solvys-liquid-glass" type="button" data-dismiss-outreach-note>Dismiss</button>
+      </div>
+    </section>
+  `;
+  mount.querySelector("[data-dismiss-outreach-note]")?.addEventListener("click", () => showOutreachNotification(null));
+  mount.querySelector("[data-outreach-open-settings]")?.addEventListener("click", () => {
+    showOutreachNotification(null);
+    setActiveShellView("settings", "Settings");
+  });
+  mount.querySelector("[data-outreach-retry-sync]")?.addEventListener("click", () => {
+    const template = selectedOutreachTemplate();
+    showOutreachNotification(null);
+    if (template) syncOutreachTemplate(template.id);
+  });
+}
+
+function showOutreachNotification(note) {
+  state.outreachNotification = note;
+  renderOutreachNotification();
+}
+
+function approveOutreachTemplate(templateId, root) {
+  const template = state.outreachWorkspace.templates.find((item) => item.id === templateId);
+  if (!template) return;
+  const owner = root.querySelector("[data-approval-owner]")?.value || template.approvalOwner;
+  const password = root.querySelector("[data-approval-password]")?.value || "";
+  const unresolved = unresolvedTemplateVariables(template);
+  if (!outreachAllowedApprovers.includes(owner)) {
+    showOutreachNotification({
+      tone: "blocked",
+      title: "Approval owner blocked",
+      copy: "Only sam@heirright.com or joshua@heirright.com can approve Outreach templates.",
+      action: "edit"
+    });
+    return;
+  }
+  if (!password.trim()) {
+    showOutreachNotification({
+      tone: "blocked",
+      title: "Password required",
+      copy: "Enter the approval password before this template can move to Approved.",
+      action: "edit"
+    });
+    return;
+  }
+  if (unresolved.length) {
+    showOutreachNotification({
+      tone: "blocked",
+      title: "Variables unresolved",
+      copy: `Resolve or fallback-safe ${unresolved.length} variable${unresolved.length === 1 ? "" : "s"} before approval.`,
+      action: "edit"
+    });
+    return;
+  }
+  const approved = normalizeOutreachTemplate({
+    ...template,
+    status: "Approved",
+    approvalOwner: owner,
+    approvedBy: owner,
+    approvedAt: isoNow(),
+    lastEditedBy: owner,
+    lastEditedAt: isoNow(),
+    updatedAt: isoNow()
+  });
+  upsertOutreachTemplate(approved, "Approved", `${approved.name} was approved by ${owner}.`);
+  addShellEvent("Outreach template approved", `${approved.name} can be prepared for Podio sync. No message was sent.`, "ready", false);
+}
+
+function archiveOutreachTemplate(templateId) {
+  const template = state.outreachWorkspace.templates.find((item) => item.id === templateId);
+  if (!template) return;
+  const archived = normalizeOutreachTemplate({
+    ...template,
+    status: "Archived",
+    archivedAt: isoNow(),
+    lastEditedBy: currentActorEmail(),
+    lastEditedAt: isoNow(),
+    updatedAt: isoNow()
+  });
+  upsertOutreachTemplate(archived, "Archived", `${archived.name} was moved to Archive.`);
+  state.selectedOutreachTemplateId = activeOutreachTemplates(archived.campaignId)[0]?.id || archived.id;
+  persistOutreachWorkspace();
+  renderDripsView();
+}
+
+function restoreOutreachTemplate(templateId) {
+  const template = state.outreachWorkspace.templates.find((item) => item.id === templateId);
+  if (!template) return;
+  const restored = normalizeOutreachTemplate({
+    ...template,
+    status: "Draft",
+    archivedAt: "",
+    lastEditedBy: currentActorEmail(),
+    lastEditedAt: isoNow(),
+    updatedAt: isoNow()
+  });
+  upsertOutreachTemplate(restored, "Restored", `${restored.name} was restored to active drafts.`);
+}
+
+function deleteArchivedOutreachTemplate(templateId) {
+  const template = state.outreachWorkspace.templates.find((item) => item.id === templateId);
+  if (!template || template.status !== "Archived") return;
+  state.outreachWorkspace.templates = state.outreachWorkspace.templates.filter((item) => item.id !== templateId);
+  state.outreachWorkspace.audit = state.outreachWorkspace.audit.filter((event) => event.templateId !== templateId);
+  state.selectedOutreachTemplateId = activeOutreachTemplates()[0]?.id || archivedOutreachTemplates()[0]?.id || null;
+  persistOutreachWorkspace("Archived template permanently deleted");
+  renderDripsView();
+}
+
+function syncOutreachTemplate(templateId) {
+  const template = state.outreachWorkspace.templates.find((item) => item.id === templateId);
+  if (!template) return;
+  if (template.status !== "Approved") {
+    showOutreachNotification({
+      tone: "blocked",
+      title: "Approval required",
+      copy: "Approve this template before preparing a Podio sync.",
+      action: "edit"
+    });
+    return;
+  }
+  const podio = connectionByName("Podio");
+  if (!podio?.connected) {
+    addOutreachAudit(template.id, "Podio sync blocked", "Podio is not connected; Linear fallback ticket should be created by the backend path.");
+    persistOutreachWorkspace();
+    showOutreachNotification({
+      tone: "blocked",
+      title: "Podio is not connected",
+      copy: "No SMS, email, CRM card, Google Doc, or Resend message was created. Open Settings to reconnect Podio, then retry sync.",
+      action: "settings"
+    });
+    return;
+  }
+  const synced = normalizeOutreachTemplate({
+    ...template,
+    status: "Sync to Podio",
+    podioSyncState: "Prepared for Podio",
+    podioArtifactId: `podio-template-${template.id}`,
+    lastEditedBy: currentActorEmail(),
+    lastEditedAt: isoNow(),
+    updatedAt: isoNow()
+  });
+  upsertOutreachTemplate(synced, "Podio sync prepared", `${synced.name} was staged for Podio artifact creation. No outbound send was attempted.`);
+  showOutreachNotification({
+    tone: "ready",
+    title: "Podio sync prepared",
+    copy: "The template is staged for Podio creation. Readback proof is still required before any automation runs.",
+    action: "retry"
+  });
+}
+
+function outreachTemplateListHtml(templates) {
+  if (!templates.length) {
+    return `<li class="template-list-item"><strong>No templates yet</strong><span>Create an SMS or email template for this campaign.</span></li>`;
+  }
+  return templates.map((template) => `
+    <li>
+      <button class="template-list-item ${template.id === state.selectedOutreachTemplateId ? "is-selected" : ""}" type="button" data-outreach-template="${escapeHtml(template.id)}">
+        <strong>${escapeHtml(template.name)}</strong>
+        <span>${escapeHtml(templateSummary(template))}</span>
+        <span>${escapeHtml(formatOutreachDate(template.lastEditedAt))} by ${escapeHtml(template.lastEditedBy)}</span>
+      </button>
+    </li>
+  `).join("");
+}
+
+function outreachEditorHtml(template) {
+  if (!template) {
+    return `
+      <section class="loop-panel outreach-editor-panel">
+        <div class="loop-panel-head"><div><p class="eyebrow">Template</p><h2 class="loop-title">Nothing selected</h2></div></div>
+        <p class="copy">Create an SMS or email template to begin the Podio-ready Outreach workflow.</p>
+      </section>
+    `;
+  }
+  const unresolved = unresolvedTemplateVariables(template);
+  const audit = outreachTemplateAudit(template.id);
+  const renderedSubject = renderTemplateText(template.subject || "");
+  const renderedBody = renderTemplateText(template.body || "");
+  return `
+    <section class="loop-panel outreach-editor-panel">
+      <div class="loop-panel-head">
+        <div>
+          <p class="eyebrow">Template</p>
+          <h2 class="loop-title">${escapeHtml(template.name)}</h2>
+        </div>
+        <span class="pill ${outreachStatusTone(template.status)}">${escapeHtml(template.status)}</span>
+      </div>
+      <p class="copy">${escapeHtml(templateSummary(template))}</p>
+      <div class="template-preview-box">
+        <strong>Selected dossier preview</strong>
+        ${template.channel === "email" ? `<span class="copy">Subject: ${escapeHtml(renderedSubject || "No subject")}</span>` : ""}
+        <pre>${escapeHtml(renderedBody)}</pre>
+      </div>
+      <div class="template-required-card">
+        <div class="template-required-row"><strong>Variable readiness</strong><span>${unresolved.length ? `${unresolved.length} unresolved variable${unresolved.length === 1 ? "" : "s"}: ${unresolved.map((entry) => escapeHtml(entry.token)).join(", ")}` : "Ready for approval preview."}</span></div>
+        <div class="template-required-row"><strong>Stop rules</strong><span>${escapeHtml(template.stopRules || "Stop rules required before approval.")}</span></div>
+        <div class="template-required-row"><strong>Podio state</strong><span>${escapeHtml(template.podioSyncState || "Not synced")}</span></div>
+      </div>
+      <div class="approval-row">
+        <label>Approver
+          <select data-approval-owner>${outreachOwnerOptions(template.approvalOwner)}</select>
+        </label>
+        <label>Password
+          <input data-approval-password type="password" placeholder="Required to approve">
+        </label>
+        <button class="btn primary solvys-liquid-glass" type="button" data-template-approve="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Approve</button>
+      </div>
+      <div class="template-action-row">
+        ${template.status !== "Archived" ? `<button class="btn quick solvys-liquid-glass" type="button" data-template-edit="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Edit</button>` : ""}
+        ${template.status === "Draft" ? `<button class="btn quick solvys-liquid-glass" type="button" data-template-ready="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Mark Ready</button>` : ""}
+        ${template.status === "Approved" ? `<button class="btn primary solvys-liquid-glass" type="button" data-template-sync="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Sync Podio</button>` : ""}
+        ${template.status !== "Archived" ? `<button class="plain-action" type="button" data-template-archive="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Archive</button>` : `<button class="plain-action" type="button" data-template-restore="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Restore</button><button class="plain-action" type="button" data-template-delete="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Delete permanently</button>`}
+      </div>
+      <p class="outreach-section-label">Audit Trail</p>
+      <ul class="audit-list">
+        ${audit.length ? audit.slice(0, 6).map((event) => `<li class="audit-item"><strong>${escapeHtml(event.action)}</strong><span>${escapeHtml(event.summary)}</span><span>${escapeHtml(formatOutreachDate(event.at))} by ${escapeHtml(event.actorEmail)}</span></li>`).join("") : `<li class="audit-item"><strong>No audit events yet</strong><span>Saving this template will record the first edit.</span></li>`}
+      </ul>
+    </section>
+  `;
+}
+
+function handleOutreachTemplateAction(button, root = document.getElementById("dripsView")) {
+  if (!button || !root?.contains(button)) return false;
+  if (button.dataset.templateEdit) {
+    openOutreachTemplateModal(selectedOutreachTemplate()?.channel || "sms", button.dataset.templateEdit);
+    return true;
+  }
+  if (button.dataset.templateReady) {
+    const template = state.outreachWorkspace.templates.find((item) => item.id === button.dataset.templateReady);
+    if (!template) return true;
+    const ready = normalizeOutreachTemplate({ ...template, status: "Ready", lastEditedBy: currentActorEmail(), lastEditedAt: isoNow(), updatedAt: isoNow() });
+    upsertOutreachTemplate(ready, "Marked ready", `${ready.name} is available for approval.`);
+    addShellEvent("Template marked ready", `${ready.name} is available for approval. No live outreach was sent.`, "review", false);
+    return true;
+  }
+  if (button.dataset.templateApprove) {
+    approveOutreachTemplate(button.dataset.templateApprove, root);
+    return true;
+  }
+  if (button.dataset.templateSync) {
+    syncOutreachTemplate(button.dataset.templateSync);
+    return true;
+  }
+  if (button.dataset.templateArchive) {
+    archiveOutreachTemplate(button.dataset.templateArchive);
+    return true;
+  }
+  if (button.dataset.templateRestore) {
+    restoreOutreachTemplate(button.dataset.templateRestore);
+    return true;
+  }
+  if (button.dataset.templateDelete) {
+    deleteArchivedOutreachTemplate(button.dataset.templateDelete);
+    return true;
+  }
+  return false;
 }
 
 function renderDripsView() {
   const target = document.getElementById("dripsView");
   if (!target) return;
-  const drips = scheduledDrips();
-  const jobs = dripAutomationJobs();
+  const campaign = selectedOutreachCampaign();
+  const activeTemplates = activeOutreachTemplates(campaign?.id);
+  const archivedTemplates = archivedOutreachTemplates(campaign?.id);
+  const visibleTemplates = state.outreachArchiveOpen ? archivedTemplates : activeTemplates;
+  if (!state.selectedOutreachTemplateId || !visibleTemplates.some((template) => template.id === state.selectedOutreachTemplateId)) {
+    state.selectedOutreachTemplateId = visibleTemplates[0]?.id || activeTemplates[0]?.id || archivedTemplates[0]?.id || null;
+  }
+  const selectedTemplate = selectedOutreachTemplate();
+  const variables = outreachVariableRegistry();
   const settings = state.dripSettings;
   target.innerHTML = `
     <div class="outreach-layout">
@@ -8315,21 +9234,43 @@ function renderDripsView() {
         <div class="loop-panel-head">
           <div><p class="eyebrow">Outreach</p><h2 class="loop-title">Campaign templates</h2></div>
           <div class="outreach-actions">
+            <button class="btn quick" type="button" data-toggle-outreach-archive>${state.outreachArchiveOpen ? "Active" : "Archive"}</button>
             <button class="btn quick solvys-liquid-glass" type="button" data-new-template="email">New Email</button>
             <button class="btn primary solvys-liquid-glass" type="button" data-new-template="sms">New SMS</button>
           </div>
         </div>
         <p class="copy">Create SMS and email templates, attach them to campaigns, and prepare the Podio sync path. Templates do not send until approved and synced.</p>
-        <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}; ${escapeHtml(drip.nextRun)}</span><span>${escapeHtml(drip.guardrail)}</span></li>`).join("")}</ul>
+        <div class="outreach-workspace">
+          <div class="outreach-column">
+            <p class="outreach-section-label">Campaigns</p>
+            <ul class="campaign-list">
+              ${state.outreachWorkspace.campaigns.map((item) => `
+                <li>
+                  <button class="campaign-item ${item.id === campaign?.id ? "is-selected" : ""}" type="button" data-outreach-campaign="${escapeHtml(item.id)}">
+                    <strong>${escapeHtml(item.name)}</strong>
+                    <span>${escapeHtml(item.description || "Campaign needs description.")}</span>
+                    <span>${escapeHtml(item.defaultDelayDays)} day${item.defaultDelayDays === 1 ? "" : "s"} default delay</span>
+                  </button>
+                </li>
+              `).join("")}
+            </ul>
+          </div>
+          <div class="outreach-column">
+            <div class="loop-panel-head">
+              <p class="outreach-section-label">${state.outreachArchiveOpen ? "Archived Templates" : "Templates"}</p>
+              <span class="results-count">${visibleTemplates.length} shown</span>
+            </div>
+            <ul class="template-list">${outreachTemplateListHtml(visibleTemplates)}</ul>
+          </div>
+        </div>
       </section>
       <aside class="outreach-side" aria-label="Outreach review and cadence controls">
+        ${outreachEditorHtml(selectedTemplate)}
         <section class="loop-panel">
-          <div class="loop-panel-head"><div><p class="eyebrow">Scheduled Checks</p><h2 class="loop-title">Review automation route</h2></div><span class="pill blocked">No live send</span></div>
-          <p class="copy">These checks run as review preparation beside the dossier workflow. They prepare tasks and drafts for the operator; they do not contact heirs or create CRM records.</p>
-          <ul class="mini-list">
-            ${jobs.map((job) => `<li><strong>${escapeHtml(job.title)}</strong><span>${escapeHtml(job.schedule)}; ${escapeHtml(job.route)}; ${escapeHtml(job.status)}. ${escapeHtml(job.action)} ${escapeHtml(job.stop)}.</span></li>`).join("")}
+          <div class="loop-panel-head"><div><p class="eyebrow">Dossier Variables</p><h2 class="loop-title">Preview inputs</h2></div><span class="pill neutral">${escapeHtml(variables.filter((entry) => entry.resolved).length)} ready</span></div>
+          <ul class="variable-list">
+            ${variables.slice(0, 10).map((entry) => `<li class="variable-item"><strong>${escapeHtml(entry.token)}</strong><span>${escapeHtml(entry.label)} - ${escapeHtml(entry.value)}</span></li>`).join("")}
           </ul>
-          <button class="btn primary solvys-liquid-glass" type="button" data-drip-preview>Preview next check</button>
         </section>
         <section class="loop-panel">
           <div class="loop-panel-head"><div><p class="eyebrow">Preferences</p><h2 class="loop-title">Cadence controls</h2></div><span class="pill neutral">Local</span></div>
@@ -8350,6 +9291,24 @@ function renderDripsView() {
   target.querySelectorAll("[data-new-template]").forEach((button) => {
     button.addEventListener("click", () => openOutreachTemplateModal(button.dataset.newTemplate === "email" ? "email" : "sms"));
   });
+  target.querySelector("[data-toggle-outreach-archive]")?.addEventListener("click", () => {
+    state.outreachArchiveOpen = !state.outreachArchiveOpen;
+    renderDripsView();
+  });
+  target.querySelectorAll("[data-outreach-campaign]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedOutreachCampaignId = button.dataset.outreachCampaign;
+      state.outreachArchiveOpen = false;
+      state.selectedOutreachTemplateId = activeOutreachTemplates(button.dataset.outreachCampaign)[0]?.id || null;
+      renderDripsView();
+    });
+  });
+  target.querySelectorAll("[data-outreach-template]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedOutreachTemplateId = button.dataset.outreachTemplate;
+      renderDripsView();
+    });
+  });
   target.querySelectorAll("[data-drip-setting]").forEach((control) => {
     const update = () => {
       const key = control.dataset.dripSetting;
@@ -8362,10 +9321,7 @@ function renderDripsView() {
     control.addEventListener(control.type === "range" || control.tagName === "TEXTAREA" ? "input" : "change", update);
     control.addEventListener("change", () => persistDripSettings("Drip controls saved"));
   });
-  target.querySelector("[data-drip-preview]")?.addEventListener("click", () => {
-    const nextJob = dripAutomationJobs()[0];
-    addShellEvent("Scheduled check previewed", `${nextJob.title} will prepare dossier review tasks through the review automation route. No send or CRM card is unlocked.`, "review", true);
-  });
+  renderOutreachNotification();
 }
 
 function renderQueueView() {
@@ -10232,6 +11188,11 @@ function wireEvents() {
     if (reportTrigger) {
       event.preventDefault();
       openUtilityRail("report", reportTrigger);
+      return;
+    }
+    const outreachButton = event.target.closest?.("[data-template-edit], [data-template-ready], [data-template-approve], [data-template-sync], [data-template-archive], [data-template-restore], [data-template-delete]");
+    if (outreachButton && handleOutreachTemplateAction(outreachButton)) {
+      event.preventDefault();
       return;
     }
     closeAllEnhancedSelects(event.target.closest?.(".select-enhanced"));

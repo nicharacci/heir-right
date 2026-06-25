@@ -179,3 +179,30 @@ Verification:
 - `pnpm --filter @ple/worker test` passed before restoring Annie as the app-facing output.
 - `git diff --check` passed.
 - Generated PDF was rendered by headless Chrome and previewed with Quick Look at `/tmp/heirright-annie-final-preview/family-tree-discovery-report.pdf.png`.
+
+## 2026-06-25 19:42 EDT - Outreach template workspace first working slice
+
+Scope:
+- Kept the attachment picker back in the editor body near the paperclip instead of floating above the modal footer.
+- Converted the Outreach tab from static scheduled-work copy into a campaign/template workspace with active campaigns, template lists, selected-template preview, dossier variable registry, approval controls, audit trail, archive view, and local cadence controls.
+- Added local demo persistence for campaigns, templates, and audit events under `heirright:outreach-workspace` as the UI bridge before the server/API tasks are built.
+- Added bottom-right liquid-glass sync notifications and a Settings CTA for missing Podio credentials.
+- Added Linear-ready implementation tasks in `docs/run-point-daily/2026-06-25-outreach-linear-ready-tasks.md`.
+
+Browser proof on `http://localhost:4188/?proof=outreach-workspace-modal`:
+- Paperclip click opened the attachment popover from the body editor, 6 px above the toolbar.
+- Modal scroll stayed at `420` before and after opening the attachment popover.
+- Attachment option click also preserved modal scroll at `420`.
+- New SMS template saved as Draft and appeared in the campaign template list.
+- Mark Ready transitioned the selected template to Ready without opening the activity drawer over the action chips.
+- Approve without password showed the bottom-right `Password required` notification.
+- Approve with an entered password transitioned the template to Approved and exposed `Sync Podio`.
+- Sync Podio with missing Podio connection showed `Podio is not connected`, stated that no SMS/email/CRM/Google/Resend artifact was created, and exposed `Open Settings`.
+- Open Settings CTA routed to the Settings surface.
+
+Verification:
+- `rm -rf apps/artifact/dist && pnpm --filter @ple/artifact build` passed after the final UI changes.
+
+Still not complete:
+- Server-side Outreach CRUD, approval enforcement, Podio sync/readback, Resend fallback, and Linear fallback ticket creation remain future tasks in the new task breakdown.
+- Current UI persistence is local artifact storage for client demo continuity; it is not production storage yet.
