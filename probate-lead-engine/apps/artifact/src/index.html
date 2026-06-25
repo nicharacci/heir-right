@@ -2014,6 +2014,106 @@
       justify-self: end;
     }
 
+    .dossier-checklist {
+      display: grid;
+    }
+
+    .dossier-check-row {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 58px;
+      padding: 11px 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .dossier-check-row + .dossier-check-row {
+      position: relative;
+    }
+
+    .dossier-check-row + .dossier-check-row::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--divider-line);
+      pointer-events: none;
+    }
+
+    .dossier-check-row:hover .dossier-check-title,
+    .dossier-check-row:focus-visible .dossier-check-title {
+      color: var(--accent);
+    }
+
+    .dossier-check-status {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid rgba(235,235,245,.22);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 760;
+    }
+
+    .dossier-check-row[data-state="complete"] .dossier-check-status {
+      border-color: rgba(45,212,139,.42);
+      background: rgba(45,212,139,.18);
+      color: rgb(78, 232, 159);
+    }
+
+    .dossier-check-row[data-state="active"] .dossier-check-status {
+      border-color: rgba(10,132,255,.42);
+      color: var(--accent);
+    }
+
+    .dossier-check-spinner {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 2px solid rgba(10,132,255,.24);
+      border-top-color: var(--accent);
+      animation: dossierCheckSpin .82s linear infinite;
+    }
+
+    @keyframes dossierCheckSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    .dossier-check-title {
+      display: block;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 780;
+      line-height: 1.24;
+      transition: color .18s var(--ease);
+    }
+
+    .dossier-check-copy {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.34;
+    }
+
+    .dossier-check-action {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
     .dossier-doc.is-selected {
       border-color: var(--focus-ring);
       background: var(--ios-fill-strong);
@@ -2064,9 +2164,12 @@
       position: relative;
       height: 30px;
       overflow: hidden;
-      border: 1px solid var(--line);
+      border: 1px solid rgba(235,235,245,.18);
       border-radius: 8px;
-      background: rgba(255,255,255,.42);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.018)),
+        rgba(14,15,17,.76);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
     }
 
     .discovery-fuse::before {
@@ -2074,20 +2177,20 @@
       position: absolute;
       inset: 0 auto 0 0;
       width: var(--fuse-progress, 0%);
-      background: var(--green-soft);
+      min-width: min(100%, 10px);
+      background:
+        linear-gradient(90deg, rgba(61,220,151,.95), rgba(119,236,184,.92)),
+        var(--green);
       transition: width .48s var(--ease-out);
     }
 
-    .discovery-fuse span {
-      position: relative;
-      z-index: 1;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      padding: 0 10px;
-      color: var(--text);
-      font-size: 12px;
-      font-weight: 760;
+    .discovery-fuse::after {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border-radius: 7px;
+      background: linear-gradient(180deg, rgba(255,255,255,.13), transparent 54%);
+      pointer-events: none;
     }
 
     .discovery-phase-meter {
@@ -6511,9 +6614,7 @@ function currentDiscoveryPhase() {
 function discoveryProgress() {
   const completed = state.discoveryCompleted.size;
   const total = discoveryPhases.length;
-  const derived = state.filled.size ? Math.round((Math.min(state.filled.size, total) / total) * 100) : 0;
-  const phaseProgress = Math.round((completed / total) * 100);
-  return Math.max(derived, phaseProgress);
+  return Math.round((completed / total) * 100);
 }
 
 function phaseIsComplete(phaseId = currentDiscoveryPhase().id) {
@@ -6638,6 +6739,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "discovery-dossier",
       title: "Discovery Dossier",
+      phaseId: "owner-property",
       type: "PDF packet",
       copy: "Owner, property, deed, tax, probate, heirs, notes, and next actions.",
       status: missing.length ? `${missing.length} open section${missing.length === 1 ? "" : "s"}` : "Ready for review",
@@ -6646,6 +6748,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "completed-report",
       title: "Completed Lead Report",
+      phaseId: "document-prep",
       type: "Rendered report",
       copy: "Lead report draft with offer, source notes, and review gate.",
       status: report?.reviewGate?.externalUseBlocked ? "Review blocked" : "Prepared",
@@ -6654,6 +6757,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "source-notes",
       title: "Source Notes",
+      phaseId: "manual-research",
       type: "Review notes",
       copy: "County records, source coverage, and missing fact checklist.",
       status: "Source-backed",
@@ -6662,6 +6766,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "deed-title-notes",
       title: "Deed & Title Notes",
+      phaseId: "court-probate",
       type: "Official records",
       copy: "Owner chain, deed gaps, OR book/page notes, and title review blockers.",
       status: (dossier?.deedHistory?.reviewTasks ?? []).length ? "Needs review" : "Staged",
@@ -6670,6 +6775,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "tax-history",
       title: "Tax History Packet",
+      phaseId: "tax-history",
       type: "Tax collector",
       copy: "Unpaid years, receipt status, payer notes, reassessment, and lien review.",
       status: missing.some((item) => item.type === "tax") ? "Open" : "Staged",
@@ -6678,6 +6784,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "probate-request",
       title: "Probate Document Request",
+      phaseId: "court-probate",
       type: "Court request",
       copy: "Court call, page count, money order, certified copy, and pickup path.",
       status: "Draft",
@@ -6686,6 +6793,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "heir-contact-matrix",
       title: "Heir Contact Matrix",
+      phaseId: "heirs-contacts",
       type: "Contact review",
       copy: "Potential heirs, contact confidence, approval gates, and source notes.",
       status: (dossier?.familyTree?.reviewTasks ?? []).length ? "Needs review" : "Staged",
@@ -6694,6 +6802,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "outreach-drafts",
       title: "Outreach Drafts",
+      phaseId: "crm-handoff",
       type: "Email and SMS",
       copy: "Review-only outreach language held until approval.",
       status: "Locked",
@@ -6702,6 +6811,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "drip-schedule",
       title: "Drip Schedule",
+      phaseId: "crm-handoff",
       type: "Automation prep",
       copy: "Email/SMS cadence, stop rules, review owner, and no-send guardrails.",
       status: "Prepared only",
@@ -6710,12 +6820,65 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "crm-handoff",
       title: "CRM Handoff",
+      phaseId: "crm-handoff",
       type: "Podio fields",
       copy: "Batch export fields, tasks, drip route, and readback checklist.",
       status: "Prep only",
       body: crmHandoffHtml(row, dossier)
     }
   ];
+}
+
+function dossierDocWorkflowState(doc, index = 0) {
+  const phaseIndex = discoveryPhases.findIndex((phase) => phase.id === doc.phaseId);
+  const phase = discoveryPhases[phaseIndex] ?? discoveryPhases[0];
+  const complete = phaseIsComplete(phase.id);
+  const active = !complete && phase.id === currentDiscoveryPhase().id;
+  const blocked = /blocked|locked/i.test(doc.status || "") && !complete;
+  return {
+    phase,
+    state: complete ? "complete" : active ? "active" : blocked ? "blocked" : "pending",
+    label: complete ? "Done" : active ? "Working" : blocked ? "Blocked" : "Needed",
+    action: complete ? "Open" : active ? "Continue" : "Review",
+    copy: complete
+      ? `${phase.label} complete. ${doc.title} is ready to review.`
+      : active
+      ? `${phase.label} is active. Finish this stage to unlock the checkmark.`
+      : blocked
+      ? `${doc.status}. Complete ${phase.label} before this can be used.`
+      : `Waiting on ${phase.label}. ${doc.status}.`,
+    order: index + 1
+  };
+}
+
+function dossierChecklistStatusHtml(workflow) {
+  if (workflow.state === "complete") {
+    return `<span class="dossier-check-status" aria-label="Complete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 12.5 3.8 3.8L18 8" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  }
+  if (workflow.state === "active") {
+    return `<span class="dossier-check-status" aria-label="Checking"><span class="dossier-check-spinner"></span></span>`;
+  }
+  return `<span class="dossier-check-status" aria-label="${escapeHtml(workflow.label)}">${String(workflow.order).padStart(2, "0")}</span>`;
+}
+
+function dossierChecklistHtml(docs, { compact = false } = {}) {
+  return `
+    <div class="dossier-checklist" role="list">
+      ${docs.map((doc, index) => {
+        const workflow = dossierDocWorkflowState(doc, index);
+        return `
+          <button class="dossier-check-row" type="button" role="listitem" data-dossier-doc="${escapeHtml(doc.id)}" data-state="${escapeHtml(workflow.state)}">
+            ${dossierChecklistStatusHtml(workflow)}
+            <span>
+              <span class="dossier-check-title">${escapeHtml(doc.title)}</span>
+              <span class="dossier-check-copy">${escapeHtml(compact ? workflow.copy : `${workflow.copy} ${doc.copy}`)}</span>
+            </span>
+            <span class="dossier-check-action">${escapeHtml(workflow.action)}</span>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 function exportBlockerItems(result = state.exportResult) {
@@ -7348,15 +7511,21 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
     setRailOpen(state.railOpen);
     return;
   }
+  if (state.discoveryOpen) {
+    content.innerHTML = renderDiscoveryWizard(row, dossier);
+    wireDiscoveryWizard(content);
+    setRailOpen(true);
+    return;
+  }
   const titleCard = `
     <section class="glass-card rail-title-card">
       <div class="rail-title-row">
         <div>
           <p class="eyebrow">Document packet</p>
-          <h2 class="rail-title">Dossier prep workflow</h2>
-          <p class="copy">Review each prepared document, complete source-backed stages, then approve the PDF packet for handoff.</p>
+          <h2 class="rail-title">Dossier Discovery checklist</h2>
+          <p class="copy">Complete each source-backed stage before treating the packet as ready for handoff.</p>
         </div>
-        ${statusPill(row.tone, row.tone === "blocked" ? "Blocked" : row.tone === "ready" ? "Ready" : "Review")}
+        ${statusPill(discoveryProgress() >= 100 ? "ready" : "review", discoveryProgress() >= 100 ? "Complete" : "In progress")}
       </div>
       ${discoveryStripHtml(row, dossier)}
     </section>
@@ -7391,14 +7560,12 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
         <div class="dossier-rail-toolbar">
           <div>
             <p class="eyebrow">Docs</p>
-            <h2 class="rail-title">${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}</h2>
-            <p class="copy">${escapeHtml(selectedDoc?.type ?? "PDF packet")} - ${escapeHtml(selectedDoc?.status ?? "Review")}</p>
+            <h2 class="rail-title">Dossier checklist</h2>
+            <p class="copy">Checks turn green only after Discovery marks that stage complete.</p>
           </div>
           <button class="btn" type="button" data-popout-doc="${escapeHtml(selectedDoc?.id ?? "discovery-dossier")}">Pop out</button>
         </div>
-        <div class="dossier-doc-grid">
-          ${docs.map((doc) => `<button class="dossier-doc ${doc.id === selectedDoc?.id ? "is-selected" : ""}" type="button" data-dossier-doc="${escapeHtml(doc.id)}"><strong>${escapeHtml(doc.title)}</strong><span>${escapeHtml(doc.type)} - ${escapeHtml(doc.status)}</span><span>${escapeHtml(doc.copy)}</span></button>`).join("")}
-        </div>
+        ${dossierChecklistHtml(docs)}
       </section>
       <section class="glass-card rail-card">
         <div class="pdf-toolbar"><span>${escapeHtml(selectedDoc?.type ?? "PDF packet")} - ${escapeHtml(selectedDoc?.status ?? "Review")}</span><span class="tracker-date">Embedded PDF reader</span></div>
@@ -7408,20 +7575,9 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   } else {
     bodyHtml = `
       <section class="glass-card rail-card">
-        <h3>Documents to complete</h3>
-        <p class="copy">Work the full document-prep process in order. Open a document in Docs when a step needs review.</p>
-        <div>
-          ${docs.map((doc, index) => `
-            <article class="rail-item dossier-flow-step">
-              <span class="rail-item-index">${String(index + 1).padStart(2, "0")}</span>
-              <span>
-                <span class="rail-item-title">${escapeHtml(doc.title)}</span>
-                <span class="rail-item-copy">${escapeHtml(doc.type)} - ${escapeHtml(doc.status)}. ${escapeHtml(doc.copy)}</span>
-              </span>
-              <button class="btn" type="button" data-dossier-doc="${escapeHtml(doc.id)}">Review</button>
-            </article>
-          `).join("")}
-        </div>
+        <h3>What is done</h3>
+        <p class="copy">Finish the active Discovery stage, then the matching document row becomes a green checked item.</p>
+        ${dossierChecklistHtml(docs, { compact: true })}
       </section>
     `;
   }
@@ -7924,7 +8080,7 @@ function discoveryStripHtml(row, dossier) {
   const phase = currentDiscoveryPhase();
   return `
     <div class="discovery-strip" aria-label="Discovery completion">
-      <div class="discovery-fuse" style="--fuse-progress: ${pct}%"><span>Discovery fuse</span></div>
+      <div class="discovery-fuse" style="--fuse-progress: ${pct}%" aria-label="Discovery ${pct}% complete"></div>
       <div class="discovery-phase-meter"><strong>${pct}%</strong><span>${escapeHtml(phase.label)}</span></div>
       <button class="btn primary solvys-liquid-glass" type="button" data-begin-discovery>Begin Discovery</button>
     </div>
@@ -7935,7 +8091,13 @@ function beginDiscoveryWizard(source = null) {
   if (!selectedRow()) return;
   state.discoveryOpen = true;
   state.railTab = "flow";
-  openRailWithContinuity(source, "flow");
+  if (state.activeView === "dossiers" || state.railMode === "dossier") {
+    state.railMode = "dossier";
+    renderRail();
+    setRailOpen(true, source);
+  } else {
+    openRailWithContinuity(source, "flow");
+  }
   addShellEvent("Discovery started", "The guided dossier workflow opened for the selected lead.", "ready", false);
 }
 
@@ -8031,6 +8193,24 @@ function renderDiscoveryWizard(row, dossier) {
       </div>
     </section>
   `;
+}
+
+function wireDiscoveryWizard(content) {
+  content.querySelector("[data-complete-phase]")?.addEventListener("click", completeDiscoveryPhase);
+  content.querySelector("[data-close-discovery]")?.addEventListener("click", closeDiscoveryWizard);
+  content.querySelector("[data-discovery-prev]")?.addEventListener("click", () => advanceDiscoveryPhase(-1));
+  content.querySelector("[data-discovery-next]")?.addEventListener("click", () => advanceDiscoveryPhase(1));
+  content.querySelector("[data-discovery-notes]")?.addEventListener("input", (event) => {
+    state.discoveryNotes[event.target.dataset.discoveryNotes] = event.target.value;
+    persistDiscoveryState();
+  });
+  content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
+    input.addEventListener("change", (event) => {
+      state.discoveryPreferences[event.target.dataset.discoveryPreference] = event.target.checked;
+      persistDiscoveryState();
+      addShellEvent("Discovery preference saved", "The phase preference was saved for this review session.", "review", false);
+    });
+  });
 }
 
 function fillSection(sectionId) {
@@ -8252,21 +8432,7 @@ function renderRail() {
   }
   if (state.discoveryOpen) {
     content.innerHTML = renderDiscoveryWizard(row, dossier);
-    content.querySelector("[data-complete-phase]")?.addEventListener("click", completeDiscoveryPhase);
-    content.querySelector("[data-close-discovery]")?.addEventListener("click", closeDiscoveryWizard);
-    content.querySelector("[data-discovery-prev]")?.addEventListener("click", () => advanceDiscoveryPhase(-1));
-    content.querySelector("[data-discovery-next]")?.addEventListener("click", () => advanceDiscoveryPhase(1));
-    content.querySelector("[data-discovery-notes]")?.addEventListener("input", (event) => {
-      state.discoveryNotes[event.target.dataset.discoveryNotes] = event.target.value;
-      persistDiscoveryState();
-    });
-    content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
-      input.addEventListener("change", (event) => {
-        state.discoveryPreferences[event.target.dataset.discoveryPreference] = event.target.checked;
-        persistDiscoveryState();
-        addShellEvent("Discovery preference saved", "The phase preference was saved for this review session.", "review", false);
-      });
-    });
+    wireDiscoveryWizard(content);
     setRailOpen(true);
     return;
   }
