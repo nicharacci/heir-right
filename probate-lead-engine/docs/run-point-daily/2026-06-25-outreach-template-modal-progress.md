@@ -71,3 +71,7 @@ Implemented the Close-style template creation popup for the Outreach section. Th
   - Confirmed after scrolling the modal, Browse existing files and paperclip clicks preserved a non-zero modal scroll position.
 - Screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-attachment-popover-restored-default-local.png`.
 - Scroll stress screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-attachment-popover-restored-local.png`.
+- Live deployment: `dpl_2yAyWY4VdNNEGZ6uBCwMyKo2c3zp`
+- Live alias: `https://heirright-landing-demo.vercel.app`
+- Live in-app browser proof confirmed no console errors, restored picker placement, and non-zero modal scroll after clicking Browse existing files.
+- Live screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-attachment-popover-restored-live.png`.
