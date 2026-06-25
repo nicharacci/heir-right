@@ -567,6 +567,28 @@ Required corrections before complete:
     - Browser proof on `https://heirright-landing-demo.vercel.app` confirmed Dossiers opens the right Dossier rail, the Completed Lead Report is selected, the embedded report contains the TOC, property/offer/source/missing anchors, the Miami-Dade public-record source URL, no table-toolbar controls, no script tags, no page errors, and no failed requests.
     - Screenshot proof: `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-dossier-rail-live.png`.
 
+## /solvys-liquid-glass Floating CRM/List Controls Follow-up
+
+Source checked: current artifact source, Solvys Liquid Glass skill, local browser proof, and live alias proof.
+
+Backward: This pass adds basic list/CRM actions without changing the safety model. The new floating pill appears only when leads are selected and routes work through the existing review-only Queue, Podio prep, and Google + Podio prep flows.
+
+UX pass: aligned with gaps. Preferred actions are Liquid Glass pill buttons; alternate list actions stay quieter. The pill floats above the bottom composer and remains usable when the activity drawer is open.
+
+Forward: Use this as the compact batch action surface for Estate Search and Dossiers. A real Figma library import can replace the visual token mapping later if a Figma file/library is provided.
+
+Alignment: aligned with gaps
+
+- Floating controls proof:
+  - Added `Add to Queue`, `Podio Prep`, `Google + Podio`, `Select visible`, and `Clear` actions to a floating `solvys-liquid-glass-strong` pill.
+  - The pill synchronizes with selected rows, export button batch labels, visible row counts, and disabled state.
+  - Local proof on `http://localhost:4173` confirmed selection opens the pill, Select visible expands to 6 selected rows, Add to Queue stages 6 leads, Clear resets selection/export label, Podio Prep opens the guarded report rail, and no browser errors or failed requests occurred.
+  - Production deployment `dpl_HshWwYMzx8UeWwAJTX1oeBdp6XV4` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias proof confirmed the pill opens on selection with `Add to Queue`, `Podio Prep`, `Google + Podio`, `Select visible`, and `Clear` labels, shows `1 selected`, updates the header export label to `Batch export (1)`, and reported no page errors or failed requests.
+  - Screenshot proof:
+    - `docs/run-point-daily/screenshots/2026-06-25-floating-crm-list-controls-local.png`
+    - `docs/run-point-daily/screenshots/2026-06-25-floating-crm-list-controls-live.png`
+
 - Export / Queue handoff hardening follow-up:
   - Replaced the old `Your Report Is Ready` / `exported successfully` activity language with `Handoff Package Prepared` and explicit review-only copy for Podio, Google Docs, Google Sheets, email, and SMS.
   - Expanded Queue into a batch handoff prep surface with readiness, Dossier document count, source-backed gaps, operator task count, live handoff blockers, Podio fields/tasks, Google Docs body, and Google Sheets row.
