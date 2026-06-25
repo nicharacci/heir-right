@@ -1,5 +1,5 @@
 const { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
-const { join } = require("node:path");
+const { dirname, join } = require("node:path");
 
 const distDir = join(__dirname, "dist");
 rmSync(distDir, { recursive: true, force: true });
@@ -45,4 +45,26 @@ for (const name of ["qualification-review.json", "qualification-review.md", "rea
     copyFileSync(join(__dirname, "demo", name), join(distDir, name));
   }
 }
+
+function writeJsonFallback(relativePath, value) {
+  const target = join(distDir, relativePath);
+  if (existsSync(target)) return;
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+writeJsonFallback("auth/session", {
+  authenticated: false,
+  user: null,
+  auth: {
+    required: false,
+    configured: false,
+    allowedDomains: ["heirright.com"],
+    allowedEmails: [],
+  },
+});
+writeJsonFallback("api/connections/status", []);
+writeJsonFallback("fresh-lead-batch.json", { leadRuns: [] });
+writeJsonFallback("daily-run.json", null);
+writeJsonFallback("qualification-review.json", null);
 console.log("artifact built: dist/index.html");
