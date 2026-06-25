@@ -5857,7 +5857,7 @@ function buildRows(data, dossier) {
       evidence: Math.min(facts, 8),
       evidenceTotal: 9,
       status: dossier.completedLeadReport?.reviewGate?.externalUseBlocked ? "blocked" : "review",
-      next: "Fill missing report sections",
+      next: contactGate?.next ?? "Fill missing report sections",
       classification: contactGate?.classification,
       missing,
       search: `completed lead report internal draft offer math ${leadName} ${address} ${missing.map((item) => item.label).join(" ")}`,
