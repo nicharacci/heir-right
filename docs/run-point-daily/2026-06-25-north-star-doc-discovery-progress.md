@@ -29,6 +29,12 @@ Complete HeirRight document discovery so a live lead can render a family-tree pa
   - TOC links present
   - 8 possible-heir rows present
   - 13 document links present
+- Local Dossier rail proof confirmed:
+  - Dossiers list remains 6 rows after merging the newest selected dossier into the stale fresh-batch shell.
+  - Embedded Dossier rail reader uses `completedLeadReport.formats.familyTreeHtml`.
+  - Reader contains `Family tree`, the North Star offer/profit table, Table of Contents, and the Intelius link.
+  - Reader no longer contains unavailable zip suffixes (`-0000`).
+  - Screenshot: `probate-lead-engine/docs/run-point-daily/screenshots/2026-06-25-north-star-dossier-rail-reader-local.png`.
 
 ## Blocker
 

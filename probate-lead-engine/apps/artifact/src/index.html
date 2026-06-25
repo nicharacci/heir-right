@@ -6735,6 +6735,7 @@ function queueItems() {
 function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
   const report = dossier?.completedLeadReport;
   const missing = row?.missing ?? buildMissingSections(dossier ?? {});
+  const familyTreePacketBody = report?.formats?.familyTreeHtml || discoveryDossierHtml(row, dossier);
   return [
     {
       id: "discovery-dossier",
@@ -6743,7 +6744,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
       type: "PDF packet",
       copy: "Owner, property, deed, tax, probate, heirs, notes, and next actions.",
       status: missing.length ? `${missing.length} open section${missing.length === 1 ? "" : "s"}` : "Ready for review",
-      body: discoveryDossierHtml(row, dossier)
+      body: familyTreePacketBody
     },
     {
       id: "completed-report",
@@ -8838,11 +8839,31 @@ async function loadFreshLeadBatch() {
   }
 }
 
+async function loadLatestRunPacket() {
+  const response = await fetch("/latest-run.json", { cache: "no-store" });
+  if (!response.ok) throw new Error("No latest lead found. Run the lead review pipeline first.");
+  const data = await response.json();
+  if (!data.dossier) throw new Error("The latest lead review did not include a dossier.");
+  return data;
+}
+
 async function loadRun() {
   try {
     document.getElementById("topStatus").textContent = "Loading latest lead packet...";
     const freshBatch = await loadFreshLeadBatch();
     if (freshBatch) {
+      const latestPacket = await loadLatestRunPacket().catch(() => null);
+      if (latestPacket?.dossier?.completedLeadReport?.formats?.familyTreeHtml) {
+        freshBatch.latestRun = latestPacket;
+        const latestAddress = cleanDisplayValue(latestPacket.dossier?.property?.address?.value ?? latestPacket.seed?.propertyAddress ?? "");
+        const latestName = cleanDisplayValue(latestPacket.dossier?.summary?.estateName ?? latestPacket.seed?.estateName ?? latestPacket.seed?.ownerName ?? "");
+        const matchesLatest = (leadRun) => {
+          const address = cleanDisplayValue(leadRun?.dossier?.property?.address?.value ?? leadRun?.seed?.propertyAddress ?? "");
+          const name = cleanDisplayValue(leadRun?.dossier?.summary?.estateName ?? leadRun?.seed?.estateName ?? leadRun?.seed?.ownerName ?? "");
+          return (latestAddress && address === latestAddress) || (latestName && name === latestName) || leadRun.runId === latestPacket.runId;
+        };
+        freshBatch.leadRuns = [latestPacket, ...freshBatch.leadRuns.filter((leadRun) => !matchesLatest(leadRun))];
+      }
       state.freshBatch = freshBatch;
       state.dailyRun = freshBatch.dailyRun ?? await loadDailyRun();
       state.qualificationReview = state.dailyRun?.qualificationReview ?? await loadQualificationReview();
@@ -8854,10 +8875,7 @@ async function loadRun() {
       setFreshBatchStatus(`${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead${(freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length) === 1 ? "" : "s"} loaded from the latest Miami-Dade Property Appraiser pull.`, "ready");
       return;
     }
-    const response = await fetch("/latest-run.json", { cache: "no-store" });
-    if (!response.ok) throw new Error("No latest lead found. Run the lead review pipeline first.");
-    const data = await response.json();
-    if (!data.dossier) throw new Error("The latest lead review did not include a dossier.");
+    const data = await loadLatestRunPacket();
     state.freshBatch = null;
     state.dailyRun = await loadDailyRun();
     state.qualificationReview = state.dailyRun?.qualificationReview ?? await loadQualificationReview();

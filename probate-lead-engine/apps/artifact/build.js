@@ -17,10 +17,10 @@ if (existsSync(distFreshLeadBatchPath)) {
   }
 }
 const latestRunPath = join(__dirname, "..", "worker", "output", "latest-run.json");
-if (freshLeadBatch?.latestRun?.dossier) {
-  writeFileSync(join(__dirname, "dist", "latest-run.json"), `${JSON.stringify(freshLeadBatch.latestRun, null, 2)}\n`);
-} else if (existsSync(latestRunPath)) {
+if (existsSync(latestRunPath)) {
   copyFileSync(latestRunPath, join(__dirname, "dist", "latest-run.json"));
+} else if (freshLeadBatch?.latestRun?.dossier) {
+  writeFileSync(join(__dirname, "dist", "latest-run.json"), `${JSON.stringify(freshLeadBatch.latestRun, null, 2)}\n`);
 } else if (existsSync(join(__dirname, "demo", "latest-run.json"))) {
   copyFileSync(join(__dirname, "demo", "latest-run.json"), join(__dirname, "dist", "latest-run.json"));
 }
