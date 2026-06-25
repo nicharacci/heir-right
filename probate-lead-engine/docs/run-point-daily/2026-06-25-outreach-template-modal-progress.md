@@ -59,3 +59,15 @@ Implemented the Close-style template creation popup for the Outreach section. Th
   - Static guard confirmed stale fresh-pull success strings are absent from `apps/artifact/src/index.html`.
   - In-app browser at `http://localhost:4188/` confirmed initial status hidden, source-mode change hidden, and Pull fresh leads revealed the pull status.
 - Screenshot: `docs/run-point-daily/screenshots/2026-06-25-fresh-pull-status-local.png`.
+
+## Attachment Picker Placement Pass
+
+- Restored the SMS attachment picker to the earlier visual anchor above the lower-left body editor area.
+- Kept the scroll-preservation handlers, so clicking the paperclip or attachment options does not snap the modal back to the top.
+- Validation:
+  - `pnpm --filter @ple/artifact build`
+  - In-app browser at `http://localhost:4188/?proof=attachment-popup-restored` opened Outreach, New SMS, and the attachment picker.
+  - Confirmed default picker bounds sit above the editor/footer gap with `scrollTop: 0`.
+  - Confirmed after scrolling the modal, Browse existing files and paperclip clicks preserved a non-zero modal scroll position.
+- Screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-attachment-popover-restored-default-local.png`.
+- Scroll stress screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-attachment-popover-restored-local.png`.
