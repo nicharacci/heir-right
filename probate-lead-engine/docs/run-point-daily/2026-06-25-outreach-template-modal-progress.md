@@ -47,3 +47,15 @@ Implemented the Close-style template creation popup for the Outreach section. Th
 - Opened New SMS Template.
 - Scrolled the modal, clicked the paperclip and Browse existing files, and confirmed the modal did not return to the top.
 - Screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-template-modal-live.png`.
+
+## Fresh Pull Status Pass
+
+- Fixed the source-pull status so cached `fresh-lead-batch.json` hydration does not show a fresh-pull success message.
+- Removed the static `Ready to pull an external batch.` status from initial markup.
+- Source-search mode changes now keep the status hidden.
+- `pullFreshBatch()` remains the only path that reveals the status, with in-progress, success, or blocked copy after an operator-triggered pull.
+- Validation:
+  - `rm -rf apps/artifact/dist && pnpm --filter @ple/artifact build`
+  - Static guard confirmed stale fresh-pull success strings are absent from `apps/artifact/src/index.html`.
+  - In-app browser at `http://localhost:4188/` confirmed initial status hidden, source-mode change hidden, and Pull fresh leads revealed the pull status.
+- Screenshot: `docs/run-point-daily/screenshots/2026-06-25-fresh-pull-status-local.png`.

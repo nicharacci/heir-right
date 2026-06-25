@@ -1508,6 +1508,16 @@
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-3px);
+      transition: opacity .24s ease, transform .24s ease, visibility .24s ease;
+    }
+
+    .source-pull-status[data-visible="true"] {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
     }
 
     .source-pull-status[data-tone="ready"] { color: color-mix(in srgb, var(--green) 82%, #1f2937); }
@@ -5385,7 +5395,7 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M18.5 9A7 7 0 0 0 6.2 6.7L4 11m16 2-2.2 4.3A7 7 0 0 1 5.5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
               Pull fresh leads
             </button>
-            <div id="freshBatchStatus" class="source-pull-status" data-tone="neutral">Ready to pull an external batch.</div>
+            <div id="freshBatchStatus" class="source-pull-status" data-tone="neutral" data-visible="false" aria-live="polite"></div>
           </div>
           <div class="field">
             <label for="statusFilter">Property status</label>
@@ -9592,6 +9602,7 @@ async function loadLatestRunPacket() {
 async function loadRun() {
   try {
     document.getElementById("topStatus").textContent = "Loading latest lead packet...";
+    clearFreshBatchStatus();
     const freshBatch = await loadFreshLeadBatch();
     if (freshBatch) {
       const latestPacket = await loadLatestRunPacket().catch(() => null);
@@ -9614,7 +9625,6 @@ async function loadRun() {
       const firstLead = firstSeed.ownerName || firstSeed.estateName || cleanDisplayValue(firstSeed.propertyAddress) || "live public-source lead";
       const summary = freshBatch.operatorSummary || `Pulled ${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead(s).`;
       document.getElementById("topStatus").textContent = `${summary} First lead: ${firstLead}.`;
-      setFreshBatchStatus(`${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead${(freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length) === 1 ? "" : "s"} loaded from the latest Miami-Dade Property Appraiser pull.`, "ready");
       return;
     }
     const data = await loadLatestRunPacket();
@@ -9658,11 +9668,20 @@ function currentFreshLeadFilters() {
   };
 }
 
+function clearFreshBatchStatus() {
+  const status = document.getElementById("freshBatchStatus");
+  if (!status) return;
+  status.textContent = "";
+  status.dataset.tone = "neutral";
+  status.dataset.visible = "false";
+}
+
 function setFreshBatchStatus(message, tone = "neutral") {
   const status = document.getElementById("freshBatchStatus");
   if (!status) return;
   status.textContent = message;
   status.dataset.tone = tone;
+  status.dataset.visible = message ? "true" : "false";
 }
 
 function setFreshBatchBusy(isBusy) {
@@ -10133,7 +10152,7 @@ function wireEvents() {
     const mode = document.getElementById("sourceModeFilter").value;
     const query = document.getElementById("sourceQuery");
     query.placeholder = mode === "address" ? "552 SW 2 ST" : mode === "folio" ? "0102020001080" : "EST OF";
-    setFreshBatchStatus("Ready to pull an external batch.");
+    clearFreshBatchStatus();
   });
   document.getElementById("footerBack").addEventListener("click", () => window.history.back());
   document.getElementById("footerForward").addEventListener("click", () => window.history.forward());
