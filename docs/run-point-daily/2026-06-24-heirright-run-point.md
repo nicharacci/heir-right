@@ -562,6 +562,10 @@ Required corrections before complete:
     - `git diff --check` passed.
     - Browser proof on `http://localhost:4173` confirmed Dossiers opens the right Dossier rail, the Completed Lead Report is selected, the embedded report contains the TOC, property/offer/source/missing anchors, the Miami-Dade public-record source URL, no table-toolbar controls, no script tags, no page errors, and no failed requests.
     - Screenshot proof: `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-dossier-rail-local.png`.
+  - Production deployment `dpl_5nYA7mcs3HvTvN1c2bFTtYtqpsw6` is aliased to `https://heirright-landing-demo.vercel.app`.
+  - Live alias proof:
+    - Browser proof on `https://heirright-landing-demo.vercel.app` confirmed Dossiers opens the right Dossier rail, the Completed Lead Report is selected, the embedded report contains the TOC, property/offer/source/missing anchors, the Miami-Dade public-record source URL, no table-toolbar controls, no script tags, no page errors, and no failed requests.
+    - Screenshot proof: `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-dossier-rail-live.png`.
 
 - Export / Queue handoff hardening follow-up:
   - Replaced the old `Your Report Is Ready` / `exported successfully` activity language with `Handoff Package Prepared` and explicit review-only copy for Podio, Google Docs, Google Sheets, email, and SMS.
