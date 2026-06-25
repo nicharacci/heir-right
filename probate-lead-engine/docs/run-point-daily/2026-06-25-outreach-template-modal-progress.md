@@ -38,3 +38,12 @@ Implemented the Close-style template creation popup for the Outreach section. Th
 - Submitted the template and confirmed the operator-trail event.
 - Screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-template-modal-local.png`.
 - Scroll-stability screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-template-modal-no-scroll-jump-local.png`.
+
+## Live Proof
+
+- Deployment: `dpl_HtbdrKnVXD5N6ov9MdbqYc7cSeg8`
+- Alias: `https://heirright-landing-demo.vercel.app`
+- Opened Outreach on production.
+- Opened New SMS Template.
+- Scrolled the modal, clicked the paperclip and Browse existing files, and confirmed the modal did not return to the top.
+- Screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-template-modal-live.png`.
