@@ -206,3 +206,19 @@ Verification:
 Still not complete:
 - Server-side Outreach CRUD, approval enforcement, Podio sync/readback, Resend fallback, and Linear fallback ticket creation remain future tasks in the new task breakdown.
 - Current UI persistence is local artifact storage for client demo continuity; it is not production storage yet.
+
+## 2026-06-25 20:06 EDT - Fresh-lead status behavior tightened
+
+Scope:
+- Changed the Estate Search fresh-pull inline status so it is fully collapsed at rest.
+- Removed the inline `Pulling...` message from the filter pane; while a pull is in flight, only the top workspace status and the busy button state show progress.
+- Kept the inline status for a real successful pull or a real blocked response, with the success message fading/sliding into the filter pane after data returns.
+
+Local browser proof on `http://localhost:4188/?proof=fresh-status-local`:
+- Initial `freshBatchStatus`: empty, `data-visible="false"`, `opacity: 0`, `max-height: 0px`, rendered height `0`.
+- Immediately after clicking `Pull fresh leads`: still empty and hidden, while `topStatus` read `Pulling a live external lead batch...` and the button was busy.
+- After the successful fresh run returned: `data-visible="true"`, `tone="ready"`, `opacity: 1`, `max-height: 52px`, rendered height `32.375`, and text `3 live leads pulled from Miami-Dade Property Appraiser.`
+
+Verification:
+- `git diff --check` passed.
+- `pnpm --filter @ple/artifact build` passed.
