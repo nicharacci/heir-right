@@ -3491,6 +3491,115 @@
       -webkit-backdrop-filter: saturate(180%) blur(22px);
     }
 
+    .floating-list-controls {
+      position: fixed;
+      left: 50%;
+      bottom: 74px;
+      z-index: 82;
+      width: min(840px, calc(100vw - 96px));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 52px;
+      padding: 7px;
+      border: 1px solid rgba(235,235,245,.20);
+      border-radius: 999px;
+      color: var(--text);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate3d(-50%, 14px, 0) scale(.985);
+      transition: opacity .18s var(--ease), transform .22s var(--ease-out);
+    }
+
+    .floating-list-controls[data-open="true"] {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate3d(-50%, 0, 0) scale(1);
+    }
+
+    .floating-list-summary {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 8px 0 11px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .floating-list-summary strong {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 820;
+    }
+
+    .floating-list-actions {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex: 1 1 auto;
+    }
+
+    .floating-list-actions::-webkit-scrollbar { display: none; }
+
+    .floating-list-button {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: color .16s var(--ease), background .16s var(--ease), transform .16s var(--ease);
+    }
+
+    .floating-list-button svg {
+      width: 15px;
+      height: 15px;
+      flex: 0 0 auto;
+    }
+
+    .floating-list-button:hover,
+    .floating-list-button:focus-visible {
+      color: var(--text);
+      outline: 0;
+      background: rgba(235,235,245,.08);
+    }
+
+    .floating-list-button:active { transform: scale(.98); }
+
+    .floating-list-button.is-preferred {
+      color: #f5f5f7;
+      background: rgba(10,132,255,.68);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 12px 28px rgba(10,132,255,.18);
+    }
+
+    .floating-list-button.is-preferred:hover,
+    .floating-list-button.is-preferred:focus-visible {
+      background: rgba(10,132,255,.78);
+    }
+
+    .floating-list-button:disabled {
+      opacity: .42;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     .command-form {
       min-width: 0;
       display: grid;
@@ -4403,6 +4512,28 @@
         overflow: visible;
       }
       .top-status { text-align: left; }
+      .floating-list-controls {
+        left: 12px;
+        right: 12px;
+        bottom: 88px;
+        width: auto;
+        max-width: none;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        border-radius: 22px;
+        transform: translate3d(0, 14px, 0) scale(.985);
+      }
+      .floating-list-controls[data-open="true"] {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      .floating-list-summary {
+        width: 100%;
+        padding-top: 3px;
+      }
+      .floating-list-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
       .shell-composer { grid-template-columns: 1fr; }
       .composer-actions { justify-content: flex-start; }
       .settings-grid,
@@ -4924,6 +5055,29 @@
         </div>
         <div id="railContent" class="rail-scroll"></div>
       </aside>
+    </section>
+
+    <section id="floatingListControls" class="floating-list-controls solvys-liquid-glass-strong" data-open="false" aria-label="Selected lead controls" aria-live="polite">
+      <div class="floating-list-summary">
+        <strong id="floatingListCount">0 selected</strong>
+        <span id="floatingListScope">List controls</span>
+      </div>
+      <div class="floating-list-actions">
+        <button class="floating-list-button is-preferred" type="button" data-list-control="queue">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5.6 5.5h12.8l1.2 8.2v4.2a2.2 2.2 0 0 1-2.2 2.2H6.6a2.2 2.2 0 0 1-2.2-2.2v-4.2l1.2-8.2Z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.7 13.7h4.5l1.3 2.1h3l1.3-2.1h4.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Add to Queue
+        </button>
+        <button class="floating-list-button is-preferred" type="button" data-list-control="podio">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+          Podio Prep
+        </button>
+        <button class="floating-list-button is-preferred" type="button" data-list-control="both">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 7h10v12H8V7Z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1M11 11h4M11 15h3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+          Google + Podio
+        </button>
+        <button class="floating-list-button" type="button" data-list-control="select-visible">Select visible</button>
+        <button class="floating-list-button" type="button" data-list-control="clear">Clear</button>
+      </div>
     </section>
 
     <section class="shell-composer" aria-label="HeirRight command composer">
@@ -5603,12 +5757,53 @@ function checkedLeadSummary() {
   return `${count} selected`;
 }
 
+function visibleRowsForListControls() {
+  if (state.activeView === "dossiers") {
+    return [...document.querySelectorAll("#dossiersView [data-dossier-row]")]
+      .map((rowEl) => rowById(rowEl.dataset.dossierRow))
+      .filter(Boolean);
+  }
+  if (state.activeView === "find-estates") {
+    return [...document.querySelectorAll("#resultsBody [data-row-id]")]
+      .map((rowEl) => rowById(rowEl.dataset.rowId))
+      .filter(Boolean);
+  }
+  return state.filteredRows.length ? state.filteredRows : state.rows;
+}
+
+function syncFloatingListControls() {
+  const controls = document.getElementById("floatingListControls");
+  if (!controls) return;
+  const selected = checkedRows();
+  const count = selected.length;
+  const visibleRows = visibleRowsForListControls();
+  const visibleCount = visibleRows.length;
+  const countLabel = document.getElementById("floatingListCount");
+  const scopeLabel = document.getElementById("floatingListScope");
+  if (countLabel) countLabel.textContent = `${count} selected`;
+  if (scopeLabel) {
+    scopeLabel.textContent = state.activeView === "dossiers"
+      ? "Dossier list"
+      : state.activeView === "find-estates"
+        ? `${visibleCount} visible in Estate Search`
+        : "Lead list";
+  }
+  controls.dataset.open = count > 0 ? "true" : "false";
+  controls.querySelectorAll("[data-list-control]").forEach((button) => {
+    const action = button.dataset.listControl;
+    const needsSelection = ["queue", "podio", "both", "clear"].includes(action);
+    const needsVisible = action === "select-visible";
+    button.disabled = (needsSelection && count === 0) || (needsVisible && visibleCount === 0);
+  });
+}
+
 function syncBatchExportControls() {
   const count = checkedRows().length;
   const label = document.getElementById("exportToggleLabel");
   const menu = document.getElementById("exportMenu");
   if (label) label.textContent = count ? `Batch export (${count})` : "Prep export";
   if (menu) menu.dataset.mode = count ? "batch" : "single";
+  syncFloatingListControls();
 }
 
 function syncSelectionLabels() {
@@ -5630,6 +5825,38 @@ function setVisibleLeadChecked(rows, checked) {
     else state.selectedIds.delete(row.id);
   });
   syncSelectionLabels();
+}
+
+function clearLeadSelection() {
+  state.selectedIds.clear();
+  document.getElementById("topStatus").textContent = "Lead selection cleared.";
+  renderCurrentLoopView();
+  if (state.activeView === "find-estates") renderResults();
+  syncSelectionLabels();
+}
+
+function selectVisibleLeadsFromControls(source = null) {
+  const rows = visibleRowsForListControls();
+  if (!rows.length) return;
+  setVisibleLeadChecked(rows, true);
+  document.getElementById("topStatus").textContent = `${rows.length} visible lead${rows.length === 1 ? "" : "s"} selected for list controls.`;
+  renderCurrentLoopView();
+  if (state.activeView === "find-estates") renderResults();
+  source?.blur?.();
+}
+
+function runFloatingListControl(action, source = null) {
+  if (action === "queue") {
+    addRowsToQueue(checkedRows(), source);
+  } else if (action === "podio" || action === "both") {
+    chooseExportRoute(action, source);
+  } else if (action === "select-visible") {
+    selectVisibleLeadsFromControls(source);
+  } else if (action === "clear") {
+    clearLeadSelection();
+    source?.blur?.();
+  }
+  syncFloatingListControls();
 }
 
 function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
@@ -8859,6 +9086,9 @@ function wireEvents() {
   document.querySelectorAll("[data-shell-command]").forEach((button) => {
     button.addEventListener("click", () => runShellCommand(button.dataset.shellCommand, button));
   });
+  document.querySelectorAll("[data-list-control]").forEach((button) => {
+    button.addEventListener("click", () => runFloatingListControl(button.dataset.listControl, button));
+  });
   document.getElementById("signalWeight").addEventListener("input", (event) => {
     state.shellSettings.signalWeight = event.target.value;
     syncShellSettings();
@@ -8899,7 +9129,7 @@ function wireEvents() {
     const clickedInsideRail = clickPath.some((item) => item?.id === "researchRail");
     closeAllEnhancedSelects(event.target.closest?.(".select-enhanced"));
     const rail = document.getElementById("researchRail");
-    const railOpener = event.target.closest?.('[data-shell-nav], [data-shell-nav-shortcut], #rightRailToggle, #exportMenu, #exportToggle, [data-export-route], [data-row-id], [data-open-next], [data-chip], [data-rail-chip], [data-dossier-row], [data-dossier-doc], .select-box, [data-row-select], [data-select-visible]');
+    const railOpener = event.target.closest?.('[data-shell-nav], [data-shell-nav-shortcut], #rightRailToggle, #exportMenu, #exportToggle, #floatingListControls, [data-export-route], [data-row-id], [data-open-next], [data-chip], [data-rail-chip], [data-dossier-row], [data-dossier-doc], .select-box, [data-row-select], [data-select-visible]');
     if (state.railOpen && rail && !clickedInsideRail && !rail.contains(event.target) && !railOpener) {
       setRailOpen(false);
     }
