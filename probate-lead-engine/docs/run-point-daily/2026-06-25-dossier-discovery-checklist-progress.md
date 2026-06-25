@@ -23,11 +23,18 @@
   - Begin Discovery opened the Dossier rail wizard with title `Owner And Property`.
   - After completing the phase and closing Discovery: first dossier checklist row was `complete`, aria label `Complete`, copy `Owner and property complete. Discovery Dossier is ready to review.`
   - Fuse text content was empty and progress showed `14%`.
+- Production deployment: `dpl_H3xXE2R6MnXNmjvb2KgX12y5woP4`
+- Production alias: `https://heirright-landing-demo.vercel.app`
+- Live browser proof:
+  - Dossier rail status showed `In progress`.
+  - Fuse text content was empty.
+  - First dossier checklist row was `active`, aria label `Checking`, copy `Owner and property is active. Finish this stage to unlock the checkmark.`
 
 ## Evidence
 
 - `docs/run-point-daily/screenshots/2026-06-25-dossier-checklist-local.png`
 - `docs/run-point-daily/screenshots/2026-06-25-dossier-checklist-complete-local.png`
+- `docs/run-point-daily/screenshots/2026-06-25-dossier-checklist-live.png`
 
 ## Product Note
 
