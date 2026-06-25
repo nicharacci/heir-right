@@ -45,6 +45,13 @@ Complete HeirRight document discovery so a live lead can render a family-tree pa
   - Embedded packet contains the family-tree packet, offer/profit table, Table of Contents, and the contact-enrichment blocker.
   - Embedded packet and row do not contain unavailable zip suffixes (`-0000`).
   - Screenshot: `probate-lead-engine/docs/run-point-daily/screenshots/2026-06-25-annie-contact-gate-local.png`.
+- Production proof confirmed on `https://heirright-landing-demo.vercel.app/` after deploy:
+  - Dossiers row for Annie reads `Skip trace needed`.
+  - Next-step chip reads `Connect trace`.
+  - Embedded Dossier rail packet contains `Family tree`, the offer/profit table, Table of Contents, and the contact-enrichment blocker.
+  - Embedded packet and row do not contain unavailable zip suffixes (`-0000`).
+  - Network failure list and browser console errors were empty after static fallback responses shipped.
+  - Screenshot: `probate-lead-engine/docs/run-point-daily/screenshots/2026-06-25-annie-contact-gate-live.png`.
 
 ## Blocker
 
