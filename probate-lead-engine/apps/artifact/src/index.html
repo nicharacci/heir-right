@@ -4507,6 +4507,43 @@
       background: rgba(48,209,88,.12);
     }
 
+    #queueView .queue-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1260px) minmax(300px, 1fr);
+      gap: 16px;
+      align-items: start;
+      width: 100%;
+    }
+
+    #queueView .queue-panel {
+      grid-column: 1;
+      width: 100%;
+      max-width: 1260px;
+    }
+
+    #queueView .queue-side {
+      grid-column: 2;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      min-width: 0;
+    }
+
+    #queueView .queue-side .loop-panel,
+    #queueView .queue-side .connection-card {
+      grid-column: auto;
+      width: 100%;
+      min-width: 0;
+    }
+
+    #queueView .queue-side .loop-panel {
+      padding: 12px;
+    }
+
+    #queueView .connection-card {
+      grid-column: auto;
+    }
+
     .dossier-list-head .results-count {
       color: #616161;
       opacity: .5;
@@ -4729,10 +4766,16 @@
       .admin-grid { grid-template-columns: 1fr; }
       .loop-grid,
       .loop-grid.three,
+      #queueView .queue-layout,
       .dossier-shell,
       .preference-grid,
       .dossier-doc-grid {
         grid-template-columns: 1fr;
+      }
+      #queueView .queue-panel,
+      #queueView .queue-side {
+        grid-column: 1;
+        max-width: none;
       }
       .loop-panel.full {
         grid-column: auto;
@@ -7677,24 +7720,26 @@ function renderQueueView() {
   const destinations = queueDestinationItems();
   const blockers = exportBlockerItems();
   target.innerHTML = `
-    <div class="loop-grid">
-      <section class="loop-panel full">
+    <div class="queue-layout">
+      <section class="loop-panel queue-panel">
         <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch handoff prep</h2></div><button class="btn primary" type="button" data-queue-stage ${items.length ? "" : "disabled"}>Stage batch</button></div>
         <p class="copy">Use this queue after dossier review to stage the documents, CRM fields, and spreadsheet row as one batch. Nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
         <ul class="queue-list">
           ${items.map((item, index) => `<li class="queue-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Estate Search and select leads before staging a batch.</span></li>`}
         </ul>
       </section>
-      <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Readiness</p><h2 class="loop-title">Needs Review (Queued Items)</h2></div><span class="pill review">Review</span></div>
-        <ul class="mini-list">
-          ${readiness.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></li>`).join("")}
-          ${queuedRows().length ? blockers.slice(0, 3).map((blocker) => `<li><strong>Live handoff blocker</strong><span>${escapeHtml(blocker)}</span></li>`).join("") : ""}
-        </ul>
-      </section>
-      <section class="connection-card">
-        ${destinations.map((item) => `<div class="connection-row"><span class="connection-source">${escapeHtml(item.title)}</span><span class="connection-state ${item.connected ? "is-connected" : ""}">${escapeHtml(item.status)}</span></div>`).join("")}
-      </section>
+      <aside class="queue-side" aria-label="Queue review and connection status">
+        <section class="loop-panel">
+          <div class="loop-panel-head"><div><p class="eyebrow">Readiness</p><h2 class="loop-title">Needs Review (Queued Items)</h2></div><span class="pill review">Review</span></div>
+          <ul class="mini-list">
+            ${readiness.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></li>`).join("")}
+            ${queuedRows().length ? blockers.slice(0, 3).map((blocker) => `<li><strong>Live handoff blocker</strong><span>${escapeHtml(blocker)}</span></li>`).join("") : ""}
+          </ul>
+        </section>
+        <section class="connection-card">
+          ${destinations.map((item) => `<div class="connection-row"><span class="connection-source">${escapeHtml(item.title)}</span><span class="connection-state ${item.connected ? "is-connected" : ""}">${escapeHtml(item.status)}</span></div>`).join("")}
+        </section>
+      </aside>
     </div>
   `;
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
