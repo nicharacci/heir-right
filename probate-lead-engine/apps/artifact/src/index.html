@@ -4507,7 +4507,8 @@
       background: rgba(48,209,88,.12);
     }
 
-    #queueView .queue-layout {
+    #queueView .queue-layout,
+    #dripsView .outreach-layout {
       display: grid;
       grid-template-columns: minmax(0, 1260px) minmax(300px, 1fr);
       gap: 16px;
@@ -4515,13 +4516,15 @@
       width: 100%;
     }
 
-    #queueView .queue-panel {
+    #queueView .queue-panel,
+    #dripsView .outreach-panel {
       grid-column: 1;
       width: 100%;
       max-width: 1260px;
     }
 
-    #queueView .queue-side {
+    #queueView .queue-side,
+    #dripsView .outreach-side {
       grid-column: 2;
       display: grid;
       gap: 10px;
@@ -4530,18 +4533,374 @@
     }
 
     #queueView .queue-side .loop-panel,
-    #queueView .queue-side .connection-card {
+    #queueView .queue-side .connection-card,
+    #dripsView .outreach-side .loop-panel {
       grid-column: auto;
       width: 100%;
       min-width: 0;
     }
 
-    #queueView .queue-side .loop-panel {
+    #queueView .queue-side .loop-panel,
+    #dripsView .outreach-side .loop-panel {
       padding: 12px;
     }
 
     #queueView .connection-card {
       grid-column: auto;
+    }
+
+    #dripsView .outreach-side .settings-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .outreach-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .outreach-modal-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: grid;
+      place-items: center;
+      padding: 34px;
+      background: rgba(10, 10, 12, .56);
+      backdrop-filter: blur(22px) saturate(1.08);
+      -webkit-backdrop-filter: blur(22px) saturate(1.08);
+    }
+
+    .outreach-template-modal {
+      width: min(980px, calc(100vw - 40px));
+      max-height: min(820px, calc(100vh - 40px));
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025)),
+        rgba(32, 33, 36, .96);
+      border: 1px solid rgba(235,235,245,.16);
+      border-radius: 24px;
+      box-shadow: 0 36px 96px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .outreach-modal-head,
+    .outreach-modal-foot {
+      padding: 18px 22px;
+      border-bottom: 1px solid rgba(235,235,245,.10);
+    }
+
+    .outreach-modal-foot {
+      border-top: 1px solid rgba(235,235,245,.10);
+      border-bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(20,20,22,.78);
+    }
+
+    .outreach-modal-back {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .outreach-modal-title-row {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .outreach-modal-title-row h2 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .template-channel-switch {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid rgba(235,235,245,.13);
+      background: rgba(255,255,255,.055);
+    }
+
+    .template-channel-switch button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 800;
+      padding: 8px 13px;
+      cursor: pointer;
+    }
+
+    .template-channel-switch button[aria-pressed="true"] {
+      color: #f5f5f7;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.08)),
+        rgba(74,144,245,.62);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.22);
+    }
+
+    .outreach-modal-scroll {
+      min-height: 0;
+      overflow: auto;
+      padding: 20px 22px 22px;
+    }
+
+    .template-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .template-field {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .template-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .template-field label,
+    .template-body-label {
+      font-weight: 800;
+      color: #f5f5f7;
+    }
+
+    .template-field span,
+    .template-body-tools span,
+    .template-footnote {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .template-field input,
+    .template-field select,
+    .template-field textarea,
+    .template-body-editor textarea {
+      width: 100%;
+      min-width: 0;
+      color: #f5f5f7;
+      background: rgba(17,17,19,.78);
+      border: 1px solid rgba(235,235,245,.14);
+      border-radius: 12px;
+      padding: 11px 12px;
+      font: inherit;
+      outline: 0;
+    }
+
+    .template-field input:focus,
+    .template-field select:focus,
+    .template-field textarea:focus,
+    .template-body-editor textarea:focus {
+      border-color: rgba(74,144,245,.68);
+      box-shadow: 0 0 0 3px rgba(74,144,245,.18);
+    }
+
+    .template-body-card {
+      margin-top: 14px;
+      border: 1px solid rgba(235,235,245,.14);
+      border-radius: 18px;
+      overflow: visible;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)),
+        rgba(21,22,24,.86);
+    }
+
+    .template-body-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 14px;
+      border-bottom: 1px solid rgba(235,235,245,.09);
+    }
+
+    .template-body-tools {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .template-tag-link {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: #8dbbff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .template-body-editor {
+      position: relative;
+      padding: 14px;
+    }
+
+    .template-body-editor textarea {
+      min-height: 230px;
+      resize: vertical;
+      line-height: 1.55;
+      padding-bottom: 62px;
+    }
+
+    .template-editor-toolbar {
+      position: absolute;
+      left: 26px;
+      right: 26px;
+      bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .template-editor-icons {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .template-editor-button {
+      appearance: none;
+      border: 1px solid rgba(235,235,245,.12);
+      color: #eef4ff;
+      width: 34px;
+      height: 34px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      cursor: pointer;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.04)),
+        rgba(255,255,255,.075);
+      backdrop-filter: blur(14px) saturate(1.12);
+      -webkit-backdrop-filter: blur(14px) saturate(1.12);
+    }
+
+    .template-counter {
+      color: var(--muted);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      pointer-events: auto;
+    }
+
+    .template-attachment-popover {
+      width: min(430px, calc(100% - 28px));
+      margin: -2px 0 14px 14px;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid rgba(235,235,245,.14);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.035)),
+        rgba(38,38,38,.96);
+      box-shadow: 0 18px 42px rgba(0,0,0,.38);
+    }
+
+    .template-attachment-note {
+      padding: 14px 16px;
+      color: #e7f2ff;
+      background: rgba(74,144,245,.16);
+      line-height: 1.42;
+    }
+
+    .template-attachment-option {
+      appearance: none;
+      border: 0;
+      border-top: 1px solid rgba(235,235,245,.09);
+      background: transparent;
+      color: #f5f5f7;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 13px 16px;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .template-required-card {
+      margin-top: 14px;
+      border: 1px solid rgba(235,235,245,.12);
+      border-radius: 18px;
+      background: rgba(255,255,255,.035);
+      overflow: hidden;
+    }
+
+    .template-required-row {
+      display: grid;
+      grid-template-columns: minmax(130px, .45fr) minmax(0, 1fr);
+      gap: 16px;
+      padding: 12px 14px;
+      position: relative;
+    }
+
+    .template-required-row + .template-required-row::before {
+      content: "";
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      top: 0;
+      height: 1px;
+      background: var(--divider-line);
+    }
+
+    .template-required-row strong {
+      color: #f5f5f7;
+    }
+
+    .template-required-row span {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .template-modal-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 780px) {
+      .outreach-modal-layer {
+        padding: 14px;
+      }
+
+      .outreach-template-modal {
+        width: 100%;
+        max-height: calc(100vh - 28px);
+      }
+
+      .template-form-grid,
+      .template-required-row {
+        grid-template-columns: 1fr;
+      }
     }
 
     .dossier-list-head .results-count {
@@ -4767,13 +5126,16 @@
       .loop-grid,
       .loop-grid.three,
       #queueView .queue-layout,
+      #dripsView .outreach-layout,
       .dossier-shell,
       .preference-grid,
       .dossier-doc-grid {
         grid-template-columns: 1fr;
       }
       #queueView .queue-panel,
-      #queueView .queue-side {
+      #queueView .queue-side,
+      #dripsView .outreach-panel,
+      #dripsView .outreach-side {
         grid-column: 1;
         max-width: none;
       }
@@ -4873,7 +5235,7 @@
       <button class="nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" title="Dashboard" data-shell-nav="dashboard" data-hover-label="Dashboard" data-hover-description="Task tracker, activity, and drips"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 5h7v6H4V5Zm9 0h7v4h-7V5ZM4 13h7v6H4v-6Zm9-2h7v8h-7v-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dashboard</span></button>
       <button class="nav-item" type="button" title="Find Estates" data-shell-nav="find-estates" data-hover-label="Find Estates" data-hover-description="Lead intake and source status"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Find Estates</span></button>
       <button class="nav-item" type="button" title="Dossiers" data-shell-nav="dossiers" data-hover-label="Dossiers" data-hover-description="Finished dossier documents"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dossiers</span></button>
-      <button class="nav-item" type="button" title="Drips" data-shell-nav="drips" data-hover-label="Drips" data-hover-description="Email and SMS schedules"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 7h14M7 7v12m10-12v12M6 19h12M8 4h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10 11h4m-4 4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Drips</span></button>
+      <button class="nav-item" type="button" title="Outreach" data-shell-nav="drips" data-hover-label="Outreach" data-hover-description="Email and SMS template prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 7h14M7 7v12m10-12v12M6 19h12M8 4h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10 11h4m-4 4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Outreach</span></button>
       <button class="nav-item" type="button" title="Queue" data-shell-nav="queue" data-hover-label="Queue" data-hover-description="Batch export prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10h8M8 14h5M17 14l2 2 3-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Queue</span></button>
       <button class="nav-item" type="button" title="Admin" data-shell-nav="admin" data-hover-label="Admin" data-hover-description="Team review and controls"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM4 20a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 11.5a3 3 0 1 0-1-5.84M17 20h3a4.5 4.5 0 0 0-5.3-4.43" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Admin</span></button>
       <button class="nav-item" type="button" title="Settings" data-shell-nav="settings" data-hover-label="Settings" data-hover-description="Preferences and review gates"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 2v4M8 10v4M16 18v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Settings</span></button>
@@ -5247,7 +5609,7 @@
         </div>
         <section id="dashboardView" class="loop-view" data-view-panel="dashboard" aria-label="Dashboard task tracker"></section>
         <section id="dossiersView" class="loop-view" data-view-panel="dossiers" aria-label="Dossiers"></section>
-        <section id="dripsView" class="loop-view" data-view-panel="drips" aria-label="Drips"></section>
+        <section id="dripsView" class="loop-view" data-view-panel="drips" aria-label="Outreach"></section>
         <section id="queueView" class="loop-view" data-view-panel="queue" aria-label="Batch export queue"></section>
         <section id="adminView" class="loop-view" data-view-panel="admin" aria-label="Admin"></section>
         <section id="settingsView" class="loop-view" data-view-panel="settings" aria-label="Settings"></section>
@@ -5363,6 +5725,7 @@
     </footer>
   </section>
 </main>
+<div id="outreachTemplateModalMount"></div>
 
 <script>
 const state = {
@@ -5413,6 +5776,11 @@ const state = {
     requireCourtPacket: true,
     holdNoContact: true,
     operatorNote: ""
+  },
+  outreachTemplateModal: {
+    open: false,
+    channel: "sms",
+    attachmentsOpen: true
   },
   shellSettings: {
     signalWeight: "3",
@@ -6603,7 +6971,7 @@ function activeViewLabel(view = state.activeView) {
     dashboard: "Dashboard",
     "find-estates": "Find Estates",
     dossiers: "Dossiers",
-    drips: "Drips",
+    drips: "Outreach",
     queue: "Queue",
     admin: "Admin",
     settings: "Settings"
@@ -6729,7 +7097,7 @@ function scheduledDrips() {
   const startDelay = settings.startDelay === "next-business" ? "Next business morning" : "Same day after review";
   const smsCap = Math.max(1, Math.min(4, Number(settings.smsCap || 2)));
   return [
-    { title: "Heir warm follow-up", channel: "Email + SMS", cadence: `${startDelay}; Day 1, Day 4, Day 9`, status: "Prepared only", nextRun: "After dossier approval", guardrail: `${smsCap} SMS cap per heir, per week` },
+    { title: "Heir warm follow-up template", channel: "Email + SMS", cadence: `${startDelay}; Day 1, Day 4, Day 9`, status: "Prepared only", nextRun: "After dossier approval", guardrail: `${smsCap} SMS cap per heir, per week; SMS attachments US/CA/AU only` },
     { title: "Probate document request", channel: "Email", cadence: settings.requireCourtPacket ? "After court packet review" : "After operator approval", status: "Needs approval", nextRun: "After court packet clears", guardrail: "Court packet must stay review-owned" },
     { title: "No-contact hold", channel: "Internal task", cadence: settings.holdNoContact ? "Until review clears" : "Operator override required", status: "Active guardrail", nextRun: "Every queued dossier check", guardrail: "No-contact, company owner, recent sale, and source blocker stops stay active" }
   ];
@@ -7441,7 +7809,7 @@ function renderDashboardView() {
           <div><p class="eyebrow">Activities</p><h2 class="loop-title">Today in the loop</h2></div>
           <div class="loop-tabs" role="tablist" aria-label="Dashboard mode">
             <button class="loop-tab" type="button" data-dashboard-tab="activities" aria-pressed="${state.dashboardActivityTab === "activities"}">Activities</button>
-            <button class="loop-tab" type="button" data-dashboard-tab="drips" aria-pressed="${state.dashboardActivityTab === "drips"}">Drips</button>
+            <button class="loop-tab" type="button" data-dashboard-tab="drips" aria-pressed="${state.dashboardActivityTab === "drips"}">Outreach</button>
           </div>
         </div>
         <div class="loop-tab-content" data-dashboard-content="${escapeHtml(state.dashboardActivityTab)}">
@@ -7659,6 +8027,235 @@ function popOutDossierDocument(docId) {
   popout.document.close();
 }
 
+function outreachTemplateSeed(channel = state.outreachTemplateModal.channel) {
+  if (channel === "email") {
+    return {
+      title: "New Email Template",
+      name: "Heir warm follow-up email",
+      body: "Hi {{ contact.first_name }},\n\nI am preparing the {{ dossier.property_address }} estate file for review and wanted to make sure the right family contact receives the packet.\n\nPlease reply with the best phone number for {{ heir.full_name }} or call {{ user.phone }}.\n\nSincerely,\n{{ user.from_name }}\n{{ user.from_email }}",
+      limit: 4000
+    };
+  }
+  return {
+    title: "New SMS Template",
+    name: "Heir warm follow-up SMS",
+    body: "Hi {{ contact.first_name }}, this is {{ user.from_name }} with HeirRight. I am preparing the {{ dossier.property_address }} estate file and need to confirm the best contact for {{ heir.full_name }}. Please call {{ user.phone }}.",
+    limit: 1000
+  };
+}
+
+function openOutreachTemplateModal(channel = "sms") {
+  state.outreachTemplateModal = {
+    open: true,
+    channel,
+    attachmentsOpen: channel === "sms"
+  };
+  renderOutreachTemplateModal();
+}
+
+function closeOutreachTemplateModal() {
+  state.outreachTemplateModal.open = false;
+  renderOutreachTemplateModal();
+}
+
+function outreachTemplateVariables() {
+  return [
+    "{{ contact.first_name }}",
+    "{{ contact.full_name }}",
+    "{{ lead.display_name }}",
+    "{{ dossier.property_address }}",
+    "{{ dossier.county }}",
+    "{{ dossier.current_phase }}",
+    "{{ heir.full_name }}",
+    "{{ heir.relationship }}",
+    "{{ user.from_name }}",
+    "{{ user.from_email }}",
+    "{{ user.phone }}"
+  ];
+}
+
+function renderOutreachTemplateModal() {
+  const mount = document.getElementById("outreachTemplateModalMount");
+  if (!mount) return;
+  const modal = state.outreachTemplateModal;
+  if (!modal?.open) {
+    mount.innerHTML = "";
+    return;
+  }
+  const channel = modal.channel === "email" ? "email" : "sms";
+  const seed = outreachTemplateSeed(channel);
+  const count = seed.body.length;
+  const isEmail = channel === "email";
+  mount.innerHTML = `
+    <div class="outreach-modal-layer" role="presentation" data-outreach-modal-layer>
+      <section class="outreach-template-modal" role="dialog" aria-modal="true" aria-labelledby="outreachTemplateTitle">
+        <header class="outreach-modal-head">
+          <button class="outreach-modal-back" type="button" data-close-outreach-template aria-label="Back to templates">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18 9 12l6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Templates &amp; Snippets
+          </button>
+          <div class="outreach-modal-title-row">
+            <div>
+              <h2 id="outreachTemplateTitle">${escapeHtml(seed.title)}</h2>
+              <p class="copy">Build the template here, then hand it to Podio after approval. Nothing sends from this screen.</p>
+            </div>
+            <div class="template-channel-switch" role="group" aria-label="Template channel">
+              <button type="button" data-template-channel="sms" aria-pressed="${channel === "sms"}">SMS</button>
+              <button type="button" data-template-channel="email" aria-pressed="${isEmail}">Email</button>
+            </div>
+          </div>
+        </header>
+        <div class="outreach-modal-scroll">
+          <div class="template-form-grid">
+            <div class="template-field">
+              <label for="templateCampaign">Campaign</label>
+              <select id="templateCampaign">
+                <option>Heir warm follow-up</option>
+                <option>Probate document request</option>
+                <option>No-contact hold</option>
+              </select>
+              <span>Templates attach to a campaign before Podio sync.</span>
+            </div>
+            <div class="template-field">
+              <label for="templatePodioApp">Podio destination</label>
+              <select id="templatePodioApp">
+                <option>Podio - Outreach Templates</option>
+                <option>Podio - Probate Follow-Up</option>
+                <option>Resend fallback draft</option>
+              </select>
+              <span>Podio remains the required automation path; Resend is fallback only.</span>
+            </div>
+            <div class="template-field">
+              <label for="templateName">Name</label>
+              <input id="templateName" type="text" value="${escapeHtml(seed.name)}" autocomplete="off">
+              <span>Maps to Podio template name.</span>
+            </div>
+            <div class="template-field">
+              <label for="templateStatus">Status</label>
+              <select id="templateStatus">
+                <option>Draft</option>
+                <option>Ready</option>
+                <option>Approved</option>
+                <option>Sync to Podio</option>
+                <option>Archived</option>
+              </select>
+              <span>Approval gates live sync.</span>
+            </div>
+            ${isEmail ? `<div class="template-field full"><label for="templateSubject">Subject</label><input id="templateSubject" type="text" value="Question about {{ dossier.property_address }}" autocomplete="off"><span>Required for email templates and written to the Podio subject field.</span></div>` : ""}
+            <div class="template-field">
+              <label for="templateDelay">Delay after prior step</label>
+              <select id="templateDelay">
+                <option>1 day</option>
+                <option>3 days</option>
+                <option>5 days</option>
+                <option>7 days</option>
+              </select>
+              <span>Used when this template becomes part of a sequence.</span>
+            </div>
+            <div class="template-field">
+              <label for="templateOwner">Approval owner</label>
+              <select id="templateOwner">
+                <option>sam@heirright.com</option>
+                <option>joshua@heirright.com</option>
+                <option>Available for approval</option>
+              </select>
+              <span>Only approved owners can unlock Podio sync.</span>
+            </div>
+            <div class="template-field full">
+              <label for="templateStopRules">Stop rules</label>
+              <textarea id="templateStopRules" rows="2">Stop if no-contact, company owner, recent sale, source blocker, finished discovery missing, or manual operator hold is active.</textarea>
+              <span>Podio sequence rules and agent checks read this before preparation.</span>
+            </div>
+          </div>
+          <section class="template-body-card" aria-label="${escapeHtml(seed.title)} body">
+            <div class="template-body-head">
+              <div class="template-body-label">Body</div>
+              <div class="template-body-tools">
+                <button class="template-tag-link" type="button" data-template-tags>Learn about template tags</button>
+                <span>${escapeHtml(channel.toUpperCase())} body field</span>
+              </div>
+            </div>
+            <div class="template-body-editor">
+              <textarea id="templateBody" aria-label="Template body">${escapeHtml(seed.body)}</textarea>
+              <div class="template-editor-toolbar">
+                <div class="template-editor-icons">
+                  <button class="template-editor-button" type="button" data-template-attachment aria-label="Add attachment" title="Add attachment">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9.1 12.7 5.9-5.9a3.4 3.4 0 0 1 4.8 4.8l-7.4 7.4a5.2 5.2 0 0 1-7.4-7.4l7.4-7.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <button class="template-editor-button" type="button" data-template-insert-var aria-label="Insert variable" title="Insert variable">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 4v16M17 4v16M4 8h16M4 16h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+                <span class="template-counter" data-template-counter>${escapeHtml(count)} / ${escapeHtml(seed.limit)}</span>
+              </div>
+            </div>
+            ${modal.attachmentsOpen ? `
+              <div class="template-attachment-popover">
+                <div class="template-attachment-note">Images are limited to 5MB and other media is limited to 600KB. SMS attachments can only be sent to numbers in the US, CA, and AU.</div>
+                <button class="template-attachment-option" type="button" data-template-attach-existing>${nucleoIcon("open-book", 17)} Browse existing files</button>
+                <button class="template-attachment-option" type="button" data-template-attach-upload>${nucleoIcon("batch-tray", 17)} Upload from your computer</button>
+              </div>
+            ` : ""}
+          </section>
+          <section class="template-required-card" aria-label="Podio required fields">
+            <div class="template-required-row"><strong>Podio fields</strong><span>Campaign, channel, template name, body, delay, stop rules, status, approval owner, and sync target are required before approval.</span></div>
+            <div class="template-required-row"><strong>Variables</strong><span>${outreachTemplateVariables().map(escapeHtml).join(", ")}</span></div>
+            <div class="template-required-row"><strong>Workflow</strong><span>Drafts can be saved with missing fields. Approval is blocked until required fields and stop rules are complete. Sync to Podio runs after approval only.</span></div>
+          </section>
+        </div>
+        <footer class="outreach-modal-foot">
+          <span class="template-footnote">Prepared only. No Podio card, email, SMS, or Resend message is created here.</span>
+          <div class="template-modal-actions">
+            <button class="btn quick" type="button" data-close-outreach-template>Cancel</button>
+            <button class="btn quick" type="button" data-save-outreach-template>Save Draft</button>
+            <button class="btn primary solvys-liquid-glass" type="button" data-submit-outreach-template>Submit for Approval</button>
+          </div>
+        </footer>
+      </section>
+    </div>
+  `;
+
+  const body = mount.querySelector("#templateBody");
+  const counter = mount.querySelector("[data-template-counter]");
+  body?.addEventListener("input", () => {
+    if (counter) counter.textContent = `${body.value.length} / ${seed.limit}`;
+  });
+  mount.querySelector("[data-outreach-modal-layer]")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeOutreachTemplateModal();
+  });
+  mount.querySelectorAll("[data-close-outreach-template]").forEach((button) => button.addEventListener("click", closeOutreachTemplateModal));
+  mount.querySelectorAll("[data-template-channel]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.outreachTemplateModal.channel = button.dataset.templateChannel === "email" ? "email" : "sms";
+      state.outreachTemplateModal.attachmentsOpen = state.outreachTemplateModal.channel === "sms";
+      renderOutreachTemplateModal();
+    });
+  });
+  mount.querySelector("[data-template-attachment]")?.addEventListener("click", () => {
+    state.outreachTemplateModal.attachmentsOpen = !state.outreachTemplateModal.attachmentsOpen;
+    renderOutreachTemplateModal();
+  });
+  mount.querySelector("[data-template-insert-var]")?.addEventListener("click", () => {
+    addShellEvent("Template variable menu opened", "Discovery dossier fields are available as Podio template variables for outreach personalization.", "review", false);
+  });
+  mount.querySelector("[data-template-tags]")?.addEventListener("click", () => {
+    addShellEvent("Template tags reviewed", "Use contact, lead, dossier, heir, and user tags so Podio can personalize the approved template.", "review", false);
+  });
+  mount.querySelectorAll("[data-template-attach-existing], [data-template-attach-upload]").forEach((button) => {
+    button.addEventListener("click", () => addShellEvent("Template attachment staged", "Attachment selection is recorded for Podio preparation. SMS delivery remains limited to US, CA, and AU numbers.", "review", true));
+  });
+  mount.querySelector("[data-save-outreach-template]")?.addEventListener("click", () => {
+    const name = mount.querySelector("#templateName")?.value?.trim() || seed.name;
+    addShellEvent("Template draft saved", `${name} was saved as a ${channel.toUpperCase()} draft for Podio preparation. Approval is still required before sync.`, "review", true);
+    closeOutreachTemplateModal();
+  });
+  mount.querySelector("[data-submit-outreach-template]")?.addEventListener("click", () => {
+    const name = mount.querySelector("#templateName")?.value?.trim() || seed.name;
+    addShellEvent("Template submitted for approval", `${name} is available for sam@heirright.com or joshua@heirright.com approval before Podio sync.`, "review", true);
+    closeOutreachTemplateModal();
+  });
+}
+
 function renderDripsView() {
   const target = document.getElementById("dripsView");
   if (!target) return;
@@ -7666,34 +8263,46 @@ function renderDripsView() {
   const jobs = dripAutomationJobs();
   const settings = state.dripSettings;
   target.innerHTML = `
-    <div class="loop-grid">
-      <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Scheduled Work</p><h2 class="loop-title">Drips</h2></div><span class="pill review">Prep only</span></div>
+    <div class="outreach-layout">
+      <section class="loop-panel outreach-panel">
+        <div class="loop-panel-head">
+          <div><p class="eyebrow">Outreach</p><h2 class="loop-title">Campaign templates</h2></div>
+          <div class="outreach-actions">
+            <button class="btn quick solvys-liquid-glass" type="button" data-new-template="email">New Email</button>
+            <button class="btn primary solvys-liquid-glass" type="button" data-new-template="sms">New SMS</button>
+          </div>
+        </div>
+        <p class="copy">Create SMS and email templates, attach them to campaigns, and prepare the Podio sync path. Templates do not send until approved and synced.</p>
         <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}; ${escapeHtml(drip.nextRun)}</span><span>${escapeHtml(drip.guardrail)}</span></li>`).join("")}</ul>
       </section>
-      <section class="loop-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Scheduled Checks</p><h2 class="loop-title">Review automation route</h2></div><span class="pill blocked">No live send</span></div>
-        <p class="copy">These checks run as review preparation beside the dossier workflow. They prepare tasks and drafts for the operator; they do not contact heirs or create CRM records.</p>
-        <ul class="mini-list">
-          ${jobs.map((job) => `<li><strong>${escapeHtml(job.title)}</strong><span>${escapeHtml(job.schedule)}; ${escapeHtml(job.route)}; ${escapeHtml(job.status)}. ${escapeHtml(job.action)} ${escapeHtml(job.stop)}.</span></li>`).join("")}
-        </ul>
-        <button class="btn primary solvys-liquid-glass" type="button" data-drip-preview>Preview next check</button>
-      </section>
-      <section class="loop-panel full">
-        <div class="loop-panel-head"><div><p class="eyebrow">Preferences</p><h2 class="loop-title">Cadence controls</h2></div><span class="pill neutral">Local</span></div>
-        <div class="settings-grid">
-          <div class="setting-card"><label for="dripStartDelay"><strong>Start delay</strong><span>After dossier approval</span></label><select id="dripStartDelay" data-drip-setting="startDelay"><option value="same-day">Same day after review</option><option value="next-business">Next business morning</option></select></div>
-          <div class="setting-card"><label for="dripSmsCap"><strong>SMS cap</strong><span><span data-drip-sms-value>${escapeHtml(settings.smsCap)}</span> messages per heir, per week</span></label><input id="dripSmsCap" data-drip-setting="smsCap" type="range" min="1" max="4" value="${escapeHtml(settings.smsCap)}"></div>
-          <div class="setting-card"><label class="toggle-line"><strong>Require Finished Discovery before Auto Follow-Up</strong><input id="dripRequireCourtPacket" data-drip-setting="requireCourtPacket" type="checkbox" ${settings.requireCourtPacket ? "checked" : ""}></label><span>Auto follow-up waits until Discovery is finished and the dossier is review-ready.</span></div>
-          <div class="setting-card"><label class="toggle-line"><strong>Hold no-contact leads</strong><input id="dripHoldNoContact" data-drip-setting="holdNoContact" type="checkbox" ${settings.holdNoContact ? "checked" : ""}></label><span>No-contact, company-owned, source-blocked, and recent-sale leads stay out of drips.</span></div>
-          <div class="setting-card"><label for="dripOperatorNote"><strong>Operator note</strong><span>Saved with the scheduled-work prep controls</span></label><textarea id="dripOperatorNote" class="discovery-notes" data-drip-setting="operatorNote" rows="3" placeholder="Example: keep SMS paused until the court packet is reviewed.">${escapeHtml(settings.operatorNote)}</textarea></div>
-        </div>
-      </section>
+      <aside class="outreach-side" aria-label="Outreach review and cadence controls">
+        <section class="loop-panel">
+          <div class="loop-panel-head"><div><p class="eyebrow">Scheduled Checks</p><h2 class="loop-title">Review automation route</h2></div><span class="pill blocked">No live send</span></div>
+          <p class="copy">These checks run as review preparation beside the dossier workflow. They prepare tasks and drafts for the operator; they do not contact heirs or create CRM records.</p>
+          <ul class="mini-list">
+            ${jobs.map((job) => `<li><strong>${escapeHtml(job.title)}</strong><span>${escapeHtml(job.schedule)}; ${escapeHtml(job.route)}; ${escapeHtml(job.status)}. ${escapeHtml(job.action)} ${escapeHtml(job.stop)}.</span></li>`).join("")}
+          </ul>
+          <button class="btn primary solvys-liquid-glass" type="button" data-drip-preview>Preview next check</button>
+        </section>
+        <section class="loop-panel">
+          <div class="loop-panel-head"><div><p class="eyebrow">Preferences</p><h2 class="loop-title">Cadence controls</h2></div><span class="pill neutral">Local</span></div>
+          <div class="settings-grid">
+            <div class="setting-card"><label for="dripStartDelay"><strong>Start delay</strong><span>After dossier approval</span></label><select id="dripStartDelay" data-drip-setting="startDelay"><option value="same-day">Same day after review</option><option value="next-business">Next business morning</option></select></div>
+            <div class="setting-card"><label for="dripSmsCap"><strong>SMS cap</strong><span><span data-drip-sms-value>${escapeHtml(settings.smsCap)}</span> messages per heir, per week</span></label><input id="dripSmsCap" data-drip-setting="smsCap" type="range" min="1" max="4" value="${escapeHtml(settings.smsCap)}"></div>
+            <div class="setting-card"><label class="toggle-line"><strong>Require Finished Discovery before Auto Follow-Up</strong><input id="dripRequireCourtPacket" data-drip-setting="requireCourtPacket" type="checkbox" ${settings.requireCourtPacket ? "checked" : ""}></label><span>Auto follow-up waits until Discovery is finished and the dossier is review-ready.</span></div>
+            <div class="setting-card"><label class="toggle-line"><strong>Hold no-contact leads</strong><input id="dripHoldNoContact" data-drip-setting="holdNoContact" type="checkbox" ${settings.holdNoContact ? "checked" : ""}></label><span>No-contact, company-owned, source-blocked, and recent-sale leads stay out of outreach.</span></div>
+            <div class="setting-card"><label for="dripOperatorNote"><strong>Operator note</strong><span>Saved with the scheduled-work prep controls</span></label><textarea id="dripOperatorNote" class="discovery-notes" data-drip-setting="operatorNote" rows="3" placeholder="Example: keep SMS paused until the court packet is reviewed.">${escapeHtml(settings.operatorNote)}</textarea></div>
+          </div>
+        </section>
+      </aside>
     </div>
   `;
   const startDelay = target.querySelector("#dripStartDelay");
   if (startDelay) startDelay.value = settings.startDelay;
   enhanceSelectMenus(target);
+  target.querySelectorAll("[data-new-template]").forEach((button) => {
+    button.addEventListener("click", () => openOutreachTemplateModal(button.dataset.newTemplate === "email" ? "email" : "sms"));
+  });
   target.querySelectorAll("[data-drip-setting]").forEach((control) => {
     const update = () => {
       const key = control.dataset.dripSetting;
@@ -9462,14 +10071,14 @@ function wireEvents() {
           : button.dataset.shellNav === "dossiers"
           ? "Dossiers opens finished document packets without the report rail."
           : button.dataset.shellNav === "drips"
-          ? "Drips opens review-only email and SMS sequence preparation."
+          ? "Outreach opens review-only email and SMS template preparation."
           : button.dataset.shellNav === "queue"
           ? "Queue opens batch export prep for reviewed dossiers."
           : button.dataset.shellNav === "settings"
           ? "Lead-quality controls are open. Review-only guardrails remain active."
           : button.dataset.shellNav === "admin"
           ? "Admin opens workspace readiness, scheduled work prep, and review controls."
-          : "Dashboard opens task tracker, activity, and scheduled drips.",
+          : "Dashboard opens task tracker, activity, and scheduled outreach.",
         "review",
         false
       );
