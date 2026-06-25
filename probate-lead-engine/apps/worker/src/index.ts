@@ -11,6 +11,7 @@ import { fetchTaxHistoryFacts } from "./adapters/tax-history";
 import { PodioAdapter } from "./crm/podio-adapter";
 import { buildRawDossier } from "./dossier/build-raw-dossier";
 import { generateCompletedLeadReport } from "./documents/completed-lead-report";
+import { fetchSkipTraceFacts } from "./enrichment/skip-trace";
 import { generateInternalSummary } from "./documents/internal-summary";
 import { fact, intakeSubject, normalizeEstateSearchKey, nowIso, seedIdentity, slug } from "./lib";
 import { buildOutreachWorkflow } from "./outreach/build-outreach-workflow";
@@ -156,7 +157,7 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
   const runId = `run-${Date.now()}-${slug(identity)}`;
   const subject = intakeSubject(seed);
 
-  const [propertyFacts, officialRecordFacts, taxFacts, deedFacts, probateFacts, marriageDeathFacts, familyTreeFacts, governanceFacts, offerProfitFacts] = await Promise.all([
+  const [propertyFacts, officialRecordFacts, taxFacts, deedFacts, probateFacts, marriageDeathFacts, familyTreeFacts, governanceFacts, offerProfitFacts, skipTraceFacts] = await Promise.all([
     fetchPropertyFacts(runId, seed),
     fetchOfficialRecordFacts(runId, seed),
     fetchTaxHistoryFacts(runId, seed),
@@ -166,6 +167,7 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
     fetchFamilyTreeHypothesisFacts(runId, seed),
     fetchSourceGovernanceFacts(runId, seed),
     fetchOfferProfitInputFacts(runId, seed),
+    fetchSkipTraceFacts(runId, seed, options.env),
   ]);
   const facts = [
     ...intakeFacts(runId, seed),
@@ -179,6 +181,7 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
     ...familyTreeFacts,
     ...governanceFacts,
     ...offerProfitFacts,
+    ...skipTraceFacts,
   ];
   const propertyCountyFact = fact({
     runId,
@@ -212,6 +215,7 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
     summaryHtml: textOutput("internal-summary.html", dossier.documentPacket.formats.html, "text/html; charset=utf-8"),
     completedReportMarkdown: textOutput("completed-lead-report.md", dossier.completedLeadReport.formats.markdown),
     completedReportHtml: textOutput("completed-lead-report.html", dossier.completedLeadReport.formats.html, "text/html; charset=utf-8"),
+    familyTreeReportHtml: textOutput("family-tree-discovery-report.html", dossier.completedLeadReport.formats.familyTreeHtml ?? dossier.completedLeadReport.formats.html, "text/html; charset=utf-8"),
   };
   const outputs = {
     latestRun: outputFiles.latestRun.path,
@@ -221,6 +225,7 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
     summaryHtml: outputFiles.summaryHtml.path,
     completedReportMarkdown: outputFiles.completedReportMarkdown.path,
     completedReportHtml: outputFiles.completedReportHtml.path,
+    familyTreeReportHtml: outputFiles.familyTreeReportHtml.path,
   };
 
   return { runId, facts, dossier, outputs, outputFiles };

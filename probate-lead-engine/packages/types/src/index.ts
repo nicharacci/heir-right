@@ -610,7 +610,9 @@ export type ReviewFlag =
   | "COMPLIANCE_REVIEW_REQUIRED"
   | "CONTACT_REVIEW_REQUIRED"
   | "LIVE_OUTREACH_DISABLED"
-  | "NO_AUTO_SEND_GUARD";
+  | "NO_AUTO_SEND_GUARD"
+  | "MISSING_SKIPTRACE_CONFIG"
+  | "SKIPTRACE_PROVIDER_FAILED";
 
 export type FactType =
   | "source_status"
@@ -662,6 +664,8 @@ export type FactType =
   | "incarceration_status_signal"
   | "family_tree_status"
   | "family_tree_hypothesis"
+  | "enriched_contact_profile"
+  | "skip_trace_status"
   | "source_governance_catalog"
   | "offer_as_is_value"
   | "offer_heir_count"
@@ -692,7 +696,7 @@ export interface SourceFact {
   reviewFlags: ReviewFlag[];
 }
 
-export type ConfirmedSourceFactSource = "clerk_of_courts" | "property_appraiser" | "probate_court" | "tax_collector" | "official_records";
+export type ConfirmedSourceFactSource = "clerk_of_courts" | "property_appraiser" | "probate_court" | "tax_collector" | "official_records" | "skip_trace";
 
 export interface ConfirmedSourceFactInput {
   source: ConfirmedSourceFactSource;
@@ -1083,9 +1087,12 @@ export interface ResearchStepChecklistItem {
 export interface ContactPlaceholderEntry {
   role: string;
   name?: string;
+  age?: number;
+  likelyCurrentAddress?: string;
   phones: string[];
   emails: string[];
   addresses: string[];
+  addressHistory?: Array<{ address: string; county?: string; dates?: string; sourceUrl?: string }>;
   note: string;
   reviewFlags: ReviewFlag[];
 }
@@ -1121,6 +1128,7 @@ export interface CompletedLeadReport {
   formats: {
     markdown: string;
     html: string;
+    familyTreeHtml?: string;
   };
 }
 

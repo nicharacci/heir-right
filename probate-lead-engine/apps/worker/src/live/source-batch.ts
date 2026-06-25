@@ -612,6 +612,13 @@ export function persistFreshLeadBatchOutputs(result: FreshLeadBatchResult): Reco
       persistOutput(completedReportHtml);
       outputs.completedReportMarkdown = completedReportMarkdown.path;
       outputs.completedReportHtml = completedReportHtml.path;
+      const familyTreeReportHtml = textOutput(
+        "family-tree-discovery-report.html",
+        result.latestRun.dossier.completedLeadReport.formats.familyTreeHtml ?? result.latestRun.dossier.completedLeadReport.formats.html,
+        "text/html; charset=utf-8",
+      );
+      persistOutput(familyTreeReportHtml);
+      outputs.familyTreeReportHtml = familyTreeReportHtml.path;
     }
 
     if (result.latestRun.dossier.documentPacket) {

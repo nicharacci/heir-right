@@ -1,0 +1,51 @@
+# 2026-06-25 North Star Doc Discovery Progress
+
+## Superseding Goal
+
+Complete HeirRight document discovery so a live lead can render a family-tree packet at the same level of structure and completeness as the Constance / Deborah North Star examples: compact Google Docs-like PDF layout, linked property/source text, offer/profit table, back story, possible heirs, address histories, phone numbers, emails, and export-ready app artifacts for Podio / Google review.
+
+## Current Pass
+
+- Re-read the Constance screenshot target and the existing Annie Hawkins packet.
+- Confirmed the previous Annie output was not complete enough: it used generic relationship placeholders and no address-history / phone / email rows.
+- Added a skip-trace fact contract to `@ple/types` for provider status and enriched contact profiles.
+- Added an Apify-compatible skip-trace adapter that produces honest `MISSING_SKIPTRACE_CONFIG` / `SKIPTRACE_PROVIDER_FAILED` facts instead of silently pretending enrichment ran.
+- Wired skip-trace facts into `runDryPipeline`.
+- Updated the completed lead report contact mapping to consume enriched contact profiles when present.
+- Added `output/family-tree-discovery-report.html` as a North Star-shaped packet view.
+- Generated local Annie Hawkins proof files:
+  - `apps/worker/output/family-tree-discovery-report.html`
+  - `apps/worker/output/family-tree-discovery-report.pdf`
+  - `apps/worker/output/family-tree-discovery-report-page1.png`
+
+## Verification
+
+- `pnpm --filter @ple/types build` passed.
+- `pnpm --filter @ple/worker build` passed.
+- `pnpm --filter @ple/worker run:dry -- --estate="Estate of Annie Hawkins" --owner="ANNIE HAWKINS EST OF" --address="131 NW 67 ST, Miami, FL 33150" --folio="01-3113-008-0130" --county="miami-dade"` passed.
+- Browser-rendered packet proof confirmed:
+  - title: `ESTATE OF ANNIE HAWKINS`
+  - offer/profit table present
+  - TOC links present
+  - 8 possible-heir rows present
+  - 13 document links present
+
+## Blocker
+
+No live skip-trace provider credential is present in the current environment. The packet therefore renders the correct format and an honest incomplete state, but it is not yet a completed Constance-level contact packet.
+
+To complete the contact layer, configure one approved provider:
+
+- `SKIPTRACE_PROVIDER=apify`
+- `APIFY_TOKEN=...`
+- optional `APIFY_SKIPTRACE_ACTOR=apivault_labs/skip-trace-people-finder`
+
+The Apify actor documentation shows it can return current/past addresses, phone numbers, relatives, aliases, and profile links for lawful B2B use.
+
+## Next Pass
+
+1. Validate the Apify provider payload against a real approved token.
+2. Normalize returned people into heir rows with current address, address history, phone numbers, and emails.
+3. Add a hard completion gate: packets with no enriched contacts cannot be marked completed.
+4. Hook `family-tree-discovery-report.html` into the Dossier rail embedded PDF/reader flow.
+5. Deploy and verify on `https://heirright-landing-demo.vercel.app/`.

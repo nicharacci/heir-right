@@ -43,6 +43,10 @@ function claimText(value: unknown, fallback = "Needs review"): string {
   return String(value);
 }
 
+function displayAddress(value: string | null | undefined): string {
+  return (value ?? "Needs review").replace(/,?\s*FL\s+(\d{5})-0000\b/gi, ", FL $1");
+}
+
 function formatMoney(field: OfferProfitField): string {
   if (field.value === null) return field.note ?? "Needs review";
   return `${field.currency} ${field.value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -57,6 +61,14 @@ function formatDate(value: string | null | undefined): string {
   if (!value) return "Needs review";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-US");
+}
+
+function formatShortDate(value: string | null | undefined): string {
+  if (!value) return "Needs review";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "2-digit" });
 }
 
 function humanStatus(value: string): string {
@@ -223,6 +235,44 @@ function buildResearchChecklist(dossier: RawDossier): ResearchStepChecklistItem[
 }
 
 function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholderEntry[] {
+  const enriched = dossier.audit.facts
+    .filter((item) => item.factType === "enriched_contact_profile" && item.value && typeof item.value === "object")
+    .map((item) => item.value as Record<string, unknown>);
+
+  if (enriched.length) {
+    return enriched.map((profile) => {
+      const addressHistory = Array.isArray(profile.addressHistory)
+        ? profile.addressHistory.flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const record = item as Record<string, unknown>;
+          const address = claimText(record.address, "");
+          if (!address) return [];
+          return [{
+            address: displayAddress(address),
+            county: claimText(record.county, ""),
+            dates: claimText(record.dates, ""),
+            sourceUrl: claimText(record.sourceUrl, ""),
+          }];
+        })
+        : [];
+      const phones = Array.isArray(profile.phones) ? profile.phones.map((item) => claimText(item, "")).filter(Boolean) : [];
+      const emails = Array.isArray(profile.emails) ? profile.emails.map((item) => claimText(item, "")).filter(Boolean) : [];
+      const likelyCurrentAddress = displayAddress(claimText(profile.likelyCurrentAddress, addressHistory[0]?.address ?? ""));
+      return {
+        role: claimText(profile.role, "heir"),
+        name: claimText(profile.name, undefined as unknown as string),
+        age: typeof profile.age === "number" ? profile.age : undefined,
+        likelyCurrentAddress,
+        phones,
+        emails,
+        addresses: addressHistory.length ? addressHistory.map((item) => item.address) : likelyCurrentAddress ? [likelyCurrentAddress] : [],
+        addressHistory,
+        note: profile.profileUrl ? `Skip-trace profile: ${profile.profileUrl}` : "Skip-trace profile requires operator review before outreach.",
+        reviewFlags: ["CONTACT_REVIEW_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
+      };
+    });
+  }
+
   const nodes = dossier.familyTree.hypothesis.value?.nodes ?? [];
   if (!nodes.length) {
     return [{
@@ -281,8 +331,11 @@ function buildMissingData(dossier: RawDossier, offerMath: CompletedLeadReport["o
 }
 
 function buildBackstory(dossier: RawDossier): string {
+  const enrichedContacts = dossier.audit.facts.filter((item) => item.factType === "enriched_contact_profile").length;
   const parts = [
-    dossier.narrative,
+    enrichedContacts
+      ? `${dossier.summary.displayName} was prepared as a family-tree discovery packet from the current public-record lead run. The packet includes property identity, deed history, tax review, probate review, and ${enrichedContacts} enriched contact profile${enrichedContacts === 1 ? "" : "s"} for operator review.`
+      : dossier.narrative,
     dossier.deedHistory.adversePossessionSignal.value === false
       ? "No adverse possession signal is currently recorded."
       : "Adverse possession status requires operator review.",
@@ -393,10 +446,121 @@ function renderContactMatrix(contacts: ContactPlaceholderEntry[]): string[] {
       const name = contact.name ?? `Potential ${humanStatus(contact.role)} ${index + 1}`;
       const phones = contact.phones.length ? contact.phones.join(", ") : "Needs approved enrichment";
       const emails = contact.emails.length ? contact.emails.join(", ") : "Needs approved enrichment";
-      const addresses = contact.addresses.length ? contact.addresses.join("; ") : "Needs approved enrichment";
+      const addresses = contact.addresses.length ? contact.addresses.map(displayAddress).join("; ") : "Needs approved enrichment";
       return `| ${name} | ${humanStatus(contact.role)} | ${phones} | ${emails} | ${addresses} | ${contact.note} |`;
     }),
   ];
+}
+
+function renderFamilyTreePacketHtml(input: {
+  dossier: RawDossier;
+  contacts: ContactPlaceholderEntry[];
+  offerMath: CompletedLeadReport["offerMath"];
+  backstory: string;
+}): string {
+  const { dossier, contacts, offerMath, backstory } = input;
+  const title = (dossier.summary.estateName ?? dossier.property.ownerName.value ?? dossier.summary.displayName).toUpperCase();
+  const propertyAddress = displayAddress(dossier.property.address.value);
+  const ownerName = claimText(dossier.property.ownerName.value ?? dossier.summary.estateName, "Needs review");
+  const moneyValue = (field: CompletedLeadReport["offerMath"]["asIsValue"]) => field.value === null ? "" : formatMoney(field);
+  const offerRows: Array<[string, string, string, "normal" | "blue" | "yellow"]> = [
+    ["As-Is Value", "", moneyValue(offerMath.asIsValue), "normal"],
+    ["Taxes Due", "", moneyValue(offerMath.taxesDue), "normal"],
+    ["Liens", "", moneyValue(offerMath.liens), "normal"],
+    ["Mortgages", "", moneyValue(offerMath.mortgages), "normal"],
+    ["Selling Costs", "", moneyValue(offerMath.sellingCosts), "normal"],
+    ["Probate Costs", "", moneyValue(offerMath.probateCosts), "normal"],
+    ["Partition Costs", "", moneyValue(offerMath.partitionCosts), "normal"],
+    ["Post Equity Value", "", moneyValue(offerMath.postEquityValue), "normal"],
+    ["Amount per heir $$", "", moneyValue(offerMath.equityPerHeir), "normal"],
+    ["# of heirs on board", "", offerMath.heirCount.value === null ? "Needs review" : String(offerMath.heirCount.value), "normal"],
+    ["Profit", "", moneyValue(offerMath.profit), "normal"],
+    ["Offer per heir", offerMath.offerAmount.value === null ? "" : formatPercent(offerMath.buyPercentage), moneyValue(offerMath.offerAmount), "normal"],
+    ["", "", "", "normal"],
+    ["", "", "", "normal"],
+    ["", "", "", "normal"],
+    ["Min Profit", "", moneyValue(offerMath.minimumNetProfit), "blue"],
+    ["$100,000 Net", "", "", "yellow"],
+    ["", "", "", "yellow"],
+    ["", "", "", "yellow"],
+  ];
+  const sourceLink = input.dossier.completedLeadReport?.sourceLinks.find((link) => link.url)?.url ?? "#";
+  const contactBlocks = contacts.map((contact, index) => {
+    const name = escapeHtml(contact.name ?? `Possible heir ${index + 1}`);
+    const age = contact.age ? `<p>(${contact.age})</p>` : "";
+    const history = contact.addressHistory?.length
+      ? contact.addressHistory.map((item) => `<p><a href="${escapeHtml(item.sourceUrl || "#")}">${escapeHtml(displayAddress(item.address))}</a> ${item.county ? `(${escapeHtml(item.county)})` : ""}<br><span>${escapeHtml(item.dates || "Dates need review")}</span></p>`).join("")
+      : `<p><a href="#">${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "Address needs approved enrichment"))}</a></p>`;
+    const phones = contact.phones.length ? contact.phones.map((phone) => `<p>${escapeHtml(phone)}</p>`).join("") : "<p>Needs approved enrichment</p>";
+    const emails = contact.emails.length ? contact.emails.map((email) => `<p><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>`).join("") : "<p>Needs approved enrichment</p>";
+    return `<section class="person"><h3>${index + 1}. ${name}</h3>${age}<p>Likely Current Address: ${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "Needs approved enrichment"))}</p><h4>Address (County/Parish/Borough) History:</h4>${history}<h4>Phone number:</h4>${phones}<h4>Email Address:</h4>${emails}</section>`;
+  }).join("");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(title)} Family tree</title>
+<style>
+  @page { size: letter; margin: 0.75in; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #303030; color: #000; font-family: Arial, Helvetica, sans-serif; }
+  main { width: 8.5in; min-height: 11in; margin: 24px auto; background: #fff; padding: 0.82in 0.85in; font-size: 15px; line-height: 1.45; }
+  h1 { text-align: center; font-size: 30px; margin: 0 0 18px; font-weight: 500; letter-spacing: 0; }
+  .subtitle { text-align: center; font-size: 30px; margin: 0 0 18px; font-weight: 700; }
+  .date { text-align: center; margin-bottom: 56px; }
+  .property { text-align: left; margin: 0 auto 8px; width: 470px; }
+  a { color: #06e; text-decoration: underline; }
+  table.offer { border-collapse: collapse; width: 470px; margin: 0 auto 24px; font-size: 14px; }
+  .offer th, .offer td { border: 1px solid #111; height: 21px; padding: 1px 8px; text-align: center; }
+  .offer .bar th { background: #43abd6; font-weight: 700; }
+  .offer .blue td:first-child { background: #13a3d8; font-weight: 700; }
+  .offer .yellow td:first-child { background: #ffc20a; }
+  .summary { width: 470px; margin: 0 auto 28px; }
+  .summary p { margin: 4px 0; }
+  .story { margin-top: 10px; }
+  .person { page-break-inside: avoid; margin-top: 28px; }
+  .person h3 { margin: 0 0 4px; font-size: 16px; }
+  .person h4 { margin: 24px 0 4px; font-size: 14px; }
+  .person p { margin: 2px 0; }
+  .toc { page-break-after: always; margin-top: 60px; }
+  .toc h2 { font-size: 20px; margin-bottom: 16px; }
+  .toc ol { line-height: 1.8; }
+  @media print { body { background: #fff; } main { margin: 0; box-shadow: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>${escapeHtml(title)}</h1>
+  <p class="subtitle">Family tree</p>
+  <p class="date">Date added: ${escapeHtml(formatShortDate(dossier.generatedAt))}</p>
+  <p class="property">Property Address: <a href="${escapeHtml(sourceLink)}">${escapeHtml(propertyAddress)}</a></p>
+  <table class="offer">
+    <tr class="bar"><th colspan="3">Offer/Profit</th></tr>
+    <tr><th>Description</th><th>Percentage</th><th>Total</th></tr>
+    ${offerRows.map(([label, percentage, total, tone]) => `<tr class="${tone}"><td><strong>${escapeHtml(label)}</strong></td><td>${escapeHtml(percentage)}</td><td>${escapeHtml(total)}</td></tr>`).join("")}
+  </table>
+  <section class="summary">
+    <p><strong>${escapeHtml(ownerName)}</strong></p>
+    <p>DOB: ${escapeHtml(claimText(dossier.marriageDeathIndicators.dateOfBirth.value, "Needs review"))}</p>
+    <p>DOD: ${escapeHtml(claimText(dossier.marriageDeathIndicators.dateOfDeath.value, "Needs review"))}</p>
+    <p>Obituary ${dossier.marriageDeathIndicators.obituaryLink.value ? `<a href="${escapeHtml(dossier.marriageDeathIndicators.obituaryLink.value)}">Found</a>` : `not found - <a href="https://www.intelius.com/">Intelius</a>`}</p>
+  </section>
+  <section class="toc">
+    <h2>Table of Contents</h2>
+    <ol>
+      <li><a href="#back-story">Back Story</a></li>
+      <li><a href="#possible-heirs">Possible heirs</a></li>
+      <li><a href="#source-review">Source review</a></li>
+    </ol>
+  </section>
+  <section id="back-story" class="story"><p><strong>Back Story:</strong> ${escapeHtml(backstory).replace(/\n\n/g, "</p><p>")}</p></section>
+  <section id="possible-heirs"><h2>Possible heirs:</h2>${contactBlocks}</section>
+  <section id="source-review"><h2>Source review</h2><p>This packet is generated from public-record and configured skip-trace facts. Missing contact rows remain blocked until provider credentials or approved manual source capture are available.</p></section>
+</main>
+</body>
+</html>`;
 }
 
 function renderSourceLinks(sourceLinks: CompletedLeadReport["sourceLinks"]): string[] {
@@ -722,6 +886,7 @@ ${renderedMarkdown}
 </main>
 </body>
 </html>`;
+  const familyTreeHtml = renderFamilyTreePacketHtml({ dossier, contacts: contactPlaceholders, offerMath, backstory });
 
   return {
     id: `report-${slug(dossier.summary.displayName)}-${Date.now()}`,
@@ -749,6 +914,6 @@ ${renderedMarkdown}
     ]),
     leadQualityProfile,
     offerMath,
-    formats: { markdown, html },
+    formats: { markdown, html, familyTreeHtml },
   };
 }

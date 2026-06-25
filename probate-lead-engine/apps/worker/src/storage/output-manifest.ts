@@ -6,6 +6,7 @@ export type PipelineOutputName =
   | "internal-summary.html"
   | "completed-lead-report.md"
   | "completed-lead-report.html"
+  | "family-tree-discovery-report.html"
   | "daily-run.json"
   | "qualification-review.json"
   | "qualification-review.md"
