@@ -23,6 +23,16 @@
   - Queue shows exactly two connection rows and no old destination-task copy.
   - Dashboard shows live lead/run counts and recent leads without visible `-0000` ZIP suffixes.
 
+## Live Proof
+
+- Deployment: `dpl_9ZNzXCTQSQeN73c62Tuwtvic6GHJ`
+- Alias: `https://heirright-landing-demo.vercel.app`
+- Browser proof on production:
+  - Report rail and Dossier rail stayed open after over-drag attempts.
+  - Dossier Flow showed document-prep steps and `Quality & Score` showed source scoring.
+  - Queue rendered exactly `Podio` and `Google Workspace` connection rows.
+  - Dashboard rendered live lead counts without visible `-0000` ZIP suffixes.
+
 ## Evidence
 
 - `docs/run-point-daily/screenshots/2026-06-25-rail-dossier-queue-local.png`
@@ -30,3 +40,4 @@
 - `docs/run-point-daily/screenshots/2026-06-25-dossier-rail-flow-local.png`
 - `docs/run-point-daily/screenshots/2026-06-25-dossier-rail-quality-local.png`
 - `docs/run-point-daily/screenshots/2026-06-25-queue-connections-local.png`
+- `docs/run-point-daily/screenshots/2026-06-25-live-smoke.png`
