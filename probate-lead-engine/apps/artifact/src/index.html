@@ -4811,7 +4811,10 @@
 
     .template-attachment-popover {
       width: min(430px, calc(100% - 28px));
-      margin: -2px 0 14px 14px;
+      position: absolute;
+      left: 18px;
+      bottom: 180px;
+      z-index: 3;
       overflow: hidden;
       border-radius: 16px;
       border: 1px solid rgba(235,235,245,.14);
@@ -4822,7 +4825,7 @@
     }
 
     .template-attachment-note {
-      padding: 14px 16px;
+      padding: 11px 14px;
       color: #e7f2ff;
       background: rgba(74,144,245,.16);
       line-height: 1.42;
@@ -8188,14 +8191,14 @@ function renderOutreachTemplateModal() {
                 </div>
                 <span class="template-counter" data-template-counter>${escapeHtml(count)} / ${escapeHtml(seed.limit)}</span>
               </div>
+              ${modal.attachmentsOpen ? `
+                <div class="template-attachment-popover">
+                  <div class="template-attachment-note">Images are limited to 5MB and other media is limited to 600KB. SMS attachments can only be sent to numbers in the US, CA, and AU.</div>
+                  <button class="template-attachment-option" type="button" data-template-attach-existing>${nucleoIcon("open-book", 17)} Browse existing files</button>
+                  <button class="template-attachment-option" type="button" data-template-attach-upload>${nucleoIcon("batch-tray", 17)} Upload from your computer</button>
+                </div>
+              ` : ""}
             </div>
-            ${modal.attachmentsOpen ? `
-              <div class="template-attachment-popover">
-                <div class="template-attachment-note">Images are limited to 5MB and other media is limited to 600KB. SMS attachments can only be sent to numbers in the US, CA, and AU.</div>
-                <button class="template-attachment-option" type="button" data-template-attach-existing>${nucleoIcon("open-book", 17)} Browse existing files</button>
-                <button class="template-attachment-option" type="button" data-template-attach-upload>${nucleoIcon("batch-tray", 17)} Upload from your computer</button>
-              </div>
-            ` : ""}
           </section>
           <section class="template-required-card" aria-label="Podio required fields">
             <div class="template-required-row"><strong>Podio fields</strong><span>Campaign, channel, template name, body, delay, stop rules, status, approval owner, and sync target are required before approval.</span></div>
