@@ -527,6 +527,42 @@ Required corrections before complete:
     - Chrome proof on `https://heirright-landing-demo.vercel.app` confirmed Dossiers opens the right rail as `data-mode="dossier"` at 560px, Dossier labels/close/resize copy are mode-specific, the report tab segment is hidden, 10 document cards and one embedded PDF reader render, no inline reader remains in the main view, row switching keeps the Dossier rail context synced, Drips/Admin/export copy stays plain, forbidden implementation phrases are absent, and no console/page errors or failed responses occurred.
 - The new PDFs are visual anchors; their pages are image-based and still need human/client review before any field is treated as confirmed source truth.
 
+## /solvys-heir-audit North Star Linked Dossier Package Follow-up
+
+Source checked: Deborah Cheatham complex family-tree PDF, Constance E. White simpler family-tree PDF, current completed-report renderer, live fresh-batch worker output, generated PDFs, and local Dossier rail proof.
+
+Backward: This pass closes the sample-document gap the client called out: the live dossier now has a document-package table of contents, same-document PDF jumps, separate section PDFs, and a linked package index. It keeps the Annie Hawkins file as the selected completed-goal dossier while still marking source gaps instead of inventing DOB, DOD, obituary, probate, tax, phone, email, or heir-contact facts.
+
+UX pass: aligned with gaps. The Dossier rail Completed Lead Report now exposes a usable TOC inside the embedded report, with anchors for property, lead snapshot, offer/profit, back story, source notes, source links, missing data, Podio fields, Google Sheets row, and next action.
+
+Forward: Use this package as the client-facing proof artifact, then continue enrichment only through approved public-record, paid-source, or operator-reviewed inputs.
+
+Alignment: aligned with gaps
+
+Required corrections before complete:
+- Live Podio writes, Google Docs creation, Google Sheets insertion, email sends, and SMS sends remain locked until approved access, approval, and confirmation readback exist.
+- Annie Hawkins is structurally comprehensive and source-linked, but still review-gated because public records did not confirm DOB, DOD, obituary, probate case, tax amount, payer identity, or approved contact data.
+
+- Linked dossier package proof:
+  - Added a generated `Document Package Table Of Contents` to the completed lead report source.
+  - Hydrated TOC links as same-document PDF anchors and preserved public-record source links as external links.
+  - Added heading IDs for all package sections during report generation.
+  - Hid Streamdown table action controls in report/PDF output so generated PDFs keep clean document tables without copy/download/fullscreen UI chrome.
+  - Refreshed Annie Hawkins from the live worker path with 48 external records, 6 accepted seeds, 0 rejected candidates, and the same honest review blockers.
+  - Generated the single complete linked PDF: `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-family-tree-discovery-dossier.pdf`.
+  - Generated the split package index PDF: `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-document-package-index.pdf`.
+  - Generated 16 separate section PDFs under `docs/completed-dossiers/annie-hawkins/sections/`.
+  - PDF object proof:
+    - Single PDF: 11 pages, 29 link annotations, 10 external source URI links, and 19 internal TOC destination annotations.
+    - Package index PDF: 1 page, 18 URI annotations linking the single PDF, in-app HTML report, and all 16 separate section PDFs.
+  - Local proof:
+    - `pnpm build` passed from `probate-lead-engine`.
+    - `pnpm --filter @ple/worker test` passed.
+    - `pnpm --filter @ple/artifact build` passed.
+    - `git diff --check` passed.
+    - Browser proof on `http://localhost:4173` confirmed Dossiers opens the right Dossier rail, the Completed Lead Report is selected, the embedded report contains the TOC, property/offer/source/missing anchors, the Miami-Dade public-record source URL, no table-toolbar controls, no script tags, no page errors, and no failed requests.
+    - Screenshot proof: `docs/completed-dossiers/annie-hawkins/2026-06-24-annie-hawkins-dossier-rail-local.png`.
+
 - Export / Queue handoff hardening follow-up:
   - Replaced the old `Your Report Is Ready` / `exported successfully` activity language with `Handoff Package Prepared` and explicit review-only copy for Podio, Google Docs, Google Sheets, email, and SMS.
   - Expanded Queue into a batch handoff prep surface with readiness, Dossier document count, source-backed gaps, operator task count, live handoff blockers, Podio fields/tasks, Google Docs body, and Google Sheets row.

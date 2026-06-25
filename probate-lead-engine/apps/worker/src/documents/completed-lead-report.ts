@@ -407,16 +407,66 @@ function renderSourceLinks(sourceLinks: CompletedLeadReport["sourceLinks"]): str
   });
 }
 
-function hydrateRenderedLinks(renderedMarkdown: string, sourceLinks: CompletedLeadReport["sourceLinks"]): string {
+type PackageSection = {
+  id: string;
+  title: string;
+  copy: string;
+};
+
+const packageSections: PackageSection[] = [
+  { id: "property-address", title: "Property Address", copy: "Live public-record property identity." },
+  { id: "lead-snapshot", title: "Lead Snapshot", copy: "Estate, owner, folio, status, and next action." },
+  { id: "offer-profit", title: "Offer / Profit", copy: "North Star underwriting table and missing inputs." },
+  { id: "back-story", title: "Back Story", copy: "Plain-language public-record narrative." },
+  { id: "property-deed-notes", title: "Property And Deed Notes", copy: "Owner, folio, deed, sale, and title-review notes." },
+  { id: "tax-notes", title: "Tax Notes", copy: "Tax status, amount, receipt, payer, and reassessment review." },
+  { id: "probate-court-notes", title: "Probate And Court Notes", copy: "Court case, affidavit, and document-request status." },
+  { id: "family-tree-contact-matrix", title: "Family Tree And Contact Matrix", copy: "Heir/contact rows with approval gates." },
+  { id: "source-notes-review", title: "Source Notes Review", copy: "Source coverage and open review steps." },
+  { id: "source-links", title: "Source Links", copy: "Clickable public-record source links." },
+  { id: "missing-data", title: "Missing Data", copy: "Remaining facts needed before external use." },
+  { id: "lead-quality-profile", title: "Lead Quality Profile", copy: "Lead bucket, signals, and source-quality status." },
+  { id: "podio-google-handoff-prep", title: "Podio And Google Handoff Prep", copy: "CRM fields, Google Docs body, and Google Sheets row." },
+  { id: "outreach-drafts-follow-up", title: "Outreach Drafts And Follow-Up", copy: "Manual call, text, email, and approval blockers." },
+  { id: "review-flags", title: "Review Flags", copy: "Operator review flags that block live use." },
+  { id: "next-action", title: "Next Action", copy: "The next operator step." },
+];
+
+function renderPackageContents(sections: PackageSection[]): string[] {
+  return [
+    "## Document Package Table Of Contents",
+    "Use this as the dossier navigation layer. In the PDF export, each entry jumps to the matching part of the same document; in the split package, the same section names are exported as individual PDFs.",
+    "",
+    "| Section | What it opens |",
+    "| --- | --- |",
+    ...sections.map((section) => `| [${section.title}](#${section.id}) | ${section.copy} |`),
+  ];
+}
+
+function hydrateRenderedLinks(
+  renderedMarkdown: string,
+  sourceLinks: CompletedLeadReport["sourceLinks"],
+  sections: PackageSection[],
+): string {
+  const linkTargets = [
+    ...sections.map((section) => ({ href: `#${section.id}`, internal: true })),
+    ...sourceLinks.map((link) => ({ href: link.url, internal: false })),
+  ];
   let linkIndex = 0;
-  return renderedMarkdown.replace(
+  const withLinks = renderedMarkdown.replace(
     /<button([^>]*data-streamdown="link"[^>]*)>(.*?)<\/button>/g,
     (_match, attrs: string, content: string) => {
-      const link = sourceLinks[linkIndex++];
-      if (!link?.url) return `<span${attrs}>${content}</span>`;
-      return `<a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer noopener" data-streamdown="link">${content}</a>`;
+      const link = linkTargets[linkIndex++];
+      if (!link?.href) return `<span${attrs}>${content}</span>`;
+      const externalAttrs = link.internal ? "" : ' target="_blank" rel="noreferrer noopener"';
+      return `<a href="${escapeHtml(link.href)}"${externalAttrs} data-streamdown="link">${content}</a>`;
     },
   );
+
+  return sections.reduce((html, section) => {
+    const headingPattern = new RegExp(`(<h2\\b(?![^>]*\\bid=)([^>]*)>)${section.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(</h2>)`, "u");
+    return html.replace(headingPattern, `<h2 id="${section.id}"$2>${section.title}$3`);
+  }, withLinks);
 }
 
 function renderPodioGoogleSection(dossier: RawDossier, report: {
@@ -515,6 +565,8 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
     `Outreach readiness: ${humanStatus(reviewGate.outreachReadiness)}`,
     `External use blocked: ${reviewGate.externalUseBlocked ? "yes" : "no"}`,
     "",
+    ...renderPackageContents(packageSections),
+    "",
     "## Property Address",
     claimText(dossier.property.address.value),
     "",
@@ -588,7 +640,7 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
   ];
 
   const markdown = lines.join("\n");
-  const renderedMarkdown = hydrateRenderedLinks(await renderMarkdownWithStreamdown(markdown), sourceLinks);
+  const renderedMarkdown = hydrateRenderedLinks(await renderMarkdownWithStreamdown(markdown), sourceLinks, packageSections);
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -648,6 +700,7 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
   .streamdown-doc :where(ul, ol) { padding-left: 22px; }
   .streamdown-doc li { margin-bottom: 6px; }
   .streamdown-doc table { width: 100%; border-collapse: collapse; }
+  .streamdown-doc [data-streamdown="table-wrapper"] > .flex { display: none !important; }
   .streamdown-doc th, .streamdown-doc td {
     border: 1px solid var(--doc-line);
     padding: 8px 10px;

@@ -2,13 +2,35 @@
 
 > **REVIEW DRAFT** - Human review required. External outreach, offers, compliance claims, Podio writes, Google Docs creation, Google Sheets insertion, email, and SMS are blocked until approval and readback proof are complete.
 
-Date added: 6/24/2026
-Report generated: 6/24/2026
+Date added: 6/25/2026
+Report generated: 6/25/2026
 Report status: Internal Draft
 Underwriting status: Draft
 Document readiness: Draft Only
 Outreach readiness: Pending Review
 External use blocked: yes
+
+## Document Package Table Of Contents
+Use this as the dossier navigation layer. In the PDF export, each entry jumps to the matching part of the same document; in the split package, the same section names are exported as individual PDFs.
+
+| Section | What it opens |
+| --- | --- |
+| [Property Address](#property-address) | Live public-record property identity. |
+| [Lead Snapshot](#lead-snapshot) | Estate, owner, folio, status, and next action. |
+| [Offer / Profit](#offer-profit) | North Star underwriting table and missing inputs. |
+| [Back Story](#back-story) | Plain-language public-record narrative. |
+| [Property And Deed Notes](#property-deed-notes) | Owner, folio, deed, sale, and title-review notes. |
+| [Tax Notes](#tax-notes) | Tax status, amount, receipt, payer, and reassessment review. |
+| [Probate And Court Notes](#probate-court-notes) | Court case, affidavit, and document-request status. |
+| [Family Tree And Contact Matrix](#family-tree-contact-matrix) | Heir/contact rows with approval gates. |
+| [Source Notes Review](#source-notes-review) | Source coverage and open review steps. |
+| [Source Links](#source-links) | Clickable public-record source links. |
+| [Missing Data](#missing-data) | Remaining facts needed before external use. |
+| [Lead Quality Profile](#lead-quality-profile) | Lead bucket, signals, and source-quality status. |
+| [Podio And Google Handoff Prep](#podio-google-handoff-prep) | CRM fields, Google Docs body, and Google Sheets row. |
+| [Outreach Drafts And Follow-Up](#outreach-drafts-follow-up) | Manual call, text, email, and approval blockers. |
+| [Review Flags](#review-flags) | Operator review flags that block live use. |
+| [Next Action](#next-action) | The next operator step. |
 
 ## Property Address
 131 NW 67 ST, Miami, FL 33150-0000

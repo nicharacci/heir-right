@@ -6578,6 +6578,25 @@ function sourceLinkItems(report) {
     : "<li>No source URLs are attached to this report yet.</li>";
 }
 
+function packageContentsItems() {
+  const sections = [
+    ["property-address", "Property Address", "Recorded address and parcel identity."],
+    ["lead-snapshot", "Lead Snapshot", "Estate, owner, folio, status, and next action."],
+    ["offer-profit", "Offer / Profit Table", "North Star underwriting table and missing inputs."],
+    ["back-story", "Back Story", "Plain-language public-record narrative."],
+    ["property-deed", "Property / Deed", "Owner, folio, deed, sale, and title-review notes."],
+    ["taxes-probate", "Taxes / Probate", "Tax, court, probate, and document-request status."],
+    ["family-tree", "Family Tree And Contact Matrix", "Heir/contact rows with approval gates."],
+    ["source-notes", "Source Notes Review", "Source coverage and open review steps."],
+    ["source-links", "Source Links", "Clickable public-record source links."],
+    ["missing-data", "Missing Data", "Remaining facts needed before external use."],
+    ["podio-fields", "Podio Lead Fields", "CRM handoff fields staged for review."],
+    ["google-sheets", "Google Sheets Row", "One-row spreadsheet export shape."],
+    ["next-action", "Next Action", "The next operator step."]
+  ];
+  return sections.map(([id, title, copy]) => `<li><a href="#${escapeHtml(id)}">${escapeHtml(title)}</a><span>${escapeHtml(copy)}</span></li>`).join("");
+}
+
 function contactMatrixRows(report, dossier) {
   const contacts = report?.contactPlaceholders ?? dossier?.familyTree?.hypothesis?.value?.nodes ?? [];
   if (!contacts.length) {
@@ -6637,6 +6656,13 @@ function completedLeadReportHtml(row, dossier) {
       <div class="fact"><span>Report status</span><strong>${escapeHtml(displayStatus(reviewGate.reportStatus, "Review"))}</strong></div>
       <div class="fact"><span>External use</span><strong>${escapeHtml(reviewGate.externalUseBlocked ? "Blocked" : "Ready for approval")}</strong></div>
     </div>
+    <div class="section source-links" id="document-package-contents">
+      <h2>Document Package Table Of Contents</h2>
+      <p class="muted">Use these links to jump to each part of the dossier package.</p>
+      <ul>${packageContentsItems()}</ul>
+    </div>
+    <div id="property-address"></div>
+    <div id="lead-snapshot"></div>
     <table>
       <tr><th>Owner / estate</th><td>${escapeHtml(row?.owner ?? claimValue(property.ownerName, "Needs review"))}</td></tr>
       <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
@@ -6647,31 +6673,31 @@ function completedLeadReportHtml(row, dossier) {
       <tr><th>Obituary status</th><td>Needs review. Preserve the link or explicit "not found" note before outreach.</td></tr>
     </table>
 
-    <div class="section">
+    <div class="section" id="offer-profit">
       <h2>Offer / Profit Table</h2>
       <p class="muted">Mirrors the client packet structure while keeping unverified values visible instead of silently filling them.</p>
       ${offerProfitTable(report)}
     </div>
 
-    <div class="section">
+    <div class="section" id="back-story">
       <h2>Back Story</h2>
       ${paragraphBlock(operatorPlainText(report?.backstory ?? dossier?.narrative), "Back story needs review from public-record notes.")}
     </div>
 
-    <div class="section two-col">
+    <div class="section two-col" id="property-deed">
       <div>
         <h2>Property / Deed</h2>
         ${paragraphBlock(report?.propertySummary, "Property summary needs review.")}
         ${paragraphBlock(report?.deedSummary, "Deed and title notes need review.")}
       </div>
-      <div>
+      <div id="taxes-probate">
         <h2>Taxes / Probate</h2>
         ${paragraphBlock(report?.taxSummary, "Tax summary needs review.")}
         ${paragraphBlock(report?.probateSummary, "Probate summary needs review.")}
       </div>
     </div>
 
-    <div class="section">
+    <div class="section" id="family-tree">
       <h2>Family Tree And Contact Matrix</h2>
       ${paragraphBlock(report?.familyTreeSummary, "Family-tree hypothesis needs review.")}
       <table>
@@ -6680,24 +6706,24 @@ function completedLeadReportHtml(row, dossier) {
       </table>
     </div>
 
-    <div class="section">
+    <div class="section" id="source-notes">
       <h2>Source Notes Review</h2>
       <table>
         <thead><tr><th>Step</th><th>Status</th><th>Note</th></tr></thead>
         <tbody>${sourceChecklistRows(report)}</tbody>
       </table>
-      <h2>Source Links</h2>
+      <h2 id="source-links">Source Links</h2>
       <ul class="source-links">${sourceLinkItems(report)}</ul>
-      <h2>Open Data</h2>
+      <h2 id="missing-data">Missing Data</h2>
       <ul>${missing.length ? missing.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>No critical missing-data items flagged beyond review placeholders.</li>"}</ul>
     </div>
 
-    <div class="section">
+    <div class="section" id="podio-fields">
       <h2>Podio Lead Fields</h2>
       <table>${podioFieldRows(row, dossier, report)}</table>
     </div>
 
-    <div class="section">
+    <div class="section" id="google-sheets">
       <h2>Google Sheets Row</h2>
       <table>
         <tr><th>Estate</th><th>Property</th><th>County</th><th>Folio</th><th>Report</th><th>Bucket</th><th>Heirs</th><th>Offer</th><th>Next action</th></tr>
@@ -6706,7 +6732,7 @@ function completedLeadReportHtml(row, dossier) {
       <p class="small">Google Docs export target: completed lead report body plus Discovery Dossier attachments. Google Sheets target: one row per lead with source-backed status, offer math, and queue state.</p>
     </div>
 
-    <div class="section">
+    <div class="section" id="next-action">
       <h2>Next Action</h2>
       <p class="status">${escapeHtml(dossier?.summary?.nextBestAction ?? row?.next ?? "Resolve review flags before export or outreach.")}</p>
     </div>
