@@ -6579,7 +6579,7 @@ function scheduledDrips() {
   const startDelay = settings.startDelay === "next-business" ? "Next business morning" : "Same day after review";
   const smsCap = Math.max(1, Math.min(4, Number(settings.smsCap || 2)));
   return [
-    { title: "Heir warm follow-up", channel: "Email + SMS", cadence: `${startDelay}; Day 1, Day 4, Day 9`, status: "Prepared only", nextRun: "After dossier approval", guardrail: `${smsCap} SMS cap per heir each week` },
+    { title: "Heir warm follow-up", channel: "Email + SMS", cadence: `${startDelay}; Day 1, Day 4, Day 9`, status: "Prepared only", nextRun: "After dossier approval", guardrail: `${smsCap} SMS cap per heir, per week` },
     { title: "Probate document request", channel: "Email", cadence: settings.requireCourtPacket ? "After court packet review" : "After operator approval", status: "Needs approval", nextRun: "After court packet clears", guardrail: "Court packet must stay review-owned" },
     { title: "No-contact hold", channel: "Internal task", cadence: settings.holdNoContact ? "Until review clears" : "Operator override required", status: "Active guardrail", nextRun: "Every queued dossier check", guardrail: "No-contact, company owner, recent sale, and source blocker stops stay active" }
   ];
@@ -6590,7 +6590,6 @@ function dripStartDelayLabel(value = state.dripSettings.startDelay) {
 }
 
 function dripAutomationJobs() {
-  const reviewOwner = state.dripSettings.reviewOwnerRequired ? "Review owner required" : "Operator owner optional";
   return [
     {
       title: "Discovery dossier check",
@@ -6598,7 +6597,7 @@ function dripAutomationJobs() {
       route: "Review automation route",
       status: "Ready to prepare",
       action: "Find completed dossiers that still need source notes, owner stop checks, or tax receipt notes.",
-      stop: reviewOwner
+      stop: "Finished Discovery required"
     },
     {
       title: "Court packet check",
@@ -7478,9 +7477,8 @@ function renderDripsView() {
         <div class="loop-panel-head"><div><p class="eyebrow">Preferences</p><h2 class="loop-title">Cadence controls</h2></div><span class="pill neutral">Local</span></div>
         <div class="settings-grid">
           <div class="setting-card"><label for="dripStartDelay"><strong>Start delay</strong><span>After dossier approval</span></label><select id="dripStartDelay" data-drip-setting="startDelay"><option value="same-day">Same day after review</option><option value="next-business">Next business morning</option></select></div>
-          <div class="setting-card"><label for="dripSmsCap"><strong>SMS cap</strong><span><span data-drip-sms-value>${escapeHtml(settings.smsCap)}</span> messages per heir per week</span></label><input id="dripSmsCap" data-drip-setting="smsCap" type="range" min="1" max="4" value="${escapeHtml(settings.smsCap)}"></div>
-          <div class="setting-card"><label class="toggle-line"><strong>Require review owner</strong><input id="dripReviewOwnerRequired" data-drip-setting="reviewOwnerRequired" type="checkbox" ${settings.reviewOwnerRequired ? "checked" : ""}></label><span>Every drip needs an operator owner before export.</span></div>
-          <div class="setting-card"><label class="toggle-line"><strong>Require court packet</strong><input id="dripRequireCourtPacket" data-drip-setting="requireCourtPacket" type="checkbox" ${settings.requireCourtPacket ? "checked" : ""}></label><span>Probate request drafts wait for docket status and page-count review.</span></div>
+          <div class="setting-card"><label for="dripSmsCap"><strong>SMS cap</strong><span><span data-drip-sms-value>${escapeHtml(settings.smsCap)}</span> messages per heir, per week</span></label><input id="dripSmsCap" data-drip-setting="smsCap" type="range" min="1" max="4" value="${escapeHtml(settings.smsCap)}"></div>
+          <div class="setting-card"><label class="toggle-line"><strong>Require Finished Discovery before Auto Follow-Up</strong><input id="dripRequireCourtPacket" data-drip-setting="requireCourtPacket" type="checkbox" ${settings.requireCourtPacket ? "checked" : ""}></label><span>Auto follow-up waits until Discovery is finished and the dossier is review-ready.</span></div>
           <div class="setting-card"><label class="toggle-line"><strong>Hold no-contact leads</strong><input id="dripHoldNoContact" data-drip-setting="holdNoContact" type="checkbox" ${settings.holdNoContact ? "checked" : ""}></label><span>No-contact, company-owned, source-blocked, and recent-sale leads stay out of drips.</span></div>
           <div class="setting-card"><label for="dripOperatorNote"><strong>Operator note</strong><span>Saved with the scheduled-work prep controls</span></label><textarea id="dripOperatorNote" class="discovery-notes" data-drip-setting="operatorNote" rows="3" placeholder="Example: keep SMS paused until the court packet is reviewed.">${escapeHtml(settings.operatorNote)}</textarea></div>
         </div>

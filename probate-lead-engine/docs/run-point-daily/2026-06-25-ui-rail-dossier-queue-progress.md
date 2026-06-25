@@ -12,6 +12,7 @@
 - Converted next-step table actions into concise one-line liquid-glass chips with full text preserved in `title`.
 - Replaced the Queue destination narrative card with a two-row iOS rounded connection card for `Podio` and `Google Workspace`.
 - Changed Queue readiness to `Needs Review (Queued Items)` and limited readiness rows to queued leads only.
+- Updated Drips cadence copy to `per heir, per week`, removed the review-owner control, and renamed the court-packet gate to `Require Finished Discovery before Auto Follow-Up`.
 
 ## Local Proof
 
@@ -22,6 +23,7 @@
   - Dossier Rail Flow includes document-prep steps, `Quality & Score` includes source scoring, and `Docs` includes the embedded reader.
   - Queue shows exactly two connection rows and no old destination-task copy.
   - Dashboard shows live lead/run counts and recent leads without visible `-0000` ZIP suffixes.
+  - Drips cadence controls show the comma copy, no review-owner setting, and the finished-discovery follow-up gate.
 
 ## Live Proof
 
@@ -41,3 +43,4 @@
 - `docs/run-point-daily/screenshots/2026-06-25-dossier-rail-quality-local.png`
 - `docs/run-point-daily/screenshots/2026-06-25-queue-connections-local.png`
 - `docs/run-point-daily/screenshots/2026-06-25-live-smoke.png`
+- `docs/run-point-daily/screenshots/2026-06-25-drips-copy-local.png`
