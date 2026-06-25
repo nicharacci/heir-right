@@ -2,7 +2,9 @@
 
 ## Superseding Goal
 
-Complete HeirRight document discovery so a live lead can render a family-tree packet at the same level of structure and completeness as the Constance / Deborah North Star examples: compact Google Docs-like PDF layout, linked property/source text, offer/profit table, back story, possible heirs, address histories, phone numbers, emails, and export-ready app artifacts for Podio / Google review.
+Complete HeirRight document discovery so a live lead can render a family-tree packet at the same level of structure and completeness as the Constance / Deborah North Star examples: compact Google Docs-like PDF layout, linked property/source text, discovery summary, back story, possible heirs, address histories, phone numbers, emails, source review, and export-ready app artifacts for Podio / Google review.
+
+Clarification applied: because Annie Hawkins does not have real deal terms, offer/profit/underwriting elements are excluded from the completed packet instead of being filled with placeholders.
 
 ## Current Pass
 
@@ -158,7 +160,7 @@ What changed:
 - Preserved the Apify skip-trace contact-enrichment facts from the successful actor run as confirmed source facts for Annie, with live token use disabled for deterministic demo regeneration.
 
 Final Annie proof:
-- Final run id: `run-1782429443350-annie-hawkins-est-of`.
+- Final run id: `run-1782429876958-annie-hawkins-est-of`.
 - Output packet: `probate-lead-engine/apps/worker/output/family-tree-discovery-report.pdf`.
 - PDF metadata: 11 pages; title `ANNIE HAWKINS EST OF Family tree`.
 - Family-tree packet contains: Discovery Summary, Table of Contents, Back Story, Possible heirs, address-history section, phone section, email section, and Source review.
