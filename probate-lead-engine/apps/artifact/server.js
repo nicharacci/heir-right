@@ -514,8 +514,18 @@ async function handleFreshLeadBatch(req, res) {
   try {
     const { runFreshLeadBatch, persistFreshLeadBatchOutputs } = require("../worker/dist/live/source-batch");
     const result = await runFreshLeadBatch(body, { env: process.env });
-    const outputs = persistFreshLeadBatchOutputs(result);
-    sendJson(res, 200, { ...result, outputs }, { "cache-control": "no-store" });
+    let outputs = {};
+    let outputPersistence = { ok: true, mode: "filesystem" };
+    try {
+      outputs = persistFreshLeadBatchOutputs(result);
+    } catch (error) {
+      outputPersistence = {
+        ok: false,
+        mode: "ephemeral",
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+    sendJson(res, 200, { ...result, outputs, outputPersistence }, { "cache-control": "no-store" });
   } catch (error) {
     sendJson(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) }, { "cache-control": "no-store" });
   }
