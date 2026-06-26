@@ -87,4 +87,7 @@ Implemented the Close-style template creation popup for the Outreach section. Th
   - User-style coordinate click proof kept `scrollTop: 467` through paperclip, Browse existing files, and Upload from your computer.
   - Confirmed the picker is no longer inside `.template-body-editor`; parent class is `template-body-card`.
   - Console errors/warnings were empty.
+- Live deployment: `dpl_4tgEH6xSku4xchLyQWyAaRrWxkX8`
+- Live alias: `https://heirright-landing-demo.vercel.app`
+- Live in-app browser coordinate proof kept `scrollTop: 467` through paperclip and Browse existing files, with the picker visible under `template-body-card` and no console errors/warnings.
 - Screenshot capture through the in-app browser timed out on `Page.captureScreenshot`; DOM and interaction proof completed successfully.
