@@ -55,3 +55,11 @@ Annie Hawkins remains an in-progress dossier unless the Discovery phase checklis
   - `Next step` header was absent.
   - Dossier list `.next-link` count was `0`.
   - Row selection still left one current dossier row and kept the Dossier rail checklist rendered.
+- Production deployment: `dpl_9xUwFQ7JowZa6BKE6iUcoBKPTdFt`
+- Production alias: `https://heirright-landing-demo.vercel.app`
+- Live browser proof against `https://heirright-landing-demo.vercel.app/?proof=dossiers-no-next-column-live`:
+  - Dossiers header count was `5`.
+  - `Next step` header was absent.
+  - Dossier list `.next-link` count was `0`.
+  - Row selection still left one current dossier row and kept the Dossier rail checklist rendered.
+  - Browser console warning/error count was `0`.
