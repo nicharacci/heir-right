@@ -75,3 +75,16 @@ Implemented the Close-style template creation popup for the Outreach section. Th
 - Live alias: `https://heirright-landing-demo.vercel.app`
 - Live in-app browser proof confirmed no console errors, restored picker placement, and non-zero modal scroll after clicking Browse existing files.
 - Live screenshot: `docs/run-point-daily/screenshots/2026-06-25-outreach-attachment-popover-restored-live.png`.
+
+## Attachment Picker Inline Restore
+
+- Moved the attachment picker back to the original inline body-card position instead of the later absolutely positioned "above footer" layer.
+- Added `overflow-anchor: none` to the Outreach modal scroller so inserting the inline picker does not create user-visible scroll anchoring jumps.
+- Tightened the paperclip and attachment option handlers to restore from the live modal scroll position.
+- Validation:
+  - `pnpm --filter @ple/artifact build`
+  - In-app browser at `http://localhost:4188/?proof=attachment-options-restored-user-click`.
+  - User-style coordinate click proof kept `scrollTop: 467` through paperclip, Browse existing files, and Upload from your computer.
+  - Confirmed the picker is no longer inside `.template-body-editor`; parent class is `template-body-card`.
+  - Console errors/warnings were empty.
+- Screenshot capture through the in-app browser timed out on `Page.captureScreenshot`; DOM and interaction proof completed successfully.

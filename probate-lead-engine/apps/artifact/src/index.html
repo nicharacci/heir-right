@@ -4887,6 +4887,7 @@
     .outreach-modal-scroll {
       min-height: 0;
       overflow: auto;
+      overflow-anchor: none;
       padding: 20px 22px 22px;
     }
 
@@ -5035,10 +5036,7 @@
 
     .template-attachment-popover {
       width: min(430px, calc(100% - 28px));
-      position: absolute;
-      left: 18px;
-      bottom: 64px;
-      z-index: 3;
+      margin: -2px 0 14px 14px;
       overflow: hidden;
       border-radius: 16px;
       border: 1px solid rgba(235,235,245,.14);
@@ -8807,14 +8805,14 @@ function renderOutreachTemplateModal(options = {}) {
                 </div>
                 <span class="template-counter" data-template-counter>${escapeHtml(count)} / ${escapeHtml(seed.limit)}</span>
               </div>
-              ${modal.attachmentsOpen ? `
-                <div class="template-attachment-popover">
-                  <div class="template-attachment-note">Images are limited to 5MB and other media is limited to 600KB. SMS attachments can only be sent to numbers in the US, CA, and AU.</div>
-                  <button class="template-attachment-option" type="button" data-template-attach-existing>${nucleoIcon("open-book", 17)} Browse existing files</button>
-                  <button class="template-attachment-option" type="button" data-template-attach-upload>${nucleoIcon("batch-tray", 17)} Upload from your computer</button>
-                </div>
-              ` : ""}
             </div>
+            ${modal.attachmentsOpen ? `
+              <div class="template-attachment-popover">
+                <div class="template-attachment-note">Images are limited to 5MB and other media is limited to 600KB. SMS attachments can only be sent to numbers in the US, CA, and AU.</div>
+                <button class="template-attachment-option" type="button" data-template-attach-existing>${nucleoIcon("open-book", 17)} Browse existing files</button>
+                <button class="template-attachment-option" type="button" data-template-attach-upload>${nucleoIcon("batch-tray", 17)} Upload from your computer</button>
+              </div>
+            ` : ""}
           </section>
           <section class="template-required-card" aria-label="Podio required fields">
             <div class="template-required-row"><strong>Podio fields</strong><span>Campaign, channel, template name, body, delay, stop rules, status, approval owner, and sync target are required before approval.</span></div>
@@ -8886,7 +8884,8 @@ function renderOutreachTemplateModal(options = {}) {
   mount.querySelector("[data-template-attachment]")?.addEventListener("pointerdown", rememberModalScroll);
   mount.querySelector("[data-template-attachment]")?.addEventListener("click", (event) => {
     event.preventDefault();
-    const scrollTop = state.outreachTemplateModal.lastScrollTop ?? outreachModalScrollTop();
+    const scrollTop = outreachModalScrollTop();
+    state.outreachTemplateModal.lastScrollTop = scrollTop;
     state.outreachTemplateModal.attachmentsOpen = !state.outreachTemplateModal.attachmentsOpen;
     renderOutreachTemplateModal({ scrollTop });
   });
@@ -8907,7 +8906,8 @@ function renderOutreachTemplateModal(options = {}) {
     button.addEventListener("pointerdown", suppressModalFocusScroll);
     button.addEventListener("click", (event) => {
       event.preventDefault();
-      const scrollTop = state.outreachTemplateModal.lastScrollTop ?? outreachModalScrollTop();
+      const scrollTop = outreachModalScrollTop();
+      state.outreachTemplateModal.lastScrollTop = scrollTop;
       addShellEvent("Template attachment staged", "Attachment selection is recorded for Podio preparation. SMS delivery remains limited to US, CA, and AU numbers.", "review", false);
       restoreOutreachModalScroll(scrollTop);
     });
