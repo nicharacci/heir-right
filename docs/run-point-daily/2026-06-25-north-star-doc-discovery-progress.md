@@ -222,3 +222,32 @@ Local browser proof on `http://localhost:4188/?proof=fresh-status-local`:
 Verification:
 - `git diff --check` passed.
 - `pnpm --filter @ple/artifact build` passed.
+
+## 2026-06-25 20:31 EDT - Fresh-pull live production proof completed
+
+Production blockers found during live proof:
+- The Vercel fresh-pull route first failed on `Cannot find package 'react' imported from /var/task/apps/worker/dist/markdown/render-streamdown.js`.
+- Fixed by replacing the worker Markdown renderer's variable dynamic import helper with literal dynamic imports for `react`, `react-dom/server`, and `streamdown`, so Vercel can trace the runtime dependencies.
+- The route then failed on `EROFS: read-only file system, open 'output/fresh-lead-batch.json'`.
+- Fixed by keeping local output persistence for normal local/CLI runs, but making Vercel API persistence nonfatal. If serverless output writes are read-only, the API now returns the generated fresh-batch result with `outputPersistence.mode = "ephemeral"`.
+- The inline status initially had a cascade/transition issue where `data-visible="true"` was set but the row stayed collapsed. Replaced the status with a plain `hidden` message row so rest and in-flight states have no visible row, and success is a normal visible row.
+
+Final live browser proof on `https://heirright-landing-demo.vercel.app/?proof=fresh-status-visible-live`:
+- Initial status: `hidden: true`, `data-visible="false"`, `display: none`, rendered height `0`, no text.
+- Immediately after clicking `Pull fresh leads`: still hidden with no inline message; top status read `Pulling a live external lead batch...`; button busy.
+- Final result: `hidden: false`, `data-visible="true"`, `tone="ready"`, `display: block`, `opacity: 1`, margin-top `8px`, rendered height `32.375`.
+- Final status text: `3 live leads pulled from Miami-Dade Property Appraiser.`
+- Live result table rendered `3` rows and selected `Hawkins, A.`
+- Top status: `Pulled 3 live leads from 40 Miami-Dade Property Appraiser candidates using owner search "EST OF". First lead: ANNIE HAWKINS EST OF.`
+- Browser console errors: none.
+
+Verification:
+- `pnpm --filter @ple/artifact build` passed.
+- `pnpm --filter @ple/worker build` passed.
+- `pnpm --filter @ple/worker test` passed.
+- Production deploys passed and aliased to `https://heirright-landing-demo.vercel.app`.
+- Commits pushed during this pass:
+  - `b09ef48` - fresh status timing
+  - `b8ec726` - worker renderer import tracing
+  - `6aa6a6f` - serverless ephemeral fresh-batch output
+  - `05881cf` - visible fresh-pull success status
