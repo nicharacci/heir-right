@@ -1,4 +1,4 @@
-import type { DossierClaim, DossierEvent, DocketReference, FamilyTreeHypothesisData, LatestDeedRecord, MemorialSearchPlaceholder, OfficialRecordCrossLink, OrBookPageRef, RawDossier, ReviewFlag, SourceEvidenceReviewTask, SourceFact, SourceGovernanceCatalog, SourceKey, SourceRef, TaxAmountDue } from "@ple/types";
+import type { ContactCandidate, DossierClaim, DossierEvent, DocketReference, FamilyTreeHypothesisData, LatestDeedRecord, MemorialSearchPlaceholder, OfficialRecordCrossLink, OrBookPageRef, RawDossier, ReviewFlag, SourceAttachmentRef, SourceEvidenceReviewTask, SourceFact, SourceGovernanceCatalog, SourceKey, SourceRef, TaxAmountDue } from "@ple/types";
 import { nowIso, sourceRef, slug } from "../lib";
 import { buildOutreachWorkflow } from "../outreach/build-outreach-workflow";
 import { buildSourceCoverageProfile } from "../qa/source-coverage";
@@ -115,6 +115,8 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
   const reassessment = claim<string>(facts, "tax_reassessment_signal", "REASSESSMENT_REVIEW_REQUIRED");
   const receiptStatus = claim<string>(facts, "tax_receipt_status", "MISSING_TAX_RECEIPT_FACT");
   const payerIdentity = claim<string>(facts, "tax_payer_identity", "MISSING_TAX_PAYER_FACT");
+  const receiptAttachment = claim<SourceAttachmentRef>(facts, "tax_receipt_attachment", "SOURCE_ATTACHMENT_REQUIRED");
+  const lastPaidBy = claim<string>(facts, "tax_last_paid_by", "MISSING_TAX_PAYER_FACT");
   const taxHistory = {
     sourceStatus: taxSourceStatus,
     unpaidYears,
@@ -122,6 +124,8 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
     reassessment,
     receiptStatus,
     payerIdentity,
+    receiptAttachment,
+    lastPaidBy,
     reviewTasks: compactTasks([
       reviewTask({
         code: "TAX_UNPAID_YEARS",
@@ -167,8 +171,17 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
         source: "tax_collector",
         reason: "The workflow uses payer identity to spot heir/operator activity and possible third-party friction.",
         nextAction: "Record who paid taxes from the public record or keep the field review-required.",
-        claim: payerIdentity,
+        claim: combineClaims([payerIdentity, lastPaidBy]),
         fallbackFlags: ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
+      }),
+      reviewTask({
+        code: "TAX_RECEIPT_ATTACHMENT",
+        title: "Attach last paid tax receipt",
+        source: "tax_collector",
+        reason: "The last paid receipt anchors the paid-by party and keeps tax history auditable.",
+        nextAction: "Attach the last receipt from the Tax Collector and record the paid-by party shown on it.",
+        claim: receiptAttachment,
+        fallbackFlags: ["MANUAL_TAX_RECEIPT_DOWNLOAD_REQUIRED", "SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
       }),
     ]),
     manualReceiptTask: {
@@ -181,6 +194,7 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
   const deedSourceStatus = claim<string>(facts, "deed_history_status", "MISSING_DEED_FACT");
   const latestDeed = claim<LatestDeedRecord>(facts, "latest_deed", "MISSING_DEED_FACT");
   const orBookPage = claim<OrBookPageRef>(facts, "or_book_page", "MISSING_OR_BOOK_PAGE_FACT");
+  const deedAttachment = claim<SourceAttachmentRef>(facts, "deed_attachment", "SOURCE_ATTACHMENT_REQUIRED");
   const lastSaleDate = claim<string>(facts, "last_sale_date", "MISSING_RECENT_SALE_FACT");
   const mailingAddressSignal = claim<string>(facts, "mailing_address_signal", "MISSING_MAILING_ADDRESS_FACT");
   const ownershipActivity = claim<string>(facts, "ownership_activity_note", "MISSING_DEED_FACT");
@@ -193,6 +207,7 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
     sourceStatus: deedSourceStatus,
     latestDeed,
     orBookPage,
+    deedAttachment,
     lastSaleDate,
     mailingAddressSignal,
     ownershipActivity,
@@ -219,6 +234,15 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
         nextAction: "Record OR book/page or instrument number from Official Records.",
         claim: orBookPage,
         fallbackFlags: ["MISSING_OR_BOOK_PAGE_FACT", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
+      }),
+      reviewTask({
+        code: "DEED_ATTACHMENT",
+        title: "Attach recorded deed file",
+        source: "official_records",
+        reason: "The deed PDF/link must travel with the dossier so the operator can validate ownership without re-searching.",
+        nextAction: "Attach the latest deed PDF or source link from Official Records and keep OR book/page or instrument visible.",
+        claim: deedAttachment,
+        fallbackFlags: ["MISSING_DEED_FACT", "SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
       }),
       reviewTask({
         code: "DEED_LAST_SALE",
@@ -355,6 +379,7 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
   const dateOfBirth = claim<string>(facts, "date_of_birth", "MISSING_MARRIAGE_DEATH_FACT");
   const dateOfDeath = claim<string>(facts, "date_of_death", "MISSING_MARRIAGE_DEATH_FACT");
   const obituaryLink = claim<string>(facts, "obituary_link", "MISSING_MARRIAGE_DEATH_FACT");
+  const obituarySnapshot = claim<SourceAttachmentRef>(facts, "obituary_snapshot", "SOURCE_ATTACHMENT_REQUIRED");
   const memorialSearches = claim<MemorialSearchPlaceholder[]>(facts, "memorial_search_placeholder", "MISSING_MARRIAGE_DEATH_FACT");
   const deathCertificateStatus = claim<string>(facts, "death_certificate_status", "MISSING_MARRIAGE_DEATH_FACT");
   const incarcerationStatus = claim<string>(facts, "incarceration_status_signal", "MISSING_MARRIAGE_DEATH_FACT");
@@ -364,6 +389,7 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
     dateOfBirth,
     dateOfDeath,
     obituaryLink,
+    obituarySnapshot,
     memorialSearches,
     deathCertificateStatus,
     incarcerationStatus,
@@ -371,6 +397,7 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
       reviewTask({ code: "MARRIAGE_LICENSE", title: "Check marriage-license signal", source: "clerk_of_courts", reason: "Marriage records are research facts, not spouse/heir determinations.", nextAction: "Search clerk records and record marriage-license signal or absent status.", claim: marriageLicense, fallbackFlags: ["MISSING_MARRIAGE_DEATH_FACT", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"] }),
       reviewTask({ code: "DOB_DOD", title: "Capture DOB/DOD indicators", source: "clerk_of_courts", reason: "Birth and death dates must remain reviewable facts with source refs.", nextAction: "Record DOB/DOD from public sources or mark unknown with review flags.", claim: combineClaims([dateOfBirth, dateOfDeath]), fallbackFlags: ["MISSING_MARRIAGE_DEATH_FACT", "HUMAN_REVIEW_REQUIRED"] }),
       reviewTask({ code: "OBITUARY_LINK", title: "Capture obituary links", source: "clerk_of_courts", reason: "Obituary links support research but do not prove heirship.", nextAction: "Attach obituary URLs or note that none were found.", claim: obituaryLink, fallbackFlags: ["MISSING_MARRIAGE_DEATH_FACT", "HUMAN_REVIEW_REQUIRED"] }),
+      reviewTask({ code: "OBITUARY_SNAPSHOT", title: "Attach obituary snapshot", source: "clerk_of_courts", reason: "If an obituary exists, the dossier needs the screenshot or saved page plus the public URL.", nextAction: "Capture the obituary screenshot and link, or record reviewed-not-found.", claim: obituarySnapshot, fallbackFlags: ["SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED"] }),
       reviewTask({ code: "MEMORIAL_SEARCH", title: "Review memorial search placeholders", source: "clerk_of_courts", reason: "Findagrave/Legacy/Google placeholders keep research auditable without automated scraping.", nextAction: "Record search results or absent status for each memorial provider.", claim: memorialSearches, fallbackFlags: ["HUMAN_REVIEW_REQUIRED"] }),
       reviewTask({ code: "DEATH_CERTIFICATE", title: "Capture death certificate status", source: "clerk_of_courts", reason: "VitalChek and automated death-certificate ordering remain blocked.", nextAction: "Record whether a death certificate was requested, obtained, or still missing.", claim: deathCertificateStatus, fallbackFlags: ["MANUAL_DEATH_CERTIFICATE_REQUIRED", "HUMAN_REVIEW_REQUIRED"] }),
       reviewTask({ code: "INCARCERATION", title: "Check incarceration status signal", source: "clerk_of_courts", reason: "Incarceration status is a placeholder research signal only.", nextAction: "Record incarceration signal or mark unknown with source evidence.", claim: incarcerationStatus, fallbackFlags: ["MISSING_MARRIAGE_DEATH_FACT", "HUMAN_REVIEW_REQUIRED"] }),
@@ -384,12 +411,28 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
   };
   const familyTreeSourceStatus = claim<string>(facts, "family_tree_status", "MISSING_PROBATE_FACT");
   const familyTreeHypothesisClaim = claim<FamilyTreeHypothesisData>(facts, "family_tree_hypothesis", "MISSING_PROBATE_FACT");
+  const primaryContacts = facts
+    .filter((item) => item.factType === "primary_contact_profile" && item.value && typeof item.value === "object")
+    .map((item) => item.value as ContactCandidate);
+  const alternativeContacts = facts
+    .filter((item) => item.factType === "alternative_contact_profile" && item.value && typeof item.value === "object")
+    .map((item) => item.value as ContactCandidate);
+  const familyTreeHypothesisWithContacts: DossierClaim<FamilyTreeHypothesisData> = familyTreeHypothesisClaim.value
+    ? {
+      ...familyTreeHypothesisClaim,
+      value: {
+        ...familyTreeHypothesisClaim.value,
+        contactCandidates: [...primaryContacts, ...alternativeContacts],
+      },
+    }
+    : familyTreeHypothesisClaim;
   const familyTree = {
     sourceStatus: familyTreeSourceStatus,
-    hypothesis: familyTreeHypothesisClaim,
+    hypothesis: familyTreeHypothesisWithContacts,
     reviewTasks: compactTasks([
-      reviewTask({ code: "FAMILY_TREE_HYPOTHESIS", title: "Build family tree hypothesis", source: "intake", reason: "Family tree output is a hypothesis with evidence, not a legal heir determination.", nextAction: "Fill relationship nodes with names, confidence, and source refs or leave review-required.", claim: familyTreeHypothesisClaim, fallbackFlags: ["HUMAN_REVIEW_REQUIRED"] }),
-      reviewTask({ code: "FAMILY_TREE_CONTACTS", title: "Add contact placeholders", source: "intake", reason: "Contact placeholders must exist before enrichment or outreach.", nextAction: "Attach contact placeholders to relationship nodes without live outreach.", claim: familyTreeHypothesisClaim, fallbackFlags: ["HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"] }),
+      reviewTask({ code: "FAMILY_TREE_HYPOTHESIS", title: "Build family tree hypothesis", source: "intake", reason: "Family tree output is a hypothesis with evidence, not a legal heir determination.", nextAction: "Fill relationship nodes with names, confidence, and source refs or leave review-required.", claim: familyTreeHypothesisWithContacts, fallbackFlags: ["HUMAN_REVIEW_REQUIRED"] }),
+      reviewTask({ code: "IDI_ASSET_SEARCH", title: "Import one IDI asset search", source: "idi", reason: "The client needs one expanded asset search per estate address; repeated paid runs are blocked unless an admin records an override reason.", nextAction: "Run or import the expanded asset search by property address once, then review spouse, children, relatives, and associates.", claim: combineClaims([optionalClaim(facts, "idi_asset_search_status"), optionalClaim(facts, "idi_asset_report_attachment")]), fallbackFlags: ["MISSING_IDI_ASSET_SEARCH", "PAID_SOURCE_APPROVAL_REQUIRED", "HUMAN_REVIEW_REQUIRED"] }),
+      reviewTask({ code: "FAMILY_TREE_CONTACTS", title: "Review primary and alternative contacts", source: "idi", reason: "Spouse and children become primary secondary contacts after operator review; other relatives and associates stay alternative until promoted.", nextAction: "Accept spouse/child contacts, promote if needed, and leave unverified relatives in Alternative Contacts.", claim: combineClaims([optionalClaim(facts, "primary_contact_profile"), optionalClaim(facts, "alternative_contact_profile"), familyTreeHypothesisWithContacts]), fallbackFlags: ["CONTACT_ACCEPTANCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"] }),
     ]),
   };
   const sourceGovernanceCatalog = claim<SourceGovernanceCatalog>(facts, "source_governance_catalog", "PAID_SOURCE_APPROVAL_REQUIRED");
@@ -401,7 +444,7 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
     ]),
   };
   const workflow = evaluateWorkflowRules(facts);
-  const hasEnrichedContacts = facts.some((item) => item.factType === "enriched_contact_profile");
+  const hasEnrichedContacts = facts.some((item) => item.factType === "enriched_contact_profile" || item.factType === "primary_contact_profile");
   const sourceBackedFactTypes = new Set(facts.filter(isSourceBackedFact).map((item) => item.factType));
   const effectiveFacts = facts.filter((item) => isSourceBackedFact(item) || !sourceBackedFactTypes.has(item.factType));
   const auditFlags = Array.from(new Set(

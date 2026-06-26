@@ -5,6 +5,7 @@ export type SourceKey =
   | "property_appraiser"
   | "probate_court"
   | "tax_collector"
+  | "idi"
   | "skip_trace"
   | "official_records"
   | "podio"
@@ -612,7 +613,12 @@ export type ReviewFlag =
   | "LIVE_OUTREACH_DISABLED"
   | "NO_AUTO_SEND_GUARD"
   | "MISSING_SKIPTRACE_CONFIG"
-  | "SKIPTRACE_PROVIDER_FAILED";
+  | "SKIPTRACE_PROVIDER_FAILED"
+  | "MISSING_IDI_ASSET_SEARCH"
+  | "IDI_ASSET_SEARCH_REVIEW_REQUIRED"
+  | "DUPLICATE_IDI_RUN_BLOCKED"
+  | "CONTACT_ACCEPTANCE_REQUIRED"
+  | "SOURCE_ATTACHMENT_REQUIRED";
 
 export type FactType =
   | "source_status"
@@ -629,9 +635,12 @@ export type FactType =
   | "tax_reassessment_signal"
   | "tax_receipt_status"
   | "tax_payer_identity"
+  | "tax_receipt_attachment"
+  | "tax_last_paid_by"
   | "deed_history_status"
   | "latest_deed"
   | "or_book_page"
+  | "deed_attachment"
   | "last_sale_date"
   | "ownership_activity_note"
   | "mortgage_signal"
@@ -659,11 +668,16 @@ export type FactType =
   | "date_of_birth"
   | "date_of_death"
   | "obituary_link"
+  | "obituary_snapshot"
   | "memorial_search_placeholder"
   | "death_certificate_status"
   | "incarceration_status_signal"
   | "family_tree_status"
   | "family_tree_hypothesis"
+  | "idi_asset_search_status"
+  | "idi_asset_report_attachment"
+  | "primary_contact_profile"
+  | "alternative_contact_profile"
   | "enriched_contact_profile"
   | "skip_trace_status"
   | "source_governance_catalog"
@@ -693,10 +707,39 @@ export interface SourceFact {
   value: unknown;
   confidence: number;
   sourceUrl?: string;
+  attachment?: SourceAttachmentRef;
   reviewFlags: ReviewFlag[];
 }
 
-export type ConfirmedSourceFactSource = "clerk_of_courts" | "property_appraiser" | "probate_court" | "tax_collector" | "official_records" | "skip_trace";
+export interface SourceAttachmentRef {
+  label: string;
+  sourceUrl?: string;
+  fileKind: "pdf" | "image" | "csv" | "html" | "text" | "json" | "link";
+  fileName?: string;
+  capturedAt: string;
+  capturedBy?: string;
+  reviewFlags: ReviewFlag[];
+}
+
+export type ContactCandidateGroup = "primary" | "alternative";
+
+export interface ContactCandidate {
+  id: string;
+  name: string;
+  relationship: string;
+  group: ContactCandidateGroup;
+  phones: string[];
+  emails: string[];
+  currentAddress?: string;
+  addressHistory: string[];
+  ownerLastNameMatch: boolean;
+  confidence: number;
+  sourceRefs: SourceRef[];
+  reviewStatus: "imported" | "accepted" | "rejected" | "promoted";
+  reviewFlags: ReviewFlag[];
+}
+
+export type ConfirmedSourceFactSource = "clerk_of_courts" | "property_appraiser" | "probate_court" | "tax_collector" | "official_records" | "idi" | "skip_trace";
 
 export interface ConfirmedSourceFactInput {
   source: ConfirmedSourceFactSource;
@@ -797,6 +840,8 @@ export interface TaxHistory {
   reassessment: DossierClaim<string>;
   receiptStatus: DossierClaim<string>;
   payerIdentity: DossierClaim<string>;
+  receiptAttachment: DossierClaim<SourceAttachmentRef>;
+  lastPaidBy: DossierClaim<string>;
   reviewTasks: SourceEvidenceReviewTask[];
   manualReceiptTask: {
     required: boolean;
@@ -824,6 +869,7 @@ export interface DeedHistory {
   sourceStatus: DossierClaim<string>;
   latestDeed: DossierClaim<LatestDeedRecord>;
   orBookPage: DossierClaim<OrBookPageRef>;
+  deedAttachment: DossierClaim<SourceAttachmentRef>;
   lastSaleDate: DossierClaim<string>;
   mailingAddressSignal: DossierClaim<string>;
   ownershipActivity: DossierClaim<string>;
@@ -879,6 +925,7 @@ export interface MarriageDeathIndicators {
   dateOfBirth: DossierClaim<string>;
   dateOfDeath: DossierClaim<string>;
   obituaryLink: DossierClaim<string>;
+  obituarySnapshot: DossierClaim<SourceAttachmentRef>;
   memorialSearches: DossierClaim<MemorialSearchPlaceholder[]>;
   deathCertificateStatus: DossierClaim<string>;
   incarcerationStatus: DossierClaim<string>;
@@ -915,6 +962,7 @@ export interface FamilyTreeNode {
 export interface FamilyTreeHypothesisData {
   status: "hypothesis" | "needs_review" | "reviewed";
   nodes: FamilyTreeNode[];
+  contactCandidates?: ContactCandidate[];
   unresolvedQuestions: string[];
 }
 

@@ -29,6 +29,9 @@ const distThirtyDayReviewScriptOutput = join(root, "thirty-day-review-script.md"
 const sessionCookie = process.env.AUTH_SESSION_COOKIE || "hr_session";
 const stateCookie = process.env.AUTH_STATE_COOKIE || "hr_oauth_state";
 const sessionTtlSeconds = Number(process.env.AUTH_SESSION_TTL_SECONDS || 60 * 60 * 12);
+const localIdiRuns = new Map();
+const localSourceCaptures = new Map();
+const localContactReviews = new Map();
 
 function firstExistingPath(...paths) {
   return paths.find((path) => existsSync(path));
@@ -340,6 +343,121 @@ function readJsonBody(req) {
       }
     });
   });
+}
+
+function normalizeAssetAddress(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\b(street)\b/g, "st")
+    .replace(/\b(avenue)\b/g, "ave")
+    .replace(/\b(road)\b/g, "rd")
+    .replace(/\b(drive)\b/g, "dr")
+    .replace(/\b(court)\b/g, "ct")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function ownerLastName(value = "") {
+  const parts = String(value || "")
+    .replace(/\b(est|estate|of|the)\b/gi, " ")
+    .replace(/[^a-zA-Z\s'-]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return String(parts.at(-1) || "").toLowerCase();
+}
+
+function localIdiLockKey(body = {}) {
+  return [
+    String(body.provider || "idi").toLowerCase(),
+    normalizeAssetAddress(body.propertyAddress || body.address || body.assetAddress),
+    ownerLastName(body.ownerName || body.estateName),
+  ].filter(Boolean).join(":");
+}
+
+async function handleIdiAssetImport(req, res) {
+  const body = req.method === "POST" ? await readJsonBody(req) : {};
+  const proxied = await proxyWorkerJson("/api/discovery/idi-asset-search/import", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (proxied) {
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+    res.end(proxied.body);
+    return;
+  }
+  const lockKey = localIdiLockKey(body);
+  const existing = localIdiRuns.get(lockKey);
+  if (existing && !body.adminOverrideReason) {
+    sendJson(res, 409, {
+      ok: false,
+      error: "duplicate_idi_asset_search",
+      message: "This estate address already has an imported IDI asset search. Admin override requires a reason.",
+      lockKey,
+      firstImportedAt: existing.importedAt,
+    }, { "cache-control": "no-store" });
+    return;
+  }
+  const importedAt = new Date().toISOString();
+  const result = {
+    ok: true,
+    mode: "operator_import",
+    provider: body.provider || "idi",
+    lockKey,
+    importedAt,
+    duplicateGuard: existing ? "admin_override_recorded" : "first_import_only",
+    adminOverrideReason: body.adminOverrideReason || null,
+    attachment: body.attachment || null,
+    contactPreviewCount: String(body.importedText || "").split(/\n{2,}/).filter(Boolean).length,
+  };
+  localIdiRuns.set(lockKey, result);
+  sendJson(res, 200, result, { "cache-control": "no-store" });
+}
+
+async function handleSourceCapture(req, res) {
+  const body = req.method === "POST" ? await readJsonBody(req) : {};
+  const proxied = await proxyWorkerJson("/api/discovery/source-capture", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (proxied) {
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+    res.end(proxied.body);
+    return;
+  }
+  const id = body.assetKey || body.id || `${body.leadId || "lead"}:${body.kind || "source"}:${Date.now()}`;
+  const result = {
+    ok: true,
+    id,
+    capturedAt: new Date().toISOString(),
+    artifact: body,
+    reviewFlags: body.reviewFlags || [],
+  };
+  localSourceCaptures.set(id, result);
+  sendJson(res, 200, result, { "cache-control": "no-store" });
+}
+
+async function handleContactCandidateReview(req, res, candidateId) {
+  const body = req.method === "POST" ? await readJsonBody(req) : {};
+  const proxied = await proxyWorkerJson(`/api/discovery/contact-candidates/${encodeURIComponent(candidateId)}/review`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (proxied) {
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+    res.end(proxied.body);
+    return;
+  }
+  const result = {
+    ok: true,
+    candidateId,
+    status: body.status || "accepted",
+    reviewedAt: new Date().toISOString(),
+    reviewedBy: body.reviewedBy || readSession(req)?.email || "local-dev@heirright.com",
+  };
+  localContactReviews.set(candidateId, result);
+  sendJson(res, 200, result, { "cache-control": "no-store" });
 }
 
 function localExportRoute(route, dryRun) {
@@ -673,6 +791,22 @@ function handleRequest(req, res) {
 
   if (url.pathname === "/api/leads/fresh-batch") {
     handleFreshLeadBatch(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/api/discovery/idi-asset-search/import") {
+    handleIdiAssetImport(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/api/discovery/source-capture") {
+    handleSourceCapture(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  const contactReviewMatch = url.pathname.match(/^\/api\/discovery\/contact-candidates\/([^/]+)\/review$/);
+  if (contactReviewMatch) {
+    handleContactCandidateReview(req, res, decodeURIComponent(contactReviewMatch[1])).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
     return;
   }
 

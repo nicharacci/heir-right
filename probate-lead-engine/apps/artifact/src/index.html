@@ -2109,12 +2109,121 @@
       line-height: 1.34;
     }
 
-    .dossier-check-action {
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 760;
-      white-space: nowrap;
-    }
+	    .dossier-check-action {
+	      color: var(--muted);
+	      font-size: 11px;
+	      font-weight: 760;
+	      white-space: nowrap;
+	    }
+
+	    .asset-step-stack {
+	      display: grid;
+	      gap: 0;
+	    }
+
+	    .asset-step-row {
+	      display: grid;
+	      grid-template-columns: 28px minmax(0, 1fr) auto;
+	      gap: 10px;
+	      align-items: center;
+	      min-height: 56px;
+	      padding: 10px 0;
+	      position: relative;
+	    }
+
+	    .asset-step-row + .asset-step-row::before,
+	    .contact-review-row + .contact-review-row::before {
+	      content: "";
+	      position: absolute;
+	      top: 0;
+	      left: 0;
+	      right: 0;
+	      height: 1px;
+	      background: var(--divider-line);
+	    }
+
+	    .asset-step-status {
+	      width: 22px;
+	      height: 22px;
+	      border-radius: 50%;
+	      display: grid;
+	      place-items: center;
+	      border: 1px solid rgba(235,235,245,.22);
+	      color: var(--muted);
+	      font-family: var(--mono);
+	      font-size: 10px;
+	      font-weight: 760;
+	    }
+
+	    .asset-step-row[data-state="complete"] .asset-step-status {
+	      border-color: rgba(45,212,139,.42);
+	      background: rgba(45,212,139,.18);
+	      color: rgb(78, 232, 159);
+	    }
+
+	    .asset-step-row[data-state="active"] .asset-step-status {
+	      border-color: rgba(10,132,255,.5);
+	      color: rgb(120, 190, 255);
+	    }
+
+	    .asset-capture-grid,
+	    .idi-import-grid {
+	      display: grid;
+	      grid-template-columns: repeat(2, minmax(0, 1fr));
+	      gap: 10px;
+	    }
+
+	    .asset-capture-grid .field.full,
+	    .idi-import-grid .field.full {
+	      grid-column: 1 / -1;
+	    }
+
+	    .asset-capture-grid input,
+	    .asset-capture-grid select,
+	    .idi-import-grid input,
+	    .idi-import-grid textarea {
+	      width: 100%;
+	      min-height: 36px;
+	      border-radius: 8px;
+	      border: 1px solid rgba(235,235,245,.12);
+	      background: rgba(38,38,38,.78);
+	      color: var(--text);
+	      padding: 8px 10px;
+	      font: inherit;
+	    }
+
+	    .idi-import-grid textarea {
+	      min-height: 138px;
+	      resize: vertical;
+	    }
+
+	    .contact-review-list {
+	      display: grid;
+	      gap: 0;
+	    }
+
+	    .contact-review-row {
+	      position: relative;
+	      display: grid;
+	      grid-template-columns: minmax(0, 1fr) auto;
+	      gap: 10px;
+	      align-items: center;
+	      padding: 12px 0;
+	    }
+
+	    .contact-review-actions {
+	      display: flex;
+	      gap: 6px;
+	      align-items: center;
+	      flex-wrap: wrap;
+	      justify-content: flex-end;
+	    }
+
+	    .contact-review-actions .btn {
+	      min-height: 30px;
+	      padding: 0 10px;
+	      font-size: 11px;
+	    }
 
     .dossier-doc.is-selected {
       border-color: var(--focus-ring);
@@ -2339,18 +2448,37 @@
       background: rgba(242,242,247,.90);
     }
 
-    th {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      color: var(--muted);
+	    th {
+	      position: sticky;
+	      top: 0;
+	      z-index: 1;
+	      color: var(--muted);
       background: transparent;
       backdrop-filter: saturate(180%) blur(20px);
       -webkit-backdrop-filter: saturate(180%) blur(20px);
       font-size: 10px;
-      font-weight: 760;
-      letter-spacing: .02em;
-    }
+	      font-weight: 760;
+	      letter-spacing: .02em;
+	    }
+
+	    th[data-column-drag] {
+	      cursor: grab;
+	      user-select: none;
+	    }
+
+	    th[data-column-drag].is-dragging {
+	      opacity: .58;
+	    }
+
+	    th[data-column-drag].is-drop-target .column-drag-label {
+	      color: var(--text);
+	    }
+
+	    .column-drag-label {
+	      display: inline-flex;
+	      align-items: center;
+	      gap: 6px;
+	    }
 
     th:first-child { border-radius: 0 0 0 10px; }
     th:last-child { border-radius: 0 0 10px 0; }
@@ -5614,12 +5742,12 @@
             </select>
           </div>
           <div class="field">
-            <label for="sourceModeFilter">Source search</label>
-            <select id="sourceModeFilter">
-              <option value="owner" selected>Owner name</option>
-              <option value="address">Address</option>
-              <option value="folio">Folio</option>
-            </select>
+	            <label for="sourceModeFilter">Source search</label>
+	            <select id="sourceModeFilter">
+	              <option value="address" selected>Address</option>
+	              <option value="owner">Owner name</option>
+	              <option value="folio">Folio</option>
+	            </select>
           </div>
           <div class="field">
             <label for="sourceQuery">Source filter</label>
@@ -5735,14 +5863,7 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr>
-                    <th style="width: 42px;"><span id="resultsSelectAllMount"></span></th>
-                    <th>Last Name, First Initial</th>
-                    <th data-column="address">Property address</th>
-                    <th data-column="score">Score</th>
-                    <th data-column="evidence">Classification</th>
-                    <th data-column="next">Next step</th>
-                  </tr>
+                  <tr id="resultsHeaderRow"></tr>
                 </thead>
                 <tbody id="resultsBody"></tbody>
               </table>
@@ -6023,6 +6144,13 @@ const state = {
   discoveryCompleted: new Set(),
   discoveryNotes: {},
   discoveryPreferences: {},
+  sourceCaptures: {},
+  idiImports: {},
+  contactReviews: {},
+  columnOrder: {
+    results: ["address", "lead", "score", "evidence", "next"],
+    dossiers: ["address", "lead", "score", "evidence"]
+  },
   dripSettings: {
     startDelay: "same-day",
     smsCap: "2",
@@ -6064,82 +6192,100 @@ const railNamesKey = "heirright:rail-names";
 const themeKey = "heirright:theme";
 const shellSettingsKey = "heirright:shell-settings";
 const discoveryStateKey = "heirright:discovery-workflow-state";
+const sourceCaptureStateKey = "heirright:source-capture-state";
+const idiImportStateKey = "heirright:idi-asset-imports";
+const contactReviewStateKey = "heirright:contact-review-state";
+const columnOrderStateKey = "heirright:column-order-state";
 const dripSettingsKey = "heirright:drip-settings";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
 const outreachAllowedApprovers = ["sam@heirright.com", "joshua@heirright.com"];
 const outreachStatuses = ["Draft", "Ready", "Approved", "Sync to Podio", "Archived"];
 const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 const columnMap = {
+  lead: '[data-column="lead"]',
   address: '[data-column="address"]',
   score: '[data-column="score"]',
   evidence: '[data-column="evidence"]',
   next: '[data-column="next"]'
 };
 
+const defaultColumnOrder = {
+  results: ["address", "lead", "score", "evidence", "next"],
+  dossiers: ["address", "lead", "score", "evidence"]
+};
+
+const tableColumnLabels = {
+  lead: "Last Name, First Initial",
+  address: "Property address",
+  score: "Score",
+  evidence: "Classification",
+  next: "Next step"
+};
+
 const productViews = ["dashboard", "find-estates", "dossiers", "drips", "queue", "admin", "settings"];
 
 const discoveryPhases = [
   {
-    id: "owner-property",
-    name: "Owner And Property",
-    label: "Owner and property",
+    id: "owner-details",
+    name: "Owner Details",
+    label: "Owner details",
     source: "County property search",
-    summary: "Confirm individual ownership, property address, mailing address, deed, OR book/page, and recent sale activity.",
-    steps: ["Confirm the owner is an individual or mark the lead to move on.", "Open county property search and verify deed or OR book/page.", "Check mailing address, sale activity, and adverse-possession signal."],
-    preferences: ["Stop on company owner", "Require OR book/page", "Flag sale inside five years"]
+    summary: "Start from the estate address, confirm owner name, folio, mailing address, and owner stop rules before any paid lookup.",
+    steps: ["Confirm property address and folio from Property Appraiser.", "Confirm owner detail and mailing address.", "Mark company-owned or recently sold stop rules before continuing."],
+    preferences: ["Address first", "Stop on company owner", "Flag sale inside five years"]
   },
   {
-    id: "tax-history",
-    name: "Tax History",
-    label: "Tax history",
+    id: "tax-receipt",
+    name: "Tax Receipt",
+    label: "Tax receipt",
     source: "Tax Collector",
-    summary: "Capture unpaid years, amount due, receipt status, payer, ownership history, and reassessment changes.",
-    steps: ["Check unpaid taxes with a two-year minimum signal.", "Review receipt status and who paid the taxes.", "Download or note tax receipts if payer differs."],
-    preferences: ["Prioritize two-year unpaid taxes", "Require payer note", "Capture reassessment changes"]
+    summary: "Capture tax history, attach the last paid receipt, and record the last paid-by party shown in the Tax Collector file.",
+    steps: ["Open Tax Collector records for the asset.", "Attach the last paid receipt or record unavailable.", "Fill last paid-by name and unpaid-year status."],
+    preferences: ["Require receipt attachment", "Require paid-by name", "Capture reassessment changes"]
   },
   {
-    id: "court-probate",
-    name: "Court And Probate",
-    label: "Court and probate",
-    source: "Clerk and probate docket",
-    summary: "Check civil, family, probate, official records, affidavits of heirs, OR books, and marriage licenses.",
-    steps: ["Search civil, family, and probate records with last-name comma format.", "Check affidavit of heirs and probate document availability.", "Cross-check official records and marriage licenses."],
-    preferences: ["Require probate status", "Show document-ordering steps", "Hold if affidavit is missing"]
+    id: "deed",
+    name: "Deed",
+    label: "Deed",
+    source: "Official Records",
+    summary: "Fetch the latest deed from the public-record source and preserve the OR book/page or instrument number.",
+    steps: ["Search Official Records by owner/address/folio.", "Attach the latest deed file or source link.", "Fill OR book/page, instrument, grantor, grantee, and recording date."],
+    preferences: ["Require deed attachment", "Require OR book/page", "Flag missing title path"]
   },
   {
-    id: "heirs-contacts",
-    name: "Heirs And Contacts",
-    label: "Heirs and contacts",
-    source: "Obituary, family tree, public records",
-    summary: "Build the heir picture from obituary, Findagrave, Legacy, Ancestry, voter records, and deceased indicators.",
-    steps: ["Capture owner DOB and deceased indicators where known.", "Build family-tree context and possible heir roles.", "Add phone and address notes only from approved paths."],
-    preferences: ["Use obituary first", "Gate paid sources", "Flag missing phones"]
+    id: "obituary",
+    name: "Obituary",
+    label: "Obituary",
+    source: "Google obituary search",
+    summary: "Search owner obituary, then attach screenshot and link when found or record reviewed-not-found.",
+    steps: ["Search the owner name and estate address context.", "Attach obituary screenshot and public link when found.", "Record reviewed-not-found without blocking the other stages."],
+    preferences: ["Use obituary first", "Attach screenshot", "Record not-found result"]
   },
   {
-    id: "manual-research",
-    name: "Manual Research",
-    label: "Manual research",
-    source: "Approval-gated sources",
-    summary: "Keep IDI, Intelius, Ancestry, ForeWarn, VitalChek, PI work, door knocks, and jail/prison searches explicitly approval-gated.",
-    steps: ["List manual research still needed.", "Mark paid-source approval before using any restricted source.", "Write plain next actions for the operator."],
-    preferences: ["Require approval", "Separate PI work", "Preserve source notes"]
+    id: "idi-asset-search",
+    name: "IDI Asset Search",
+    label: "IDI asset search",
+    source: "IDI Core expanded asset search",
+    summary: "Import exactly one expanded asset search by estate address, then block duplicate paid runs unless admin override records a reason.",
+    steps: ["Run IDI Core expanded asset search by the property address once.", "Import the report text or attachment metadata.", "Keep raw import review-only until contacts are accepted."],
+    preferences: ["One paid run only", "Asset address search", "Admin override requires reason"]
   },
   {
-    id: "document-prep",
-    name: "Document Prep",
-    label: "Document prep",
-    source: "Probate document ordering",
-    summary: "Prepare the Discovery Dossier and the seven to ten document packet inputs before CRM handoff.",
-    steps: ["Prepare discovery dossier summary.", "Stage probate request, deed/tax packet, source notes, and outreach drafts.", "Confirm every document has a next action or blocker."],
-    preferences: ["Show PDF packet", "Include pop-out review", "Keep incomplete docs visible"]
+    id: "contact-review",
+    name: "Contact Review",
+    label: "Contact review",
+    source: "IDI likely relatives and associates",
+    summary: "Accept spouse and children as primary secondary contacts, then keep remaining relatives and associates in Alternative Contacts unless promoted.",
+    steps: ["Review spouse and child candidates first.", "Accept, reject, or promote each contact.", "Confirm phone, email, current address, and address history before score increases."],
+    preferences: ["Spouse and children primary", "Same last name ranks higher", "Associates stay alternative"]
   },
   {
-    id: "crm-handoff",
-    name: "CRM Handoff",
-    label: "CRM handoff",
+    id: "dossier-export",
+    name: "Dossier Export",
+    label: "Dossier export",
     source: "Podio prep",
-    summary: "Prepare Podio fields, tasks, batch export queue, drip settings, and readback checklist without live writes.",
-    steps: ["Stage Podio field mapping and queue state.", "Configure email and SMS drip preferences.", "Hold live handoff until approval and readback are proven."],
+    summary: "Prepare the completed dossier packet, Podio fields, and Google export rows after source evidence and contacts are reviewed.",
+    steps: ["Review Discovery Dossier and completed report.", "Stage Podio fields and Google Sheets row.", "Hold live handoff until approval and readback are proven."],
     preferences: ["Prep only", "Batch export", "Require readback proof"]
   }
 ];
@@ -6151,6 +6297,200 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function normalizedAssetAddress(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\b(street)\b/g, "st")
+    .replace(/\b(avenue)\b/g, "ave")
+    .replace(/\b(road)\b/g, "rd")
+    .replace(/\b(drive)\b/g, "dr")
+    .replace(/\b(court)\b/g, "ct")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function ownerLastName(value = "") {
+  const parts = String(value || "")
+    .replace(/\b(est|estate|of|the)\b/gi, " ")
+    .replace(/[^a-zA-Z\s'-]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return String(parts.at(-1) || "").toLowerCase();
+}
+
+function assetDiscoveryKey(row = selectedRow()) {
+  if (!row) return "unknown-asset";
+  return [normalizedAssetAddress(row.address || row.title), ownerLastName(row.owner || row.title || row.leadName)]
+    .filter(Boolean)
+    .join(":") || row.id;
+}
+
+function restoreObjectFromStorage(key, fallback = {}) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(key) ?? "null");
+    return stored && typeof stored === "object" && !Array.isArray(stored) ? stored : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function persistAssetDiscoveryState() {
+  localStorage.setItem(sourceCaptureStateKey, JSON.stringify(state.sourceCaptures));
+  localStorage.setItem(idiImportStateKey, JSON.stringify(state.idiImports));
+  localStorage.setItem(contactReviewStateKey, JSON.stringify(state.contactReviews));
+}
+
+function loadAssetDiscoveryState() {
+  state.sourceCaptures = restoreObjectFromStorage(sourceCaptureStateKey, {});
+  state.idiImports = restoreObjectFromStorage(idiImportStateKey, {});
+  state.contactReviews = restoreObjectFromStorage(contactReviewStateKey, {});
+  const storedColumnOrder = restoreObjectFromStorage(columnOrderStateKey, {});
+  state.columnOrder = {
+    results: normalizeColumnOrder("results", storedColumnOrder.results),
+    dossiers: normalizeColumnOrder("dossiers", storedColumnOrder.dossiers),
+  };
+}
+
+function normalizeColumnOrder(scope, order) {
+  const defaults = defaultColumnOrder[scope] ?? defaultColumnOrder.results;
+  const incoming = Array.isArray(order) ? order.map(String) : [];
+  return [...incoming.filter((key) => defaults.includes(key)), ...defaults.filter((key) => !incoming.includes(key))];
+}
+
+function persistColumnOrder() {
+  localStorage.setItem(columnOrderStateKey, JSON.stringify(state.columnOrder));
+}
+
+function sourceCaptureForRow(row = selectedRow()) {
+  return state.sourceCaptures[assetDiscoveryKey(row)] ?? {};
+}
+
+function idiImportForRow(row = selectedRow()) {
+  return state.idiImports[assetDiscoveryKey(row)] ?? null;
+}
+
+function contactReviewsForRow(row = selectedRow()) {
+  return state.contactReviews[assetDiscoveryKey(row)] ?? {};
+}
+
+function extractPhones(text = "") {
+  return Array.from(new Set(String(text).match(/\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/g) ?? []));
+}
+
+function extractEmails(text = "") {
+  return Array.from(new Set(String(text).match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi) ?? []));
+}
+
+function extractAddresses(text = "") {
+  const matches = String(text).match(/\b\d{2,6}\s+[A-Z0-9 .'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}\b/gi) ?? [];
+  return Array.from(new Set(matches.map((item) => item.replace(/\s+/g, " ").trim())));
+}
+
+function inferIdiRelationship(block = "") {
+  const lower = String(block).toLowerCase();
+  if (/\b(wife|husband|spouse)\b/.test(lower)) return "spouse";
+  if (/\bdaughter\b/.test(lower)) return "daughter";
+  if (/\bson\b/.test(lower)) return "son";
+  if (/\b(child|children)\b/.test(lower)) return "child";
+  if (/\b(parent|mother|father)\b/.test(lower)) return "parent";
+  if (/\b(brother|sister|sibling)\b/.test(lower)) return "sibling";
+  if (/\b(associate|neighbor)\b/.test(lower)) return "associate";
+  return "relative";
+}
+
+function inferIdiName(block = "") {
+  const lines = String(block).split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const labeled = lines.map((line) => line.match(/(?:name|relative|associate|spouse|child|son|daughter)\s*[:\-]\s*([A-Z][A-Z .'-]{2,})/i)?.[1]).find(Boolean);
+  if (labeled) return labeled.replace(/\s+/g, " ").trim();
+  const heading = lines.find((line) => /^[0-9.)\s-]*[A-Z][A-Z .'-]{3,}$/.test(line) && !/\d{3}|\b(address|phone|email)\b/i.test(line));
+  return heading ? heading.replace(/^[0-9.)\s-]+/, "").replace(/\s+/g, " ").trim() : "Unnamed contact";
+}
+
+function parseIdiImportCandidates(row, importedText = "") {
+  const blocks = String(importedText || "")
+    .split(/\n{2,}|(?=\n\s*(?:relative|associate|spouse|child|son|daughter)\s*[:\-])/i)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 8 && (/\b(phone|email|address|relative|associate|spouse|child|son|daughter)\b/i.test(block) || extractPhones(block).length || extractEmails(block).length));
+  return blocks.map((block, index) => {
+    const relationship = inferIdiRelationship(block);
+    const addresses = extractAddresses(block);
+    const name = inferIdiName(block);
+    const primary = /^(spouse|wife|husband|child|son|daughter)$/i.test(relationship);
+    const sameLast = Boolean(ownerLastName(row?.owner || row?.title) && ownerLastName(name) === ownerLastName(row?.owner || row?.title));
+    return {
+      id: `${assetDiscoveryKey(row)}:idi:${index + 1}`,
+      name,
+      relationship,
+      group: primary ? "primary" : "alternative",
+      phones: extractPhones(block),
+      emails: extractEmails(block),
+      currentAddress: addresses[0] || "",
+      addressHistory: addresses,
+      ownerLastNameMatch: sameLast,
+      confidence: primary ? 86 : sameLast ? 72 : 58,
+      reviewStatus: "imported",
+    };
+  });
+}
+
+function contactCandidatesForRow(row = selectedRow()) {
+  const stored = idiImportForRow(row);
+  return Array.isArray(stored?.candidates) ? stored.candidates : [];
+}
+
+function candidateReviewState(row, candidate) {
+  return contactReviewsForRow(row)[candidate.id]?.status || candidate.reviewStatus || "imported";
+}
+
+function acceptedContactCandidates(row = selectedRow()) {
+  return contactCandidatesForRow(row).filter((candidate) => {
+    const status = candidateReviewState(row, candidate);
+    return status === "accepted" || status === "promoted";
+  });
+}
+
+function primaryContactCandidates(row = selectedRow()) {
+  return contactCandidatesForRow(row).filter((candidate) => candidate.group === "primary" || candidateReviewState(row, candidate) === "promoted");
+}
+
+function alternativeContactCandidates(row = selectedRow()) {
+  return contactCandidatesForRow(row).filter((candidate) => candidate.group !== "primary" && candidateReviewState(row, candidate) !== "promoted");
+}
+
+function rowDisplayScore(row) {
+  if (!row) return 0;
+  const accepted = acceptedContactCandidates(row).length;
+  return Math.min(100, Number(row.score || 0) + accepted * 8);
+}
+
+function rowDisplayClassification(row) {
+  if (!row) return "Review";
+  if (acceptedContactCandidates(row).length) return "Contact verified";
+  if (idiImportForRow(row)) return "Review contacts";
+  return rowClassification(row);
+}
+
+function rowNextAction(row) {
+  if (!row) return "Review";
+  if (!idiImportForRow(row)) return "Import IDI";
+  if (!acceptedContactCandidates(row).length) return "Review contacts";
+  return row.next || "Review dossier";
+}
+
+function assetPhaseComplete(row, phaseId) {
+  const capture = sourceCaptureForRow(row);
+  if (phaseId === "owner-details") return Boolean(row?.address && row?.owner);
+  if (phaseId === "tax-receipt") return Boolean(capture.taxReceipt?.paidBy || capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName);
+  if (phaseId === "deed") return Boolean(capture.deed?.sourceUrl || capture.deed?.fileName || capture.deed?.instrument);
+  if (phaseId === "obituary") return Boolean(capture.obituary?.sourceUrl || capture.obituary?.status === "reviewed-not-found");
+  if (phaseId === "idi-asset-search") return Boolean(idiImportForRow(row));
+  if (phaseId === "contact-review") return acceptedContactCandidates(row).length > 0;
+  if (phaseId === "dossier-export") return state.discoveryCompleted.has(phaseId);
+  return false;
 }
 
 function initials(value) {
@@ -6410,11 +6750,11 @@ function buildMissingSections(dossier) {
     },
     {
       id: "phones",
-      label: "Add phone numbers",
-      short: "Phone numbers",
+      label: "Import IDI contacts",
+      short: "IDI contacts",
       type: "phones",
-      source: "Skip trace or approved paid sources",
-      copy: "Add verified phone numbers only after paid-source approval and operator review.",
+      source: "IDI Core expanded asset search",
+      copy: "Run the one-time asset search, import relatives and associates, then accept reviewed phone/email contacts.",
       tasks: dossier.sourceGovernance?.reviewTasks ?? []
     },
     {
@@ -6935,8 +7275,9 @@ function loadSavedState() {
   } catch {
     state.railNames = {};
   }
-  loadDiscoveryState();
-  loadShellSettings();
+	  loadDiscoveryState();
+	  loadAssetDiscoveryState();
+	  loadShellSettings();
   loadDripSettings();
   loadOutreachWorkspace();
   state.shellEvents = defaultShellEvents();
@@ -7564,17 +7905,19 @@ function trackerIcon(type = "check") {
 }
 
 function currentDiscoveryPhase() {
-  return discoveryPhases[state.discoveryPhaseIndex] ?? discoveryPhases[0];
+  const row = selectedRow();
+  return discoveryPhases.find((phase) => !phaseIsComplete(phase.id, row)) ?? discoveryPhases.at(-1) ?? discoveryPhases[0];
 }
 
 function discoveryProgress() {
-  const completed = state.discoveryCompleted.size;
+  const row = selectedRow();
+  const completed = discoveryPhases.filter((phase) => phaseIsComplete(phase.id, row)).length;
   const total = discoveryPhases.length;
   return Math.round((completed / total) * 100);
 }
 
-function phaseIsComplete(phaseId = currentDiscoveryPhase().id) {
-  return state.discoveryCompleted.has(phaseId);
+function phaseIsComplete(phaseId = currentDiscoveryPhase().id, row = selectedRow()) {
+  return state.discoveryCompleted.has(phaseId) || assetPhaseComplete(row, phaseId);
 }
 
 function discoveryPreferenceKey(phaseId, index) {
@@ -7696,7 +8039,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "discovery-dossier",
       title: "Discovery Dossier",
-      phaseId: "owner-property",
+      phaseId: "owner-details",
       type: "PDF packet",
       copy: "Owner, property, deed, tax, probate, heirs, notes, and next actions.",
       status: missing.length ? `${missing.length} open section${missing.length === 1 ? "" : "s"}` : "Ready for review",
@@ -7705,7 +8048,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "completed-report",
       title: "Completed Lead Report",
-      phaseId: "document-prep",
+      phaseId: "dossier-export",
       type: "Rendered report",
       copy: "Lead report draft with offer, source notes, and review gate.",
       status: report?.reviewGate?.externalUseBlocked ? "Review blocked" : "Prepared",
@@ -7714,7 +8057,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "source-notes",
       title: "Source Notes",
-      phaseId: "manual-research",
+      phaseId: "owner-details",
       type: "Review notes",
       copy: "County records, source coverage, and missing fact checklist.",
       status: "Source-backed",
@@ -7723,7 +8066,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "deed-title-notes",
       title: "Deed & Title Notes",
-      phaseId: "court-probate",
+      phaseId: "deed",
       type: "Official records",
       copy: "Owner chain, deed gaps, OR book/page notes, and title review blockers.",
       status: (dossier?.deedHistory?.reviewTasks ?? []).length ? "Needs review" : "Staged",
@@ -7732,7 +8075,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "tax-history",
       title: "Tax History Packet",
-      phaseId: "tax-history",
+      phaseId: "tax-receipt",
       type: "Tax collector",
       copy: "Unpaid years, receipt status, payer notes, reassessment, and lien review.",
       status: missing.some((item) => item.type === "tax") ? "Open" : "Staged",
@@ -7741,7 +8084,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "probate-request",
       title: "Probate Document Request",
-      phaseId: "court-probate",
+      phaseId: "deed",
       type: "Court request",
       copy: "Court call, page count, money order, certified copy, and pickup path.",
       status: "Draft",
@@ -7750,7 +8093,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "heir-contact-matrix",
       title: "Heir Contact Matrix",
-      phaseId: "heirs-contacts",
+      phaseId: "contact-review",
       type: "Contact review",
       copy: "Potential heirs, contact confidence, approval gates, and source notes.",
       status: (dossier?.familyTree?.reviewTasks ?? []).length ? "Needs review" : "Staged",
@@ -7759,7 +8102,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "outreach-drafts",
       title: "Outreach Drafts",
-      phaseId: "crm-handoff",
+      phaseId: "dossier-export",
       type: "Email and SMS",
       copy: "Review-only outreach language held until approval.",
       status: "Locked",
@@ -7768,7 +8111,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "drip-schedule",
       title: "Drip Schedule",
-      phaseId: "crm-handoff",
+      phaseId: "dossier-export",
       type: "Automation prep",
       copy: "Email/SMS cadence, stop rules, review owner, and no-send guardrails.",
       status: "Prepared only",
@@ -7777,7 +8120,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "crm-handoff",
       title: "CRM Handoff",
-      phaseId: "crm-handoff",
+      phaseId: "dossier-export",
       type: "Podio fields",
       copy: "Batch export fields, tasks, drip route, and readback checklist.",
       status: "Prep only",
@@ -7836,6 +8179,283 @@ function dossierChecklistHtml(docs, { compact = false } = {}) {
       }).join("")}
     </div>
   `;
+}
+
+function assetStepStatusHtml(complete, active, index) {
+  if (complete) {
+    return `<span class="asset-step-status" aria-label="Complete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 12.5 3.8 3.8L18 8" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  }
+  if (active) {
+    return `<span class="asset-step-status" aria-label="Working"><span class="dossier-check-spinner"></span></span>`;
+  }
+  return `<span class="asset-step-status" aria-label="Needed">${String(index + 1).padStart(2, "0")}</span>`;
+}
+
+function assetDiscoveryChecklistHtml(row = selectedRow()) {
+  const current = currentDiscoveryPhase();
+  return `
+    <div class="asset-step-stack" role="list">
+      ${discoveryPhases.map((phase, index) => {
+        const complete = phaseIsComplete(phase.id, row);
+        const active = !complete && phase.id === current.id;
+        return `
+          <article class="asset-step-row" role="listitem" data-state="${complete ? "complete" : active ? "active" : "pending"}">
+            ${assetStepStatusHtml(complete, active, index)}
+            <span>
+              <span class="dossier-check-title">${escapeHtml(phase.name)}</span>
+              <span class="dossier-check-copy">${escapeHtml(phase.summary)}</span>
+            </span>
+            <span class="dossier-check-action">${complete ? "Done" : active ? "Working" : "Needed"}</span>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function assetCaptureFormHtml(row = selectedRow()) {
+  const capture = sourceCaptureForRow(row);
+  return `
+    <section class="glass-card rail-card">
+      <h3>Public-record capture</h3>
+      <p class="copy">Attach the evidence that makes the dossier real: last paid tax receipt, latest deed, and obituary result.</p>
+      <div class="asset-capture-grid">
+        <div class="field"><label>Tax paid by</label><input data-source-capture-field="taxReceipt.paidBy" value="${escapeHtml(capture.taxReceipt?.paidBy ?? "")}" placeholder="Name on last paid receipt"></div>
+        <div class="field"><label>Receipt link or file</label><input data-source-capture-field="taxReceipt.sourceUrl" value="${escapeHtml(capture.taxReceipt?.sourceUrl ?? capture.taxReceipt?.fileName ?? "")}" placeholder="Tax Collector receipt URL or file"></div>
+        <div class="field"><label>Deed OR / instrument</label><input data-source-capture-field="deed.instrument" value="${escapeHtml(capture.deed?.instrument ?? "")}" placeholder="OR book/page or instrument"></div>
+        <div class="field"><label>Deed link or file</label><input data-source-capture-field="deed.sourceUrl" value="${escapeHtml(capture.deed?.sourceUrl ?? capture.deed?.fileName ?? "")}" placeholder="Official Records deed URL or file"></div>
+        <div class="field"><label>Obituary status</label><select data-source-capture-field="obituary.status"><option value="">Needs review</option><option value="found" ${capture.obituary?.status === "found" ? "selected" : ""}>Found</option><option value="reviewed-not-found" ${capture.obituary?.status === "reviewed-not-found" ? "selected" : ""}>Reviewed not found</option></select></div>
+        <div class="field"><label>Obituary link or snapshot</label><input data-source-capture-field="obituary.sourceUrl" value="${escapeHtml(capture.obituary?.sourceUrl ?? capture.obituary?.fileName ?? "")}" placeholder="Obituary URL or screenshot file"></div>
+      </div>
+      <div class="discovery-actions">
+        <span class="copy">${escapeHtml(capture.updatedAt ? `Saved ${new Date(capture.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Not saved yet")}</span>
+        <button class="btn primary solvys-liquid-glass" type="button" data-save-source-capture>Save Capture</button>
+      </div>
+    </section>
+  `;
+}
+
+function idiImportPanelHtml(row = selectedRow()) {
+  const stored = idiImportForRow(row);
+  return `
+    <section class="glass-card rail-card">
+      <h3>IDI asset search</h3>
+      <p class="copy">Run IDI Core once by asset address, then import the report text or attachment metadata. Duplicate paid runs are blocked unless admin override includes a reason.</p>
+      ${stored ? `
+        <ul class="mini-list">
+          <li><strong>Status</strong><span>${escapeHtml(stored.duplicateGuard === "admin_override_recorded" ? "Imported with admin override" : "Imported once")}</span></li>
+          <li><strong>Lock key</strong><span>${escapeHtml(stored.lockKey ?? assetDiscoveryKey(row))}</span></li>
+          <li><strong>Contacts found</strong><span>${escapeHtml(stored.candidates?.length ?? 0)} candidates, ${escapeHtml(acceptedContactCandidates(row).length)} accepted</span></li>
+        </ul>
+      ` : ""}
+      <div class="idi-import-grid">
+        <div class="field"><label>Report label</label><input data-idi-report-label value="${escapeHtml(stored?.attachment?.label ?? "IDI expanded asset search")}"></div>
+        <div class="field"><label>Source link / file</label><input data-idi-report-source value="${escapeHtml(stored?.attachment?.sourceUrl ?? stored?.attachment?.fileName ?? "")}" placeholder="IDI report PDF, CSV, or source note"></div>
+        <div class="field full"><label>IDI report text</label><textarea data-idi-import-text placeholder="Paste likely relatives and associates from the expanded asset report.">${escapeHtml(stored?.importedText ?? "")}</textarea></div>
+        <div class="field full"><label>Admin override reason</label><input data-idi-admin-reason value="" placeholder="Only required if replacing an existing imported IDI asset search"></div>
+      </div>
+      <div class="discovery-actions">
+        <span class="copy">Raw IDI import does not raise the score until contacts are accepted.</span>
+        <button class="btn primary solvys-liquid-glass" type="button" data-import-idi>Import IDI</button>
+      </div>
+    </section>
+  `;
+}
+
+function contactCandidateMeta(candidate) {
+  const pieces = [
+    displayStatus(candidate.relationship, "Relative"),
+    candidate.ownerLastNameMatch ? "last-name match" : "last-name unchecked",
+    candidate.phones?.length ? `${candidate.phones.length} phone${candidate.phones.length === 1 ? "" : "s"}` : "no phone",
+    candidate.emails?.length ? `${candidate.emails.length} email${candidate.emails.length === 1 ? "" : "s"}` : "no email",
+  ];
+  return pieces.join(" · ");
+}
+
+function contactReviewRowsHtml(row, groupLabel, contacts) {
+  return `
+    <h3>${escapeHtml(groupLabel)}</h3>
+    <div class="contact-review-list">
+      ${contacts.map((candidate) => {
+        const status = candidateReviewState(row, candidate);
+        return `
+          <article class="contact-review-row" data-contact-status="${escapeHtml(status)}">
+            <span>
+              <span class="dossier-check-title">${escapeHtml(candidate.name)}</span>
+              <span class="dossier-check-copy">${escapeHtml(contactCandidateMeta(candidate))}${candidate.currentAddress ? ` · ${escapeHtml(candidate.currentAddress)}` : ""}</span>
+            </span>
+            <span class="contact-review-actions">
+              ${statusPill(status === "accepted" || status === "promoted" ? "ready" : status === "rejected" ? "blocked" : "review", displayStatus(status))}
+              <button class="btn" type="button" data-contact-review="${escapeHtml(candidate.id)}" data-contact-status="accepted">Accept</button>
+              <button class="btn" type="button" data-contact-review="${escapeHtml(candidate.id)}" data-contact-status="promoted">Promote</button>
+              <button class="btn" type="button" data-contact-review="${escapeHtml(candidate.id)}" data-contact-status="rejected">Reject</button>
+            </span>
+          </article>
+        `;
+      }).join("") || `<p class="copy">No ${escapeHtml(groupLabel.toLowerCase())} imported yet.</p>`}
+    </div>
+  `;
+}
+
+function contactReviewPanelHtml(row = selectedRow()) {
+  const primary = primaryContactCandidates(row);
+  const alternative = alternativeContactCandidates(row);
+  return `
+    <section class="glass-card rail-card">
+      <h3>Contact review</h3>
+      <p class="copy">Accept spouse and children first. Remaining relatives and associates stay in Alternative Contacts unless promoted.</p>
+      ${contactReviewRowsHtml(row, "Primary secondary contacts", primary)}
+      ${contactReviewRowsHtml(row, "Alternative Contacts", alternative)}
+    </section>
+  `;
+}
+
+function setNestedValue(target, path, value) {
+  const [head, ...tail] = String(path || "").split(".");
+  if (!head) return;
+  if (!tail.length) {
+    target[head] = value;
+    return;
+  }
+  target[head] = target[head] && typeof target[head] === "object" ? target[head] : {};
+  setNestedValue(target[head], tail.join("."), value);
+}
+
+function collectSourceCapturePayload(root, row) {
+  const payload = {
+    assetKey: assetDiscoveryKey(row),
+    leadId: row?.id,
+    owner: row?.owner || row?.title,
+    address: row?.address,
+    capturedAt: new Date().toISOString(),
+    capturedBy: state.session?.email || "operator"
+  };
+  root.querySelectorAll("[data-source-capture-field]").forEach((field) => {
+    setNestedValue(payload, field.dataset.sourceCaptureField, field.value.trim());
+  });
+  return payload;
+}
+
+async function postJson(url, payload) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = json.error || json.message || `Request failed with ${response.status}`;
+    throw new Error(message);
+  }
+  return json;
+}
+
+function rerenderAssetDiscoverySurface() {
+  persistAssetDiscoveryState();
+  renderResults();
+  if (state.activeView === "dossiers") renderDossiersView();
+  renderRail();
+  renderCurrentLoopView();
+}
+
+function wireAssetDiscoveryControls(content, row = selectedRow()) {
+  if (!content || !row) return;
+  content.querySelector("[data-save-source-capture]")?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    const payload = collectSourceCapturePayload(content, row);
+    const key = assetDiscoveryKey(row);
+    state.sourceCaptures[key] = {
+      ...(state.sourceCaptures[key] ?? {}),
+      ...payload,
+      updatedAt: Date.now()
+    };
+    try {
+      await postJson("/api/discovery/source-capture", payload);
+      addShellEvent("Source capture saved", "Tax receipt, deed, and obituary evidence were saved to the dossier review trail.", "ready", false);
+    } catch (error) {
+      addShellEvent("Source capture saved locally", error instanceof Error ? error.message : "Server capture failed; local evidence remains visible.", "blocked", true);
+    }
+    rerenderAssetDiscoverySurface();
+  });
+
+  content.querySelector("[data-import-idi]")?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    const key = assetDiscoveryKey(row);
+    const text = content.querySelector("[data-idi-import-text]")?.value.trim() ?? "";
+    const overrideReason = content.querySelector("[data-idi-admin-reason]")?.value.trim() ?? "";
+    const label = content.querySelector("[data-idi-report-label]")?.value.trim() || "IDI expanded asset search";
+    const sourceUrl = content.querySelector("[data-idi-report-source]")?.value.trim() ?? "";
+    if (!text && !sourceUrl) {
+      addShellEvent("IDI import needs a report", "Paste the expanded asset-search text or attach the report metadata before importing.", "blocked", true);
+      return;
+    }
+    if (state.idiImports[key] && !overrideReason) {
+      addShellEvent("Duplicate IDI run blocked", "This estate already has one imported asset-search report. Admin override requires a reason before replacing it.", "blocked", true);
+      return;
+    }
+    const candidates = parseIdiImportCandidates(row, text);
+    const payload = {
+      assetKey: key,
+      leadId: row.id,
+      ownerName: row.owner || row.title,
+      address: row.address,
+      provider: "idi",
+      importedText: text,
+      adminOverrideReason: overrideReason,
+      attachment: {
+        label,
+        sourceUrl,
+        fileKind: sourceUrl ? "link" : "text",
+        capturedAt: new Date().toISOString(),
+        capturedBy: state.session?.email || "operator",
+        reviewFlags: ["IDI_ASSET_SEARCH_REVIEW_REQUIRED"]
+      }
+    };
+    try {
+      const result = await postJson("/api/discovery/idi-asset-search/import", payload);
+      state.idiImports[key] = {
+        ...result,
+        importedText: text,
+        candidates,
+        attachment: payload.attachment,
+        duplicateGuard: overrideReason ? "admin_override_recorded" : result.duplicateGuard || "first_import_locked",
+        importedAt: Date.now()
+      };
+      addShellEvent("IDI asset search imported", `${candidates.length} contact candidate${candidates.length === 1 ? "" : "s"} are ready for operator review. Score will update after acceptance.`, "review", true);
+    } catch (error) {
+      addShellEvent("IDI import blocked", error instanceof Error ? error.message : "The imported report could not be saved.", "blocked", true);
+    }
+    rerenderAssetDiscoverySurface();
+  });
+
+  content.querySelectorAll("[data-contact-review]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      const key = assetDiscoveryKey(row);
+      const candidateId = button.dataset.contactReview;
+      const status = button.dataset.contactStatus;
+      state.contactReviews[key] = {
+        ...(state.contactReviews[key] ?? {}),
+        [candidateId]: {
+          status,
+          reviewedAt: Date.now(),
+          reviewedBy: state.session?.email || "operator"
+        }
+      };
+      try {
+        await postJson(`/api/discovery/contact-candidates/${encodeURIComponent(candidateId)}/review`, {
+          assetKey: key,
+          leadId: row.id,
+          status,
+          reviewedBy: state.session?.email || "operator"
+        });
+        addShellEvent("Contact review updated", `${displayStatus(status)} was saved for the selected IDI contact candidate.`, status === "rejected" ? "review" : "ready", false);
+      } catch (error) {
+        addShellEvent("Contact review saved locally", error instanceof Error ? error.message : "Server review failed; local review remains visible.", "blocked", true);
+      }
+      rerenderAssetDiscoverySurface();
+    });
+  });
 }
 
 function exportBlockerItems(result = state.exportResult) {
@@ -8003,6 +8623,36 @@ function sourceLinkItems(report) {
     : "<li>No source URLs are attached to this report yet.</li>";
 }
 
+function sourceArtifactLink(label, value) {
+  const text = String(value || "").trim();
+  if (!text) return "Needs review";
+  if (/^https?:\/\//i.test(text)) {
+    return `<a href="${escapeHtml(text)}" target="_blank" rel="noreferrer noopener">${escapeHtml(label)}</a>`;
+  }
+  return escapeHtml(text);
+}
+
+function sourceCaptureEvidenceRows(row) {
+  const capture = sourceCaptureForRow(row);
+  const idi = idiImportForRow(row);
+  const rows = [
+    ["Tax receipt paid by", escapeHtml(capture.taxReceipt?.paidBy || "Needs review")],
+    ["Tax receipt attachment", sourceArtifactLink("Tax Collector receipt", capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName)],
+    ["Deed OR / instrument", escapeHtml(capture.deed?.instrument || "Needs review")],
+    ["Deed attachment", sourceArtifactLink("Official Records deed", capture.deed?.sourceUrl || capture.deed?.fileName)],
+    ["Obituary evidence", capture.obituary?.status === "reviewed-not-found" ? "Reviewed not found" : sourceArtifactLink("Obituary snapshot/link", capture.obituary?.sourceUrl || capture.obituary?.fileName)],
+    ["IDI asset search", escapeHtml(idi ? `${idi.candidates?.length ?? 0} imported candidate${(idi.candidates?.length ?? 0) === 1 ? "" : "s"}; ${acceptedContactCandidates(row).length} accepted` : "Needs one-time asset search import")]
+  ];
+  return rows.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${value}</td></tr>`).join("");
+}
+
+function assetDiscoveryReportRows(row) {
+  return discoveryPhases.map((phase) => {
+    const complete = phaseIsComplete(phase.id, row);
+    return `<tr><th>${escapeHtml(phase.name)}</th><td>${escapeHtml(complete ? "Complete" : "Needs review")}</td><td>${escapeHtml(phase.summary)}</td></tr>`;
+  }).join("");
+}
+
 function packageContentsItems() {
   const sections = [
     ["property-address", "Property Address", "Recorded address and parcel identity."],
@@ -8022,17 +8672,20 @@ function packageContentsItems() {
   return sections.map(([id, title, copy]) => `<li><a href="#${escapeHtml(id)}">${escapeHtml(title)}</a><span>${escapeHtml(copy)}</span></li>`).join("");
 }
 
-function contactMatrixRows(report, dossier) {
-  const contacts = report?.contactPlaceholders ?? dossier?.familyTree?.hypothesis?.value?.nodes ?? [];
+function contactMatrixRows(row, report, dossier, group = "primary") {
+  const imported = group === "primary" ? primaryContactCandidates(row) : alternativeContactCandidates(row);
+  const contacts = imported.length ? imported : group === "primary" ? (report?.contactPlaceholders ?? dossier?.familyTree?.hypothesis?.value?.nodes ?? []) : [];
   if (!contacts.length) {
-    return `<tr><td colspan="5">No confirmed contacts yet. Build this from obituary, probate, family tree, approved paid sources, and operator notes.</td></tr>`;
+    return `<tr><td colspan="5">No ${group === "primary" ? "accepted spouse or child" : "alternative relative or associate"} contacts yet. Build this from obituary, probate, family tree, approved IDI asset search, and operator notes.</td></tr>`;
   }
   return contacts.slice(0, 18).map((contact, index) => {
     const name = contact.name || contact.label || `${displayStatus(contact.role, "Contact")} ${index + 1}`;
     const phones = (contact.phones ?? []).join(", ") || "Needs review";
     const emails = (contact.emails ?? []).join(", ") || "Needs review";
-    const addresses = (contact.addresses ?? []).join("; ") || "Needs review";
-    return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(displayStatus(contact.role, "Relationship"))}</td><td>${escapeHtml(phones)}</td><td>${escapeHtml(emails)}</td><td>${escapeHtml(addresses)}<br><span class="small">${escapeHtml(contact.note ?? "Relationship/source confidence needs review.")}</span></td></tr>`;
+    const addresses = (contact.addressHistory ?? contact.addresses ?? []).join("; ") || contact.currentAddress || "Needs review";
+    const relationship = contact.relationship || contact.role || "Relationship";
+    const review = contact.id ? displayStatus(candidateReviewState(row, contact)) : "Needs review";
+    return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(displayStatus(relationship))}</td><td>${escapeHtml(phones)}</td><td>${escapeHtml(emails)}</td><td>${escapeHtml(addresses)}<br><span class="small">${escapeHtml(contact.note ?? `${review}; confidence ${contact.confidence ?? "needs review"}.`)}</span></td></tr>`;
   }).join("");
 }
 
@@ -8094,11 +8747,13 @@ function completedLeadReportHtml(row, dossier) {
       <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Needs review"))}</td></tr>
       <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? claimValue(property.parcelId, "Needs review"))}</td></tr>
       <tr><th>Case / file</th><td>${escapeHtml(row?.file ?? claimValue(property.caseNumber, "Needs review"))}</td></tr>
-      <tr><th>Owner DOB / DOD</th><td>Needs review from vital, obituary, memorial, or probate source notes.</td></tr>
-      <tr><th>Obituary status</th><td>Needs review. Preserve the link or explicit "not found" note before outreach.</td></tr>
-    </table>
+	      <tr><th>Owner DOB / DOD</th><td>Needs review from vital, obituary, memorial, or probate source notes.</td></tr>
+	      <tr><th>Obituary status</th><td>Needs review. Preserve the link or explicit "not found" note before outreach.</td></tr>
+	    </table>
+	    <h2>Captured Source Evidence</h2>
+	    <table>${sourceCaptureEvidenceRows(row)}</table>
 
-    <div class="section" id="offer-profit">
+	    <div class="section" id="offer-profit">
       <h2>Offer / Profit Table</h2>
       <p class="muted">Mirrors the client packet structure while keeping unverified values visible instead of silently filling them.</p>
       ${offerProfitTable(report)}
@@ -8122,14 +8777,20 @@ function completedLeadReportHtml(row, dossier) {
       </div>
     </div>
 
-    <div class="section" id="family-tree">
-      <h2>Family Tree And Contact Matrix</h2>
-      ${paragraphBlock(report?.familyTreeSummary, "Family-tree hypothesis needs review.")}
-      <table>
-        <thead><tr><th>Name</th><th>Relationship</th><th>Phone numbers</th><th>Email</th><th>Current / history address</th></tr></thead>
-        <tbody>${contactMatrixRows(report, dossier)}</tbody>
-      </table>
-    </div>
+	    <div class="section" id="family-tree">
+	      <h2>Family Tree And Contact Matrix</h2>
+	      ${paragraphBlock(report?.familyTreeSummary, "Family-tree hypothesis needs review.")}
+	      <h2>Primary Secondary Contacts</h2>
+	      <table>
+	        <thead><tr><th>Name</th><th>Relationship</th><th>Phone numbers</th><th>Email</th><th>Current / history address</th></tr></thead>
+	        <tbody>${contactMatrixRows(row, report, dossier, "primary")}</tbody>
+	      </table>
+	      <h2>Alternative Contacts</h2>
+	      <table>
+	        <thead><tr><th>Name</th><th>Relationship</th><th>Phone numbers</th><th>Email</th><th>Current / history address</th></tr></thead>
+	        <tbody>${contactMatrixRows(row, report, dossier, "alternative")}</tbody>
+	      </table>
+	    </div>
 
     <div class="section" id="source-notes">
       <h2>Source Notes Review</h2>
@@ -8169,14 +8830,21 @@ function discoveryDossierHtml(row, dossier) {
   const missing = row?.missing ?? buildMissingSections(dossier ?? {});
   return pageShellHtml("Discovery Dossier", row?.leadName ?? "Lead file", `
     <p class="muted">Prepared from the current public-record lead packet. Review-only until source notes and handoff gates clear.</p>
-    <table>
-      <tr><th>Owner / estate</th><td>${escapeHtml(row?.owner ?? claimValue(property.ownerName, "Needs review"))}</td></tr>
-      <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
-      <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Miami-Dade County, FL"))}</td></tr>
-      <tr><th>Case / file</th><td>${escapeHtml(row?.file ?? claimValue(property.caseNumber, "Needs review"))}</td></tr>
-      <tr><th>Current phase</th><td>${escapeHtml(currentDiscoveryPhase().label)}</td></tr>
-    </table>
-    <h2>Open source notes</h2>
+	    <table>
+	      <tr><th>Owner / estate</th><td>${escapeHtml(row?.owner ?? claimValue(property.ownerName, "Needs review"))}</td></tr>
+	      <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
+	      <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Miami-Dade County, FL"))}</td></tr>
+	      <tr><th>Case / file</th><td>${escapeHtml(row?.file ?? claimValue(property.caseNumber, "Needs review"))}</td></tr>
+	      <tr><th>Current phase</th><td>${escapeHtml(currentDiscoveryPhase().label)}</td></tr>
+	    </table>
+	    <h2>Asset-first Discovery checklist</h2>
+	    <table>
+	      <thead><tr><th>Stage</th><th>Status</th><th>What it proves</th></tr></thead>
+	      <tbody>${assetDiscoveryReportRows(row)}</tbody>
+	    </table>
+	    <h2>Captured evidence</h2>
+	    <table>${sourceCaptureEvidenceRows(row)}</table>
+	    <h2>Open source notes</h2>
     <ul>${(missing.length ? missing : buildMissingSections(dossier ?? {})).map((item) => `<li><strong>${escapeHtml(item.short ?? item.label)}</strong> - ${escapeHtml(item.copy)}</li>`).join("") || "<li>All current dossier sections are marked ready in this view.</li>"}</ul>
     <h2>Document packet</h2>
     <p>Ten documents are staged for operator review: discovery dossier, completed lead report, source notes, deed and title notes, tax history packet, probate request, heir contact matrix, outreach drafts, drip schedule, and CRM handoff.</p>
@@ -8215,6 +8883,7 @@ function probateRequestHtml(row, dossier) {
 function deedTitleNotesHtml(row, dossier) {
   const tasks = dossier?.deedHistory?.reviewTasks ?? [];
   const property = dossier?.property ?? {};
+  const capture = sourceCaptureForRow(row);
   return pageShellHtml("Deed & Title Notes", row?.leadName ?? "Lead file", `
     <p class="muted">Official-record notes for owner chain, deed gaps, and title-review blockers.</p>
     <table>
@@ -8222,6 +8891,8 @@ function deedTitleNotesHtml(row, dossier) {
       <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
       <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? claimValue(property.parcelId, "Needs review"))}</td></tr>
       <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Miami-Dade County, FL"))}</td></tr>
+      <tr><th>OR / instrument</th><td>${escapeHtml(capture.deed?.instrument || "Needs review")}</td></tr>
+      <tr><th>Deed attachment</th><td>${sourceArtifactLink("Official Records deed", capture.deed?.sourceUrl || capture.deed?.fileName)}</td></tr>
     </table>
     <h2>Title review tasks</h2>
     <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Review task")}</strong> - ${escapeHtml(operatorPlainText(task.nextAction ?? task.reason ?? "Record the official-record note."))}</li>`).join("") || "<li>Owner chain is staged for review; no deed blocker is recorded in the current packet.</li>"}</ul>
@@ -8236,6 +8907,7 @@ function deedTitleNotesHtml(row, dossier) {
 
 function taxHistoryHtml(row, dossier) {
   const tasks = dossier?.taxHistory?.reviewTasks ?? [];
+  const capture = sourceCaptureForRow(row);
   const facts = operatorDocumentFacts(state.data?.facts ?? [])
     .filter((fact) => /tax|assessment|receipt|payer|folio|parcel/i.test(`${fact.source ?? ""} ${fact.factType ?? ""}`))
     .slice(0, 10);
@@ -8244,6 +8916,8 @@ function taxHistoryHtml(row, dossier) {
     <table>
       <tr><th>Property</th><td>${escapeHtml(row?.address ?? "Needs review")}</td></tr>
       <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? "Needs review")}</td></tr>
+      <tr><th>Last paid by</th><td>${escapeHtml(capture.taxReceipt?.paidBy || "Needs review")}</td></tr>
+      <tr><th>Receipt attachment</th><td>${sourceArtifactLink("Tax Collector receipt", capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName)}</td></tr>
       <tr><th>Next tax action</th><td>${escapeHtml(operatorPlainText(tasks[0]?.nextAction ?? tasks[0]?.reason ?? "Confirm unpaid years, amount due, and who paid the taxes."))}</td></tr>
     </table>
     <h2>Tax tasks</h2>
@@ -8255,7 +8929,8 @@ function taxHistoryHtml(row, dossier) {
 
 function heirContactMatrixHtml(row, dossier) {
   const report = dossier?.completedLeadReport;
-  const contacts = report?.contactPlaceholders ?? dossier?.familyTree?.hypothesis?.value?.nodes ?? [];
+  const importedContacts = contactCandidatesForRow(row);
+  const contacts = importedContacts.length ? importedContacts : report?.contactPlaceholders ?? dossier?.familyTree?.hypothesis?.value?.nodes ?? [];
   const tasks = [
     ...(dossier?.familyTree?.reviewTasks ?? []),
     ...(dossier?.marriageDeathIndicators?.reviewTasks ?? [])
@@ -8264,11 +8939,20 @@ function heirContactMatrixHtml(row, dossier) {
     <p class="muted">Contact research remains review-only until source notes, paid-source approval, and operator contact approval clear.</p>
     <table>
       <tr><th>Estate</th><td>${escapeHtml(row?.owner ?? row?.leadName ?? "Needs review")}</td></tr>
-      <tr><th>Contact placeholders</th><td>${escapeHtml(contacts.length)}</td></tr>
+      <tr><th>IDI candidates</th><td>${escapeHtml(contacts.length)}</td></tr>
+      <tr><th>Accepted contacts</th><td>${escapeHtml(acceptedContactCandidates(row).length)}</td></tr>
       <tr><th>Approval status</th><td>Do not contact until review clears</td></tr>
     </table>
-    <h2>Potential contact records</h2>
-    <ul>${contacts.slice(0, 12).map((contact, index) => `<li><strong>${escapeHtml(contact.name ?? contact.label ?? `Contact ${index + 1}`)}</strong> - ${escapeHtml(contact.relationship ?? contact.role ?? contact.status ?? "Relationship needs review")}</li>`).join("") || "<li>No contact records are confirmed yet; build from obituary, probate, family tree, and approved sources.</li>"}</ul>
+    <h2>Primary secondary contacts</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Relationship</th><th>Phone numbers</th><th>Email</th><th>Current / history address</th></tr></thead>
+      <tbody>${contactMatrixRows(row, report, dossier, "primary")}</tbody>
+    </table>
+    <h2>Alternative Contacts</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Relationship</th><th>Phone numbers</th><th>Email</th><th>Current / history address</th></tr></thead>
+      <tbody>${contactMatrixRows(row, report, dossier, "alternative")}</tbody>
+    </table>
     <h2>Open contact checks</h2>
     <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Contact review")}</strong> - ${escapeHtml(operatorPlainText(task.nextAction ?? task.reason ?? "Confirm heir/contact confidence."))}</li>`).join("") || "<li>Confirm heir roles, phone/address confidence, and no-contact gates before outreach.</li>"}</ul>
   `);
@@ -8409,29 +9093,21 @@ function renderDossiersView() {
           <div><p class="eyebrow">Dossiers</p><h2 class="loop-title">Finished dossier list</h2></div>
           <span class="results-count"><strong>${rows.length}</strong> result${rows.length === 1 ? "" : "s"}</span>
         </div>
-        <div class="dossier-list-scroll">
-          <table class="dossier-table">
-            <colgroup>
-              <col class="col-check">
-              <col class="col-lead">
-              <col class="col-address">
-              <col class="col-score">
-              <col class="col-classification">
-            </colgroup>
-            <thead><tr><th>${selectAllCheckboxHtml(rows, "dossiers")}</th><th>Last Name, First Initial</th><th>Property address</th><th>Score</th><th>Classification</th></tr></thead>
-            <tbody>
-              ${rows.map((item) => {
-                const address = addressDisplayParts(item.address, item.county);
-                const checked = state.selectedIds.has(item.id);
-                const classes = [
-                  item.id === state.selectedId ? "is-current" : "",
-                  checked ? "is-batch-selected" : ""
-                ].filter(Boolean).join(" ");
-                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${classes}"><td>${checkboxHtml(item.id, `Select ${item.leadName} for batch export`, checked, `data-row-select="${escapeHtml(item.id)}"`)}</td><td><span class="primary-text">${escapeHtml(item.leadName)}</span></td><td><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td><td><span class="score ${escapeHtml(item.tone)}">${escapeHtml(item.score)}</span></td><td><span class="classification">${escapeHtml(rowClassification(item))}</span></td></tr>`;
-              }).join("") || `<tr><td colspan="5"><span class="primary-text">No dossier loaded.</span><span class="secondary-text">Load latest or pull a fresh public-record batch.</span></td></tr>`}
-            </tbody>
-          </table>
-        </div>
+	        <div class="dossier-list-scroll">
+	          <table class="dossier-table">
+	            <thead><tr>${tableHeaderHtml("dossiers", rows)}</tr></thead>
+	            <tbody>
+	              ${rows.map((item) => {
+	                const checked = state.selectedIds.has(item.id);
+	                const classes = [
+	                  item.id === state.selectedId ? "is-current" : "",
+	                  checked ? "is-batch-selected" : ""
+	                ].filter(Boolean).join(" ");
+	                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${classes}"><td>${checkboxHtml(item.id, `Select ${item.leadName} for batch export`, checked, `data-row-select="${escapeHtml(item.id)}"`)}</td>${orderedColumns("dossiers").map((key) => dossierCellHtml(key, item)).join("")}</tr>`;
+	              }).join("") || `<tr><td colspan="${orderedColumns("dossiers").length + 1}"><span class="primary-text">No dossier loaded.</span><span class="secondary-text">Load latest or pull a fresh public-record batch.</span></td></tr>`}
+	            </tbody>
+	          </table>
+	        </div>
       </section>
     </div>
   `;
@@ -8447,8 +9123,9 @@ function renderDossiersView() {
       updateFooterLeadContext(selectedRow());
     });
   });
-  wireBatchSelection(target, "[data-dossier-row]", "dossiers");
-  if (state.activeView === "dossiers") {
+	  wireBatchSelection(target, "[data-dossier-row]", "dossiers");
+	  wireColumnReorder(target, "dossiers");
+	  if (state.activeView === "dossiers") {
     state.railMode = "dossier";
     renderRail();
   }
@@ -8531,14 +9208,18 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   } else {
     bodyHtml = `
       <section class="glass-card rail-card">
-        <h3>What is done</h3>
-        <p class="copy">Finish the active Discovery stage, then the matching document row becomes a green checked item.</p>
-        ${dossierChecklistHtml(docs, { compact: true })}
+        <h3>Discovery checklist</h3>
+        <p class="copy">Work the estate in order. Rows only turn into green checks after the required source evidence or contact review is saved.</p>
+        ${assetDiscoveryChecklistHtml(row)}
       </section>
+      ${assetCaptureFormHtml(row)}
+      ${idiImportPanelHtml(row)}
+      ${contactReviewPanelHtml(row)}
     `;
   }
   content.innerHTML = titleCard + bodyHtml;
   content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
+  wireAssetDiscoveryControls(content, row);
   content.querySelectorAll("[data-dossier-doc]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedDossierDocId = button.dataset.dossierDoc;
@@ -9918,8 +10599,8 @@ function conciseNextStep(value) {
     .replace(/^Check probate status$/i, "Probate")
     .replace(/^Add phone numbers$/i, "Phone numbers")
     .replace(/^Prepare CRM handoff$/i, "CRM handoff")
-    .replace(/^Connect skip trace$/i, "Connect trace")
-    .replace(/^Run skip trace$/i, "Run trace");
+    .replace(/^Connect skip trace$/i, "Import IDI")
+    .replace(/^Run skip trace$/i, "Import IDI");
 }
 
 function evidenceClassification(evidence) {
@@ -9951,18 +10632,18 @@ function contactEnrichmentGate(dossier = {}) {
     return { classification: "Contact verified", status: null, next: null };
   }
   const flags = dossierReviewFlags(dossier);
-  if (flags.includes("MISSING_SKIPTRACE_CONFIG")) {
+  if (flags.includes("MISSING_SKIPTRACE_CONFIG") || flags.includes("MISSING_IDI_ASSET_SEARCH")) {
     return {
-      classification: "Skip trace needed",
+      classification: "IDI needed",
       status: "blocked",
-      next: "Connect skip trace"
+      next: "Import IDI"
     };
   }
-  if (flags.includes("NO_ENRICHMENT_RUN") || flags.includes("CONTACT_REVIEW_REQUIRED")) {
+  if (flags.includes("NO_ENRICHMENT_RUN") || flags.includes("CONTACT_REVIEW_REQUIRED") || flags.includes("IDI_ASSET_SEARCH_REVIEW_REQUIRED") || flags.includes("CONTACT_ACCEPTANCE_REQUIRED")) {
     return {
       classification: "Needs contacts",
       status: "review",
-      next: "Run skip trace"
+      next: "Review contacts"
     };
   }
   return null;
@@ -10036,40 +10717,119 @@ function applyFilters() {
   renderCurrentLoopView();
 }
 
+function orderedColumns(scope) {
+  state.columnOrder[scope] = normalizeColumnOrder(scope, state.columnOrder[scope]);
+  return state.columnOrder[scope];
+}
+
+function tableHeaderHtml(scope, rows = []) {
+  const selectScope = scope === "dossiers" ? "dossiers" : "results";
+  return `
+    <th style="width: 42px;">${selectScope === "results" ? `<span id="resultsSelectAllMount"></span>` : selectAllCheckboxHtml(rows, "dossiers")}</th>
+    ${orderedColumns(scope).map((key) => `
+      <th data-column="${escapeHtml(key)}" data-column-drag="${escapeHtml(key)}" draggable="true" title="Drag to reorder columns">
+        <span class="column-drag-label">${escapeHtml(tableColumnLabels[key] ?? displayStatus(key))}</span>
+      </th>
+    `).join("")}
+  `;
+}
+
+function scoreHtml(row) {
+  return `<span class="score ${escapeHtml(row.tone)}">${escapeHtml(rowDisplayScore(row))}</span>`;
+}
+
+function resultCellHtml(key, row) {
+  const addressParts = addressDisplayParts(row.address, row.county);
+  if (key === "address") {
+    return `<td data-column="address"><span class="primary-text">${escapeHtml(addressParts.street)}</span><span class="secondary-text">${escapeHtml(addressParts.locality)}</span></td>`;
+  }
+  if (key === "lead") {
+    return `<td data-column="lead"><span class="primary-text">${escapeHtml(row.leadName)}</span></td>`;
+  }
+  if (key === "score") return `<td data-column="score">${scoreHtml(row)}</td>`;
+  if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowDisplayClassification(row))}</span></td>`;
+  if (key === "next") {
+    const next = rowNextAction(row);
+    return `<td data-column="next"><button class="next-link solvys-liquid-glass" type="button" title="${escapeHtml(next)}" data-open-next="${escapeHtml(row.id)}">${escapeHtml(conciseNextStep(next))}</button></td>`;
+  }
+  return "";
+}
+
+function dossierCellHtml(key, row) {
+  const address = addressDisplayParts(row.address, row.county);
+  if (key === "address") {
+    return `<td data-column="address"><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td>`;
+  }
+  if (key === "lead") return `<td data-column="lead"><span class="primary-text">${escapeHtml(row.leadName)}</span></td>`;
+  if (key === "score") return `<td data-column="score">${scoreHtml(row)}</td>`;
+  if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowDisplayClassification(row))}</span></td>`;
+  return "";
+}
+
+function wireColumnReorder(root, scope) {
+  let dragged = null;
+  root.querySelectorAll("[data-column-drag]").forEach((header) => {
+    header.addEventListener("dragstart", (event) => {
+      dragged = header.dataset.columnDrag;
+      event.dataTransfer?.setData("text/plain", dragged);
+      event.dataTransfer?.setDragImage?.(header, 10, 10);
+      header.classList.add("is-dragging");
+    });
+    header.addEventListener("dragend", () => {
+      header.classList.remove("is-dragging");
+      dragged = null;
+    });
+    header.addEventListener("dragover", (event) => {
+      if (!dragged || dragged === header.dataset.columnDrag) return;
+      event.preventDefault();
+      header.classList.add("is-drop-target");
+    });
+    header.addEventListener("dragleave", () => header.classList.remove("is-drop-target"));
+    header.addEventListener("drop", (event) => {
+      event.preventDefault();
+      header.classList.remove("is-drop-target");
+      const sourceKey = dragged || event.dataTransfer?.getData("text/plain");
+      const targetKey = header.dataset.columnDrag;
+      if (!sourceKey || !targetKey || sourceKey === targetKey) return;
+      const order = orderedColumns(scope).filter((key) => key !== sourceKey);
+      const targetIndex = order.indexOf(targetKey);
+      order.splice(targetIndex < 0 ? order.length : targetIndex, 0, sourceKey);
+      state.columnOrder[scope] = normalizeColumnOrder(scope, order);
+      persistColumnOrder();
+      if (scope === "dossiers") renderDossiersView();
+      else renderResults();
+      addShellEvent("Columns reordered", `${tableColumnLabels[sourceKey]} moved before ${tableColumnLabels[targetKey]}.`, "review", false);
+    });
+  });
+}
+
 function renderResults() {
   const rows = state.filteredRows;
   document.getElementById("resultsCount").innerHTML = `<strong>${rows.length}</strong> result${rows.length === 1 ? "" : "s"}`;
+  const header = document.getElementById("resultsHeaderRow");
+  if (header) header.innerHTML = tableHeaderHtml("results", rows);
   const selectAllMount = document.getElementById("resultsSelectAllMount");
   if (selectAllMount) selectAllMount.innerHTML = selectAllCheckboxHtml(rows, "results");
   syncSelectionLabels();
   const body = document.getElementById("resultsBody");
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="6"><span class="primary-text">No estate files match these filters.</span><span class="secondary-text">Try showing all missing info or lowering minimum evidence.</span></td></tr>`;
+    body.innerHTML = `<tr><td colspan="${orderedColumns("results").length + 1}"><span class="primary-text">No estate files match these filters.</span><span class="secondary-text">Try showing all missing info or lowering minimum evidence.</span></td></tr>`;
+    wireColumnReorder(document, "results");
     return;
   }
   body.innerHTML = rows.map((row) => {
-    const addressParts = addressDisplayParts(row.address, row.county);
     const checked = state.selectedIds.has(row.id);
     const classes = [
       row.id === state.selectedId ? "is-current" : "",
       checked ? "is-batch-selected" : ""
     ].filter(Boolean).join(" ");
-    return `
-      <tr data-row-id="${escapeHtml(row.id)}" class="${classes}">
-        <td>${checkboxHtml(row.id, `Select ${row.leadName} for batch export`, checked, `data-row-select="${escapeHtml(row.id)}"`)}</td>
-        <td>
-          <span class="primary-text">${escapeHtml(row.leadName)}</span>
-        </td>
-        <td data-column="address">
-          <span class="primary-text">${escapeHtml(addressParts.street)}</span>
-          <span class="secondary-text">${escapeHtml(addressParts.locality)}</span>
-        </td>
-        <td data-column="score"><span class="score ${escapeHtml(row.tone)}">${escapeHtml(row.score)}</span></td>
-        <td data-column="evidence"><span class="classification">${escapeHtml(rowClassification(row))}</span></td>
-        <td data-column="next"><button class="next-link solvys-liquid-glass" type="button" title="${escapeHtml(row.next)}" data-open-next="${escapeHtml(row.id)}">${escapeHtml(conciseNextStep(row.next))}</button></td>
-      </tr>
-    `;
-  }).join("");
+	    return `
+	      <tr data-row-id="${escapeHtml(row.id)}" class="${classes}">
+	        <td>${checkboxHtml(row.id, `Select ${row.leadName} for batch export`, checked, `data-row-select="${escapeHtml(row.id)}"`)}</td>
+	        ${orderedColumns("results").map((key) => resultCellHtml(key, row)).join("")}
+	      </tr>
+	    `;
+	  }).join("");
 
   body.querySelectorAll("[data-row-id]").forEach((rowEl) => {
     rowEl.addEventListener("click", () => {
@@ -10091,9 +10851,10 @@ function renderResults() {
       openRailPreview(row?.missing[0]?.id ?? "tax", button);
     });
   });
-  wireBatchSelection(document, "[data-row-id]", "results");
-  applyColumnVisibility();
-}
+	  wireBatchSelection(document, "[data-row-id]", "results");
+	  wireColumnReorder(document, "results");
+	  applyColumnVisibility();
+	}
 
 function renderDetail() {
   const row = selectedRow();
@@ -10627,7 +11388,7 @@ function currentFreshLeadFilters() {
   const county = document.getElementById("countyFilter")?.value || "miami-dade";
   return {
     county: county === "all" ? "miami-dade" : county,
-    searchMode: document.getElementById("sourceModeFilter")?.value || "owner",
+	    searchMode: document.getElementById("sourceModeFilter")?.value || "address",
     query: sourceQuery || globalQuery || "EST OF",
     limit: Number(document.getElementById("sourceLimit")?.value || 3),
     leadType: document.getElementById("leadTypeFilter")?.value || "all",

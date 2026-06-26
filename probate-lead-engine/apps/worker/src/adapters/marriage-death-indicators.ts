@@ -76,6 +76,18 @@ export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: Inta
     fact({
       runId,
       source: "clerk_of_courts",
+      rawId: `${rawId}:obituary-snapshot`,
+      fetchedAt,
+      county: seed.county,
+      subject,
+      factType: "obituary_snapshot",
+      value: null,
+      confidence: 0,
+      reviewFlags: ["SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+    }),
+    fact({
+      runId,
+      source: "clerk_of_courts",
       rawId: `${rawId}:memorial-search`,
       fetchedAt,
       county: seed.county,
