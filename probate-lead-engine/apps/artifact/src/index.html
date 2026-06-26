@@ -1502,29 +1502,19 @@
       opacity: .82;
     }
 
-    .source-pull-status {
-      max-height: 0;
-      margin-top: 0;
+    .source-pull-message {
+      margin-top: 8px;
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(-3px);
-      overflow: hidden;
-      transition: opacity .24s ease, transform .24s ease, visibility .24s ease, max-height .24s ease, margin-top .24s ease;
-    }
-
-    .source-pull-status[data-visible="true"] {
-      max-height: 52px;
-      margin-top: 8px;
       opacity: 1;
-      visibility: visible;
       transform: translateY(0);
     }
 
-    .source-pull-status[data-tone="ready"] { color: color-mix(in srgb, var(--green) 82%, #1f2937); }
-    .source-pull-status[data-tone="blocked"] { color: color-mix(in srgb, var(--red) 84%, #1f2937); }
+    .source-pull-message[hidden] { display: none !important; }
+
+    .source-pull-message[data-tone="ready"] { color: color-mix(in srgb, var(--green) 82%, #1f2937); }
+    .source-pull-message[data-tone="blocked"] { color: color-mix(in srgb, var(--red) 84%, #1f2937); }
 
     .filter-note {
       margin-top: 14px;
@@ -5624,7 +5614,7 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M18.5 9A7 7 0 0 0 6.2 6.7L4 11m16 2-2.2 4.3A7 7 0 0 1 5.5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
               Pull fresh leads
             </button>
-            <div id="freshBatchStatus" class="source-pull-status" data-tone="neutral" data-visible="false" aria-live="polite"></div>
+            <div id="freshBatchStatus" class="source-pull-message" data-tone="neutral" data-visible="false" aria-live="polite" hidden></div>
           </div>
           <div class="field">
             <label for="statusFilter">Property status</label>
@@ -10633,6 +10623,7 @@ function clearFreshBatchStatus() {
   status.textContent = "";
   status.dataset.tone = "neutral";
   status.dataset.visible = "false";
+  status.hidden = true;
 }
 
 function setFreshBatchStatus(message, tone = "neutral") {
@@ -10641,6 +10632,7 @@ function setFreshBatchStatus(message, tone = "neutral") {
   status.textContent = message;
   status.dataset.tone = tone;
   status.dataset.visible = message ? "true" : "false";
+  status.hidden = !message;
 }
 
 function setFreshBatchBusy(isBusy) {
