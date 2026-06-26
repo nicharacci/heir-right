@@ -5243,9 +5243,33 @@
     }
 
     .next-link,
+    body[data-theme] .next-link,
     body[data-theme="dark"] .next-link {
-      color: var(--text);
+      min-width: 74px;
+      color: #f8fbff;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,.055)),
+        linear-gradient(180deg, rgba(83,159,255,.98), rgba(29,111,225,.94));
+      border: 1px solid rgba(165,205,255,.58);
       border-radius: 999px;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.34),
+        0 8px 22px rgba(0,113,227,.24);
+      text-shadow: 0 1px 1px rgba(0,0,0,.20);
+    }
+
+    .next-link:hover,
+    .next-link:focus-visible,
+    body[data-theme] .next-link:hover,
+    body[data-theme] .next-link:focus-visible,
+    body[data-theme="dark"] .next-link:hover,
+    body[data-theme="dark"] .next-link:focus-visible {
+      color: #fff;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,.075)),
+        linear-gradient(180deg, rgba(94,169,255,1), rgba(13,103,224,.98));
+      border-color: rgba(196,222,255,.74);
+      transform: translateY(-1px);
     }
 
     .pill.neutral {
