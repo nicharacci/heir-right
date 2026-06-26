@@ -1925,11 +1925,10 @@
     }
 
     .dossier-table .col-check { width: 42px; }
-    .dossier-table .col-lead { width: 25%; }
-    .dossier-table .col-address { width: 30%; }
+    .dossier-table .col-lead { width: 28%; }
+    .dossier-table .col-address { width: 40%; }
     .dossier-table .col-score { width: 70px; }
-    .dossier-table .col-classification { width: 112px; }
-    .dossier-table .col-next { width: 112px; }
+    .dossier-table .col-classification { width: 132px; }
 
     .dossier-table tr {
       cursor: pointer;
@@ -8394,9 +8393,8 @@ function renderDossiersView() {
               <col class="col-address">
               <col class="col-score">
               <col class="col-classification">
-              <col class="col-next">
             </colgroup>
-            <thead><tr><th>${selectAllCheckboxHtml(rows, "dossiers")}</th><th>Last Name, First Initial</th><th>Property address</th><th>Score</th><th>Classification</th><th>Next step</th></tr></thead>
+            <thead><tr><th>${selectAllCheckboxHtml(rows, "dossiers")}</th><th>Last Name, First Initial</th><th>Property address</th><th>Score</th><th>Classification</th></tr></thead>
             <tbody>
               ${rows.map((item) => {
                 const address = addressDisplayParts(item.address, item.county);
@@ -8405,8 +8403,8 @@ function renderDossiersView() {
                   item.id === state.selectedId ? "is-current" : "",
                   checked ? "is-batch-selected" : ""
                 ].filter(Boolean).join(" ");
-                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${classes}"><td>${checkboxHtml(item.id, `Select ${item.leadName} for batch export`, checked, `data-row-select="${escapeHtml(item.id)}"`)}</td><td><span class="primary-text">${escapeHtml(item.leadName)}</span></td><td><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td><td><span class="score ${escapeHtml(item.tone)}">${escapeHtml(item.score)}</span></td><td><span class="classification">${escapeHtml(rowClassification(item))}</span></td><td><span class="next-link solvys-liquid-glass" title="${escapeHtml(item.next)}">${escapeHtml(conciseNextStep(item.next))}</span></td></tr>`;
-              }).join("") || `<tr><td colspan="6"><span class="primary-text">No dossier loaded.</span><span class="secondary-text">Load latest or pull a fresh public-record batch.</span></td></tr>`}
+                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${classes}"><td>${checkboxHtml(item.id, `Select ${item.leadName} for batch export`, checked, `data-row-select="${escapeHtml(item.id)}"`)}</td><td><span class="primary-text">${escapeHtml(item.leadName)}</span></td><td><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td><td><span class="score ${escapeHtml(item.tone)}">${escapeHtml(item.score)}</span></td><td><span class="classification">${escapeHtml(rowClassification(item))}</span></td></tr>`;
+              }).join("") || `<tr><td colspan="5"><span class="primary-text">No dossier loaded.</span><span class="secondary-text">Load latest or pull a fresh public-record batch.</span></td></tr>`}
             </tbody>
           </table>
         </div>

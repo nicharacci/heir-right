@@ -39,3 +39,19 @@
 ## Product Note
 
 Annie Hawkins remains an in-progress dossier unless the Discovery phase checklist is completed. The UI no longer treats the existence of the generated document packet as successful completion of the full workflow.
+
+## Dossier List Cleanup
+
+- Removed the Dossiers table `Next step` column and the trace action chips from that list.
+- Rebalanced the remaining Dossier columns so lead, address, score, and classification stay readable without the cramped action lane.
+- Kept the Estate Search `Next step` controls intact; this cleanup only applies to the Dossiers list.
+
+## Dossier List Verification
+
+- `pnpm --filter @ple/artifact build`
+- Local browser proof against `http://localhost:4188/?proof=dossiers-no-next-column-local`:
+  - Dossiers header count was `5`.
+  - Headers were checkbox, `Last Name, First Initial`, `Property address`, `Score`, and `Classification`.
+  - `Next step` header was absent.
+  - Dossier list `.next-link` count was `0`.
+  - Row selection still left one current dossier row and kept the Dossier rail checklist rendered.
