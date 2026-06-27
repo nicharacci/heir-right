@@ -66,6 +66,51 @@
         inset 0 -1px 0 color-mix(in srgb, black 32%, transparent);
     }
 
+    body[data-theme="light"] {
+      color-scheme: light;
+      --page: #f4f3ef;
+      --page-2: #fbfaf6;
+      --glass: rgba(255, 255, 255, .74);
+      --glass-strong: rgba(255, 255, 255, .92);
+      --glass-soft: rgba(255, 255, 255, .58);
+      --line: rgba(32, 32, 36, .12);
+      --line-strong: rgba(32, 32, 36, .20);
+      --divider-line: linear-gradient(90deg, transparent, rgba(32,32,36,.16) 12%, rgba(32,32,36,.16) 88%, transparent);
+      --divider-line-vertical: linear-gradient(180deg, transparent, rgba(32,32,36,.16) 12%, rgba(32,32,36,.16) 88%, transparent);
+      --text: #202124;
+      --muted: #77736b;
+      --soft: #9b958b;
+      --disabled: #c6c1b8;
+      --accent: #202124;
+      --accent-soft: rgba(32, 33, 36, .08);
+      --focus-ring: rgba(32, 33, 36, .22);
+      --ios-fill: rgba(32, 33, 36, .055);
+      --ios-fill-strong: rgba(32, 33, 36, .10);
+      --shell-surface: #fbfaf6;
+      --shell-surface-glass: rgba(251, 250, 246, .82);
+      --shell-surface-soft: rgba(251, 250, 246, .58);
+      --surface-flat: #f4f3ef;
+      --surface-lift: #ffffff;
+      --surface-row: rgba(32, 33, 36, .045);
+      --surface-row-strong: rgba(32, 33, 36, .08);
+      --green: #2f9a61;
+      --green-soft: rgba(47, 154, 97, .13);
+      --amber: #ea7b0c;
+      --amber-soft: rgba(234, 123, 12, .13);
+      --red: #d63b31;
+      --red-soft: rgba(214, 59, 49, .12);
+      --solvys-lg-tint-source: var(--page-2);
+      --solvys-lg-rim-source: rgba(32, 33, 36, .22);
+      --solvys-lg-dark-plate: rgb(251 250 246);
+      --solvys-lg-bg: color-mix(in srgb, var(--solvys-lg-tint) 58%, transparent);
+      --solvys-lg-border: color-mix(in srgb, var(--solvys-lg-rim) 44%, transparent);
+      --solvys-lg-backdrop-filter: blur(18px) contrast(1.02) brightness(1.02) saturate(1.05);
+      --solvys-lg-shadow:
+        0 12px 26px rgba(32, 33, 36, .06),
+        inset 0 1px 0 color-mix(in srgb, white 72%, transparent),
+        inset 0 -1px 0 color-mix(in srgb, black 8%, transparent);
+    }
+
     body[data-theme="dark"] {
       color-scheme: dark;
       --page: #202124;
@@ -238,6 +283,65 @@
       min-height: 64px;
       padding: 10px 8px;
       border-bottom: 0;
+    }
+
+    .sidebar-import {
+      display: grid;
+      gap: 7px;
+      padding: 0 10px 8px;
+    }
+
+    .sidebar-import-button {
+      width: 100%;
+      min-height: 38px;
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      padding: 7px 9px;
+      color: var(--text);
+      border: 1px solid color-mix(in srgb, var(--line-strong) 82%, transparent);
+      border-radius: 8px;
+      background: var(--ios-fill);
+      text-align: left;
+      font-size: 12px;
+      font-weight: 760;
+      transition: background .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease);
+    }
+
+    .sidebar-import-button:hover,
+    .sidebar-import-button:focus-visible {
+      outline: 0;
+      color: var(--accent);
+      border-color: var(--focus-ring);
+      background: var(--ios-fill-strong);
+    }
+
+    .sidebar-import-button svg {
+      width: 18px;
+      height: 18px;
+      justify-self: center;
+    }
+
+    .workspace.is-collapsed .sidebar-import,
+    .workspace.is-auto-collapsed .sidebar-import {
+      padding: 0 8px 8px;
+      justify-items: center;
+    }
+
+    .workspace.is-collapsed .sidebar-import-button,
+    .workspace.is-auto-collapsed .sidebar-import-button {
+      width: 44px;
+      height: 44px;
+      min-height: 44px;
+      grid-template-columns: 1fr;
+      padding: 0;
+      border-radius: 12px;
+    }
+
+    .workspace.is-collapsed .sidebar-import-label,
+    .workspace.is-auto-collapsed .sidebar-import-label {
+      display: none;
     }
 
     .icon-button {
@@ -1728,6 +1832,938 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    .arsip-dashboard,
+    .document-prep {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+      color: var(--text);
+    }
+
+    .arsip-topline,
+    .document-prep-topline {
+      min-height: 52px;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 4px 2px 0;
+    }
+
+    .arsip-topline h2,
+    .document-prep-topline h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .arsip-date {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .arsip-section {
+      display: grid;
+      gap: 12px;
+      padding: 0 0 18px;
+      border-bottom: 1px dashed color-mix(in srgb, var(--line-strong) 76%, transparent);
+    }
+
+    .arsip-section:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .arsip-section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .arsip-section-title {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .arsip-section-title h3,
+    .document-panel h3,
+    .process-side h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.2;
+      font-weight: 820;
+      letter-spacing: 0;
+    }
+
+    .arsip-section-title span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .attention-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .attention-card {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 74px;
+      padding: 14px 16px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 82%, transparent);
+      border-radius: 8px;
+      background: rgba(255,255,255,.58);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 10px 26px rgba(15,23,42,.04);
+    }
+
+    .attention-card.is-urgent {
+      border-color: color-mix(in srgb, var(--amber) 84%, transparent);
+      background: color-mix(in srgb, var(--amber-soft) 34%, rgba(255,255,255,.78));
+    }
+
+    .attention-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--amber);
+      justify-self: center;
+    }
+
+    .attention-card strong {
+      display: block;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .attention-card span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+
+    .process-card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .process-folder-card {
+      position: relative;
+      min-width: 0;
+      min-height: 154px;
+      display: grid;
+      align-content: end;
+      gap: 0;
+      padding: 76px 14px 14px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 72%, transparent);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.76), rgba(255,255,255,.48)),
+        color-mix(in srgb, var(--surface-lift) 13%, white);
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 12px 28px rgba(15,23,42,.05);
+      text-align: left;
+      color: var(--text);
+    }
+
+    .process-folder-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 58px;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.62), rgba(255,255,255,.38)),
+        color-mix(in srgb, var(--ios-fill-strong) 72%, white);
+      border-bottom: 1px solid rgba(16,24,40,.08);
+    }
+
+    .process-folder-card::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 46%;
+      height: 28px;
+      border-radius: 0 0 14px 0;
+      background: color-mix(in srgb, var(--ios-fill-strong) 78%, white);
+      box-shadow: 1px 1px 0 rgba(16,24,40,.06);
+    }
+
+    .folder-doc-stack {
+      position: absolute;
+      top: 44px;
+      right: 42px;
+      width: 120px;
+      height: 76px;
+      pointer-events: none;
+    }
+
+    .folder-doc-stack span {
+      position: absolute;
+      width: 58px;
+      height: 72px;
+      border: 1px solid rgba(16,24,40,.08);
+      border-radius: 8px;
+      background:
+        repeating-linear-gradient(180deg, rgba(16,24,40,.10) 0 3px, transparent 3px 11px),
+        rgba(255,255,255,.82);
+      box-shadow: 0 10px 20px rgba(15,23,42,.08);
+      opacity: .9;
+    }
+
+    .folder-doc-stack span:nth-child(1) { left: 0; top: 14px; transform: rotate(-4deg); }
+    .folder-doc-stack span:nth-child(2) { left: 34px; top: 0; transform: rotate(0deg); }
+    .folder-doc-stack span:nth-child(3) { left: 68px; top: 18px; transform: rotate(5deg); }
+
+    .process-folder-body {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 8px;
+    }
+
+    .process-folder-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .process-folder-title strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .process-progress-dots {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .process-progress-dots i {
+      width: 8px;
+      height: 13px;
+      border-radius: 2px;
+      background: color-mix(in srgb, var(--line-strong) 74%, transparent);
+    }
+
+    .process-progress-dots i.is-filled {
+      background: var(--green);
+    }
+
+    .process-folder-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .process-tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 7px;
+      background: rgba(255,255,255,.62);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .process-tag.ready {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .dashboard-lower-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .activity-list {
+      display: grid;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .activity-row {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 44px;
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .activity-row:last-child { border-bottom: 0; }
+
+    .activity-row strong {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 780;
+    }
+
+    .activity-row span {
+      overflow-wrap: anywhere;
+    }
+
+    .activity-time {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .library-summary {
+      display: grid;
+      gap: 0;
+      padding: 14px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 72%, transparent);
+      border-radius: 8px;
+      background: rgba(255,255,255,.58);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 10px 26px rgba(15,23,42,.04);
+    }
+
+    .library-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 32px;
+      border-bottom: 1px dashed color-mix(in srgb, var(--line-strong) 62%, transparent);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .library-row:last-child { border-bottom: 0; }
+    .library-row strong { color: var(--text); font-family: var(--mono); }
+
+    .document-prep-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+      min-height: 100%;
+      gap: 0;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+      border-radius: 8px;
+      background: rgba(255,255,255,.36);
+      overflow: hidden;
+    }
+
+    .document-panel {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      border-right: 1px solid color-mix(in srgb, var(--line-strong) 68%, transparent);
+    }
+
+    .document-panel-head,
+    .process-side-head {
+      min-width: 0;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+      background: rgba(255,255,255,.50);
+    }
+
+    .document-progress-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .document-filter-tabs {
+      display: inline-grid;
+      grid-template-columns: repeat(3, minmax(0, auto));
+      gap: 3px;
+      padding: 3px;
+      border-radius: 8px;
+      background: var(--ios-fill);
+    }
+
+    .document-filter-tabs button {
+      min-height: 30px;
+      border: 0;
+      border-radius: 6px;
+      padding: 5px 11px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 780;
+      white-space: nowrap;
+    }
+
+    .document-filter-tabs button[aria-pressed="true"] {
+      background: rgba(255,255,255,.88);
+      color: var(--text);
+      box-shadow: 0 1px 2px rgba(15,23,42,.08);
+    }
+
+    .document-list {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+    }
+
+    .document-requirement {
+      display: grid;
+      grid-template-columns: 70px minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      min-height: 86px;
+      padding: 14px;
+      border: 1px dashed color-mix(in srgb, var(--line-strong) 84%, transparent);
+      border-radius: 8px;
+      background: rgba(255,255,255,.42);
+      color: var(--text);
+    }
+
+    .document-requirement.is-linked {
+      border-style: solid;
+      background: rgba(255,255,255,.62);
+    }
+
+    .file-drop-icon {
+      width: 54px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border: 1px dashed color-mix(in srgb, var(--line-strong) 90%, transparent);
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(255,255,255,.44);
+      font-size: 22px;
+      font-weight: 500;
+    }
+
+    .document-requirement.is-linked .file-drop-icon {
+      border-style: solid;
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .document-copy {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .document-copy strong {
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.22;
+    }
+
+    .document-copy span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .document-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .document-type-pill {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 9px;
+      color: var(--muted);
+      background: rgba(255,255,255,.62);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .process-side {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      background: rgba(255,255,255,.34);
+    }
+
+    .process-side-body {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .process-facts {
+      display: grid;
+      gap: 10px;
+      padding-bottom: 18px;
+      border-bottom: 1px dashed color-mix(in srgb, var(--line-strong) 64%, transparent);
+    }
+
+    .process-fact-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .process-fact-row strong {
+      color: var(--text);
+      font-size: 12px;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .missing-mini-list {
+      display: grid;
+      gap: 9px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+    }
+
+    .missing-mini-list li {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 8px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .process-side-foot {
+      display: grid;
+      gap: 10px;
+      padding: 16px 18px;
+      border-top: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+    }
+
+    .headless-menu-wrap {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .headless-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 140;
+      min-width: 210px;
+      display: grid;
+      gap: 3px;
+      padding: 6px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 82%, transparent);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--shell-surface) 94%, transparent);
+      box-shadow: 0 18px 44px rgba(0,0,0,.18);
+      backdrop-filter: blur(26px) saturate(1.08);
+      -webkit-backdrop-filter: blur(26px) saturate(1.08);
+    }
+
+    .headless-menu[hidden] {
+      display: none;
+    }
+
+    .headless-menu button {
+      width: 100%;
+      min-height: 34px;
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      border: 0;
+      border-radius: 7px;
+      padding: 7px 9px;
+      color: var(--text);
+      background: transparent;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .headless-menu button:hover,
+    .headless-menu button:focus-visible,
+    .headless-menu button[data-active="true"] {
+      outline: 0;
+      background: var(--ios-fill-strong);
+    }
+
+    .document-modal-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 260;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(0,0,0,.42);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .document-modal {
+      width: min(520px, calc(100vw - 32px));
+      max-height: min(680px, calc(100vh - 32px));
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 84%, transparent);
+      border-radius: 8px;
+      background: var(--shell-surface);
+      box-shadow: 0 28px 70px rgba(0,0,0,.24);
+      overflow: hidden;
+    }
+
+    .document-modal.crm-import-modal {
+      width: min(620px, calc(100vw - 32px));
+    }
+
+    .document-modal-head,
+    .document-modal-foot {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .document-modal-foot {
+      border-top: 1px solid var(--line);
+      border-bottom: 0;
+      justify-content: flex-end;
+    }
+
+    .document-modal-body {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .crm-import-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .crm-import-grid .field.full,
+    .crm-import-grid .field-note {
+      grid-column: 1 / -1;
+    }
+
+    .crm-import-grid textarea {
+      width: 100%;
+      min-height: 92px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: rgba(255,255,255,.56);
+      color: var(--text);
+      font: 12px/1.45 inherit;
+    }
+
+    .field-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .doc-flow-selector {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      width: min(440px, 100%);
+    }
+
+    .doc-flow-tab {
+      min-width: 0;
+      min-height: 48px;
+      display: grid;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--muted);
+      background: rgba(255,255,255,.44);
+      text-align: left;
+    }
+
+    .doc-flow-tab strong,
+    .doc-flow-tab span {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .doc-flow-tab strong {
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .doc-flow-tab span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .doc-flow-tab[aria-pressed="true"] {
+      color: var(--accent);
+      border-color: var(--focus-ring);
+      background: var(--ios-fill-strong);
+    }
+
+    .process-template-card {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.34);
+    }
+
+    .process-template-card h4 {
+      margin: 0;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.25;
+    }
+
+    .process-template-card .copy {
+      margin: 0;
+    }
+
+    .workflow-source-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .workflow-source-list li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: baseline;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .workflow-source-list strong {
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .file-control-box {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border: 1px dashed color-mix(in srgb, var(--line-strong) 86%, transparent);
+      border-radius: 8px;
+      background: rgba(255,255,255,.42);
+    }
+
+    .file-control-box input[type="file"] {
+      width: 100%;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .file-control-box strong {
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    body[data-theme="dark"] .attention-card,
+    body[data-theme="dark"] .process-folder-card,
+    body[data-theme="dark"] .library-summary,
+    body[data-theme="dark"] .document-prep-shell,
+    body[data-theme="dark"] .document-panel-head,
+    body[data-theme="dark"] .process-side-head,
+    body[data-theme="dark"] .document-requirement,
+    body[data-theme="dark"] .process-side,
+    body[data-theme="dark"] .process-tag,
+    body[data-theme="dark"] .document-type-pill,
+    body[data-theme="dark"] .file-drop-icon,
+    body[data-theme="dark"] .file-control-box,
+    body[data-theme="dark"] .doc-flow-tab,
+    body[data-theme="dark"] .process-template-card {
+      background: rgba(44,44,46,.72);
+      border-color: var(--line);
+    }
+
+    body[data-theme="dark"] .process-folder-card::before,
+    body[data-theme="dark"] .process-folder-card::after {
+      background: rgba(58,58,60,.82);
+      border-color: rgba(235,235,245,.10);
+    }
+
+    body[data-theme="dark"] .document-filter-tabs button[aria-pressed="true"] {
+      background: rgba(235,235,245,.16);
+      color: var(--text);
+    }
+
+    @media (max-width: 1100px) {
+      .attention-grid,
+      .process-card-grid,
+      .dashboard-lower-grid,
+      .document-prep-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .document-panel {
+        border-right: 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--line-strong) 68%, transparent);
+      }
+
+      .document-prep-topline {
+        align-items: start;
+      }
+
+      .document-filter-tabs {
+        max-width: 100%;
+        overflow-x: auto;
+      }
+
+      .doc-flow-selector,
+      .crm-import-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .arsip-topline,
+      .document-prep-topline,
+      .arsip-section-head,
+      .document-panel-head {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .document-panel-head > div,
+      .process-side-head > div,
+      .document-prep-topline > div {
+        min-width: 0;
+      }
+
+      .document-panel-head > .btn {
+        width: 100%;
+      }
+
+      .attention-card {
+        grid-template-columns: 18px minmax(0, 1fr);
+      }
+
+      .attention-card .btn {
+        grid-column: 2;
+        justify-self: start;
+      }
+
+      .process-folder-card {
+        min-height: 132px;
+        padding-top: 64px;
+      }
+
+      .folder-doc-stack {
+        right: 28px;
+        transform: scale(.86);
+        transform-origin: top right;
+      }
+
+      .document-requirement {
+        grid-template-columns: 54px minmax(0, 1fr);
+      }
+
+      .document-actions {
+        grid-column: 2;
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .loop-view {
+        padding: 12px;
+      }
+
+      .document-filter-tabs {
+        width: 100%;
+        grid-template-columns: repeat(3, minmax(96px, 1fr));
+      }
+
+      .document-requirement {
+        grid-template-columns: 1fr;
+      }
+
+      .file-drop-icon {
+        width: 100%;
+      }
+
+      .document-actions {
+        grid-column: 1;
+      }
+
+      .activity-row {
+        grid-template-columns: 22px minmax(0, 1fr);
+      }
+
+      .activity-time {
+        grid-column: 2;
+      }
+    }
+
     .loop-grid {
       display: grid;
       grid-template-columns: minmax(280px, .9fr) minmax(0, 1.35fr);
@@ -2351,7 +3387,7 @@
 
     .phase-ruler {
       display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-template-columns: repeat(var(--phase-count, 7), minmax(0, 1fr));
       gap: 4px;
     }
 
@@ -5400,6 +6436,137 @@
       transform: translateY(-1px);
     }
 
+    body[data-theme="light"],
+    body[data-theme="light"] .workspace,
+    body[data-theme="light"] .app,
+    body[data-theme="light"] .content,
+    body[data-theme="light"] .workbench,
+    body[data-theme="light"] .workbench-body,
+    body[data-theme="light"] .loop-view,
+    body[data-theme="light"] #dashboardView,
+    body[data-theme="light"] #dossiersView,
+    body[data-theme="light"] #dripsView,
+    body[data-theme="light"] #queueView,
+    body[data-theme="light"] #adminView,
+    body[data-theme="light"] #settingsView {
+      color: var(--text);
+      background: var(--page);
+      background-color: var(--page);
+    }
+
+    body[data-theme="light"] .sidebar,
+    body[data-theme="light"] .sidebar-top,
+    body[data-theme="light"] .nav-list,
+    body[data-theme="light"] .sidebar-footer,
+    body[data-theme="light"] .topbar,
+    body[data-theme="light"] .statusbar,
+    body[data-theme="light"] .filters,
+    body[data-theme="light"] .workbench-head,
+    body[data-theme="light"] .results,
+    body[data-theme="light"] .table-wrap,
+    body[data-theme="light"] .results-toolbar,
+    body[data-theme="light"] thead tr,
+    body[data-theme="light"] th,
+    body[data-theme="light"] .results-footer,
+    body[data-theme="light"] .shell-composer {
+      color: var(--text);
+      background: var(--shell-surface);
+      background-color: var(--shell-surface);
+      border-color: var(--line);
+      box-shadow: none;
+    }
+
+    body[data-theme="light"] .quick-actions,
+    body[data-theme="light"] .composer-actions,
+    body[data-theme="light"] .connection-statuses {
+      background: rgba(255,255,255,.62);
+      background-color: rgba(255,255,255,.62);
+      border-color: var(--line);
+      box-shadow: 0 10px 24px rgba(32, 33, 36, .05);
+    }
+
+    body[data-theme="light"] .quick-actions .btn.quick,
+    body[data-theme="light"] .composer-actions .btn.quick {
+      color: #5f6368;
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    body[data-theme="light"] .quick-actions .btn.quick:hover,
+    body[data-theme="light"] .quick-actions .btn.quick:focus-visible,
+    body[data-theme="light"] .composer-actions .btn.quick:hover,
+    body[data-theme="light"] .composer-actions .btn.quick:focus-visible {
+      color: var(--text);
+      background: rgba(32,33,36,.055);
+      outline: 0;
+    }
+
+    body[data-theme="light"] #dashboardView .loop-panel,
+    body[data-theme="light"] #dripsView .loop-panel,
+    body[data-theme="light"] #queueView .loop-panel,
+    body[data-theme="light"] #adminView .loop-panel,
+    body[data-theme="light"] #settingsView .loop-panel,
+    body[data-theme="light"] .dossier-list-panel,
+    body[data-theme="light"] .dossier-reader-panel,
+    body[data-theme="light"] .glass-card,
+    body[data-theme="light"] .setting-card,
+    body[data-theme="light"] .runtime-card,
+    body[data-theme="light"] .admin-metric,
+    body[data-theme="light"] .agent-drawer,
+    body[data-theme="light"] .export-popover,
+    body[data-theme="light"] .shell-info-popover,
+    body[data-theme="light"] .select-menu,
+    body[data-theme="light"] .rail-context,
+    body[data-theme="light"] .rail-segment,
+    body[data-theme="light"] .fact-grid,
+    body[data-theme="light"] .doc-frame,
+    body[data-theme="light"] .activity-event {
+      color: var(--text);
+      background: var(--surface-lift);
+      background-color: var(--surface-lift);
+      border-color: var(--line);
+      box-shadow: 0 10px 24px rgba(32, 33, 36, .06);
+    }
+
+    body[data-theme="light"] .tracker-item,
+    body[data-theme="light"] .dossier-doc,
+    body[data-theme="light"] .dossier-doc.is-selected,
+    body[data-theme="light"] .drip-item,
+    body[data-theme="light"] .queue-item {
+      color: var(--text);
+      background: var(--surface-lift);
+      background-color: var(--surface-lift);
+      border-color: var(--line);
+      box-shadow: none;
+    }
+
+    body[data-theme="light"] .dossier-doc:hover,
+    body[data-theme="light"] .dossier-doc:focus-visible,
+    body[data-theme="light"] .dossier-doc.is-selected {
+      background: var(--surface-row-strong);
+      background-color: var(--surface-row-strong);
+      border-color: var(--line-strong);
+    }
+
+    body[data-theme="light"] .topbar .search-control.solvys-liquid-glass {
+      --solvys-lg-tint-source: rgb(251 250 246);
+      --solvys-lg-rim-source: rgba(32, 33, 36, .18);
+      color: var(--text);
+      background: rgba(255, 255, 255, .78);
+      border-color: var(--line);
+    }
+
+    body[data-theme="light"] #dashboardView .suggestion-chip,
+    body[data-theme="light"] #dashboardView .suggestion-chip:hover,
+    body[data-theme="light"] #dashboardView .suggestion-chip:focus-visible {
+      color: var(--text);
+      background: rgba(255,255,255,.74);
+      background-color: rgba(255,255,255,.74);
+      border-color: var(--line);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+    }
+
     .pill.neutral {
       color: var(--muted);
       background: rgba(255,255,255,.055);
@@ -5612,10 +6779,16 @@
         <span>HeirRight</span>
       </div>
     </div>
+    <div class="sidebar-import">
+      <button id="crmImportSidebar" class="sidebar-import-button" type="button" title="Import estate from CRM" data-open-crm-import>
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 5.5h14v13H5v-13Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        <span class="sidebar-import-label">Import estate</span>
+      </button>
+    </div>
     <nav class="nav-list" aria-label="HeirRight sections">
       <button class="nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" title="Dashboard" data-shell-nav="dashboard" data-hover-label="Dashboard" data-hover-description="Task tracker, activity, and drips"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 5h7v6H4V5Zm9 0h7v4h-7V5ZM4 13h7v6H4v-6Zm9-2h7v8h-7v-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dashboard</span></button>
-      <button class="nav-item" type="button" title="Find Estates" data-shell-nav="find-estates" data-hover-label="Find Estates" data-hover-description="Lead intake and source status"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Find Estates</span></button>
-      <button class="nav-item" type="button" title="Dossiers" data-shell-nav="dossiers" data-hover-label="Dossiers" data-hover-description="Finished dossier documents"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dossiers</span></button>
+      <button class="nav-item" type="button" title="Estates" data-shell-nav="find-estates" data-hover-label="Estates" data-hover-description="Lead intake and source status"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Estates</span></button>
+      <button class="nav-item" type="button" title="Document Prep" data-shell-nav="dossiers" data-hover-label="Document Prep" data-hover-description="Source files and dossier documents"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Document Prep</span></button>
       <button class="nav-item" type="button" title="Outreach" data-shell-nav="drips" data-hover-label="Outreach" data-hover-description="Email and SMS template prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 7h14M7 7v12m10-12v12M6 19h12M8 4h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10 11h4m-4 4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Outreach</span></button>
       <button class="nav-item" type="button" title="Queue" data-shell-nav="queue" data-hover-label="Queue" data-hover-description="Batch export prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10h8M8 14h5M17 14l2 2 3-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Queue</span></button>
       <button class="nav-item" type="button" title="Admin" data-shell-nav="admin" data-hover-label="Admin" data-hover-description="Team review and controls"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM4 20a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 11.5a3 3 0 1 0-1-5.84M17 20h3a4.5 4.5 0 0 0-5.3-4.43" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Admin</span></button>
@@ -5818,7 +6991,7 @@
         <div class="workbench-head" data-view-panel="find-estates">
           <div class="workbench-heading-row">
             <div class="workbench-title-row">
-              <h1>Find Estates</h1>
+              <h1>Estates</h1>
               <div class="shell-info-wrap">
                 <button class="icon-button shell-info-button" type="button" aria-label="Lead review help" aria-describedby="shellInfoPopover">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 11v5m0-9h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -5982,7 +7155,7 @@
           </aside>
         </div>
         <section id="dashboardView" class="loop-view" data-view-panel="dashboard" aria-label="Dashboard task tracker"></section>
-        <section id="dossiersView" class="loop-view" data-view-panel="dossiers" aria-label="Dossiers"></section>
+        <section id="dossiersView" class="loop-view" data-view-panel="dossiers" aria-label="Document Prep"></section>
         <section id="dripsView" class="loop-view" data-view-panel="drips" aria-label="Outreach"></section>
         <section id="queueView" class="loop-view" data-view-panel="queue" aria-label="Batch export queue"></section>
         <section id="adminView" class="loop-view" data-view-panel="admin" aria-label="Admin"></section>
@@ -6100,6 +7273,8 @@
   </section>
 </main>
 <div id="outreachTemplateModalMount"></div>
+<div id="documentActionModalMount"></div>
+<div id="crmImportModalMount"></div>
 <div id="outreachNotificationMount" class="outreach-toast-mount" aria-live="polite"></div>
 
 <script>
@@ -6139,6 +7314,11 @@ const state = {
   railRenaming: false,
   dashboardActivityTab: "activities",
   selectedDossierDocId: "discovery-dossier",
+  activeDocPrepFlow: "discovery",
+  docPrepPhaseIndex: {
+    discovery: 0,
+    "closing-docs": 0
+  },
   discoveryOpen: false,
   discoveryPhaseIndex: 0,
   discoveryCompleted: new Set(),
@@ -6147,6 +7327,16 @@ const state = {
   sourceCaptures: {},
   idiImports: {},
   contactReviews: {},
+  documentFiles: {},
+  documentActionModal: {
+    open: false,
+    docId: null,
+    action: "add"
+  },
+  crmImports: [],
+  crmImportModal: {
+    open: false
+  },
   columnOrder: {
     results: ["address", "lead", "score", "evidence", "next"],
     dossiers: ["address", "lead", "score", "evidence"]
@@ -6192,9 +7382,11 @@ const railNamesKey = "heirright:rail-names";
 const themeKey = "heirright:theme";
 const shellSettingsKey = "heirright:shell-settings";
 const discoveryStateKey = "heirright:discovery-workflow-state";
+const crmImportStateKey = "heirright:crm-imported-estates";
 const sourceCaptureStateKey = "heirright:source-capture-state";
 const idiImportStateKey = "heirright:idi-asset-imports";
 const contactReviewStateKey = "heirright:contact-review-state";
+const documentFilesStateKey = "heirright:document-files-state";
 const columnOrderStateKey = "heirright:column-order-state";
 const dripSettingsKey = "heirright:drip-settings";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
@@ -6290,6 +7482,77 @@ const discoveryPhases = [
   }
 ];
 
+const closingDocPhases = [
+  {
+    id: "closing-intake",
+    name: "Closing Intake",
+    label: "Closing intake",
+    source: "Podio or Google Sheets row",
+    summary: "Start from the CRM estate row, confirm the seller file, property address, folio, title company contact, and review owner.",
+    steps: ["Confirm the imported estate row and review owner.", "Attach title-company or closing contact notes.", "Lock the source row before drafting closing paperwork."],
+    preferences: ["Use CRM estate row", "Require review owner", "Keep imported fields linked"]
+  },
+  {
+    id: "title-clearance",
+    name: "Title Clearance",
+    label: "Title clearance",
+    source: "Official Records and title review",
+    summary: "Confirm the latest deed, title blockers, unpaid taxes, liens, and probate documents needed before a closing package can be drafted.",
+    steps: ["Review latest deed and title chain notes.", "Confirm unpaid tax, lien, and mortgage assumptions.", "Record title-company blockers or clear-to-draft notes."],
+    preferences: ["Require deed proof", "Require tax receipt status", "Flag lien review"]
+  },
+  {
+    id: "seller-approval",
+    name: "Seller Approval",
+    label: "Seller approval",
+    source: "Heir contact matrix",
+    summary: "Map the heirs or sellers who must approve the deal and keep unresolved family-tree questions visible before drafting signatures.",
+    steps: ["Confirm accepted spouse, child, heir, or representative contacts.", "Record signature authority questions.", "Keep alternative contacts out of the signer list unless promoted."],
+    preferences: ["Primary contacts first", "Signature authority required", "No outreach without approval"]
+  },
+  {
+    id: "offer-underwriting",
+    name: "Offer Underwriting",
+    label: "Offer underwriting",
+    source: "Completed lead report",
+    summary: "Review as-is value, taxes due, liens, mortgages, probate costs, partition risk, and per-heir offer math before drafting closing documents.",
+    steps: ["Review the offer/profit table.", "Capture missing underwriting numbers.", "Mark the offer as review-ready or blocked."],
+    preferences: ["Require offer table", "Keep draft label", "Block external use until review"]
+  },
+  {
+    id: "closing-package",
+    name: "Closing Package",
+    label: "Closing package",
+    source: "Closing docs template",
+    summary: "Prepare purchase agreement, seller packet, assignment or deed request, escrow notes, and final recording checklist as one review bundle.",
+    steps: ["Draft the closing packet from linked source facts.", "Stage Podio tasks and Google Sheets row.", "Hold live handoff until approval and readback are proven."],
+    preferences: ["Bundle docs together", "Stage CRM tasks", "Require readback proof"]
+  }
+];
+
+const docPrepFlows = {
+  discovery: {
+    id: "discovery",
+    label: "Discovery",
+    title: "Estate Discovery",
+    shortTitle: "Discovery",
+    cta: "Begin Discovery",
+    tag: "County source review",
+    copy: "Build the source-backed estate file: owner, tax, deed, probate, obituary, IDI, contacts, and dossier export.",
+    phases: discoveryPhases
+  },
+  "closing-docs": {
+    id: "closing-docs",
+    label: "Closing Docs",
+    title: "Closing Docs",
+    shortTitle: "Closing",
+    cta: "Begin Closing Docs",
+    tag: "Closing packet",
+    copy: "Turn a reviewed estate into title, seller, underwriting, offer, escrow, and recording prep without leaving the same workspace.",
+    phases: closingDocPhases
+  }
+};
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -6344,10 +7607,30 @@ function persistAssetDiscoveryState() {
   localStorage.setItem(contactReviewStateKey, JSON.stringify(state.contactReviews));
 }
 
+function persistDocumentFiles() {
+  localStorage.setItem(documentFilesStateKey, JSON.stringify(state.documentFiles));
+}
+
+function loadCrmImports() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(crmImportStateKey) ?? "[]");
+    state.crmImports = Array.isArray(stored) ? stored.map(normalizeCrmImport) : [];
+  } catch {
+    state.crmImports = [];
+  }
+}
+
+function persistCrmImports(reason = "") {
+  state.crmImports = state.crmImports.map(normalizeCrmImport);
+  localStorage.setItem(crmImportStateKey, JSON.stringify(state.crmImports));
+  if (reason) addShellEvent(reason, "The imported estate is saved locally in the HRight workspace. Live CRM writes and readback remain gated.", "review", false);
+}
+
 function loadAssetDiscoveryState() {
   state.sourceCaptures = restoreObjectFromStorage(sourceCaptureStateKey, {});
   state.idiImports = restoreObjectFromStorage(idiImportStateKey, {});
   state.contactReviews = restoreObjectFromStorage(contactReviewStateKey, {});
+  state.documentFiles = restoreObjectFromStorage(documentFilesStateKey, {});
   const storedColumnOrder = restoreObjectFromStorage(columnOrderStateKey, {});
   state.columnOrder = {
     results: normalizeColumnOrder("results", storedColumnOrder.results),
@@ -6476,12 +7759,14 @@ function rowDisplayClassification(row) {
 
 function rowNextAction(row) {
   if (!row) return "Review";
+  if (row.sourceKind === "crm-import" && !phaseIsComplete("dossier-export", row)) return "Begin Discovery";
   if (!idiImportForRow(row)) return "Import IDI";
   if (!acceptedContactCandidates(row).length) return "Review contacts";
   return row.next || "Review dossier";
 }
 
 function assetPhaseComplete(row, phaseId) {
+  const dossier = dossierForRow(row);
   const capture = sourceCaptureForRow(row);
   if (phaseId === "owner-details") return Boolean(row?.address && row?.owner);
   if (phaseId === "tax-receipt") return Boolean(capture.taxReceipt?.paidBy || capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName);
@@ -6490,6 +7775,11 @@ function assetPhaseComplete(row, phaseId) {
   if (phaseId === "idi-asset-search") return Boolean(idiImportForRow(row));
   if (phaseId === "contact-review") return acceptedContactCandidates(row).length > 0;
   if (phaseId === "dossier-export") return state.discoveryCompleted.has(phaseId);
+  if (phaseId === "closing-intake") return Boolean(row?.address && (row?.owner || row?.leadName));
+  if (phaseId === "title-clearance") return assetPhaseComplete(row, "deed") && assetPhaseComplete(row, "tax-receipt");
+  if (phaseId === "seller-approval") return acceptedContactCandidates(row).length > 0 || state.discoveryCompleted.has("contact-review");
+  if (phaseId === "offer-underwriting") return Boolean(dossier?.completedLeadReport?.offerMath);
+  if (phaseId === "closing-package") return Boolean(row?.id && (state.queueIds.has(row.id) || state.exportResult?.ok));
   return false;
 }
 
@@ -6821,9 +8111,152 @@ function buildFreshBatchRows(batch) {
   return leadRuns.map((run, index) => freshBatchRowFromRun(run, index)).map((row) => ({ ...row, tone: rowTone(row) }));
 }
 
+function crmProviderLabel(provider = "podio") {
+  return {
+    podio: "Podio",
+    "google-sheets": "Google Sheets",
+    csv: "CSV / pasted CRM row"
+  }[provider] ?? displayStatus(provider, "CRM");
+}
+
+function normalizeCrmImport(input = {}) {
+  const provider = ["podio", "google-sheets", "csv"].includes(input.provider) ? input.provider : "podio";
+  const estateName = String(input.estateName || input.ownerName || "Imported estate").trim().slice(0, 120);
+  const propertyAddress = String(input.propertyAddress || "Address needs review").trim().slice(0, 180);
+  const ownerName = String(input.ownerName || estateName).trim().slice(0, 120);
+  const county = String(input.county || "miami-dade").trim().slice(0, 80);
+  const parcelId = String(input.parcelId || "Folio needs review").trim().slice(0, 80);
+  const sourceRecordId = String(input.sourceRecordId || "").trim().slice(0, 120);
+  return {
+    id: String(input.id || `crm-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`),
+    provider,
+    estateName,
+    propertyAddress,
+    ownerName,
+    county,
+    parcelId,
+    sourceRecordId,
+    sourceUrl: String(input.sourceUrl || "").trim().slice(0, 240),
+    notes: String(input.notes || "").trim().slice(0, 800),
+    importedAt: input.importedAt || isoNow(),
+    importedBy: input.importedBy || currentActorEmail()
+  };
+}
+
+function minimalImportedDossier(imported) {
+  const provider = crmProviderLabel(imported.provider);
+  return {
+    generatedAt: imported.importedAt,
+    workflow: { status: "review_required" },
+    summary: {
+      estateName: imported.estateName,
+      displayName: imported.estateName,
+      caseNumber: imported.sourceRecordId || "CRM row",
+      nextBestAction: "Begin Discovery or Closing Docs from the DocPrep workflow."
+    },
+    property: {
+      address: { value: imported.propertyAddress },
+      ownerName: { value: imported.ownerName },
+      estateName: { value: imported.estateName },
+      county: { value: imported.county },
+      parcelId: { value: imported.parcelId },
+      caseNumber: { value: imported.sourceRecordId || "CRM row" }
+    },
+    completedLeadReport: {
+      generatedAt: imported.importedAt,
+      missingData: ["Source evidence", "Heir/contact review", "Offer math", "CRM readback"],
+      reviewGate: { externalUseBlocked: true },
+      offerMath: {},
+      formats: {
+        html: pageShellHtml("Imported Estate Review Packet", imported.estateName, `
+          <p class="muted">Imported from ${escapeHtml(provider)} for HeirRight review. This is a local workspace record until source evidence, approval, and readback are complete.</p>
+          <table>
+            <tr><th>Estate</th><td>${escapeHtml(imported.estateName)}</td></tr>
+            <tr><th>Owner</th><td>${escapeHtml(imported.ownerName)}</td></tr>
+            <tr><th>Property</th><td>${escapeHtml(imported.propertyAddress)}</td></tr>
+            <tr><th>CRM source</th><td>${escapeHtml(provider)}${imported.sourceRecordId ? ` - ${escapeHtml(imported.sourceRecordId)}` : ""}</td></tr>
+          </table>
+        `)
+      }
+    },
+    crm: {
+      status: "not_configured",
+      payload: {
+        appModel: {
+          workspace: provider,
+          app: "Imported estate row",
+          fields: {
+            estate_name: imported.estateName,
+            property_address: imported.propertyAddress,
+            owner_name: imported.ownerName,
+            source_record_id: imported.sourceRecordId
+          },
+          pipelineStages: ["Imported", "Discovery", "Closing Docs", "Review"]
+        },
+        podioReadiness: {
+          classification: "prep_only",
+          missingConfig: ["Approved access", "Readback proof"],
+          blockers: ["CRM import is local until the real workspace connection and approved readback check are complete."],
+          readbackChecks: ["Confirm imported estate row", "Confirm linked source facts", "Confirm no duplicate CRM item"]
+        }
+      }
+    },
+    operatorQueue: {
+      state: "manual_review",
+      items: [{ title: "Imported estate review", nextAction: "Confirm source evidence before outreach or closing docs." }]
+    }
+  };
+}
+
+function crmImportRow(imported) {
+  const normalized = normalizeCrmImport(imported);
+  const dossier = minimalImportedDossier(normalized);
+  const missing = buildMissingSections(dossier);
+  const row = {
+    id: normalized.id,
+    kind: "CRM Import",
+    sourceKind: "crm-import",
+    sourceProvider: normalized.provider,
+    sourceRecordId: normalized.sourceRecordId,
+    title: normalized.estateName,
+    file: normalized.sourceRecordId || crmProviderLabel(normalized.provider),
+    leadName: leadNameInitialLabel(normalized.ownerName, normalized.estateName),
+    address: normalized.propertyAddress,
+    county: normalized.county,
+    parcel: normalized.parcelId,
+    owner: normalized.ownerName,
+    score: 44,
+    evidence: 1,
+    evidenceTotal: 9,
+    status: "review",
+    next: "Begin Discovery",
+    classification: "CRM Import",
+    missing,
+    search: `${normalized.estateName} ${normalized.ownerName} ${normalized.propertyAddress} ${normalized.parcelId} ${normalized.sourceRecordId} ${crmProviderLabel(normalized.provider)} imported crm closing docs discovery`,
+    leadType: "probate",
+    dossier,
+    data: {
+      runId: normalized.id,
+      seed: {
+        estateName: normalized.estateName,
+        ownerName: normalized.ownerName,
+        propertyAddress: normalized.propertyAddress,
+        county: normalized.county,
+        parcelId: normalized.parcelId
+      },
+      facts: []
+    }
+  };
+  return { ...row, tone: rowTone(row) };
+}
+
+function crmImportRows() {
+  return state.crmImports.map(crmImportRow);
+}
+
 function buildRows(data, dossier) {
   if (state.freshBatch?.latestRun?.runId === data?.runId && Array.isArray(state.freshBatch?.leadRuns) && state.freshBatch.leadRuns.length) {
-    return buildFreshBatchRows(state.freshBatch);
+    return [...buildFreshBatchRows(state.freshBatch), ...crmImportRows()];
   }
 
   const decision = decisionCopy(dossier);
@@ -6921,7 +8354,7 @@ function buildRows(data, dossier) {
       leadType: "outreach"
     }
   ];
-  return rows.map((row) => ({ ...row, tone: rowTone(row) }));
+  return [...rows.map((row) => ({ ...row, tone: rowTone(row) })), ...crmImportRows()];
 }
 
 function selectedRow() {
@@ -7254,7 +8687,7 @@ function applyTheme(theme, persist = true) {
 
 function loadSavedState() {
   const storedTheme = localStorage.getItem(themeKey);
-  applyTheme(["light", "dark", "system"].includes(storedTheme) ? storedTheme : "system", false);
+  applyTheme(["light", "dark", "system"].includes(storedTheme) ? storedTheme : "light", false);
   const storedWidth = Number(localStorage.getItem(railWidthKey));
   if (Number.isFinite(storedWidth)) state.railWidth = clampRailWidth(storedWidth);
   const storedFilterWidth = Number(localStorage.getItem(filterWidthKey));
@@ -7276,6 +8709,7 @@ function loadSavedState() {
     state.railNames = {};
   }
 	  loadDiscoveryState();
+	  loadCrmImports();
 	  loadAssetDiscoveryState();
 	  loadShellSettings();
   loadDripSettings();
@@ -7294,22 +8728,33 @@ function loadDiscoveryState() {
     const stored = JSON.parse(localStorage.getItem(discoveryStateKey) ?? "{}");
     const completed = Array.isArray(stored.completed) ? stored.completed.map(String) : [];
     const phaseIndex = Number(stored.phaseIndex);
-    state.discoveryCompleted = new Set(completed.filter((phaseId) => discoveryPhases.some((phase) => phase.id === phaseId)));
-    state.discoveryPhaseIndex = Number.isFinite(phaseIndex)
-      ? Math.max(0, Math.min(discoveryPhases.length - 1, phaseIndex))
-      : state.discoveryPhaseIndex;
+    const validPhaseIds = new Set(Object.values(docPrepFlows).flatMap((flow) => flow.phases.map((phase) => phase.id)));
+    state.discoveryCompleted = new Set(completed.filter((phaseId) => validPhaseIds.has(phaseId)));
+    const storedFlow = String(stored.activeFlow || "").trim();
+    state.activeDocPrepFlow = docPrepFlows[storedFlow] ? storedFlow : state.activeDocPrepFlow;
+    const storedIndices = stored.phaseIndices && typeof stored.phaseIndices === "object" && !Array.isArray(stored.phaseIndices) ? stored.phaseIndices : {};
+    state.docPrepPhaseIndex = Object.fromEntries(Object.keys(docPrepFlows).map((flowId) => {
+      const fallback = flowId === "discovery" && Number.isFinite(phaseIndex) ? phaseIndex : state.docPrepPhaseIndex[flowId] ?? 0;
+      const value = Number(storedIndices[flowId] ?? fallback);
+      const phases = docPrepFlows[flowId].phases;
+      return [flowId, Number.isFinite(value) ? Math.max(0, Math.min(phases.length - 1, value)) : 0];
+    }));
+    state.discoveryPhaseIndex = state.docPrepPhaseIndex.discovery ?? 0;
     state.discoveryNotes = stored.notes && typeof stored.notes === "object" && !Array.isArray(stored.notes) ? stored.notes : {};
     state.discoveryPreferences = stored.preferences && typeof stored.preferences === "object" && !Array.isArray(stored.preferences) ? stored.preferences : {};
   } catch {
     state.discoveryCompleted = new Set();
     state.discoveryNotes = {};
     state.discoveryPreferences = {};
+    state.docPrepPhaseIndex = { discovery: 0, "closing-docs": 0 };
   }
 }
 
 function persistDiscoveryState() {
   localStorage.setItem(discoveryStateKey, JSON.stringify({
-    phaseIndex: state.discoveryPhaseIndex,
+    activeFlow: state.activeDocPrepFlow,
+    phaseIndex: state.docPrepPhaseIndex.discovery ?? state.discoveryPhaseIndex,
+    phaseIndices: state.docPrepPhaseIndex,
     completed: [...state.discoveryCompleted],
     notes: state.discoveryNotes,
     preferences: state.discoveryPreferences
@@ -7849,8 +9294,8 @@ function addShellEvent(title, copy, tone = "review", openDrawer = true) {
 function activeViewLabel(view = state.activeView) {
   return {
     dashboard: "Dashboard",
-    "find-estates": "Find Estates",
-    dossiers: "Dossiers",
+    "find-estates": "Estates",
+    dossiers: "Document Prep",
     drips: "Outreach",
     queue: "Queue",
     admin: "Admin",
@@ -7904,15 +9349,47 @@ function trackerIcon(type = "check") {
   return `<span class="tracker-icon" aria-hidden="true">${nucleoIcon(icons[type] ?? "check-circle", 15)}</span>`;
 }
 
-function currentDiscoveryPhase() {
-  const row = selectedRow();
-  return discoveryPhases.find((phase) => !phaseIsComplete(phase.id, row)) ?? discoveryPhases.at(-1) ?? discoveryPhases[0];
+function docPrepFlow(flowId = state.activeDocPrepFlow) {
+  return docPrepFlows[flowId] ?? docPrepFlows.discovery;
 }
 
-function discoveryProgress() {
+function docPrepPhases(flowId = state.activeDocPrepFlow) {
+  return docPrepFlow(flowId).phases;
+}
+
+function setActiveDocPrepFlow(flowId = "discovery", { persist = true, rerender = true } = {}) {
+  const nextFlow = docPrepFlows[flowId] ? flowId : "discovery";
+  state.activeDocPrepFlow = nextFlow;
+  const phases = docPrepPhases(nextFlow);
+  const currentIndex = Number(state.docPrepPhaseIndex[nextFlow]);
+  state.docPrepPhaseIndex[nextFlow] = Number.isFinite(currentIndex)
+    ? Math.max(0, Math.min(phases.length - 1, currentIndex))
+    : 0;
+  state.discoveryPhaseIndex = state.docPrepPhaseIndex.discovery ?? 0;
+  if (persist) persistDiscoveryState();
+  if (rerender) {
+    renderCurrentLoopView();
+    renderRail();
+  }
+}
+
+function currentDiscoveryPhase(flowId = state.activeDocPrepFlow) {
+  const phases = docPrepPhases(flowId);
+  const index = Math.max(0, Math.min(phases.length - 1, Number(state.docPrepPhaseIndex[flowId]) || 0));
+  return phases[index] ?? phases[0] ?? discoveryPhases[0];
+}
+
+function firstIncompletePhaseIndex(flowId = state.activeDocPrepFlow, row = selectedRow()) {
+  const phases = docPrepPhases(flowId);
+  const index = phases.findIndex((phase) => !phaseIsComplete(phase.id, row));
+  return index < 0 ? Math.max(0, phases.length - 1) : index;
+}
+
+function discoveryProgress(flowId = state.activeDocPrepFlow) {
   const row = selectedRow();
-  const completed = discoveryPhases.filter((phase) => phaseIsComplete(phase.id, row)).length;
-  const total = discoveryPhases.length;
+  const phases = docPrepPhases(flowId);
+  const completed = phases.filter((phase) => phaseIsComplete(phase.id, row)).length;
+  const total = phases.length;
   return Math.round((completed / total) * 100);
 }
 
@@ -8039,6 +9516,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "discovery-dossier",
       title: "Discovery Dossier",
+      flowId: "discovery",
       phaseId: "owner-details",
       type: "PDF packet",
       copy: "Owner, property, deed, tax, probate, heirs, notes, and next actions.",
@@ -8048,6 +9526,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "completed-report",
       title: "Completed Lead Report",
+      flowIds: ["discovery", "closing-docs"],
       phaseId: "dossier-export",
       type: "Rendered report",
       copy: "Lead report draft with offer, source notes, and review gate.",
@@ -8057,6 +9536,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "source-notes",
       title: "Source Notes",
+      flowId: "discovery",
       phaseId: "owner-details",
       type: "Review notes",
       copy: "County records, source coverage, and missing fact checklist.",
@@ -8066,6 +9546,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "deed-title-notes",
       title: "Deed & Title Notes",
+      flowIds: ["discovery", "closing-docs"],
       phaseId: "deed",
       type: "Official records",
       copy: "Owner chain, deed gaps, OR book/page notes, and title review blockers.",
@@ -8075,6 +9556,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "tax-history",
       title: "Tax History Packet",
+      flowIds: ["discovery", "closing-docs"],
       phaseId: "tax-receipt",
       type: "Tax collector",
       copy: "Unpaid years, receipt status, payer notes, reassessment, and lien review.",
@@ -8084,6 +9566,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "probate-request",
       title: "Probate Document Request",
+      flowId: "discovery",
       phaseId: "deed",
       type: "Court request",
       copy: "Court call, page count, money order, certified copy, and pickup path.",
@@ -8093,6 +9576,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "heir-contact-matrix",
       title: "Heir Contact Matrix",
+      flowIds: ["discovery", "closing-docs"],
       phaseId: "contact-review",
       type: "Contact review",
       copy: "Potential heirs, contact confidence, approval gates, and source notes.",
@@ -8102,6 +9586,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "outreach-drafts",
       title: "Outreach Drafts",
+      flowId: "discovery",
       phaseId: "dossier-export",
       type: "Email and SMS",
       copy: "Review-only outreach language held until approval.",
@@ -8111,6 +9596,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "drip-schedule",
       title: "Drip Schedule",
+      flowId: "discovery",
       phaseId: "dossier-export",
       type: "Automation prep",
       copy: "Email/SMS cadence, stop rules, review owner, and no-send guardrails.",
@@ -8120,20 +9606,122 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "crm-handoff",
       title: "CRM Handoff",
+      flowIds: ["discovery", "closing-docs"],
       phaseId: "dossier-export",
       type: "Podio fields",
       copy: "Batch export fields, tasks, drip route, and readback checklist.",
       status: "Prep only",
       body: crmHandoffHtml(row, dossier)
+    },
+    {
+      id: "closing-intake-sheet",
+      title: "Closing Intake Sheet",
+      flowId: "closing-docs",
+      phaseId: "closing-intake",
+      type: "CRM import",
+      copy: "Imported estate row, review owner, title-company contact, and closing workspace notes.",
+      status: row?.sourceKind === "crm-import" ? "Imported" : "Needs CRM row",
+      body: closingDocHtml(row, dossier, "Closing Intake Sheet", [
+        ["CRM source", row?.sourceProvider || "Podio or Google Sheets"],
+        ["Estate", row?.title || row?.owner || "Needs review"],
+        ["Property", row?.address || "Needs review"],
+        ["Review owner", "Operator required before live handoff"]
+      ])
+    },
+    {
+      id: "purchase-agreement-draft",
+      title: "Purchase Agreement Draft",
+      flowId: "closing-docs",
+      phaseId: "offer-underwriting",
+      type: "Draft agreement",
+      copy: "Draft purchase terms sourced from offer math and held until underwriting review clears.",
+      status: report?.reviewGate?.externalUseBlocked ? "Review blocked" : "Draft",
+      body: closingDocHtml(row, dossier, "Purchase Agreement Draft", [
+        ["Offer amount", moneyClaimValue(report?.offerMath?.offerAmount)],
+        ["Minimum net", moneyClaimValue(report?.offerMath?.minimumNetProfit)],
+        ["External use", report?.reviewGate?.externalUseBlocked ? "Blocked until review clears" : "Needs final approval"],
+        ["Underwriting note", reportClaimNote(report?.offerMath?.offerAmount, "Draft only until underwriting clears.")]
+      ])
+    },
+    {
+      id: "seller-signature-packet",
+      title: "Seller Signature Packet",
+      flowId: "closing-docs",
+      phaseId: "seller-approval",
+      type: "Signer packet",
+      copy: "Accepted heirs or seller contacts, signature authority notes, and approval gates.",
+      status: acceptedContactCandidates(row).length ? "Review contacts" : "Needs signers",
+      body: closingDocHtml(row, dossier, "Seller Signature Packet", [
+        ["Accepted contacts", `${acceptedContactCandidates(row).length} accepted`],
+        ["Primary contacts", `${primaryContactCandidates(row).length} primary`],
+        ["Authority", "Needs operator confirmation"],
+        ["Stop rule", "No external signature request before approval"]
+      ])
+    },
+    {
+      id: "title-company-request",
+      title: "Title Company Request",
+      flowId: "closing-docs",
+      phaseId: "title-clearance",
+      type: "Title request",
+      copy: "Deed, tax, lien, mortgage, probate, and title blocker request bundle.",
+      status: phaseIsComplete("title-clearance", row) ? "Ready for review" : "Needs title facts",
+      body: closingDocHtml(row, dossier, "Title Company Request", [
+        ["Deed proof", phaseIsComplete("deed", row) ? "Attached or captured" : "Needs Official Records evidence"],
+        ["Tax proof", phaseIsComplete("tax-receipt", row) ? "Attached or captured" : "Needs Tax Collector evidence"],
+        ["Probate status", report?.probateStatus?.label || report?.probateStatus?.value || "Needs review"],
+        ["Title blockers", (dossier?.deedHistory?.reviewTasks ?? []).length ? `${dossier.deedHistory.reviewTasks.length} open` : "None recorded"]
+      ])
+    },
+    {
+      id: "escrow-closing-statement",
+      title: "Escrow & Closing Statement",
+      flowId: "closing-docs",
+      phaseId: "closing-package",
+      type: "Escrow prep",
+      copy: "Escrow notes, closing-cost placeholders, seller proceeds, and review-only final statement.",
+      status: state.queueIds.has(row?.id) ? "Queued" : "Prep only",
+      body: closingDocHtml(row, dossier, "Escrow & Closing Statement", [
+        ["Post equity value", moneyClaimValue(report?.offerMath?.postEquityValue)],
+        ["Profit", moneyClaimValue(report?.offerMath?.profit)],
+        ["Per-heir amount", moneyClaimValue(report?.offerMath?.equityPerHeir)],
+        ["Queue state", state.queueIds.has(row?.id) ? "Staged for handoff" : "Not queued"]
+      ])
+    },
+    {
+      id: "recording-checklist",
+      title: "Recording Checklist",
+      flowId: "closing-docs",
+      phaseId: "closing-package",
+      type: "Recording prep",
+      copy: "Final signed docs, recording task, Podio follow-up, and readback checklist.",
+      status: state.exportResult?.ok ? "Prepared" : "Needs approval",
+      body: closingDocHtml(row, dossier, "Recording Checklist", [
+        ["Live writes", "Blocked until approval and readback proof"],
+        ["Podio task", "Prepared only"],
+        ["Google row", "Prepared only"],
+        ["Readback", state.exportResult?.ok ? "Handoff result visible" : "Not proven"]
+      ])
     }
   ];
 }
 
+function documentFlowMatches(doc, flowId = state.activeDocPrepFlow) {
+  const flows = Array.isArray(doc?.flowIds) ? doc.flowIds : [doc?.flowId || "discovery"];
+  return flows.includes(flowId);
+}
+
+function docsForFlow(row = selectedRow(), dossier = dossierForRow(row), flowId = state.activeDocPrepFlow) {
+  return dossierDocuments(row, dossier).filter((doc) => documentFlowMatches(doc, flowId));
+}
+
 function dossierDocWorkflowState(doc, index = 0) {
-  const phaseIndex = discoveryPhases.findIndex((phase) => phase.id === doc.phaseId);
-  const phase = discoveryPhases[phaseIndex] ?? discoveryPhases[0];
+  const flowId = documentFlowMatches(doc, state.activeDocPrepFlow) ? state.activeDocPrepFlow : (doc.flowId || doc.flowIds?.[0] || "discovery");
+  const phases = docPrepPhases(flowId);
+  const phaseIndex = phases.findIndex((phase) => phase.id === doc.phaseId);
+  const phase = phases[phaseIndex] ?? phases[0];
   const complete = phaseIsComplete(phase.id);
-  const active = !complete && phase.id === currentDiscoveryPhase().id;
+  const active = !complete && phase.id === currentDiscoveryPhase(flowId).id;
   const blocked = /blocked|locked/i.test(doc.status || "") && !complete;
   return {
     phase,
@@ -8181,6 +9769,536 @@ function dossierChecklistHtml(docs, { compact = false } = {}) {
   `;
 }
 
+function todayLongLabel() {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric"
+  });
+}
+
+function processProgressDots(done, total) {
+  const safeTotal = Math.max(1, Math.min(14, Number(total) || 1));
+  const safeDone = Math.max(0, Math.min(safeTotal, Number(done) || 0));
+  return `<span class="process-progress-dots" aria-label="${safeDone} of ${safeTotal} complete">${Array.from({ length: safeTotal }, (_item, index) => `<i class="${index < safeDone ? "is-filled" : ""}"></i>`).join("")}</span>`;
+}
+
+function documentStorageKey(row = selectedRow(), docId = "") {
+  return `${assetDiscoveryKey(row)}:${docId || "document"}`;
+}
+
+function documentFileRecord(docId, row = selectedRow()) {
+  return state.documentFiles[documentStorageKey(row, docId)] ?? null;
+}
+
+function documentFileLabel(record) {
+  if (!record) return "";
+  const size = record.size ? ` · ${humanFileSize(record.size)}` : "";
+  return `${record.name}${size}`;
+}
+
+function humanFileSize(size) {
+  const bytes = Number(size) || 0;
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
+function selectedDocumentFileCount(row = selectedRow()) {
+  const prefix = `${assetDiscoveryKey(row)}:`;
+  return Object.keys(state.documentFiles).filter((key) => key.startsWith(prefix)).length;
+}
+
+function selectedDocumentStorageSize(row = selectedRow()) {
+  const prefix = `${assetDiscoveryKey(row)}:`;
+  return Object.entries(state.documentFiles)
+    .filter(([key]) => key.startsWith(prefix))
+    .reduce((sum, [, record]) => sum + (Number(record?.size) || 0), 0);
+}
+
+function documentPrepStats(row = selectedRow(), dossier = dossierForRow(row), flowId = state.activeDocPrepFlow) {
+  const docs = docsForFlow(row, dossier, flowId);
+  const linked = docs.filter((doc) => documentFileRecord(doc.id, row)).length;
+  return {
+    total: docs.length,
+    linked,
+    missing: Math.max(0, docs.length - linked),
+    versions: Object.values(state.documentFiles).filter((record) => Number(record?.version || 1) > 1).length,
+    size: selectedDocumentStorageSize(row)
+  };
+}
+
+function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
+  const docs = dossierDocuments(row, dossier);
+  const stats = documentPrepStats(row, dossier);
+  const discoveryDone = docPrepPhases("discovery").filter((phase) => phaseIsComplete(phase.id, row)).length;
+  const closingDone = docPrepPhases("closing-docs").filter((phase) => phaseIsComplete(phase.id, row)).length;
+  const reviewTasks = taskCount(dossier ?? {});
+  const closingDocs = docs.filter((doc) => documentFlowMatches(doc, "closing-docs"));
+  const closingReadyDocs = closingDocs.filter((doc) => documentFileRecord(doc.id, row) || !/blocked|locked|open/i.test(doc.status || "")).length;
+  const readyDocs = docs.filter((doc) => !/blocked|locked|open/i.test(doc.status || "")).length;
+  return [
+    {
+      id: "estate-discovery",
+      title: "Estate Discovery",
+      done: discoveryDone,
+      total: docPrepPhases("discovery").length,
+      tag: docPrepFlow("discovery").tag,
+      due: row?.next || "Review next action",
+      status: discoveryDone >= docPrepPhases("discovery").length ? "Ready to submit" : `${discoveryDone}/${docPrepPhases("discovery").length}`,
+      ready: discoveryDone >= docPrepPhases("discovery").length
+    },
+    {
+      id: "document-prep",
+      title: "Document Prep",
+      done: stats.linked,
+      total: stats.total,
+      tag: "Dossier packet",
+      due: `${stats.missing} missing`,
+      status: stats.missing ? `${stats.linked}/${stats.total}` : "Ready to bundle",
+      ready: stats.missing === 0
+    },
+    {
+      id: "closing-docs",
+      title: "Closing Docs",
+      done: closingDone,
+      total: docPrepPhases("closing-docs").length,
+      tag: docPrepFlow("closing-docs").tag,
+      due: closingReadyDocs ? `${closingReadyDocs}/${Math.max(closingDocs.length, 1)} docs` : "Needs title review",
+      status: closingDone >= docPrepPhases("closing-docs").length ? "Ready to bundle" : `${closingDone}/${docPrepPhases("closing-docs").length}`,
+      ready: closingDone >= docPrepPhases("closing-docs").length
+    },
+    {
+      id: "handoff-review",
+      title: "Handoff Review",
+      done: readyDocs,
+      total: docs.length,
+      tag: "Podio and Google prep",
+      due: reviewTasks ? `${reviewTasks} reviews` : "No open reviews",
+      status: queuedRows().length ? "Queued" : "Prep only",
+      ready: queuedRows().length > 0
+    }
+  ];
+}
+
+function attentionItems(row = selectedRow(), dossier = dossierForRow(row)) {
+  if (!row || !dossier) {
+    return [
+      {
+        title: "Load the latest estate packet",
+        copy: "The dashboard will show source tasks, missing documents, and handoff prep after the lead packet loads.",
+        action: "Open Estates",
+        view: "find-estates",
+        urgent: true
+      }
+    ];
+  }
+  const stats = documentPrepStats(row, dossier);
+  const missing = row.missing ?? buildMissingSections(dossier);
+  const blockers = milestoneBlockers(dossier);
+  const items = [];
+  if (missing.length) {
+    items.push({
+      title: `${missing[0].short || missing[0].label} needs attention`,
+      copy: `${missing.length} source-backed section${missing.length === 1 ? "" : "s"} affect ${row.leadName || row.title}.`,
+      action: "Review",
+      view: "find-estates",
+      urgent: true
+    });
+  }
+  if (stats.missing) {
+    items.push({
+      title: `${stats.missing} dossier document${stats.missing === 1 ? "" : "s"} still missing`,
+      copy: "Add source files, link generated packet sections, or mark the review gate before bundling.",
+      action: "Open",
+      view: "dossiers",
+      urgent: false
+    });
+  }
+  if (blockers.length) {
+    items.push({
+      title: "Handoff remains prep only",
+      copy: operatorBlockerText(blockers[0]),
+      action: "View",
+      view: "queue",
+      urgent: false
+    });
+  }
+  return items.slice(0, 2);
+}
+
+function dashboardActivityRows(row = selectedRow()) {
+  const fileCount = selectedDocumentFileCount(row);
+  const defaults = [
+    {
+      title: row ? `${row.leadName || row.title} opened` : "Estate workspace opened",
+      copy: row?.address || "Load latest lead packet",
+      tone: "route",
+      at: Date.now() - (36 * 60 * 1000)
+    },
+    {
+      title: `${fileCount} source file${fileCount === 1 ? "" : "s"} linked`,
+      copy: "Document Prep updates the packet wherever the file is reused.",
+      tone: fileCount ? "check" : "clock",
+      at: Date.now() - (3 * 60 * 60 * 1000)
+    }
+  ];
+  return [...state.shellEvents.slice(0, 4), ...defaults].slice(0, 6);
+}
+
+function processCardHtml(process) {
+  return `
+    <button class="process-folder-card" type="button" data-process-card="${escapeHtml(process.id)}">
+      <span class="folder-doc-stack" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span class="process-folder-body">
+        <span class="process-folder-title">
+          <strong>${escapeHtml(process.title)}</strong>
+          <span class="attention-dot" aria-hidden="true"></span>
+        </span>
+        ${processProgressDots(process.done, process.total)}
+        <span class="process-folder-meta">
+          <span>${escapeHtml(process.status)}</span>
+          <span class="process-tag ${process.ready ? "ready" : ""}">${escapeHtml(process.tag)}</span>
+          <span>${escapeHtml(process.due)}</span>
+        </span>
+      </span>
+    </button>
+  `;
+}
+
+function documentRequirementStatus(doc, row = selectedRow()) {
+  const record = documentFileRecord(doc.id, row);
+  const workflow = dossierDocWorkflowState(doc);
+  if (record) return { linked: true, label: documentFileLabel(record), action: "Update" };
+  return {
+    linked: false,
+    label: workflow.state === "complete" ? "Generated packet section is ready to link." : doc.copy,
+    action: "Add"
+  };
+}
+
+function documentRequirementHtml(doc, row = selectedRow()) {
+  const file = documentRequirementStatus(doc, row);
+  const workflow = dossierDocWorkflowState(doc);
+  return `
+    <article class="document-requirement ${file.linked ? "is-linked" : ""}" data-document-row="${escapeHtml(doc.id)}">
+      <button class="file-drop-icon" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}" aria-label="${escapeHtml(file.action)} ${escapeHtml(doc.title)}">${file.linked ? "✓" : "+"}</button>
+      <span class="document-copy">
+        <strong>${escapeHtml(doc.title)}</strong>
+        <span>${escapeHtml(file.label)}</span>
+      </span>
+      <span class="document-actions">
+        <span class="document-type-pill">${escapeHtml(doc.type)}</span>
+        <button class="btn" type="button" data-document-action="preview" data-document-id="${escapeHtml(doc.id)}">Quick Look</button>
+        <button class="btn primary solvys-liquid-glass" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}">${escapeHtml(file.action)}</button>
+        <span class="headless-menu-wrap" data-ui-menu>
+          <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Document actions for ${escapeHtml(doc.title)}">${nucleoIcon("sliders", 16)}</button>
+          <span class="headless-menu" role="menu" hidden>
+            <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("open-book", 15)}<span>Quick Look</span></button>
+            <button type="button" role="menuitem" data-ui-menu-action="link-generated" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("batch-tray", 15)}<span>Link generated packet</span></button>
+            <button type="button" role="menuitem" data-ui-menu-action="replace" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("packet-clock", 15)}<span>Save new version</span></button>
+            <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("flag", 15)}<span>Stage for handoff</span></button>
+          </span>
+        </span>
+        <span class="dossier-check-action">${escapeHtml(workflow.label)}</span>
+      </span>
+    </article>
+  `;
+}
+
+function currentProcessFacts(row = selectedRow(), dossier = dossierForRow(row)) {
+  const stats = documentPrepStats(row, dossier);
+  return [
+    ["Source", row?.county || claimValue(dossier?.property?.county, "County needs review")],
+    ["Created", formatPacketDate(dossier?.generatedAt ?? state.data?.generatedAt ?? Date.now())],
+    ["Deadline", row?.next || "Resolve review flags"],
+    ["Progress", `${stats.linked} of ${stats.total} files`]
+  ];
+}
+
+function openDocumentActionModal(docId, action = "add") {
+  state.documentActionModal = { open: true, docId, action };
+  renderDocumentActionModal();
+}
+
+function closeDocumentActionModal() {
+  state.documentActionModal = { open: false, docId: null, action: "add" };
+  renderDocumentActionModal();
+}
+
+function renderDocumentActionModal() {
+  const mount = document.getElementById("documentActionModalMount");
+  if (!mount) return;
+  const modal = state.documentActionModal;
+  if (!modal.open) {
+    mount.innerHTML = "";
+    return;
+  }
+  const row = selectedRow();
+  const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === modal.docId) ?? selectedDossierDocument(row);
+  const record = documentFileRecord(doc?.id, row);
+  mount.innerHTML = `
+    <section class="document-modal-layer" role="presentation" data-document-modal-layer>
+      <div class="document-modal" role="dialog" aria-modal="true" aria-labelledby="documentModalTitle">
+        <div class="document-modal-head">
+          <div>
+            <p class="eyebrow">File control</p>
+            <h2 id="documentModalTitle" class="rail-title">${escapeHtml(doc?.title ?? "Dossier document")}</h2>
+            <p class="copy">${escapeHtml(doc?.copy ?? "Add the source file used for this dossier section.")}</p>
+          </div>
+          <button class="btn icon-only" type="button" data-close-document-modal aria-label="Close file control">${nucleoIcon("check-circle", 16)}</button>
+        </div>
+        <div class="document-modal-body">
+          <div class="file-control-box">
+            <strong>${record ? "Current file" : "Choose source file"}</strong>
+            <span class="copy">${escapeHtml(record ? documentFileLabel(record) : "Select a PDF, image, scan, or office file from this Mac. The app records the file name and review status for this packet.")}</span>
+            <input id="documentFileInput" type="file" aria-label="Choose file for ${escapeHtml(doc?.title ?? "document")}">
+          </div>
+          <div class="fact-grid">
+            <div class="fact"><label>Process</label><span>${escapeHtml(row?.leadName || row?.title || "Lead file")}</span></div>
+            <div class="fact"><label>Status</label><span>${escapeHtml(record ? "Linked" : doc?.status || "Needs review")}</span></div>
+            <div class="fact"><label>Version</label><span>${escapeHtml(record?.version ? `v${record.version}` : "v1")}</span></div>
+            <div class="fact"><label>Source</label><span>${escapeHtml(doc?.type || "Document")}</span></div>
+          </div>
+        </div>
+        <div class="document-modal-foot">
+          <button class="btn" type="button" data-link-generated-document="${escapeHtml(doc?.id ?? "")}">Link Generated Packet</button>
+          <button class="btn primary solvys-liquid-glass" type="button" data-save-document-file="${escapeHtml(doc?.id ?? "")}">${record ? "Save New Version" : "Save File"}</button>
+        </div>
+      </div>
+    </section>
+  `;
+  wireDocumentActionModal(mount);
+  requestAnimationFrame(() => mount.querySelector("#documentFileInput")?.focus());
+}
+
+function saveDocumentFile(docId, file = null, source = "file") {
+  const row = selectedRow();
+  const existing = documentFileRecord(docId, row);
+  const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === docId) ?? selectedDossierDocument(row);
+  const record = {
+    id: docId,
+    name: file?.name || existing?.name || `${doc?.title || "Dossier document"} - generated packet`,
+    size: file?.size || existing?.size || 0,
+    type: file?.type || existing?.type || doc?.type || "generated",
+    source,
+    version: existing ? Number(existing.version || 1) + 1 : 1,
+    linkedAt: Date.now(),
+    linkedBy: state.session?.user?.email || "operator"
+  };
+  state.documentFiles[documentStorageKey(row, docId)] = record;
+  persistDocumentFiles();
+  addShellEvent("Document linked", `${doc?.title || "Dossier document"} is linked to ${row?.leadName || row?.title || "the current lead"}.`, "ready", false);
+  renderCurrentLoopView();
+  renderRail();
+  closeDocumentActionModal();
+}
+
+function wireDocumentActionModal(mount) {
+  mount.querySelector("[data-close-document-modal]")?.addEventListener("click", closeDocumentActionModal);
+  mount.querySelector("[data-document-modal-layer]")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeDocumentActionModal();
+  });
+  mount.querySelector("[data-link-generated-document]")?.addEventListener("click", (event) => {
+    saveDocumentFile(event.currentTarget.dataset.linkGeneratedDocument, null, "generated");
+  });
+  mount.querySelector("[data-save-document-file]")?.addEventListener("click", (event) => {
+    const file = mount.querySelector("#documentFileInput")?.files?.[0] ?? null;
+    saveDocumentFile(event.currentTarget.dataset.saveDocumentFile, file, file ? "file" : "generated");
+  });
+}
+
+function openCrmImportModal() {
+  state.crmImportModal.open = true;
+  renderCrmImportModal();
+}
+
+function closeCrmImportModal() {
+  state.crmImportModal.open = false;
+  renderCrmImportModal();
+}
+
+function renderCrmImportModal() {
+  const mount = document.getElementById("crmImportModalMount");
+  if (!mount) return;
+  if (!state.crmImportModal.open) {
+    mount.innerHTML = "";
+    return;
+  }
+  mount.innerHTML = `
+    <section class="document-modal-layer" role="presentation" data-crm-import-layer>
+      <form class="document-modal crm-import-modal" role="dialog" aria-modal="true" aria-labelledby="crmImportTitle" data-crm-import-form>
+        <div class="document-modal-head">
+          <div>
+            <p class="eyebrow">CRM estate import</p>
+            <h2 id="crmImportTitle" class="rail-title">Import estate into DocPrep</h2>
+            <p class="copy">Create a local HRight estate from Podio, Google Sheets, or a pasted CRM row. This does not create a live CRM write.</p>
+          </div>
+          <button class="btn icon-only" type="button" data-close-crm-import aria-label="Close CRM import">${nucleoIcon("check-circle", 16)}</button>
+        </div>
+        <div class="document-modal-body">
+          <div class="crm-import-grid">
+            <div class="field">
+              <label for="crmImportProvider">Source</label>
+              <select id="crmImportProvider" name="provider">
+                <option value="podio" selected>Podio</option>
+                <option value="google-sheets">Google Sheets</option>
+                <option value="csv">CSV / pasted CRM row</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="crmImportSourceId">CRM row or item ID</label>
+              <input id="crmImportSourceId" name="sourceRecordId" autocomplete="off" placeholder="Lead item, row number, or sheet key">
+            </div>
+            <div class="field">
+              <label for="crmImportEstate">Estate name</label>
+              <input id="crmImportEstate" name="estateName" required autocomplete="off" placeholder="Estate of Annie Hawkins">
+            </div>
+            <div class="field">
+              <label for="crmImportOwner">Owner / seller</label>
+              <input id="crmImportOwner" name="ownerName" autocomplete="off" placeholder="ANNIE HAWKINS EST OF">
+            </div>
+            <div class="field full">
+              <label for="crmImportAddress">Property address</label>
+              <input id="crmImportAddress" name="propertyAddress" required autocomplete="off" placeholder="131 NW 67 ST, Miami, FL 33150">
+            </div>
+            <div class="field">
+              <label for="crmImportCounty">County</label>
+              <select id="crmImportCounty" name="county">
+                <option value="miami-dade" selected>Miami-Dade County, FL</option>
+                <option value="broward">Broward County, FL</option>
+                <option value="county needs review">County needs review</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="crmImportParcel">Folio / parcel</label>
+              <input id="crmImportParcel" name="parcelId" autocomplete="off" placeholder="0102020001080">
+            </div>
+            <div class="field full">
+              <label for="crmImportUrl">Source URL</label>
+              <input id="crmImportUrl" name="sourceUrl" autocomplete="off" placeholder="Optional Podio item or Sheet URL">
+            </div>
+            <div class="field full">
+              <label for="crmImportNotes">Import notes</label>
+              <textarea id="crmImportNotes" name="notes" placeholder="Paste any CRM context, title-company note, or closing-doc instruction that should travel with this estate."></textarea>
+            </div>
+            <p class="field-note">The imported estate will appear in Estates, Document Prep, Queue, and the report rail. Podio/Sheets readback still requires approved access and a real connection check.</p>
+          </div>
+        </div>
+        <div class="document-modal-foot">
+          <button class="btn" type="button" data-close-crm-import>Cancel</button>
+          <button class="btn primary solvys-liquid-glass" type="submit">Import Estate</button>
+        </div>
+      </form>
+    </section>
+  `;
+  enhanceSelectMenus(mount);
+  mount.querySelectorAll("[data-close-crm-import]").forEach((button) => button.addEventListener("click", closeCrmImportModal));
+  mount.querySelector("[data-crm-import-layer]")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeCrmImportModal();
+  });
+  mount.querySelector("[data-crm-import-form]")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitCrmImport(new FormData(event.currentTarget));
+  });
+  requestAnimationFrame(() => mount.querySelector("#crmImportEstate")?.focus());
+}
+
+function submitCrmImport(formData) {
+  const imported = normalizeCrmImport(Object.fromEntries(formData.entries()));
+  state.crmImports = [imported, ...state.crmImports.filter((item) => item.id !== imported.id)].slice(0, 40);
+  persistCrmImports(`${crmProviderLabel(imported.provider)} estate imported`);
+  const importedRow = crmImportRow(imported);
+  if (state.data && state.dossier) {
+    state.rows = buildRows(state.data, state.dossier);
+  } else {
+    state.rows = crmImportRows();
+  }
+  state.selectedId = importedRow.id;
+  state.selectedIds.clear();
+  setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
+  closeCrmImportModal();
+  document.querySelector('[data-shell-nav="find-estates"]')?.click();
+  const evidenceFilter = document.getElementById("evidenceFilter");
+  const statusFilter = document.getElementById("statusFilter");
+  const countyFilter = document.getElementById("countyFilter");
+  const globalSearch = document.getElementById("globalSearch");
+  if (evidenceFilter) evidenceFilter.value = "0";
+  if (statusFilter) statusFilter.value = "all";
+  if (countyFilter && ![...countyFilter.options].some((option) => option.value === imported.county)) countyFilter.value = "all";
+  if (globalSearch) globalSearch.value = "";
+  syncAllEnhancedSelects();
+  applyFilters();
+  updateFooterLeadContext(selectedRow());
+  document.getElementById("topStatus").textContent = `${imported.estateName} imported from ${crmProviderLabel(imported.provider)}. Begin Discovery or switch to Closing Docs in Document Prep.`;
+  addShellEvent("Estate imported from CRM", `${imported.estateName} is now available in Estates and DocPrep. No live CRM write was attempted.`, "ready", false);
+}
+
+function closeHeadlessMenus(except = null) {
+  document.querySelectorAll("[data-ui-menu]").forEach((wrap) => {
+    if (wrap === except) return;
+    wrap.querySelector("[data-ui-menu-button]")?.setAttribute("aria-expanded", "false");
+    wrap.querySelector(".headless-menu")?.setAttribute("hidden", "");
+  });
+}
+
+function wireHeadlessMenus(root = document) {
+  if (!document.documentElement.dataset.headlessMenusWired) {
+    document.documentElement.dataset.headlessMenusWired = "true";
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest("[data-ui-menu]")) closeHeadlessMenus();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeHeadlessMenus();
+        if (state.documentActionModal.open) closeDocumentActionModal();
+        if (state.crmImportModal.open) closeCrmImportModal();
+      }
+    });
+  }
+  root.querySelectorAll("[data-ui-menu]").forEach((wrap) => {
+    const button = wrap.querySelector("[data-ui-menu-button]");
+    const menu = wrap.querySelector(".headless-menu");
+    if (!button || !menu || button.dataset.menuWired) return;
+    button.dataset.menuWired = "true";
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const opening = menu.hasAttribute("hidden");
+      closeHeadlessMenus(wrap);
+      button.setAttribute("aria-expanded", opening ? "true" : "false");
+      if (opening) {
+        menu.removeAttribute("hidden");
+        requestAnimationFrame(() => menu.querySelector("[role='menuitem']")?.focus());
+      } else {
+        menu.setAttribute("hidden", "");
+      }
+    });
+    menu.querySelectorAll("[data-ui-menu-action]").forEach((item) => {
+      item.addEventListener("click", (event) => {
+        event.stopPropagation();
+        handleDocumentMenuAction(item.dataset.uiMenuAction, item.dataset.documentId);
+        closeHeadlessMenus();
+      });
+    });
+  });
+}
+
+function handleDocumentMenuAction(action, docId) {
+  if (action === "preview") {
+    popOutDossierDocument(docId);
+    return;
+  }
+  if (action === "link-generated") {
+    saveDocumentFile(docId, null, "generated");
+    return;
+  }
+  if (action === "queue") {
+    addRowsToQueue(rowsForBatchAction());
+    return;
+  }
+  openDocumentActionModal(docId, action === "replace" ? "replace" : "add");
+}
+
 function assetStepStatusHtml(complete, active, index) {
   if (complete) {
     return `<span class="asset-step-status" aria-label="Complete"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 12.5 3.8 3.8L18 8" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
@@ -8192,10 +10310,12 @@ function assetStepStatusHtml(complete, active, index) {
 }
 
 function assetDiscoveryChecklistHtml(row = selectedRow()) {
-  const current = currentDiscoveryPhase();
+  const flow = docPrepFlow();
+  const phases = docPrepPhases(flow.id);
+  const current = currentDiscoveryPhase(flow.id);
   return `
     <div class="asset-step-stack" role="list">
-      ${discoveryPhases.map((phase, index) => {
+      ${phases.map((phase, index) => {
         const complete = phaseIsComplete(phase.id, row);
         const active = !complete && phase.id === current.id;
         return `
@@ -8210,6 +10330,39 @@ function assetDiscoveryChecklistHtml(row = selectedRow()) {
         `;
       }).join("")}
     </div>
+  `;
+}
+
+function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(row)) {
+  const report = dossier?.completedLeadReport ?? {};
+  const offer = report.offerMath ?? {};
+  const rows = [
+    ["CRM estate row", row?.sourceKind === "crm-import" ? `${displayStatus(row.sourceProvider)} import` : "Import from CRM or use current lead packet"],
+    ["Title proof", phaseIsComplete("title-clearance", row) ? "Deed and tax evidence captured" : "Needs deed and tax evidence"],
+    ["Seller contacts", acceptedContactCandidates(row).length ? `${acceptedContactCandidates(row).length} accepted` : "Needs accepted signer contacts"],
+    ["Offer math", offer.offerAmount ? moneyClaimValue(offer.offerAmount) : "Needs underwriting review"],
+    ["Bundle state", state.queueIds.has(row?.id) ? "Queued for handoff prep" : "Not queued"]
+  ];
+  return `
+    <section class="glass-card rail-card">
+      <h3>Closing package inputs</h3>
+      <p class="copy">Closing Docs reuses the same estate facts, source attachments, CRM row, contact decisions, and offer math. Add source facts once; reuse them across every closing document.</p>
+      <ul class="mini-list">
+        ${rows.map(([label, value]) => `<li><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></li>`).join("")}
+      </ul>
+    </section>
+    <section class="glass-card rail-card">
+      <h3>Template builder</h3>
+      <p class="copy">Use these rows as the first editable closing template. A production version can save custom templates per county, title company, or seller packet after the operators approve the fields.</p>
+      <div class="preference-grid">
+        ${["Purchase agreement", "Seller packet", "Title request", "Escrow notes"].map((label, index) => `
+          <div class="preference-card">
+            <label>${escapeHtml(label)}<input type="checkbox" data-discovery-preference="${escapeHtml(discoveryPreferenceKey(`closing-template-${index}`, index))}" ${discoveryPreferenceChecked(`closing-template-${index}`, index) ? "checked" : ""}></label>
+            <span class="copy">${index === 0 ? "Primary closing template." : "Saved as a reusable operator preference."}</span>
+          </div>
+        `).join("")}
+      </div>
+    </section>
   `;
 }
 
@@ -8999,133 +11152,237 @@ function crmHandoffHtml(row, dossier) {
   `);
 }
 
+function closingDocHtml(row, dossier, title, rows = []) {
+  const safeRows = rows.length ? rows : [["Status", "Needs review"]];
+  return pageShellHtml(title, row?.leadName ?? row?.title ?? "Lead file", `
+    <p class="muted">Closing Docs uses the same estate file and linked source facts. This packet is review-only until approval and readback proof clear.</p>
+    <div class="notice">No live Podio card, Google Doc, Google Sheet row, email, SMS, signature request, escrow instruction, or recording task is created from this preview.</div>
+    <table>
+      ${safeRows.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join("")}
+    </table>
+    <div class="section">
+      <h2>Source boundary</h2>
+      <ul>
+        <li>Estate source: ${escapeHtml(row?.sourceProvider || "HeirRight lead packet / CRM import")}</li>
+        <li>Property source: ${escapeHtml(row?.address || dossier?.property?.address?.value || "Needs review")}</li>
+        <li>Review gate: operator approval required before any external use.</li>
+      </ul>
+    </div>
+  `);
+}
+
 function selectedDossierDocument(row = selectedRow()) {
-  const docs = dossierDocuments(row, dossierForRow(row));
+  const docs = docsForFlow(row, dossierForRow(row));
   return docs.find((doc) => doc.id === state.selectedDossierDocId) ?? docs[0];
 }
 
 function renderDashboardView() {
   const target = document.getElementById("dashboardView");
   if (!target) return;
-  const milestones = dashboardMilestones();
-  const drips = scheduledDrips();
-  const recent = state.shellEvents.length ? state.shellEvents.slice(0, 5) : defaultShellEvents();
+  const row = selectedRow();
+  const dossier = dossierForRow(row);
+  const attention = attentionItems(row, dossier);
+  const processes = processSummaries(row, dossier);
+  const activities = dashboardActivityRows(row);
+  const stats = documentPrepStats(row, dossier);
   target.innerHTML = `
-    <div class="loop-grid">
-      <section class="loop-panel">
-        <div class="loop-panel-head">
-          <div><p class="eyebrow">To-Do List</p><h2 class="loop-title">Deals and prospecting</h2></div>
-          <span class="pill review">This week</span>
-        </div>
-        <ul class="tracker-list">
-          ${milestones.map((item) => `
-            <li class="tracker-item">
-              ${trackerIcon(item.icon)}
-              <span><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></span>
-              <span class="tracker-date">${escapeHtml(item.date)}</span>
-            </li>
-          `).join("")}
-        </ul>
-      </section>
-      <section class="loop-panel">
-        <div class="loop-panel-head">
-          <div><p class="eyebrow">Activities</p><h2 class="loop-title">Today in the loop</h2></div>
-          <div class="loop-tabs" role="tablist" aria-label="Dashboard mode">
-            <button class="loop-tab" type="button" data-dashboard-tab="activities" aria-pressed="${state.dashboardActivityTab === "activities"}">Activities</button>
-            <button class="loop-tab" type="button" data-dashboard-tab="drips" aria-pressed="${state.dashboardActivityTab === "drips"}">Outreach</button>
+    <div class="arsip-dashboard" aria-label="HeirRight dashboard">
+      <div class="arsip-topline">
+        <h2>Dashboard</h2>
+        <span class="arsip-date">${escapeHtml(todayLongLabel())}</span>
+      </div>
+      <section class="arsip-section" aria-label="Needs attention">
+        <div class="arsip-section-head">
+          <div class="arsip-section-title">
+            <h3>Needs attention</h3>
+            <span>${attention.length} item${attention.length === 1 ? "" : "s"} blocking the current estate loop</span>
           </div>
+          <button class="btn" type="button" data-shell-nav-shortcut="dossiers">View all</button>
         </div>
-        <div class="loop-tab-content" data-dashboard-content="${escapeHtml(state.dashboardActivityTab)}">
-        ${state.dashboardActivityTab === "drips" ? `
-          <ul class="drip-list">${drips.map((drip) => `<li class="drip-item"><strong>${escapeHtml(drip.title)}</strong><span>${escapeHtml(drip.channel)} - ${escapeHtml(drip.cadence)}</span><span>${escapeHtml(drip.status)}; ${escapeHtml(drip.nextRun)}</span></li>`).join("")}</ul>
-        ` : `
-          <ul class="tracker-list">${recent.map((event) => `<li class="tracker-item">${trackerIcon(event.tone === "blocked" ? "flag" : "check")}<span><strong>${escapeHtml(event.title)}</strong><span>${escapeHtml(event.copy)}</span></span><span class="tracker-date">${escapeHtml(eventTime(event.at))}</span></li>`).join("")}</ul>
-        `}
-        </div>
-      </section>
-      <section class="loop-panel full">
-        <div class="loop-panel-head">
-          <div><p class="eyebrow">Recent Activity</p><h2 class="loop-title">Leads opened before logout</h2></div>
-          <button class="btn" type="button" data-shell-nav-shortcut="find-estates">Open Estate Search</button>
-        </div>
-        <ul class="tracker-list">
-          ${(state.rows.length ? state.rows.slice(0, 4) : [{ leadName: "No lead selected", address: "Load latest or pull a fresh batch", next: "Begin with public records", tone: "review" }]).map((row) => `
-            <li class="tracker-item">
-              ${trackerIcon(row.tone === "ready" ? "check" : row.tone === "blocked" ? "flag" : "route")}
-              <span><strong>${escapeHtml(row.leadName ?? row.title)}</strong><span>${escapeHtml(row.address ?? "Address needs review")}</span></span>
-              <span class="tracker-date">${escapeHtml(row.next ?? "Review")}</span>
-            </li>
+        <div class="attention-grid">
+          ${attention.map((item) => `
+            <article class="attention-card ${item.urgent ? "is-urgent" : ""}">
+              <span class="attention-dot" aria-hidden="true"></span>
+              <span>
+                <strong>${escapeHtml(item.title)}</strong>
+                <span>${escapeHtml(item.copy)}</span>
+              </span>
+              <button class="btn" type="button" data-shell-nav-shortcut="${escapeHtml(item.view)}">${escapeHtml(item.action)}</button>
+            </article>
           `).join("")}
-        </ul>
+        </div>
       </section>
-      <section class="loop-panel full">
-        <div class="loop-panel-head">
-          <div><p class="eyebrow">Suggestions</p><h2 class="loop-title">Next Actions</h2></div>
+      <section class="arsip-section" aria-label="Active processes">
+        <div class="arsip-section-head">
+          <div class="arsip-section-title">
+            <h3>Active processes</h3>
+            <span>${row ? escapeHtml(row.leadName || row.title) : "Load a lead packet to start"}</span>
+          </div>
+          <button class="btn primary solvys-liquid-glass" type="button" data-open-crm-import>Import estate</button>
         </div>
-        <div class="suggestion-list">
-          ${dashboardSuggestions().map(([title, copy]) => `<button class="suggestion-chip" type="button" data-suggestion="${escapeHtml(title)}"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(copy)}</span></button>`).join("")}
+        <div class="process-card-grid">
+          ${processes.map((process) => processCardHtml(process)).join("")}
         </div>
+      </section>
+      <section class="dashboard-lower-grid" aria-label="Recent activity and library">
+        <div class="arsip-section">
+          <div class="arsip-section-title">
+            <h3>Recent activity</h3>
+          </div>
+          <ul class="activity-list">
+            ${activities.map((event) => `
+              <li class="activity-row">
+                ${trackerIcon(event.tone === "blocked" ? "flag" : event.tone === "ready" ? "check" : "route")}
+                <span><strong>${escapeHtml(event.title)}</strong> <span>${escapeHtml(event.copy)}</span></span>
+                <span class="activity-time">${escapeHtml(eventTime(event.at))}</span>
+              </li>
+            `).join("")}
+          </ul>
+        </div>
+        <aside>
+          <div class="arsip-section-title">
+            <h3>Library</h3>
+          </div>
+          <div class="library-summary">
+            <div class="library-row"><span>Documents</span><strong>${escapeHtml(stats.total)}</strong></div>
+            <div class="library-row"><span>Links across processes</span><strong>${escapeHtml(stats.linked)}</strong></div>
+            <div class="library-row"><span>Documents with versions</span><strong>${escapeHtml(stats.versions)}</strong></div>
+            <div class="library-row"><span>Storage staged</span><strong>${escapeHtml(humanFileSize(stats.size))}</strong></div>
+          </div>
+        </aside>
       </section>
     </div>
   `;
-  target.querySelectorAll("[data-dashboard-tab]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.dashboardActivityTab = button.dataset.dashboardTab;
-      renderDashboardView();
-    });
-  });
   target.querySelectorAll("[data-shell-nav-shortcut]").forEach((button) => {
     button.addEventListener("click", () => document.querySelector(`[data-shell-nav="${button.dataset.shellNavShortcut}"]`)?.click());
   });
-  target.querySelectorAll("[data-suggestion]").forEach((button) => {
-    button.addEventListener("click", () => addShellEvent("Suggestion queued", `${button.dataset.suggestion} was added to the operator review trail.`, "review", false));
+  target.querySelectorAll("[data-open-crm-import]").forEach((button) => {
+    button.addEventListener("click", openCrmImportModal);
+  });
+  target.querySelectorAll("[data-process-card]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.dataset.processCard === "estate-discovery") setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
+      if (button.dataset.processCard === "closing-docs") setActiveDocPrepFlow("closing-docs", { persist: true, rerender: false });
+      const view = button.dataset.processCard === "estate-discovery" ? "find-estates" : "dossiers";
+      document.querySelector(`[data-shell-nav="${view}"]`)?.click();
+    });
   });
 }
 
 function renderDossiersView() {
   const target = document.getElementById("dossiersView");
   if (!target) return;
-  const rows = state.filteredRows.length ? state.filteredRows : state.rows;
+  const row = selectedRow();
+  const dossier = dossierForRow(row);
+  const flow = docPrepFlow();
+  const docs = docsForFlow(row, dossier, flow.id);
+  const stats = documentPrepStats(row, dossier, flow.id);
+  const facts = currentProcessFacts(row, dossier);
+  const missingDocs = docs.filter((doc) => !documentFileRecord(doc.id, row));
   target.innerHTML = `
-    <div class="dossier-shell is-list-only">
-      <section class="dossier-list-panel">
-        <div class="dossier-list-head">
-          <div><p class="eyebrow">Dossiers</p><h2 class="loop-title">Finished dossier list</h2></div>
-          <span class="results-count"><strong>${rows.length}</strong> result${rows.length === 1 ? "" : "s"}</span>
+    <div class="document-prep">
+      <div class="document-prep-topline">
+        <div>
+          <h2>Document Prep</h2>
+          <p class="copy">${escapeHtml(row ? `${row.leadName || row.title} · ${row.address || "Address needs review"}` : "Load a lead packet from Estates to start document prep.")}</p>
         </div>
-	        <div class="dossier-list-scroll">
-	          <table class="dossier-table">
-	            <thead><tr>${tableHeaderHtml("dossiers", rows)}</tr></thead>
-	            <tbody>
-	              ${rows.map((item) => {
-	                const checked = state.selectedIds.has(item.id);
-	                const classes = [
-	                  item.id === state.selectedId ? "is-current" : "",
-	                  checked ? "is-batch-selected" : ""
-	                ].filter(Boolean).join(" ");
-	                return `<tr data-dossier-row="${escapeHtml(item.id)}" class="${classes}"><td>${checkboxHtml(item.id, `Select ${item.leadName} for batch export`, checked, `data-row-select="${escapeHtml(item.id)}"`)}</td>${orderedColumns("dossiers").map((key) => dossierCellHtml(key, item)).join("")}</tr>`;
-	              }).join("") || `<tr><td colspan="${orderedColumns("dossiers").length + 1}"><span class="primary-text">No dossier loaded.</span><span class="secondary-text">Load latest or pull a fresh public-record batch.</span></td></tr>`}
-	            </tbody>
-	          </table>
-	        </div>
-      </section>
+        <div class="doc-flow-selector" role="tablist" aria-label="DocPrep workflow templates">
+          ${Object.values(docPrepFlows).map((item) => `
+            <button class="doc-flow-tab" type="button" role="tab" data-doc-flow="${escapeHtml(item.id)}" aria-pressed="${item.id === flow.id ? "true" : "false"}">
+              <strong>${escapeHtml(item.title)}</strong>
+              <span>${escapeHtml(`${discoveryProgress(item.id)}% · ${item.tag}`)}</span>
+            </button>
+          `).join("")}
+        </div>
+        <div class="document-filter-tabs" role="tablist" aria-label="Document filters">
+          <button type="button" data-doc-filter="all" aria-pressed="true">All</button>
+          <button type="button" data-doc-filter="linked" aria-pressed="false">Linked · ${escapeHtml(stats.linked)}</button>
+          <button type="button" data-doc-filter="missing" aria-pressed="false">Missing · ${escapeHtml(stats.missing)}</button>
+        </div>
+      </div>
+      <div class="document-prep-shell">
+        <section class="document-panel" aria-label="Dossier source files">
+          <div class="document-panel-head">
+            <div>
+              <h3>${escapeHtml(row?.title || row?.leadName || "Current estate")}</h3>
+              <div class="document-progress-row">
+                ${processProgressDots(stats.linked, stats.total)}
+                <span>${escapeHtml(`${stats.linked}/${stats.total} documents`)}</span>
+              </div>
+            </div>
+            <button class="btn primary solvys-liquid-glass" type="button" data-begin-discovery>${escapeHtml(flow.cta)}</button>
+          </div>
+          <div class="document-list">
+            ${docs.map((doc) => documentRequirementHtml(doc, row)).join("")}
+          </div>
+        </section>
+        <aside class="process-side" aria-label="Process details">
+          <div class="process-side-head">
+            <div>
+              <p class="eyebrow">Process</p>
+              <h3>${escapeHtml(flow.title)}</h3>
+            </div>
+            <span class="headless-menu-wrap" data-ui-menu>
+              <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Process actions">${nucleoIcon("sliders", 16)}</button>
+              <span class="headless-menu" role="menu" hidden>
+                <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("batch-tray", 15)}<span>Stage bundle</span></button>
+                <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("open-book", 15)}<span>Quick Look packet</span></button>
+              </span>
+            </span>
+          </div>
+          <div class="process-side-body">
+            <div class="process-facts">
+              ${facts.map(([label, value]) => `<div class="process-fact-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}
+            </div>
+            <section>
+              <p class="eyebrow">Still missing</p>
+              <ul class="missing-mini-list">
+                ${missingDocs.map((doc) => `<li><span>+</span><strong>${escapeHtml(doc.title)}</strong></li>`).join("") || `<li><span>✓</span><strong>All listed documents are linked.</strong></li>`}
+              </ul>
+            </section>
+            <section>
+              <p class="eyebrow">Notes</p>
+              <p class="copy">${escapeHtml(flow.copy)}</p>
+            </section>
+          </div>
+          <div class="process-side-foot">
+            <button class="btn primary solvys-liquid-glass" type="button" data-queue-stage>Export bundle</button>
+            <button class="btn" type="button" data-shell-nav-shortcut="find-estates">Back to Estates</button>
+          </div>
+        </aside>
+      </div>
     </div>
   `;
-  target.querySelectorAll("[data-dossier-row]").forEach((rowButton) => {
-    rowButton.addEventListener("click", () => {
-      state.selectedId = rowButton.dataset.dossierRow;
-      state.selectedDossierDocId = "discovery-dossier";
-      state.railMode = "dossier";
-      state.railOpen = true;
-      addShellEvent("Dossier rail opened", "The lead documents opened in the Dossier rail with the report rail kept out of this product loop.", "ready", false);
+  target.querySelectorAll("[data-doc-flow]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setActiveDocPrepFlow(button.dataset.docFlow, { persist: true, rerender: false });
+      const nextDocs = docsForFlow(selectedRow(), dossierForRow(selectedRow()), state.activeDocPrepFlow);
+      if (!nextDocs.some((doc) => doc.id === state.selectedDossierDocId)) state.selectedDossierDocId = nextDocs[0]?.id || "discovery-dossier";
       renderDossiersView();
       renderRail();
-      updateFooterLeadContext(selectedRow());
+      addShellEvent(`${docPrepFlow().label} template selected`, `${docPrepFlow().title} is now the active DocPrep workflow for the selected estate.`, "review", false);
     });
   });
-	  wireBatchSelection(target, "[data-dossier-row]", "dossiers");
-	  wireColumnReorder(target, "dossiers");
-	  if (state.activeView === "dossiers") {
+  target.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
+  target.querySelector("[data-queue-stage]")?.addEventListener("click", () => addRowsToQueue(rowsForBatchAction()));
+  target.querySelectorAll("[data-shell-nav-shortcut]").forEach((button) => {
+    button.addEventListener("click", () => document.querySelector(`[data-shell-nav="${button.dataset.shellNavShortcut}"]`)?.click());
+  });
+  target.querySelectorAll("[data-document-action]").forEach((button) => {
+    button.addEventListener("click", () => handleDocumentMenuAction(button.dataset.documentAction, button.dataset.documentId));
+  });
+  target.querySelectorAll("[data-doc-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      target.querySelectorAll("[data-doc-filter]").forEach((item) => item.setAttribute("aria-pressed", item === button ? "true" : "false"));
+      const mode = button.dataset.docFilter;
+      target.querySelectorAll("[data-document-row]").forEach((rowEl) => {
+        const linked = rowEl.classList.contains("is-linked");
+        rowEl.hidden = mode === "linked" ? !linked : mode === "missing" ? linked : false;
+      });
+    });
+  });
+  wireHeadlessMenus(target);
+  if (state.activeView === "dossiers") {
     state.railMode = "dossier";
     renderRail();
   }
@@ -9133,7 +11390,8 @@ function renderDossiersView() {
 
 function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   const content = document.getElementById("railContent");
-  const docs = dossierDocuments(row, dossier);
+  const flow = docPrepFlow();
+  const docs = docsForFlow(row, dossier, flow.id);
   const selectedDoc = selectedDossierDocument(row);
   const qualification = qualificationDecision(dossier);
   syncRailContext(row);
@@ -9154,11 +11412,11 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
     <section class="glass-card rail-title-card">
       <div class="rail-title-row">
         <div>
-          <p class="eyebrow">Document packet</p>
-          <h2 class="rail-title">Dossier Discovery checklist</h2>
-          <p class="copy">Complete each source-backed stage before treating the packet as ready for handoff.</p>
+          <p class="eyebrow">${escapeHtml(flow.title)}</p>
+          <h2 class="rail-title">${escapeHtml(flow.shortTitle)} checklist</h2>
+          <p class="copy">${escapeHtml(flow.copy)}</p>
         </div>
-        ${statusPill(discoveryProgress() >= 100 ? "ready" : "review", discoveryProgress() >= 100 ? "Complete" : "In progress")}
+        ${statusPill(discoveryProgress(flow.id) >= 100 ? "ready" : "review", discoveryProgress(flow.id) >= 100 ? "Complete" : "In progress")}
       </div>
       ${discoveryStripHtml(row, dossier)}
     </section>
@@ -9193,8 +11451,8 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
         <div class="dossier-rail-toolbar">
           <div>
             <p class="eyebrow">Docs</p>
-            <h2 class="rail-title">Dossier checklist</h2>
-            <p class="copy">Checks turn green only after Discovery marks that stage complete.</p>
+            <h2 class="rail-title">${escapeHtml(flow.shortTitle)} checklist</h2>
+            <p class="copy">Checks turn green only after the active DocPrep stage is complete or a linked source file exists.</p>
           </div>
           <button class="btn" type="button" data-popout-doc="${escapeHtml(selectedDoc?.id ?? "discovery-dossier")}">Pop out</button>
         </div>
@@ -9208,18 +11466,23 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   } else {
     bodyHtml = `
       <section class="glass-card rail-card">
-        <h3>Discovery checklist</h3>
-        <p class="copy">Work the estate in order. Rows only turn into green checks after the required source evidence or contact review is saved.</p>
+        <h3>${escapeHtml(flow.shortTitle)} checklist</h3>
+        <p class="copy">Work the estate in order. Rows turn green after required source evidence, contact review, CRM import, or closing package prep is saved.</p>
         ${assetDiscoveryChecklistHtml(row)}
       </section>
-      ${assetCaptureFormHtml(row)}
-      ${idiImportPanelHtml(row)}
-      ${contactReviewPanelHtml(row)}
+      ${flow.id === "closing-docs" ? closingWorkflowPanelHtml(row, dossier) : `${assetCaptureFormHtml(row)}${idiImportPanelHtml(row)}${contactReviewPanelHtml(row)}`}
     `;
   }
   content.innerHTML = titleCard + bodyHtml;
   content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
   wireAssetDiscoveryControls(content, row);
+  content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
+    input.addEventListener("change", (event) => {
+      state.discoveryPreferences[event.target.dataset.discoveryPreference] = event.target.checked;
+      persistDiscoveryState();
+      addShellEvent("DocPrep preference saved", "The workflow template preference was saved locally for this review session.", "review", false);
+    });
+  });
   content.querySelectorAll("[data-dossier-doc]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedDossierDocId = button.dataset.dossierDoc;
@@ -10280,10 +12543,10 @@ function setActiveShellView(view = "dashboard", label = "") {
   if (nextView === "dossiers") {
     state.railMode = "dossier";
     if (previousRailMode !== "dossier") state.railTab = "flow";
-    state.railOpen = true;
-    setRailOpen(true);
+    state.railOpen = false;
+    setRailOpen(false);
     setDetailRailOpen(false);
-    document.getElementById("topStatus").textContent = "Dossiers workspace selected. Document packets open in the right Dossier rail.";
+    document.getElementById("topStatus").textContent = "Document Prep workspace selected. Source files and packet controls are ready.";
   } else if (nextView !== "find-estates") {
     state.railMode = "report";
     setRailOpen(false);
@@ -10436,19 +12699,23 @@ function openRailPreview(sectionId, source = null) {
 }
 
 function discoveryStripHtml(row, dossier) {
-  const pct = discoveryProgress();
-  const phase = currentDiscoveryPhase();
+  const flow = docPrepFlow();
+  const pct = discoveryProgress(flow.id);
+  const phase = currentDiscoveryPhase(flow.id);
   return `
-    <div class="discovery-strip" aria-label="Discovery completion">
-      <div class="discovery-fuse" style="--fuse-progress: ${pct}%" aria-label="Discovery ${pct}% complete"></div>
+    <div class="discovery-strip" aria-label="${escapeHtml(flow.label)} completion">
+      <div class="discovery-fuse" style="--fuse-progress: ${pct}%" aria-label="${escapeHtml(flow.label)} ${pct}% complete"></div>
       <div class="discovery-phase-meter"><strong>${pct}%</strong><span>${escapeHtml(phase.label)}</span></div>
-      <button class="btn primary solvys-liquid-glass" type="button" data-begin-discovery>Begin Discovery</button>
+      <button class="btn primary solvys-liquid-glass" type="button" data-begin-discovery>${escapeHtml(flow.cta)}</button>
     </div>
   `;
 }
 
 function beginDiscoveryWizard(source = null) {
   if (!selectedRow()) return;
+  const flow = docPrepFlow();
+  state.docPrepPhaseIndex[flow.id] = firstIncompletePhaseIndex(flow.id);
+  state.discoveryPhaseIndex = state.docPrepPhaseIndex.discovery ?? state.discoveryPhaseIndex;
   state.discoveryOpen = true;
   state.railTab = "flow";
   if (state.activeView === "dossiers" || state.railMode === "dossier") {
@@ -10458,14 +12725,16 @@ function beginDiscoveryWizard(source = null) {
   } else {
     openRailWithContinuity(source, "flow");
   }
-  addShellEvent("Discovery started", "The guided dossier workflow opened for the selected lead.", "ready", false);
+  persistDiscoveryState();
+  addShellEvent(`${flow.label} started`, `The guided ${flow.label.toLowerCase()} workflow opened for the selected estate.`, "ready", false);
 }
 
 function closeDiscoveryWizard() {
+  const flow = docPrepFlow();
   state.discoveryOpen = false;
   state.railPreview = {
-    title: "Discovery paused",
-    markdown: `${currentDiscoveryPhase().label} is saved locally for this review session. Continue from the fuse when ready.`,
+    title: `${flow.label} paused`,
+    markdown: `${currentDiscoveryPhase(flow.id).label} is saved locally for this review session. Continue from the fuse when ready.`,
     updatedAt: Date.now()
   };
   persistDiscoveryState();
@@ -10473,38 +12742,45 @@ function closeDiscoveryWizard() {
 }
 
 function completeDiscoveryPhase() {
-  const phase = currentDiscoveryPhase();
+  const flow = docPrepFlow();
+  const phase = currentDiscoveryPhase(flow.id);
   state.discoveryCompleted.add(phase.id);
   persistDiscoveryState();
-  addShellEvent(`${phase.label} complete`, `${phase.summary} The operator can close Discovery or continue to the next phase.`, "ready", false);
+  addShellEvent(`${phase.label} complete`, `${phase.summary} The operator can close ${flow.label} or continue to the next phase.`, "ready", false);
   renderRail();
   renderCurrentLoopView();
 }
 
 function advanceDiscoveryPhase(direction = 1) {
-  const next = Math.max(0, Math.min(discoveryPhases.length - 1, state.discoveryPhaseIndex + direction));
-  state.discoveryPhaseIndex = next;
+  const flow = docPrepFlow();
+  const phases = docPrepPhases(flow.id);
+  const current = Number(state.docPrepPhaseIndex[flow.id]) || 0;
+  const next = Math.max(0, Math.min(phases.length - 1, current + direction));
+  state.docPrepPhaseIndex[flow.id] = next;
+  state.discoveryPhaseIndex = state.docPrepPhaseIndex.discovery ?? state.discoveryPhaseIndex;
   persistDiscoveryState();
   renderRail();
 }
 
 function renderDiscoveryWizard(row, dossier) {
-  const phase = currentDiscoveryPhase();
+  const flow = docPrepFlow();
+  const phases = docPrepPhases(flow.id);
+  const phase = currentDiscoveryPhase(flow.id);
   const phaseComplete = phaseIsComplete(phase.id);
-  const pct = discoveryProgress();
+  const pct = discoveryProgress(flow.id);
   const missing = row.missing.length ? row.missing : buildMissingSections(dossier);
   return `
-    <section class="discovery-wizard" aria-label="Discovery workflow">
+    <section class="discovery-wizard" aria-label="${escapeHtml(flow.label)} workflow">
       <div class="discovery-head">
         <div>
-          <p class="eyebrow">Discovery Dossier</p>
+          <p class="eyebrow">${escapeHtml(flow.title)}</p>
           <h2 class="rail-title">${escapeHtml(phase.name)}</h2>
           <p class="copy">${escapeHtml(phase.summary)}</p>
         </div>
         <span class="pill ${phaseComplete ? "ready" : "review"}">${phaseComplete ? "Phase complete" : `${pct}% complete`}</span>
       </div>
-      <div class="phase-ruler" aria-hidden="true">
-        ${discoveryPhases.map((item, index) => `<span class="${state.discoveryCompleted.has(item.id) ? "is-complete" : index === state.discoveryPhaseIndex ? "is-active" : ""}"></span>`).join("")}
+      <div class="phase-ruler" style="--phase-count: ${phases.length}" aria-hidden="true">
+        ${phases.map((item, index) => `<span class="${phaseIsComplete(item.id, row) ? "is-complete" : index === (state.docPrepPhaseIndex[flow.id] ?? 0) ? "is-active" : ""}"></span>`).join("")}
       </div>
       <div class="discovery-body">
         <section class="glass-card rail-card">
@@ -10544,11 +12820,11 @@ function renderDiscoveryWizard(row, dossier) {
         </section>
       </div>
       <div class="discovery-actions">
-        <button class="btn" type="button" data-discovery-prev ${state.discoveryPhaseIndex === 0 ? "disabled" : ""}>Previous</button>
+        <button class="btn" type="button" data-discovery-prev ${(state.docPrepPhaseIndex[flow.id] ?? 0) === 0 ? "disabled" : ""}>Previous</button>
         <div>
-          ${phaseComplete ? `<button class="btn" type="button" data-close-discovery>Close Discovery</button>` : ""}
+          ${phaseComplete ? `<button class="btn" type="button" data-close-discovery>Close ${escapeHtml(flow.shortTitle)}</button>` : ""}
           <button class="btn primary solvys-liquid-glass" type="button" data-complete-phase>${phaseComplete ? "Save Again" : "Complete Phase"}</button>
-          <button class="btn" type="button" data-discovery-next ${state.discoveryPhaseIndex === discoveryPhases.length - 1 ? "disabled" : ""}>Next Phase</button>
+          <button class="btn" type="button" data-discovery-next ${(state.docPrepPhaseIndex[flow.id] ?? 0) === phases.length - 1 ? "disabled" : ""}>Next Phase</button>
         </div>
       </div>
     </section>
@@ -11369,16 +13645,19 @@ async function loadRun() {
     state.dossier = null;
     state.dailyRun = null;
     state.qualificationReview = null;
-    state.rows = [];
-    state.filteredRows = [];
-    state.selectedId = null;
+    state.rows = crmImportRows();
+    state.filteredRows = state.rows;
+    state.selectedId = state.rows[0]?.id ?? null;
     state.selectedIds.clear();
     state.queueIds.clear();
     document.getElementById("topStatus").textContent = error.message;
-    document.getElementById("resultsBody").innerHTML = `<tr><td colspan="6"><span class="primary-text">No lead packet loaded.</span><span class="secondary-text">${escapeHtml(error.message)}</span></td></tr>`;
-    updateFooterLeadContext(null);
+    document.getElementById("resultsBody").innerHTML = state.rows.length
+      ? ""
+      : `<tr><td colspan="6"><span class="primary-text">No lead packet loaded.</span><span class="secondary-text">${escapeHtml(error.message)}</span></td></tr>`;
+    updateFooterLeadContext(selectedRow());
     updateConnectionStatuses();
     renderShellPanels();
+    if (state.rows.length) renderAll();
   }
 }
 
@@ -11874,6 +14153,12 @@ function wireEvents() {
       );
     });
   });
+  document.querySelectorAll("[data-open-crm-import]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      openCrmImportModal();
+    });
+  });
   document.getElementById("refresh").addEventListener("click", loadRun);
   document.getElementById("freshBatch").addEventListener("click", (event) => pullFreshBatch(event.currentTarget));
   document.getElementById("sourceQuery").addEventListener("keydown", (event) => {
@@ -12003,6 +14288,8 @@ function wireEvents() {
       closeAllEnhancedSelects();
       setExportMenuOpen(false);
       setActivityOpen(false);
+      if (state.crmImportModal.open) closeCrmImportModal();
+      if (state.documentActionModal.open) closeDocumentActionModal();
     }
     if (event.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "SELECT") {
       event.preventDefault();
