@@ -38,7 +38,7 @@ function summarizeSubmission(submission, delivery) {
     hasName: Boolean(submission.name),
     hasEmail: Boolean(submission.email),
     hasPhone: Boolean(submission.phone),
-    hasProperty: Boolean(submission.property),
+    hasMatterType: Boolean(submission.matterType),
     notesLength: submission.notes.length,
     delivery,
   };
@@ -91,11 +91,11 @@ export default async function handler(request, response) {
     const submission = {
       receiptId: receiptId(),
       receivedAt: new Date().toISOString(),
-      source: clean(body.source) || "heirright-vercel-demo",
+      source: clean(body.source) || "heirright-legal-site-v2",
       name: clean(body.name),
       email: clean(body.email),
       phone: clean(body.phone),
-      property: clean(body.property),
+      matterType: clean(body.matterType),
       notes: clean(body.notes),
     };
 
@@ -103,7 +103,7 @@ export default async function handler(request, response) {
     if (!submission.name) missing.push("name");
     if (!submission.phone) missing.push("phone");
     if (!submission.email || !submission.email.includes("@")) missing.push("email");
-    if (!submission.property) missing.push("property");
+    if (!submission.matterType) missing.push("matterType");
     if (!submission.notes) missing.push("notes");
 
     if (missing.length) {
@@ -111,28 +111,28 @@ export default async function handler(request, response) {
         ok: false,
         error: "missing_required_fields",
         missing,
-        message: "Please complete each review field before submitting.",
+        message: "Please complete each intake field before submitting.",
       });
       return;
     }
 
     const delivery = await forwardToWebhook(submission);
-    console.log("HeirRight demo review request", summarizeSubmission(submission, delivery));
+    console.log("HeirRight legal intake request", summarizeSubmission(submission, delivery));
 
     response.status(200).json({
       ok: true,
       receiptId: submission.receiptId,
-      message: "Request received. The HeirRight team can review the property details and follow up.",
+      message: "Intake received. The HeirRight team can review the message and follow up.",
       delivery: delivery.forwarded ? "webhook" : "server-receipt",
     });
   } catch (error) {
-    console.error("HeirRight demo review request failed", {
+    console.error("HeirRight legal intake request failed", {
       message: error instanceof Error ? error.message : "Unknown request failure",
     });
     response.status(500).json({
       ok: false,
       error: "request_failed",
-      message: "The request could not be saved. Please call HeirRight or try again shortly.",
+      message: "The intake message could not be saved. Please contact HeirRight or try again shortly.",
     });
   }
 }
