@@ -31,6 +31,24 @@ Turn the corrected one-page HeirRight build into a small production website with
 - Vercel dev form proof:
   - Landing form returned `HR-20260628-F90FA52F`.
   - Contact page form returned `HR-20260628-9925ABD6`.
+- Production deployment:
+  - Target: Vercel production.
+  - Stable alias: `https://heirright-landing-demo.vercel.app`.
+  - Deployment URL: `https://heirright-landing-demo-a8un3evqr-solvys.vercel.app`.
+  - Deployment id: `dpl_BsEPyAYt96CKmn6DwAqzBRcEBJEi`.
+  - Vercel inspect status: `Ready`.
+  - Vercel production error-log scan after live form submissions: no logs found.
+- Live route proof against `https://heirright-landing-demo.vercel.app`:
+  - `/` returned 200, rendered the landing page with one form and no full legal documents.
+  - `/legal.html` returned 200, rendered two readable legal documents and no form.
+  - `/contact.html` returned 200, rendered the standalone contact page with one form.
+  - Mobile `/legal.html` returned 200 with no horizontal overflow.
+- Live interactive background proof:
+  - Canvas initialized at `1440x1100` on desktop and `780x1800` on mobile retina.
+  - Reduced-motion-off pointer movement changed the broad canvas sample by `78031` bytes.
+- Live form proof:
+  - Landing form returned `HR-20260628-ACC1BCBB`.
+  - Contact page form returned `HR-20260628-20F819D0`.
 - Visual proof inspected with `view_image`:
   - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-home.png`
   - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-legal.png`
@@ -39,6 +57,12 @@ Turn the corrected one-page HeirRight build into a small production website with
   - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-legal-mobile.png`
   - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-landing-form-success.png`
   - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-contact-form-success.png`
+  - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-live-home.png`
+  - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-live-legal.png`
+  - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-live-contact.png`
+  - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-live-legal-mobile.png`
+  - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-live-landing-form-success.png`
+  - `docs/run-point-daily/screenshots/2026-06-28-heirright-website-live-contact-form-success.png`
 
 ## /solvys-heir-audit
 
@@ -48,7 +72,7 @@ Backward: converted the single public surface into a true small website with sep
 
 UX pass: aligned. The public site uses client-facing estate-settlement language, keeps legal text readable without downloads, and provides clear contact paths without exposing developer language.
 
-Forward: deploy the committed `site-v2` branch when ready, then verify the production domain, route availability, preview metadata, and form delivery in the live environment.
+Forward: production deployment is complete on the Vercel alias above. If a custom client domain is desired later, attach DNS to the same Vercel project and re-run route, metadata, and form verification against that domain.
 
 Alignment: aligned.
 
