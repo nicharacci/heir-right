@@ -53,6 +53,15 @@
   - Document-wide scroll width stayed at 390px; the inherited estate table used its own horizontal scroll region.
   - Browser console errors: none.
   - Screenshot: `/tmp/hright-arsip-mobile-import-proof.png`.
+- Production deploy completed:
+  - Commit deployed first: `9a28674 Strengthen DocPrep estate workflow loop`.
+  - Vercel deployment: `dpl_6HpHthDQCUU6CSJGR7HLrTPFKrXf`.
+  - Production URL: `https://heirright-landing-demo.vercel.app`.
+  - Inspect URL: `https://vercel.com/solvys/heirright-landing-demo/6HpHthDQCUU6CSJGR7HLrTPFKrXf`.
+  - Live alias returned `HTTP/2 200`.
+  - Live HTML contained the new `crmImportSidebar`, `Import estate`, `Closing Docs`, `doc-flow-tab`, and `heirright:crm-imported-estates` markers.
+  - Live Chrome smoke imported a Podio estate, confirmed `CRM Import` plus `Begin Discovery`, opened Closing Docs, found 11 document rows, and reported no console errors.
+  - Live screenshot: `/tmp/hright-arsip-live-vercel-proof.png`.
 
 ## Review Notes
 
