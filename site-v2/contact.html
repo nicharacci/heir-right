@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Contact HeirRight for a free consultation about an inherited property or estate settlement question."
+    />
+    <meta name="theme-color" content="#0f1d32" />
+    <meta property="og:title" content="HeirRight | Contact" />
+    <meta
+      property="og:description"
+      content="Start a dialogue with HeirRight about your inherited property."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/assets/heirright-preview.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/assets/heirright-preview.png" />
+    <link rel="icon" type="image/svg+xml" href="/assets/heirright-mark.svg" />
+    <link rel="apple-touch-icon" href="/assets/favicon-192.png" />
+    <title>HeirRight | Contact</title>
+  </head>
+  <body>
+    <canvas class="ambient-canvas" data-ambient-canvas aria-hidden="true"></canvas>
+    <main id="top">
+      <section class="subpage-hero contact-hero" aria-labelledby="contact-page-title">
+        <header class="site-nav" data-site-nav>
+          <a class="brand" href="/" aria-label="HeirRight home">
+            <img src="/assets/heirright-logo-light.svg" alt="HeirRight" />
+          </a>
+          <p class="nav-motto">Free Consultation</p>
+          <nav class="nav-links" aria-label="Primary navigation">
+            <a href="/#process">Process</a>
+            <a href="/#reviews">Reviews</a>
+            <a href="/legal.html">Legal</a>
+            <a class="nav-contact is-active" href="/contact.html">Contact</a>
+          </nav>
+        </header>
+        <div class="subpage-copy">
+          <h1 id="contact-page-title">Start a <em>Dialogue</em></h1>
+          <p>
+            Tell us about the inherited property, the timing, and anything you
+            already know about liens, repairs, heirs, or title issues.
+          </p>
+        </div>
+      </section>
+
+      <section class="contact-section is-subpage" aria-labelledby="contact-title">
+        <div class="contact-shell">
+          <div class="contact-steps" aria-hidden="true">
+            <div class="contact-step is-complete">
+              <span>01</span>
+              <i><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></i>
+              <b>Your Profile</b>
+            </div>
+            <div class="contact-step is-complete">
+              <span>02</span>
+              <i><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></i>
+              <b>Property Details</b>
+            </div>
+            <div class="contact-step is-complete">
+              <span>03</span>
+              <i><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></i>
+              <b>Your Message</b>
+            </div>
+          </div>
+
+          <form class="contact-panel" data-contact-form>
+            <input type="hidden" name="source" value="heirright-contact-page" />
+            <label class="hp-field" aria-hidden="true">
+              Company website
+              <input name="companyWebsite" tabindex="-1" autocomplete="off" />
+            </label>
+
+            <div class="contact-title-row">
+              <p>03.</p>
+              <h2 id="contact-title">Free Consultation</h2>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                <span>Your home address</span>
+                <input name="address" autocomplete="street-address" placeholder="123 Estate Lane" required />
+              </label>
+              <label>
+                <span>Name</span>
+                <input name="name" autocomplete="name" placeholder="Alex Morgan" required />
+              </label>
+              <label>
+                <span>Email</span>
+                <input name="email" type="email" autocomplete="email" placeholder="alex.morgan@example.com" required />
+              </label>
+              <label>
+                <span>Phone</span>
+                <input name="phone" autocomplete="tel" placeholder="+1 (212) 555-0187" required />
+              </label>
+              <label class="message-field">
+                <span>Tell us about your home</span>
+                <textarea
+                  name="notes"
+                  rows="4"
+                  placeholder="Tell us about the inherited home, liens, repairs, heirs, or timing."
+                ></textarea>
+              </label>
+            </div>
+
+            <div class="form-footer">
+              <p>
+                Please contact us today at 786-962-3457. We will break the
+                process down for you, answer any questions, and if it makes
+                sense, make it a hassle free sale.
+              </p>
+              <button type="submit">
+                Submit
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h13M13 6l6 6-6 6" />
+                </svg>
+              </button>
+            </div>
+          </form>
+
+          <div class="form-status" data-form-status hidden tabindex="-1"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/">
+        <img src="/assets/heirright-logo-light.svg" alt="HeirRight" />
+      </a>
+      <p>Start a free consultation with HeirRight.</p>
+      <span><a href="/legal.html">Terms of Use and Privacy Policy</a></span>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

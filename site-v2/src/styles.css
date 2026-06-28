@@ -72,7 +72,18 @@ svg {
 }
 
 main {
+  position: relative;
+  z-index: 1;
   overflow: hidden;
+}
+
+.ambient-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
 }
 
 .hero-stage {
@@ -84,7 +95,7 @@ main {
   isolation: isolate;
   padding: 6.2rem 4rem 2.7rem;
   background:
-    linear-gradient(120deg, rgba(15, 29, 50, 0.88), rgba(5, 7, 10, 0.92)),
+    linear-gradient(120deg, rgba(15, 29, 50, 0.76), rgba(5, 7, 10, 0.82)),
     var(--navy-2);
 }
 
@@ -334,6 +345,7 @@ main {
 .about-section,
 .belief-section,
 .program-section,
+.legal-teaser,
 .legal-docs {
   position: relative;
   z-index: 3;
@@ -525,6 +537,161 @@ main {
   padding-top: 5.5rem;
 }
 
+.legal-teaser {
+  padding-top: 5.5rem;
+}
+
+.teaser-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1.4rem;
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(205, 168, 92, 0.16), transparent 18rem),
+    rgba(255, 255, 255, 0.055);
+}
+
+.teaser-panel img {
+  width: 4.5rem;
+}
+
+.teaser-panel h3 {
+  margin: 0 0 0.35rem;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.teaser-panel p {
+  max-width: 46rem;
+  margin: 0;
+  color: rgba(251, 251, 248, 0.68);
+}
+
+.inline-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  min-height: 3rem;
+  padding: 0 1.1rem 0 1.35rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--gold-3), var(--gold));
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inline-cta svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.subpage-hero {
+  position: relative;
+  z-index: 3;
+  width: min(100% - 8rem, 1320px);
+  min-height: 520px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  margin: 6rem auto 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 18% 24%, rgba(205, 168, 92, 0.16), transparent 18rem),
+    radial-gradient(circle at 78% 72%, rgba(255, 255, 255, 0.1), transparent 22rem),
+    rgba(39, 42, 43, 0.68);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(20px) saturate(1.08);
+  -webkit-backdrop-filter: blur(20px) saturate(1.08);
+}
+
+.subpage-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.14), transparent 42%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 8px);
+  opacity: 0.62;
+}
+
+.subpage-copy {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  justify-self: center;
+  width: min(100%, 820px);
+  padding: 3rem 2rem 5rem;
+  text-align: center;
+}
+
+.subpage-copy h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 5rem;
+  font-weight: 300;
+  line-height: 0.94;
+  letter-spacing: 0;
+}
+
+.subpage-copy h1 em {
+  display: block;
+  font-family: var(--serif);
+  font-size: 4.45rem;
+  font-weight: 500;
+}
+
+.subpage-copy p {
+  width: min(100%, 520px);
+  margin: 1.6rem auto 0;
+  color: rgba(251, 251, 248, 0.82);
+}
+
+.doc-nav {
+  position: sticky;
+  top: 1rem;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.doc-nav a {
+  min-height: 2.55rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 1rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(251, 251, 248, 0.78);
+  font-size: 0.86rem;
+}
+
+.doc-nav a:hover {
+  border-color: var(--gold-line);
+  color: #fff;
+}
+
+.legal-docs.is-subpage {
+  display: block;
+  width: min(100% - 8rem, 980px);
+  padding-top: 4rem;
+}
+
 .doc-columns {
   display: grid;
   gap: 1rem;
@@ -537,6 +704,7 @@ main {
   background: rgba(255, 255, 255, 0.045);
 }
 
+.legal-document h2,
 .legal-document h3 {
   margin: 0 0 1.4rem;
   color: #fff;
@@ -549,11 +717,19 @@ main {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+.legal-document h3,
 .legal-document h4 {
   margin: 0 0 0.42rem;
   color: #fff;
   font-size: 0.98rem;
   font-weight: 600;
+}
+
+.legal-document > h2,
+.legal-document > h3 {
+  margin-bottom: 1.4rem;
+  font-size: 2rem;
+  font-weight: 400;
 }
 
 .legal-document p {
@@ -579,6 +755,11 @@ main {
   width: min(100% - 6rem, 1280px);
   margin: 2rem auto 0;
   padding: 4rem 0 3rem;
+}
+
+.contact-section.is-subpage {
+  margin-top: 0;
+  padding-top: 4rem;
 }
 
 .contact-shell {
@@ -821,6 +1002,8 @@ main {
 }
 
 .site-footer {
+  position: relative;
+  z-index: 3;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
@@ -839,6 +1022,10 @@ main {
 .site-footer p,
 .site-footer span {
   margin: 0;
+}
+
+.site-footer span a {
+  color: rgba(251, 251, 248, 0.72);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -880,6 +1067,7 @@ main {
   .about-section,
   .belief-section,
   .program-section,
+  .legal-teaser,
   .legal-docs {
     width: min(100% - 4rem, 980px);
     grid-template-columns: 1fr;
@@ -896,6 +1084,23 @@ main {
 
   .closing-copy {
     grid-column: 1;
+  }
+
+  .teaser-panel {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .teaser-panel .inline-cta {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .subpage-hero {
+    width: min(100% - 4rem, 980px);
+  }
+
+  .legal-docs.is-subpage {
+    width: min(100% - 4rem, 980px);
   }
 
   .contact-section {
@@ -1014,6 +1219,7 @@ main {
   .about-section,
   .belief-section,
   .program-section,
+  .legal-teaser,
   .legal-docs,
   .contact-section,
   .site-footer {
@@ -1032,6 +1238,36 @@ main {
   .review-list,
   .reason-grid {
     grid-template-columns: 1fr;
+  }
+
+  .teaser-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .teaser-panel img {
+    width: 3.8rem;
+  }
+
+  .subpage-hero,
+  .legal-docs.is-subpage {
+    width: min(100% - 2rem, 42rem);
+  }
+
+  .subpage-hero {
+    min-height: 510px;
+    margin-top: 1rem;
+  }
+
+  .subpage-copy {
+    padding-inline: 1rem;
+  }
+
+  .subpage-copy h1 {
+    font-size: 3rem;
+  }
+
+  .subpage-copy h1 em {
+    font-size: 2.75rem;
   }
 
   .feature-list article {
