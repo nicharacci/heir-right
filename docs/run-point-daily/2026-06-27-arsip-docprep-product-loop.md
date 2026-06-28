@@ -104,6 +104,33 @@
   - Browser console errors: none.
   - Screenshot: `/tmp/hright-ui-correction-mobile-final.png`.
 
+## 2026-06-28 Production Correction Deploy
+
+- Corrected artifact commit deployed: `d9203ca Restore DocPrep dark UI hierarchy`.
+- Vercel deployment: `dpl_GHWiYrBfM3JzU3Y8wTCqVUaXimTU`.
+- Production URL: `https://heirright-landing-demo.vercel.app`.
+- Inspect URL: `https://vercel.com/solvys/heirright-landing-demo/GHWiYrBfM3JzU3Y8wTCqVUaXimTU`.
+- Live alias returned `HTTP/2 200`.
+- Live HTML contained the topbar import split chip, batch import choices, Closing Docs, and persisted CRM import markers; removed light-theme/sidebar import markers were not present.
+- Live desktop Chrome proof:
+  - Body, app, and dashboard computed background: `rgb(32, 33, 36)`.
+  - Sidebar top: `0`; nav list top: `64`.
+  - Sidebar import removed.
+  - Dashboard import removed.
+  - Topbar import chip text: `+ Import`.
+  - Single import created a CRM estate with `Begin Discovery`.
+  - Batch CSV import created a CRM estate row.
+  - Closing Docs still opened with 11 document rows.
+  - Browser console errors: none.
+  - Screenshot: `/tmp/hright-ui-correction-live-desktop.png`.
+- Live mobile Chrome proof:
+  - Body background: `rgb(32, 33, 36)`.
+  - Document scroll width before dropdown: `390`.
+  - Document scroll width after dropdown: `390`.
+  - Batch dropdown bounds: `left=16`, `right=274`.
+  - Browser console errors: none.
+  - Screenshot: `/tmp/hright-ui-correction-live-mobile.png`.
+
 ## Discovery Source Plan For Tomorrow
 
 - Source files to close before automated Discovery DocPrep can be considered ready:
