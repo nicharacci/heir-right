@@ -15,6 +15,29 @@
       --surface-lift: #25262a;
       --surface-row: rgba(255, 255, 255, .055);
       --surface-row-strong: rgba(255, 255, 255, .09);
+      --surface-1: #202124;
+      --surface-2: #25262a;
+      --surface-3: #2b2c31;
+      --surface-4: #313238;
+      --surface-5: #373941;
+      --surface-6: #3e4049;
+      --surface-7: #464853;
+      --surface-8: #4e515d;
+      --surface-highlight-base: rgba(255, 255, 255, .018);
+      --surface-highlight-mid: rgba(255, 255, 255, .034);
+      --surface-highlight-high: rgba(255, 255, 255, .052);
+      --surface-ring-base: rgba(235, 235, 245, .08);
+      --surface-ring-mid: rgba(235, 235, 245, .13);
+      --surface-ring-high: rgba(235, 235, 245, .20);
+      --surface-drop: rgba(0, 0, 0, .20);
+      --shadow-1: inset 0 0 0 1px var(--surface-ring-base);
+      --shadow-2: inset 0 1px 0 0 var(--surface-highlight-base), inset 0 0 0 1px var(--surface-ring-base), 0 1px 1px -0.5px var(--surface-drop);
+      --shadow-3: inset 0 1px 0 0 var(--surface-highlight-mid), inset 0 0 0 1px var(--surface-ring-base), 0 0 0 1px rgba(0,0,0,.12), 0 1px 1px -0.5px var(--surface-drop), 0 3px 3px -1.5px var(--surface-drop);
+      --shadow-4: inset 0 1px 0 0 var(--surface-highlight-mid), inset 0 0 0 1px var(--surface-ring-mid), 0 0 0 1px rgba(0,0,0,.14), 0 1px 1px -0.5px var(--surface-drop), 0 3px 3px -1.5px var(--surface-drop), 0 6px 6px -3px var(--surface-drop);
+      --shadow-5: inset 0 1px 0 0 var(--surface-highlight-high), inset 0 0 0 1px var(--surface-ring-mid), 0 0 0 1px rgba(0,0,0,.16), 0 1px 1px -0.5px var(--surface-drop), 0 3px 3px -1.5px var(--surface-drop), 0 6px 6px -3px var(--surface-drop), 0 12px 12px -6px var(--surface-drop);
+      --shadow-6: inset 0 1px 0 0 var(--surface-highlight-high), inset 0 0 0 1px var(--surface-ring-high), 0 0 0 1px rgba(0,0,0,.18), 0 1px 1px -0.5px var(--surface-drop), 0 3px 3px -1.5px var(--surface-drop), 0 6px 6px -3px var(--surface-drop), 0 12px 12px -6px var(--surface-drop), 0 24px 24px -12px var(--surface-drop);
+      --shadow-7: inset 0 1px 0 0 rgba(255,255,255,.065), inset 0 0 0 1px var(--surface-ring-high), 0 0 0 1px rgba(0,0,0,.20), 0 1px 1px -0.5px var(--surface-drop), 0 3px 3px -1.5px var(--surface-drop), 0 6px 6px -3px var(--surface-drop), 0 12px 12px -6px var(--surface-drop), 0 24px 24px -12px var(--surface-drop), 0 48px 48px -24px var(--surface-drop);
+      --shadow-8: inset 0 1px 0 0 rgba(255,255,255,.075), inset 0 0 0 1px var(--surface-ring-high), 0 0 0 1px rgba(0,0,0,.22), 0 1px 1px -0.5px var(--surface-drop), 0 3px 3px -1.5px var(--surface-drop), 0 6px 6px -3px var(--surface-drop), 0 12px 12px -6px var(--surface-drop), 0 24px 24px -12px var(--surface-drop), 0 48px 48px -24px var(--surface-drop), 0 96px 96px -48px var(--surface-drop);
       --glass: rgba(37, 38, 42, .66);
       --glass-strong: rgba(37, 38, 42, .86);
       --glass-soft: rgba(37, 38, 42, .48);
@@ -6434,6 +6457,275 @@
       border-color: rgba(235,235,245,.18);
     }
 
+    .workspace,
+    .app,
+    .sidebar,
+    .topbar,
+    .content,
+    .workbench,
+    .loop-view,
+    .results,
+    .filters,
+    .statusbar,
+    body[data-theme] .workspace,
+    body[data-theme] .app,
+    body[data-theme] .sidebar,
+    body[data-theme] .topbar,
+    body[data-theme] .content,
+    body[data-theme] .workbench,
+    body[data-theme] .loop-view,
+    body[data-theme] .results,
+    body[data-theme] .filters,
+    body[data-theme] .statusbar {
+      background: var(--surface-1);
+      background-color: var(--surface-1);
+    }
+
+    .search-control,
+    .import-split,
+    .quick-actions,
+    .composer-actions,
+    .connection-statuses,
+    .theme-strip,
+    .account-chip,
+    .brand-mark,
+    .avatar,
+    body[data-theme] .search-control,
+    body[data-theme] .import-split,
+    body[data-theme] .quick-actions,
+    body[data-theme] .composer-actions,
+    body[data-theme] .connection-statuses,
+    body[data-theme] .theme-strip,
+    body[data-theme] .account-chip,
+    body[data-theme] .brand-mark,
+    body[data-theme] .avatar {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.036), rgba(255,255,255,.012)),
+        var(--surface-2);
+      border-color: var(--surface-ring-base);
+      box-shadow: var(--shadow-1);
+    }
+
+    .loop-panel,
+    .glass-card,
+    .setting-card,
+    .runtime-card,
+    .admin-metric,
+    .connection-card,
+    .dossier-list-panel,
+    .dossier-reader-panel,
+    .document-prep-shell,
+    .attention-card,
+    .library-summary,
+    .process-folder-card,
+    body[data-theme] .loop-panel,
+    body[data-theme] .glass-card,
+    body[data-theme] .setting-card,
+    body[data-theme] .runtime-card,
+    body[data-theme] .admin-metric,
+    body[data-theme] .connection-card,
+    body[data-theme] .dossier-list-panel,
+    body[data-theme] .dossier-reader-panel,
+    body[data-theme] .document-prep-shell,
+    body[data-theme] .attention-card,
+    body[data-theme] .library-summary,
+    body[data-theme] .process-folder-card {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.044), rgba(255,255,255,.014)),
+        var(--surface-2);
+      border-color: var(--surface-ring-base);
+      box-shadow: var(--shadow-1);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .process-folder-card::before,
+    .process-folder-card::after,
+    body[data-theme] .process-folder-card::before,
+    body[data-theme] .process-folder-card::after {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.018)),
+        var(--surface-3);
+      border-color: var(--surface-ring-base);
+    }
+
+    .folder-doc-stack span,
+    .template-preview-box,
+    .template-body-card,
+    .template-required-card,
+    body[data-theme] .folder-doc-stack span,
+    body[data-theme] .template-preview-box,
+    body[data-theme] .template-body-card,
+    body[data-theme] .template-required-card {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.048), rgba(255,255,255,.016)),
+        var(--surface-3);
+      border-color: var(--surface-ring-base);
+      box-shadow: var(--shadow-1);
+    }
+
+    .document-panel-head,
+    .process-side-head,
+    .process-side,
+    .document-filter-tabs,
+    .document-requirement,
+    .doc-flow-tab,
+    .process-template-card,
+    .file-control-box,
+    .file-drop-icon,
+    .document-type-pill,
+    .process-tag,
+    body[data-theme] .document-panel-head,
+    body[data-theme] .process-side-head,
+    body[data-theme] .process-side,
+    body[data-theme] .document-filter-tabs,
+    body[data-theme] .document-requirement,
+    body[data-theme] .doc-flow-tab,
+    body[data-theme] .process-template-card,
+    body[data-theme] .file-control-box,
+    body[data-theme] .file-drop-icon,
+    body[data-theme] .document-type-pill,
+    body[data-theme] .process-tag {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.050), rgba(255,255,255,.017)),
+        var(--surface-3);
+      border-color: var(--surface-ring-base);
+      box-shadow: var(--shadow-1);
+    }
+
+    .document-requirement.is-linked,
+    .document-filter-tabs button[aria-pressed="true"],
+    .campaign-item.is-selected,
+    .template-list-item.is-selected,
+    body[data-theme] .document-requirement.is-linked,
+    body[data-theme] .document-filter-tabs button[aria-pressed="true"],
+    body[data-theme] .campaign-item.is-selected,
+    body[data-theme] .template-list-item.is-selected {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.062), rgba(255,255,255,.022)),
+        var(--surface-4);
+      border-color: var(--surface-ring-mid);
+      box-shadow: var(--shadow-2);
+    }
+
+    .doc-flow-tab,
+    body[data-theme] .doc-flow-tab {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.034), rgba(255,255,255,.010)),
+        var(--surface-2);
+      border-color: rgba(235,235,245,.09);
+      box-shadow: var(--shadow-1);
+    }
+
+    .doc-flow-tab[aria-pressed="true"],
+    body[data-theme] .doc-flow-tab[aria-pressed="true"] {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.066), rgba(255,255,255,.022)),
+        var(--surface-3);
+      border-color: rgba(142,200,255,.34);
+      box-shadow: var(--shadow-2);
+    }
+
+    .document-modal,
+    .outreach-template-modal,
+    .outreach-toast,
+    .import-popover,
+    .export-popover,
+    .shell-info-popover,
+    .headless-menu,
+    .select-menu,
+    .template-attachment-popover,
+    body[data-theme] .document-modal,
+    body[data-theme] .outreach-template-modal,
+    body[data-theme] .outreach-toast,
+    body[data-theme] .import-popover,
+    body[data-theme] .export-popover,
+    body[data-theme] .shell-info-popover,
+    body[data-theme] .headless-menu,
+    body[data-theme] .select-menu,
+    body[data-theme] .template-attachment-popover {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.070), rgba(255,255,255,.026)),
+        var(--surface-5);
+      border-color: var(--surface-ring-mid);
+      box-shadow: var(--shadow-5);
+      backdrop-filter: blur(20px) saturate(1.06);
+      -webkit-backdrop-filter: blur(20px) saturate(1.06);
+    }
+
+    .document-modal-head,
+    .document-modal-foot,
+    .outreach-modal-head,
+    .outreach-modal-foot,
+    .template-body-head,
+    body[data-theme] .document-modal-head,
+    body[data-theme] .document-modal-foot,
+    body[data-theme] .outreach-modal-head,
+    body[data-theme] .outreach-modal-foot,
+    body[data-theme] .template-body-head {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.080), rgba(255,255,255,.026)),
+        var(--surface-6);
+      border-color: var(--surface-ring-mid);
+    }
+
+    .import-option:hover,
+    .import-option:focus-visible,
+    .export-option:hover,
+    .export-option:focus-visible,
+    .headless-menu button:hover,
+    .headless-menu button:focus-visible,
+    .headless-menu button[data-active="true"],
+    .select-option:hover,
+    .select-option[aria-selected="true"],
+    body[data-theme] .import-option:hover,
+    body[data-theme] .import-option:focus-visible,
+    body[data-theme] .export-option:hover,
+    body[data-theme] .export-option:focus-visible,
+    body[data-theme] .headless-menu button:hover,
+    body[data-theme] .headless-menu button:focus-visible,
+    body[data-theme] .headless-menu button[data-active="true"],
+    body[data-theme] .select-option:hover,
+    body[data-theme] .select-option[aria-selected="true"] {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.060), rgba(255,255,255,.020)),
+        var(--surface-6);
+      border-color: transparent;
+    }
+
+    .field select,
+    .field input:not([type="checkbox"]),
+    .field textarea,
+    .setting-card select,
+    .setting-card input[type="text"],
+    .discovery-notes,
+    .crm-import-grid textarea,
+    .approval-row input,
+    .approval-row select,
+    .template-field input,
+    .template-field select,
+    .template-field textarea,
+    .template-body-editor textarea,
+    body[data-theme] .field select,
+    body[data-theme] .field input:not([type="checkbox"]),
+    body[data-theme] .field textarea,
+    body[data-theme] .setting-card select,
+    body[data-theme] .setting-card input[type="text"],
+    body[data-theme] .discovery-notes,
+    body[data-theme] .crm-import-grid textarea,
+    body[data-theme] .approval-row input,
+    body[data-theme] .approval-row select,
+    body[data-theme] .template-field input,
+    body[data-theme] .template-field select,
+    body[data-theme] .template-field textarea,
+    body[data-theme] .template-body-editor textarea {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.034), rgba(255,255,255,.012)),
+        var(--surface-3);
+      border-color: var(--surface-ring-base);
+      box-shadow: var(--shadow-1);
+    }
+
     .next-link,
     body[data-theme] .next-link,
     body[data-theme="dark"] .next-link {
@@ -6651,7 +6943,7 @@
     }
   </style>
 </head>
-<body>
+<body data-surface-system="fluid-functionalism" data-surface-level="1">
 <main id="workspace" class="workspace is-collapsed">
   <aside id="primarySidebar" class="sidebar" aria-label="Primary navigation">
     <div class="sidebar-top">
