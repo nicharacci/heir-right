@@ -66,51 +66,6 @@
         inset 0 -1px 0 color-mix(in srgb, black 32%, transparent);
     }
 
-    body[data-theme="light"] {
-      color-scheme: light;
-      --page: #f4f3ef;
-      --page-2: #fbfaf6;
-      --glass: rgba(255, 255, 255, .74);
-      --glass-strong: rgba(255, 255, 255, .92);
-      --glass-soft: rgba(255, 255, 255, .58);
-      --line: rgba(32, 32, 36, .12);
-      --line-strong: rgba(32, 32, 36, .20);
-      --divider-line: linear-gradient(90deg, transparent, rgba(32,32,36,.16) 12%, rgba(32,32,36,.16) 88%, transparent);
-      --divider-line-vertical: linear-gradient(180deg, transparent, rgba(32,32,36,.16) 12%, rgba(32,32,36,.16) 88%, transparent);
-      --text: #202124;
-      --muted: #77736b;
-      --soft: #9b958b;
-      --disabled: #c6c1b8;
-      --accent: #202124;
-      --accent-soft: rgba(32, 33, 36, .08);
-      --focus-ring: rgba(32, 33, 36, .22);
-      --ios-fill: rgba(32, 33, 36, .055);
-      --ios-fill-strong: rgba(32, 33, 36, .10);
-      --shell-surface: #fbfaf6;
-      --shell-surface-glass: rgba(251, 250, 246, .82);
-      --shell-surface-soft: rgba(251, 250, 246, .58);
-      --surface-flat: #f4f3ef;
-      --surface-lift: #ffffff;
-      --surface-row: rgba(32, 33, 36, .045);
-      --surface-row-strong: rgba(32, 33, 36, .08);
-      --green: #2f9a61;
-      --green-soft: rgba(47, 154, 97, .13);
-      --amber: #ea7b0c;
-      --amber-soft: rgba(234, 123, 12, .13);
-      --red: #d63b31;
-      --red-soft: rgba(214, 59, 49, .12);
-      --solvys-lg-tint-source: var(--page-2);
-      --solvys-lg-rim-source: rgba(32, 33, 36, .22);
-      --solvys-lg-dark-plate: rgb(251 250 246);
-      --solvys-lg-bg: color-mix(in srgb, var(--solvys-lg-tint) 58%, transparent);
-      --solvys-lg-border: color-mix(in srgb, var(--solvys-lg-rim) 44%, transparent);
-      --solvys-lg-backdrop-filter: blur(18px) contrast(1.02) brightness(1.02) saturate(1.05);
-      --solvys-lg-shadow:
-        0 12px 26px rgba(32, 33, 36, .06),
-        inset 0 1px 0 color-mix(in srgb, white 72%, transparent),
-        inset 0 -1px 0 color-mix(in srgb, black 8%, transparent);
-    }
-
     body[data-theme="dark"] {
       color-scheme: dark;
       --page: #202124;
@@ -257,23 +212,19 @@
     .workspace.is-auto-collapsed { grid-template-columns: 60px minmax(0, 1fr); }
 
     .sidebar {
-      position: relative;
+      position: sticky;
+      top: 0;
       z-index: 30;
       min-width: 0;
       display: grid;
       grid-template-rows: auto minmax(0, 1fr) auto;
+      height: 100vh;
       overflow: visible;
       border-right: 0;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.08)),
-        rgba(255,255,255,.10);
-      box-shadow: 18px 0 48px rgba(15,23,42,.04);
-      backdrop-filter: saturate(190%) blur(34px);
-      -webkit-backdrop-filter: saturate(190%) blur(34px);
-    }
-
-    body[data-theme="dark"] .sidebar {
       background: var(--shell-surface);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
 
     .sidebar-top {
@@ -283,65 +234,6 @@
       min-height: 64px;
       padding: 10px 8px;
       border-bottom: 0;
-    }
-
-    .sidebar-import {
-      display: grid;
-      gap: 7px;
-      padding: 0 10px 8px;
-    }
-
-    .sidebar-import-button {
-      width: 100%;
-      min-height: 38px;
-      display: grid;
-      grid-template-columns: 24px minmax(0, 1fr);
-      align-items: center;
-      gap: 8px;
-      padding: 7px 9px;
-      color: var(--text);
-      border: 1px solid color-mix(in srgb, var(--line-strong) 82%, transparent);
-      border-radius: 8px;
-      background: var(--ios-fill);
-      text-align: left;
-      font-size: 12px;
-      font-weight: 760;
-      transition: background .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease);
-    }
-
-    .sidebar-import-button:hover,
-    .sidebar-import-button:focus-visible {
-      outline: 0;
-      color: var(--accent);
-      border-color: var(--focus-ring);
-      background: var(--ios-fill-strong);
-    }
-
-    .sidebar-import-button svg {
-      width: 18px;
-      height: 18px;
-      justify-self: center;
-    }
-
-    .workspace.is-collapsed .sidebar-import,
-    .workspace.is-auto-collapsed .sidebar-import {
-      padding: 0 8px 8px;
-      justify-items: center;
-    }
-
-    .workspace.is-collapsed .sidebar-import-button,
-    .workspace.is-auto-collapsed .sidebar-import-button {
-      width: 44px;
-      height: 44px;
-      min-height: 44px;
-      grid-template-columns: 1fr;
-      padding: 0;
-      border-radius: 12px;
-    }
-
-    .workspace.is-collapsed .sidebar-import-label,
-    .workspace.is-auto-collapsed .sidebar-import-label {
-      display: none;
     }
 
     .icon-button {
@@ -456,10 +348,10 @@
 
     .workspace.is-collapsed .nav-list,
     .workspace.is-auto-collapsed .nav-list {
-      align-content: center;
+      align-content: start;
       justify-items: center;
       gap: 10px;
-      padding: 12px 6px;
+      padding: 8px 6px 12px;
       overflow: visible;
     }
 
@@ -999,6 +891,126 @@
       overflow: visible;
     }
 
+    .import-menu,
+    .export-menu {
+      position: relative;
+      z-index: 4;
+      flex: 0 0 auto;
+    }
+
+    .import-split {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: stretch;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 84%, transparent);
+      border-radius: 999px;
+      background: rgba(44,44,46,.72);
+      color: var(--text);
+    }
+
+    .import-split button {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font-size: 13px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .import-split-main {
+      padding: 7px 11px 7px 12px;
+    }
+
+    .import-plus {
+      display: inline-grid;
+      place-items: center;
+      width: 13px;
+      height: 13px;
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 620;
+      line-height: 1;
+    }
+
+    .import-split-menu {
+      width: 34px;
+      padding: 0;
+      border-left: 1px solid color-mix(in srgb, var(--line-strong) 76%, transparent) !important;
+    }
+
+    .import-split button:hover,
+    .import-split button:focus-visible,
+    .import-menu[data-open="true"] .import-split button {
+      outline: 0;
+      background: rgba(235,235,245,.10);
+    }
+
+    .import-popover {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 220;
+      width: min(258px, calc(100vw - 32px));
+      display: grid;
+      gap: 3px;
+      padding: 6px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 84%, transparent);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--shell-surface) 94%, transparent);
+      box-shadow: 0 18px 44px rgba(0,0,0,.28);
+      backdrop-filter: blur(24px) saturate(1.08);
+      -webkit-backdrop-filter: blur(24px) saturate(1.08);
+    }
+
+    .import-popover[hidden] {
+      display: none;
+    }
+
+    .import-option {
+      width: 100%;
+      min-height: 42px;
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      gap: 9px;
+      align-items: center;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 9px;
+      color: var(--text);
+      background: transparent;
+      text-align: left;
+    }
+
+    .import-option strong,
+    .import-option span {
+      display: block;
+      min-width: 0;
+    }
+
+    .import-option strong {
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .import-option span span {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .import-option:hover,
+    .import-option:focus-visible {
+      outline: 0;
+      background: var(--ios-fill-strong);
+    }
+
     .account-chip {
       min-width: 0;
       max-width: 178px;
@@ -1277,7 +1289,12 @@
       transition: opacity .18s var(--ease), transform .18s var(--ease);
     }
 
+    .export-menu:not([data-open="true"]) .export-popover {
+      display: none;
+    }
+
     .export-menu[data-open="true"] .export-popover {
+      display: block;
       opacity: 1;
       transform: translateY(0);
       pointer-events: auto;
@@ -2685,6 +2702,12 @@
     }
 
     @media (max-width: 720px) {
+      .import-popover {
+        left: 0;
+        right: auto;
+        width: min(258px, calc(100vw - 32px));
+      }
+
       .arsip-topline,
       .document-prep-topline,
       .arsip-section-head,
@@ -4779,7 +4802,12 @@
       transition: opacity .18s var(--ease), transform .22s var(--ease-out);
     }
 
+    .floating-list-controls[data-open="false"] {
+      display: none;
+    }
+
     .floating-list-controls[data-open="true"] {
+      display: flex;
       opacity: 1;
       pointer-events: auto;
       transform: translate3d(-50%, 0, 0) scale(1);
@@ -6436,137 +6464,6 @@
       transform: translateY(-1px);
     }
 
-    body[data-theme="light"],
-    body[data-theme="light"] .workspace,
-    body[data-theme="light"] .app,
-    body[data-theme="light"] .content,
-    body[data-theme="light"] .workbench,
-    body[data-theme="light"] .workbench-body,
-    body[data-theme="light"] .loop-view,
-    body[data-theme="light"] #dashboardView,
-    body[data-theme="light"] #dossiersView,
-    body[data-theme="light"] #dripsView,
-    body[data-theme="light"] #queueView,
-    body[data-theme="light"] #adminView,
-    body[data-theme="light"] #settingsView {
-      color: var(--text);
-      background: var(--page);
-      background-color: var(--page);
-    }
-
-    body[data-theme="light"] .sidebar,
-    body[data-theme="light"] .sidebar-top,
-    body[data-theme="light"] .nav-list,
-    body[data-theme="light"] .sidebar-footer,
-    body[data-theme="light"] .topbar,
-    body[data-theme="light"] .statusbar,
-    body[data-theme="light"] .filters,
-    body[data-theme="light"] .workbench-head,
-    body[data-theme="light"] .results,
-    body[data-theme="light"] .table-wrap,
-    body[data-theme="light"] .results-toolbar,
-    body[data-theme="light"] thead tr,
-    body[data-theme="light"] th,
-    body[data-theme="light"] .results-footer,
-    body[data-theme="light"] .shell-composer {
-      color: var(--text);
-      background: var(--shell-surface);
-      background-color: var(--shell-surface);
-      border-color: var(--line);
-      box-shadow: none;
-    }
-
-    body[data-theme="light"] .quick-actions,
-    body[data-theme="light"] .composer-actions,
-    body[data-theme="light"] .connection-statuses {
-      background: rgba(255,255,255,.62);
-      background-color: rgba(255,255,255,.62);
-      border-color: var(--line);
-      box-shadow: 0 10px 24px rgba(32, 33, 36, .05);
-    }
-
-    body[data-theme="light"] .quick-actions .btn.quick,
-    body[data-theme="light"] .composer-actions .btn.quick {
-      color: #5f6368;
-      background: transparent;
-      border-color: transparent;
-      box-shadow: none;
-    }
-
-    body[data-theme="light"] .quick-actions .btn.quick:hover,
-    body[data-theme="light"] .quick-actions .btn.quick:focus-visible,
-    body[data-theme="light"] .composer-actions .btn.quick:hover,
-    body[data-theme="light"] .composer-actions .btn.quick:focus-visible {
-      color: var(--text);
-      background: rgba(32,33,36,.055);
-      outline: 0;
-    }
-
-    body[data-theme="light"] #dashboardView .loop-panel,
-    body[data-theme="light"] #dripsView .loop-panel,
-    body[data-theme="light"] #queueView .loop-panel,
-    body[data-theme="light"] #adminView .loop-panel,
-    body[data-theme="light"] #settingsView .loop-panel,
-    body[data-theme="light"] .dossier-list-panel,
-    body[data-theme="light"] .dossier-reader-panel,
-    body[data-theme="light"] .glass-card,
-    body[data-theme="light"] .setting-card,
-    body[data-theme="light"] .runtime-card,
-    body[data-theme="light"] .admin-metric,
-    body[data-theme="light"] .agent-drawer,
-    body[data-theme="light"] .export-popover,
-    body[data-theme="light"] .shell-info-popover,
-    body[data-theme="light"] .select-menu,
-    body[data-theme="light"] .rail-context,
-    body[data-theme="light"] .rail-segment,
-    body[data-theme="light"] .fact-grid,
-    body[data-theme="light"] .doc-frame,
-    body[data-theme="light"] .activity-event {
-      color: var(--text);
-      background: var(--surface-lift);
-      background-color: var(--surface-lift);
-      border-color: var(--line);
-      box-shadow: 0 10px 24px rgba(32, 33, 36, .06);
-    }
-
-    body[data-theme="light"] .tracker-item,
-    body[data-theme="light"] .dossier-doc,
-    body[data-theme="light"] .dossier-doc.is-selected,
-    body[data-theme="light"] .drip-item,
-    body[data-theme="light"] .queue-item {
-      color: var(--text);
-      background: var(--surface-lift);
-      background-color: var(--surface-lift);
-      border-color: var(--line);
-      box-shadow: none;
-    }
-
-    body[data-theme="light"] .dossier-doc:hover,
-    body[data-theme="light"] .dossier-doc:focus-visible,
-    body[data-theme="light"] .dossier-doc.is-selected {
-      background: var(--surface-row-strong);
-      background-color: var(--surface-row-strong);
-      border-color: var(--line-strong);
-    }
-
-    body[data-theme="light"] .topbar .search-control.solvys-liquid-glass {
-      --solvys-lg-tint-source: rgb(251 250 246);
-      --solvys-lg-rim-source: rgba(32, 33, 36, .18);
-      color: var(--text);
-      background: rgba(255, 255, 255, .78);
-      border-color: var(--line);
-    }
-
-    body[data-theme="light"] #dashboardView .suggestion-chip,
-    body[data-theme="light"] #dashboardView .suggestion-chip:hover,
-    body[data-theme="light"] #dashboardView .suggestion-chip:focus-visible {
-      color: var(--text);
-      background: rgba(255,255,255,.74);
-      background-color: rgba(255,255,255,.74);
-      border-color: var(--line);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
-    }
-
     .pill.neutral {
       color: var(--muted);
       background: rgba(255,255,255,.055);
@@ -6779,12 +6676,6 @@
         <span>HeirRight</span>
       </div>
     </div>
-    <div class="sidebar-import">
-      <button id="crmImportSidebar" class="sidebar-import-button" type="button" title="Import estate from CRM" data-open-crm-import>
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 5.5h14v13H5v-13Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-        <span class="sidebar-import-label">Import estate</span>
-      </button>
-    </div>
     <nav class="nav-list" aria-label="HeirRight sections">
       <button class="nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" title="Dashboard" data-shell-nav="dashboard" data-hover-label="Dashboard" data-hover-description="Task tracker, activity, and drips"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 5h7v6H4V5Zm9 0h7v4h-7V5ZM4 13h7v6H4v-6Zm9-2h7v8h-7v-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dashboard</span></button>
       <button class="nav-item" type="button" title="Estates" data-shell-nav="find-estates" data-hover-label="Estates" data-hover-description="Lead intake and source status"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Estates</span></button>
@@ -6832,6 +6723,31 @@
       </label>
       <div id="topStatus" class="top-status">Load the latest lead packet to begin.</div>
       <div class="top-actions">
+        <div id="crmImportMenu" class="import-menu" data-open="false">
+          <div class="import-split solvys-liquid-glass" aria-label="Import estates">
+            <button id="crmImportSingle" class="import-split-main" type="button" data-open-crm-import title="Import one estate">
+              <span class="import-plus" aria-hidden="true">+</span>
+              <span>Import</span>
+            </button>
+            <button id="crmImportBatchToggle" class="import-split-menu" type="button" aria-label="Open batch import menu" aria-haspopup="menu" aria-expanded="false" data-crm-import-batch-toggle>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div id="crmImportPopover" class="import-popover t-dropdown" role="menu" aria-label="Batch import source" hidden>
+            <button class="import-option" type="button" role="menuitem" data-crm-batch-import="podio">
+              <span aria-hidden="true">+</span>
+              <span><strong>Batch from Podio</strong><span>Paste exported Lead rows for review.</span></span>
+            </button>
+            <button class="import-option" type="button" role="menuitem" data-crm-batch-import="google-sheets">
+              <span aria-hidden="true">+</span>
+              <span><strong>Batch from Sheets</strong><span>Paste spreadsheet rows into DocPrep.</span></span>
+            </button>
+            <button class="import-option" type="button" role="menuitem" data-crm-batch-import="csv">
+              <span aria-hidden="true">+</span>
+              <span><strong>Batch from CSV</strong><span>Paste pipe, tab, or CSV rows.</span></span>
+            </button>
+          </div>
+        </div>
         <div id="exportMenu" class="export-menu" data-open="false">
           <button id="exportToggle" class="btn primary export-toggle solvys-liquid-glass" type="button" aria-haspopup="menu" aria-expanded="false">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v11m0-11 4 4m-4-4-4 4M6 11v8h12v-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -7335,7 +7251,9 @@ const state = {
   },
   crmImports: [],
   crmImportModal: {
-    open: false
+    open: false,
+    mode: "single",
+    provider: "podio"
   },
   columnOrder: {
     results: ["address", "lead", "score", "evidence", "next"],
@@ -8674,7 +8592,7 @@ function updateFooterLeadContext(row = selectedRow()) {
 
 function applyTheme(theme, persist = true) {
   const mode = ["light", "dark", "system"].includes(theme) ? theme : "system";
-  const nextTheme = mode === "system" ? systemThemeQuery.matches ? "dark" : "light" : mode;
+  const nextTheme = "dark";
   document.body.dataset.theme = nextTheme;
   document.body.dataset.themeMode = mode;
   document.documentElement.style.colorScheme = nextTheme;
@@ -8687,7 +8605,7 @@ function applyTheme(theme, persist = true) {
 
 function loadSavedState() {
   const storedTheme = localStorage.getItem(themeKey);
-  applyTheme(["light", "dark", "system"].includes(storedTheme) ? storedTheme : "light", false);
+  applyTheme(["light", "dark", "system"].includes(storedTheme) ? storedTheme : "dark", false);
   const storedWidth = Number(localStorage.getItem(railWidthKey));
   if (Number.isFinite(storedWidth)) state.railWidth = clampRailWidth(storedWidth);
   const storedFilterWidth = Number(localStorage.getItem(filterWidthKey));
@@ -10108,8 +10026,12 @@ function wireDocumentActionModal(mount) {
   });
 }
 
-function openCrmImportModal() {
+function openCrmImportModal(options = {}) {
+  const mode = options.mode === "batch" ? "batch" : "single";
+  const provider = ["podio", "google-sheets", "csv"].includes(options.provider) ? options.provider : "podio";
   state.crmImportModal.open = true;
+  state.crmImportModal.mode = mode;
+  state.crmImportModal.provider = provider;
   renderCrmImportModal();
 }
 
@@ -10125,14 +10047,17 @@ function renderCrmImportModal() {
     mount.innerHTML = "";
     return;
   }
+  const isBatch = state.crmImportModal.mode === "batch";
+  const provider = ["podio", "google-sheets", "csv"].includes(state.crmImportModal.provider) ? state.crmImportModal.provider : "podio";
   mount.innerHTML = `
     <section class="document-modal-layer" role="presentation" data-crm-import-layer>
       <form class="document-modal crm-import-modal" role="dialog" aria-modal="true" aria-labelledby="crmImportTitle" data-crm-import-form>
+        <input type="hidden" name="mode" value="${isBatch ? "batch" : "single"}">
         <div class="document-modal-head">
           <div>
-            <p class="eyebrow">CRM estate import</p>
-            <h2 id="crmImportTitle" class="rail-title">Import estate into DocPrep</h2>
-            <p class="copy">Create a local HRight estate from Podio, Google Sheets, or a pasted CRM row. This does not create a live CRM write.</p>
+            <p class="eyebrow">${isBatch ? "CRM batch import" : "CRM estate import"}</p>
+            <h2 id="crmImportTitle" class="rail-title">${isBatch ? "Batch import estates" : "Import estate into DocPrep"}</h2>
+            <p class="copy">${isBatch ? "Paste CRM rows from Podio, Google Sheets, or CSV. Imported estates stay local until approved CRM readback is available." : "Create a local HRight estate from Podio, Google Sheets, or a pasted CRM row. This does not create a live CRM write."}</p>
           </div>
           <button class="btn icon-only" type="button" data-close-crm-import aria-label="Close CRM import">${nucleoIcon("check-circle", 16)}</button>
         </div>
@@ -10141,11 +10066,26 @@ function renderCrmImportModal() {
             <div class="field">
               <label for="crmImportProvider">Source</label>
               <select id="crmImportProvider" name="provider">
-                <option value="podio" selected>Podio</option>
-                <option value="google-sheets">Google Sheets</option>
-                <option value="csv">CSV / pasted CRM row</option>
+                <option value="podio" ${provider === "podio" ? "selected" : ""}>Podio</option>
+                <option value="google-sheets" ${provider === "google-sheets" ? "selected" : ""}>Google Sheets</option>
+                <option value="csv" ${provider === "csv" ? "selected" : ""}>CSV / pasted CRM row</option>
               </select>
             </div>
+            ${isBatch ? `
+              <div class="field full">
+                <label for="crmImportBatchRows">Estate rows</label>
+                <textarea id="crmImportBatchRows" name="batchRows" required placeholder="Estate name | Owner / seller | Property address | County | Folio / parcel | CRM row ID"></textarea>
+              </div>
+              <div class="field full">
+                <label for="crmImportUrl">Batch source URL</label>
+                <input id="crmImportUrl" name="sourceUrl" autocomplete="off" placeholder="Optional Podio view, Sheet URL, or CSV source">
+              </div>
+              <div class="field full">
+                <label for="crmImportNotes">Batch notes</label>
+                <textarea id="crmImportNotes" name="notes" placeholder="Add source context that should apply to each imported estate."></textarea>
+              </div>
+              <p class="field-note">Use one estate per line. Pipe-separated and tab-separated rows are safest; CSV rows are accepted for simple exports. No live CRM write or readback is attempted.</p>
+            ` : `
             <div class="field">
               <label for="crmImportSourceId">CRM row or item ID</label>
               <input id="crmImportSourceId" name="sourceRecordId" autocomplete="off" placeholder="Lead item, row number, or sheet key">
@@ -10183,11 +10123,12 @@ function renderCrmImportModal() {
               <textarea id="crmImportNotes" name="notes" placeholder="Paste any CRM context, title-company note, or closing-doc instruction that should travel with this estate."></textarea>
             </div>
             <p class="field-note">The imported estate will appear in Estates, Document Prep, Queue, and the report rail. Podio/Sheets readback still requires approved access and a real connection check.</p>
+            `}
           </div>
         </div>
         <div class="document-modal-foot">
           <button class="btn" type="button" data-close-crm-import>Cancel</button>
-          <button class="btn primary solvys-liquid-glass" type="submit">Import Estate</button>
+          <button class="btn primary solvys-liquid-glass" type="submit">${isBatch ? "Import Batch" : "Import Estate"}</button>
         </div>
       </form>
     </section>
@@ -10201,10 +10142,76 @@ function renderCrmImportModal() {
     event.preventDefault();
     submitCrmImport(new FormData(event.currentTarget));
   });
-  requestAnimationFrame(() => mount.querySelector("#crmImportEstate")?.focus());
+  requestAnimationFrame(() => mount.querySelector(isBatch ? "#crmImportBatchRows" : "#crmImportEstate")?.focus());
+}
+
+function splitCrmBatchLine(line) {
+  if (line.includes("|")) return line.split("|").map((part) => part.trim());
+  if (line.includes("\t")) return line.split("\t").map((part) => part.trim());
+  return line.split(",").map((part) => part.trim());
+}
+
+function batchImportItems(formData) {
+  const provider = String(formData.get("provider") || "podio");
+  const sourceUrl = String(formData.get("sourceUrl") || "");
+  const notes = String(formData.get("notes") || "");
+  const lines = String(formData.get("batchRows") || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 40);
+  return lines.map((line, index) => {
+    const [estateName, ownerName, propertyAddress, county, parcelId, sourceRecordId] = splitCrmBatchLine(line);
+    return normalizeCrmImport({
+      provider,
+      estateName: estateName || ownerName || `Imported estate ${index + 1}`,
+      ownerName: ownerName || estateName || `Imported estate ${index + 1}`,
+      propertyAddress: propertyAddress || "Address needs review",
+      county: county || "miami-dade",
+      parcelId: parcelId || "Folio needs review",
+      sourceRecordId: sourceRecordId || `batch-${index + 1}`,
+      sourceUrl,
+      notes
+    });
+  });
+}
+
+function submitBatchCrmImport(formData) {
+  const imports = batchImportItems(formData);
+  if (!imports.length) {
+    document.getElementById("topStatus").textContent = "Paste at least one estate row before importing a batch.";
+    return;
+  }
+  const ids = new Set(imports.map((item) => item.id));
+  state.crmImports = [
+    ...imports,
+    ...state.crmImports.filter((item) => !ids.has(item.id))
+  ].slice(0, 40);
+  persistCrmImports(`${imports.length} CRM estates imported`);
+  state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
+  state.selectedId = imports[0]?.id ?? state.selectedId;
+  state.selectedIds.clear();
+  setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
+  closeCrmImportModal();
+  document.querySelector('[data-shell-nav="find-estates"]')?.click();
+  const evidenceFilter = document.getElementById("evidenceFilter");
+  const statusFilter = document.getElementById("statusFilter");
+  const globalSearch = document.getElementById("globalSearch");
+  if (evidenceFilter) evidenceFilter.value = "0";
+  if (statusFilter) statusFilter.value = "all";
+  if (globalSearch) globalSearch.value = "";
+  syncAllEnhancedSelects();
+  applyFilters();
+  updateFooterLeadContext(selectedRow());
+  document.getElementById("topStatus").textContent = `${imports.length} estates imported from ${crmProviderLabel(imports[0]?.provider)}. Begin Discovery before Closing Docs.`;
+  addShellEvent("CRM batch imported", `${imports.length} estates are now available in Estates and DocPrep. No live CRM write was attempted.`, "ready", false);
 }
 
 function submitCrmImport(formData) {
+  if (String(formData.get("mode") || state.crmImportModal.mode) === "batch") {
+    submitBatchCrmImport(formData);
+    return;
+  }
   const imported = normalizeCrmImport(Object.fromEntries(formData.entries()));
   state.crmImports = [imported, ...state.crmImports.filter((item) => item.id !== imported.id)].slice(0, 40);
   persistCrmImports(`${crmProviderLabel(imported.provider)} estate imported`);
@@ -11218,7 +11225,6 @@ function renderDashboardView() {
             <h3>Active processes</h3>
             <span>${row ? escapeHtml(row.leadName || row.title) : "Load a lead packet to start"}</span>
           </div>
-          <button class="btn primary solvys-liquid-glass" type="button" data-open-crm-import>Import estate</button>
         </div>
         <div class="process-card-grid">
           ${processes.map((process) => processCardHtml(process)).join("")}
@@ -13800,6 +13806,18 @@ function setExportMenuOpen(open) {
   else popover?.classList.add("is-closing");
 }
 
+function setCrmImportMenuOpen(open) {
+  const menu = document.getElementById("crmImportMenu");
+  const toggle = document.getElementById("crmImportBatchToggle");
+  const popover = document.getElementById("crmImportPopover");
+  if (!menu || !toggle || !popover) return;
+  menu.dataset.open = open ? "true" : "false";
+  toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  popover.hidden = !open;
+  popover.classList.toggle("is-open", open);
+  popover.classList.toggle("is-closing", !open);
+}
+
 function dropdownCloseDelay() {
   const raw = getComputedStyle(document.documentElement).getPropertyValue("--t-dropdown-close-dur").trim();
   const value = Number.parseFloat(raw);
@@ -14156,7 +14174,23 @@ function wireEvents() {
   document.querySelectorAll("[data-open-crm-import]").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.preventDefault();
-      openCrmImportModal();
+      setCrmImportMenuOpen(false);
+      openCrmImportModal({ mode: "single" });
+    });
+  });
+  document.getElementById("crmImportBatchToggle")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const isOpen = document.getElementById("crmImportMenu")?.dataset.open === "true";
+    setCrmImportMenuOpen(!isOpen);
+    setExportMenuOpen(false);
+  });
+  document.querySelectorAll("[data-crm-batch-import]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      const provider = button.dataset.crmBatchImport;
+      setCrmImportMenuOpen(false);
+      openCrmImportModal({ mode: "batch", provider });
     });
   });
   document.getElementById("refresh").addEventListener("click", loadRun);
@@ -14264,6 +14298,9 @@ function wireEvents() {
     if (!document.getElementById("exportMenu").contains(event.target)) {
       setExportMenuOpen(false);
     }
+    if (!document.getElementById("crmImportMenu")?.contains(event.target)) {
+      setCrmImportMenuOpen(false);
+    }
   });
   document.getElementById("closeRail").addEventListener("click", () => {
     setRailOpen(false);
@@ -14287,6 +14324,7 @@ function wireEvents() {
     if (event.key === "Escape") {
       closeAllEnhancedSelects();
       setExportMenuOpen(false);
+      setCrmImportMenuOpen(false);
       setActivityOpen(false);
       if (state.crmImportModal.open) closeCrmImportModal();
       if (state.documentActionModal.open) closeDocumentActionModal();

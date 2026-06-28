@@ -68,3 +68,55 @@
 - This pass intentionally did not claim live Podio or Google Sheets writes. All CRM import/readback language remains prep-gated.
 - The existing mobile shell hides the left navigation below 820px. The new mobile proof covers the changed import/table surface; broader mobile navigation is outside this product-loop change.
 - Pre-existing `package.json` and `pnpm-lock.yaml` edits were left untouched and unstaged.
+
+## 2026-06-28 UI Correction
+
+- Restored the artifact app to the canonical flat dark surface. The bright light-theme variables and light override layer were removed, and theme application now resolves the app surface to dark even if a browser has an old light preference in local storage.
+- Moved CRM import out of the sidebar and dashboard section header.
+- Added the topbar split import chip to the left of `Prep export`:
+  - Main chip target opens single-estate import.
+  - Right chevron opens batch import choices for Podio, Google Sheets, and CSV/pasted rows.
+- Kept batch import prep-gated: pasted rows create local DocPrep estates only; no live CRM write or readback is claimed.
+- Locked the sidebar navigation to the top of the shell.
+- Fixed closed overlay overflow so mobile no longer gets document-wide horizontal scroll from hidden export/list controls.
+
+## 2026-06-28 Correction Verification
+
+- `pnpm --filter @ple/artifact build` passed after the correction.
+- `git diff --check` passed after the correction.
+- Inline artifact script parse passed.
+- Local desktop Chrome proof at `http://localhost:4173`:
+  - Body, app, and dashboard computed background: `rgb(32, 33, 36)`.
+  - Sidebar top: `0`; nav list top: `64`.
+  - Sidebar import removed.
+  - Dashboard import removed.
+  - Topbar import chip text: `+ Import`.
+  - Single import created a CRM estate with `Begin Discovery`.
+  - Batch import menu opened and imported a pasted Podio row.
+  - Closing Docs still opened with 11 document rows.
+  - Browser console errors: none.
+  - Screenshot: `/tmp/hright-ui-correction-desktop-final.png`.
+- Local mobile Chrome proof at 390px wide:
+  - Body background: `rgb(32, 33, 36)`.
+  - Document scroll width before dropdown: `390`.
+  - Document scroll width after dropdown: `390`.
+  - Batch dropdown bounds: `left=16`, `right=274`.
+  - Browser console errors: none.
+  - Screenshot: `/tmp/hright-ui-correction-mobile-final.png`.
+
+## Discovery Source Plan For Tomorrow
+
+- Source files to close before automated Discovery DocPrep can be considered ready:
+  - Property identity and owner details from Property Appraiser.
+  - Tax status, unpaid-year history, tax receipt, reassessment changes, and payer identity from Tax Collector.
+  - Deed/title signals from Official Records: recent sale, OR book/page, mortgage, lien, adverse possession, and mailing-address facts.
+  - Civil/family/probate docket status, probate case number, affidavit of heirs, and probate document request tasks.
+  - Marriage/death indicators: marriage licenses, obituaries, death indicators, and death-certificate tasking.
+  - Family tree and contact matrix: known heirs, primary/alternative contacts, mailing addresses, DOB/DOD where approved, and contact review decisions.
+  - Paid/manual source governance for IDI, Intelius, Ancestry, ForeWarn, VitalChek, PI requests, door knocks, and code-enforcement calls.
+  - Source QA/readback evidence: source links, captured fields, missing fields, Podio/Google prepared-only export result, and live readback proof once credentials are approved.
+- Morning implementation target:
+  - Complete both Discovery DocPrep and Closing Docs workflows as automated templates over the same estate file.
+  - Make export/readback bounce to Podio only after approved credentials, write approval, and readback proof pass.
+  - Preserve prep-only language until live Podio proof exists.
+  - Target next-week business readiness by Wednesday with a real Podio-ready packet, not a mock path.
