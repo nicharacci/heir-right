@@ -15819,7 +15819,7 @@ async function pullFreshBatch(source = null) {
     });
     const result = await response.json().catch(() => null);
     if (!response.ok || !result) {
-      throw new Error(result?.error || `Fresh lead pull failed with HTTP ${response.status}.`);
+      throw new Error(result?.blockers?.[0] || result?.message || result?.error || `Fresh lead pull failed with HTTP ${response.status}.`);
     }
     if (!result.latestRun?.dossier) {
       throw new Error(result.blockers?.[0] || "Fresh lead pull did not return a usable lead packet.");
