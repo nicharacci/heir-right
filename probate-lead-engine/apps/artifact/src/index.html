@@ -1732,6 +1732,87 @@
       opacity: .82;
     }
 
+    .source-action-stack {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .source-action-card {
+      width: 100%;
+      min-height: 112px;
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      padding: 15px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 66%, transparent);
+      border-radius: 24px;
+      color: var(--text);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.14), rgba(255,255,255,.045)),
+        color-mix(in srgb, var(--panel) 92%, transparent);
+      box-shadow: 0 16px 38px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.14);
+      text-align: left;
+      cursor: pointer;
+      transition: transform .26s var(--ease-out), border-color .22s var(--ease), background .22s var(--ease), box-shadow .26s var(--ease-out), opacity .18s var(--ease);
+    }
+
+    .source-action-card:hover,
+    .source-action-card:focus-visible {
+      border-color: color-mix(in srgb, var(--accent) 64%, var(--line-strong));
+      background:
+        linear-gradient(145deg, rgba(74, 149, 255, .22), rgba(255,255,255,.055)),
+        color-mix(in srgb, var(--panel) 88%, transparent);
+      box-shadow: 0 20px 44px rgba(0,0,0,.30), 0 0 0 1px rgba(94, 168, 255, .16), inset 0 1px 0 rgba(255,255,255,.18);
+      transform: translateY(-1px);
+    }
+
+    .source-action-card:disabled,
+    .source-action-card[aria-busy="true"] {
+      cursor: progress;
+      opacity: .78;
+      transform: none;
+    }
+
+    .source-action-icon {
+      width: 42px;
+      height: 42px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 16px;
+      color: #8fbdff;
+      background: color-mix(in srgb, var(--accent) 18%, rgba(255,255,255,.08));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+    }
+
+    .source-action-text {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .source-action-text strong {
+      font-size: 14px;
+      line-height: 1.18;
+      font-weight: 820;
+    }
+
+    .source-action-text span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .source-settings-label {
+      margin: 3px 0 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
     .source-pull-message {
       margin-top: 8px;
       color: var(--muted);
@@ -1982,6 +2063,74 @@
       font-size: 24px;
       line-height: 1.12;
       letter-spacing: 0;
+    }
+
+    .docprep-title-stack {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .docprep-breadcrumb-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .docprep-breadcrumb {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 0;
+      font: inherit;
+      cursor: pointer;
+      transition: color .16s var(--ease);
+    }
+
+    .docprep-breadcrumb:hover,
+    .docprep-breadcrumb:focus-visible {
+      color: var(--text);
+      outline: 0;
+    }
+
+    .docprep-status-control {
+      display: grid;
+      gap: 5px;
+      min-width: min(220px, 100%);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .docprep-status-control select {
+      min-height: 36px;
+      border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 76%, transparent);
+      background: var(--ios-fill);
+      color: var(--text);
+      padding: 0 34px 0 12px;
+      font-size: 13px;
+      font-weight: 780;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .docprep-list-topline {
+      align-items: center;
+    }
+
+    .docprep-toolbar {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     .arsip-date {
@@ -2307,6 +2456,209 @@
       border-radius: 0;
       background: transparent;
       overflow: visible;
+    }
+
+    .docprep-client-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .docprep-empty-state,
+    .docprep-client-row {
+      min-width: 0;
+      display: grid;
+      gap: 10px;
+      padding: 13px 14px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 68%, transparent);
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--ios-fill) 86%, transparent);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+      transition: border-color .18s var(--ease), background .18s var(--ease), transform .18s var(--ease-out);
+    }
+
+    .docprep-client-row:hover {
+      border-color: color-mix(in srgb, var(--accent) 42%, var(--line-strong));
+      background: color-mix(in srgb, var(--ios-fill-strong) 88%, transparent);
+      transform: translateY(-1px);
+    }
+
+    .docprep-client-row.is-selected {
+      border-color: color-mix(in srgb, var(--accent) 58%, var(--line-strong));
+      background: color-mix(in srgb, var(--accent) 13%, var(--ios-fill));
+    }
+
+    .docprep-client-main {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .docprep-client-title {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .docprep-client-title strong {
+      overflow: hidden;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .docprep-client-title span,
+    .docprep-flow-line span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
+    }
+
+    .docprep-client-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-left: 34px;
+    }
+
+    .docprep-flow-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .docprep-flow-meter {
+      width: 56px;
+      height: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--line-strong) 72%, transparent);
+    }
+
+    .docprep-flow-meter i {
+      display: block;
+      width: var(--docprep-progress, 0%);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent);
+    }
+
+    .docprep-modal-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 92;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      background: rgba(5,6,9,.46);
+      backdrop-filter: blur(16px) saturate(130%);
+      -webkit-backdrop-filter: blur(16px) saturate(130%);
+      animation: modalFade .18s var(--ease-out);
+    }
+
+    .docprep-add-modal {
+      width: min(680px, calc(100vw - 34px));
+      max-height: min(720px, calc(100vh - 44px));
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 78%, transparent);
+      border-radius: 22px;
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .docprep-add-head,
+    .docprep-add-flow-tabs {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .docprep-add-head h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .docprep-add-flow-tabs {
+      justify-content: flex-start;
+      padding: 4px;
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--ios-fill) 84%, transparent);
+    }
+
+    .docprep-add-flow-tabs button {
+      min-height: 34px;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--muted);
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 820;
+      cursor: pointer;
+    }
+
+    .docprep-add-flow-tabs button[aria-pressed="true"] {
+      color: var(--text);
+      background: color-mix(in srgb, var(--accent) 20%, var(--ios-fill-strong));
+    }
+
+    .docprep-add-list {
+      min-height: 0;
+      display: grid;
+      gap: 8px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .docprep-add-option {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      min-height: 62px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 64%, transparent);
+      border-radius: 15px;
+      background: color-mix(in srgb, var(--ios-fill) 78%, transparent);
+      color: var(--text);
+      padding: 10px 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color .18s var(--ease), background .18s var(--ease), transform .18s var(--ease-out);
+    }
+
+    .docprep-add-option:hover,
+    .docprep-add-option:focus-visible {
+      border-color: color-mix(in srgb, var(--accent) 50%, var(--line-strong));
+      background: color-mix(in srgb, var(--accent) 12%, var(--ios-fill));
+      outline: 0;
+      transform: translateY(-1px);
+    }
+
+    .docprep-add-option strong,
+    .docprep-add-option span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .docprep-add-option span {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
     }
 
     .document-panel {
@@ -3868,10 +4220,11 @@
     .estate-next-stack {
       display: flex;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: space-between;
       gap: 8px;
       flex-wrap: wrap;
       min-width: 0;
+      width: 100%;
     }
 
     .estate-actions {
@@ -3901,6 +4254,38 @@
     .estate-action.is-destructive:hover,
     .estate-action.is-destructive:focus-visible {
       color: var(--red);
+    }
+
+    .row-trash-action {
+      width: 28px;
+      height: 28px;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      opacity: 0;
+      transform: translateX(4px) scale(.94);
+      cursor: pointer;
+      pointer-events: none;
+      transition: opacity .16s var(--ease), transform .18s var(--ease-out), color .16s var(--ease), background .16s var(--ease);
+    }
+
+    tr:hover .row-trash-action,
+    tr:focus-within .row-trash-action,
+    .row-trash-action:focus-visible {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .row-trash-action:hover,
+    .row-trash-action:focus-visible {
+      color: var(--red);
+      background: color-mix(in srgb, var(--red) 12%, transparent);
+      outline: 0;
     }
 
     .results-footer {
@@ -5074,7 +5459,7 @@
       left: 50%;
       bottom: 74px;
       z-index: 82;
-      width: min(840px, calc(100vw - 96px));
+      width: min(980px, calc(100vw - 96px));
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -7331,16 +7716,38 @@
     </header>
 
     <section class="content">
-      <aside id="leadFilters" class="filters" aria-label="Lead filters">
+      <aside id="leadFilters" class="filters" aria-label="Add estates and lead filters">
         <div id="filterResizer" class="filter-resizer" role="separator" aria-orientation="vertical" aria-label="Resize filters" title="Resize filters"></div>
         <div class="pane-head">
           <div>
-            <p class="eyebrow">Filters</p>
-            <h2 class="pane-title">Start here</h2>
-            <p class="pane-copy">Choose the county and the missing information you want to clean up first.</p>
+            <p class="eyebrow">Add estates</p>
+            <h2 class="pane-title">Choose a source</h2>
+            <p class="pane-copy">Import existing estate files first, or fetch fresh leads only when the workflow needs new inventory.</p>
           </div>
         </div>
         <div class="filter-scroll">
+          <div class="source-action-stack" aria-label="Estate source options">
+            <button class="source-action-card" type="button" data-open-external-import>
+              <span class="source-action-icon" aria-hidden="true">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4 7.5h16M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </span>
+              <span class="source-action-text">
+                <strong>Import from External Sources</strong>
+                <span>Bring in Podio, Google Workspace, CSV, or pasted CRM estate rows.</span>
+              </span>
+            </button>
+            <button id="freshBatch" class="source-action-card" type="button" aria-busy="false">
+              <span class="source-action-icon" aria-hidden="true">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M20 6v5h-5M4 18v-5h5M18.5 9A7 7 0 0 0 6.2 6.7L4 11m16 2-2.2 4.3A7 7 0 0 1 5.5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="source-action-text">
+                <strong>Fetch Fresh Leads</strong>
+                <span>Run a controlled public-source pull only when new estate inventory is needed.</span>
+              </span>
+            </button>
+            <div id="freshBatchStatus" class="source-pull-message" data-tone="neutral" data-visible="false" aria-live="polite" hidden></div>
+          </div>
+          <p class="source-settings-label">Fresh lead settings</p>
           <div class="field">
             <label for="countyFilter">County</label>
             <select id="countyFilter">
@@ -7377,11 +7784,6 @@
                 <option value="5">5</option>
               </select>
             </div>
-            <button id="freshBatch" class="btn primary solvys-liquid-glass source-pull-button" type="button" aria-busy="false">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M18.5 9A7 7 0 0 0 6.2 6.7L4 11m16 2-2.2 4.3A7 7 0 0 1 5.5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Pull fresh leads
-            </button>
-            <div id="freshBatchStatus" class="source-pull-message" data-tone="neutral" data-visible="false" aria-live="polite" hidden></div>
           </div>
           <div class="field">
             <label for="statusFilter">Property status</label>
@@ -7664,6 +8066,8 @@
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 7h10v12H8V7Z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1M11 11h4M11 15h3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
           Google + Podio
         </button>
+        <button class="floating-list-button" type="button" data-list-control="archive">Archive</button>
+        <button class="floating-list-button" type="button" data-list-control="delete">Delete</button>
         <button class="floating-list-button" type="button" data-list-control="select-visible">Select visible</button>
         <button class="floating-list-button" type="button" data-list-control="clear">Clear</button>
       </div>
@@ -7763,6 +8167,12 @@ const state = {
   dashboardActivityTab: "activities",
   selectedDossierDocId: "discovery-dossier",
   activeDocPrepFlow: "discovery",
+  docPrepListOpen: false,
+  docPrepAddModal: {
+    open: false,
+    flowId: "discovery"
+  },
+  dealStatuses: {},
   docPrepPhaseIndex: {
     discovery: 0,
     "closing-docs": 0
@@ -7835,6 +8245,7 @@ const themeKey = "heirright:theme";
 const shellSettingsKey = "heirright:shell-settings";
 const discoveryStateKey = "heirright:discovery-workflow-state";
 const docPrepEstateStateKey = "heirright:docprep-estate-state";
+const dealStatusStateKey = "heirright:deal-status-state";
 const crmImportStateKey = "heirright:crm-imported-estates";
 const sourceCaptureStateKey = "heirright:source-capture-state";
 const idiImportStateKey = "heirright:idi-asset-imports";
@@ -7846,11 +8257,13 @@ const outreachWorkspaceKey = "heirright:outreach-workspace";
 const serverBackedStateKeys = new Set([
   crmImportStateKey,
   docPrepEstateStateKey,
+  dealStatusStateKey,
   discoveryStateKey,
   sourceCaptureStateKey,
   idiImportStateKey,
   contactReviewStateKey,
-  documentFilesStateKey
+  documentFilesStateKey,
+  outreachWorkspaceKey
 ]);
 const outreachAllowedApprovers = ["sam@heirright.com", "joshua@heirright.com"];
 const outreachStatuses = ["Draft", "Ready", "Approved", "Sync to Podio", "Archived"];
@@ -8014,6 +8427,51 @@ const docPrepFlows = {
     phases: closingDocPhases
   }
 };
+
+const dealStatusOptions = [
+  {
+    id: "pre-discovery",
+    label: "Pre-Discovery",
+    flowId: "discovery",
+    route: "Estate Discovery",
+    copy: "Imported and waiting for source-backed Discovery."
+  },
+  {
+    id: "post-discovery",
+    label: "Post-Discovery",
+    flowId: "discovery",
+    route: "Outreach review",
+    copy: "Discovery is complete enough for outreach review."
+  },
+  {
+    id: "outreach",
+    label: "Outreach",
+    flowId: "discovery",
+    route: "Email and SMS review",
+    copy: "Ready for approved outreach templates and review."
+  },
+  {
+    id: "warm",
+    label: "Warm",
+    flowId: "closing-docs",
+    route: "Closing Docs",
+    copy: "Move the estate toward Closing Docs prep."
+  },
+  {
+    id: "hot",
+    label: "Hot",
+    flowId: "closing-docs",
+    route: "Closing Docs",
+    copy: "Prioritize Closing Docs and seller packet prep."
+  },
+  {
+    id: "cold",
+    label: "Cold",
+    flowId: "discovery",
+    route: "SMS drip outreach",
+    copy: "Route to the cold-lead outreach drip queue."
+  }
+];
 
 const closingTemplateFamilies = [
   {
@@ -8307,6 +8765,22 @@ function loadCrmImports() {
   }
 }
 
+function normalizeDealStatusState(value = {}) {
+  const valid = new Set(dealStatusOptions.map((item) => item.id));
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return Object.fromEntries(Object.entries(source)
+    .map(([key, status]) => [String(key || "").trim(), String(status || "").trim()])
+    .filter(([key, status]) => key && valid.has(status)));
+}
+
+function loadDealStatuses() {
+  state.dealStatuses = normalizeDealStatusState(restoreObjectFromStorage(dealStatusStateKey, {}));
+}
+
+function persistDealStatuses() {
+  storageSetItem(dealStatusStateKey, JSON.stringify(normalizeDealStatusState(state.dealStatuses)));
+}
+
 function persistCrmImports(reason = "") {
   state.crmImports = state.crmImports.map(normalizeCrmImport);
   storageSetItem(crmImportStateKey, JSON.stringify(state.crmImports));
@@ -8352,6 +8826,10 @@ function applyServerBackedStateValue(key, value) {
         .filter(([recordKey, recordValue]) => recordKey && recordValue && typeof recordValue === "object" && !Array.isArray(recordValue))
         .map(([recordKey, recordValue]) => [recordKey, normalizeDocPrepEstateRecord(recordValue)]))
       : {};
+    return true;
+  }
+  if (key === dealStatusStateKey) {
+    state.dealStatuses = normalizeDealStatusState(parsed);
     return true;
   }
   if (key === sourceCaptureStateKey) {
@@ -9062,12 +9540,12 @@ function setEstateArchiveMode(showArchived) {
   syncEstateArchiveToggle();
 }
 
-function updateImportedEstateLifecycle(id, action) {
+function updateImportedEstateLifecycle(id, action, { confirmDelete = true } = {}) {
   const index = state.crmImports.findIndex((item) => item.id === id);
-  if (index < 0) return;
+  if (index < 0) return false;
   const current = normalizeCrmImport(state.crmImports[index]);
   const label = current.estateName || "Imported estate";
-  if (action === "delete" && !window.confirm(`Delete ${label} from this local workspace?`)) return;
+  if (action === "delete" && confirmDelete && !window.confirm(`Delete ${label} from this local workspace?`)) return false;
   const next = { ...current };
   if (action === "archive") {
     next.archivedAt = isoNow();
@@ -9076,7 +9554,7 @@ function updateImportedEstateLifecycle(id, action) {
   } else if (action === "delete") {
     next.deletedAt = isoNow();
   } else {
-    return;
+    return false;
   }
   state.crmImports[index] = next;
   persistCrmImports(`Estate ${action === "delete" ? "deleted" : action === "restore" ? "restored" : "archived"}`);
@@ -9093,6 +9571,7 @@ function updateImportedEstateLifecycle(id, action) {
     : action === "restore"
     ? `${label} was restored to active estates.`
     : `${label} was moved to Archive.`;
+  return true;
 }
 
 function buildRows(data, dossier) {
@@ -9286,9 +9765,11 @@ function syncFloatingListControls() {
   controls.dataset.open = count > 0 ? "true" : "false";
   controls.querySelectorAll("[data-list-control]").forEach((button) => {
     const action = button.dataset.listControl;
-    const needsSelection = ["queue", "podio", "both", "clear"].includes(action);
+    const needsSelection = ["queue", "podio", "both", "archive", "delete", "clear"].includes(action);
     const needsVisible = action === "select-visible";
-    button.disabled = (needsSelection && count === 0) || (needsVisible && visibleCount === 0);
+    const needsImportedEstate = ["archive", "delete"].includes(action);
+    const hasImportedSelection = selected.some((row) => row.sourceKind === "crm-import");
+    button.disabled = (needsSelection && count === 0) || (needsVisible && visibleCount === 0) || (needsImportedEstate && !hasImportedSelection);
   });
 }
 
@@ -9340,11 +9821,43 @@ function selectVisibleLeadsFromControls(source = null) {
   source?.blur?.();
 }
 
+function runSelectedEstateLifecycle(action, source = null) {
+  const rows = checkedRows().filter((row) => row.sourceKind === "crm-import");
+  if (!rows.length) {
+    document.getElementById("topStatus").textContent = "Select imported estates before using Archive or Delete.";
+    source?.blur?.();
+    return;
+  }
+  if (action === "delete") {
+    const label = `${rows.length} imported estate${rows.length === 1 ? "" : "s"}`;
+    if (!window.confirm(`Delete ${label} from this local workspace?`)) {
+      source?.blur?.();
+      return;
+    }
+  }
+  let changed = 0;
+  rows.forEach((row) => {
+    if (updateImportedEstateLifecycle(row.id, action, { confirmDelete: false })) changed += 1;
+  });
+  document.getElementById("topStatus").textContent = action === "delete"
+    ? `${changed} imported estate${changed === 1 ? "" : "s"} deleted from the local estate list.`
+    : `${changed} imported estate${changed === 1 ? "" : "s"} moved to Archive.`;
+  addShellEvent(
+    action === "delete" ? "Imported estates deleted" : "Imported estates archived",
+    `${changed} selected imported estate${changed === 1 ? "" : "s"} ${action === "delete" ? "deleted from the local list" : "moved to Archive"}.`,
+    "review",
+    false
+  );
+  source?.blur?.();
+}
+
 function runFloatingListControl(action, source = null) {
   if (action === "queue") {
     addRowsToQueue(checkedRows(), source);
   } else if (action === "podio" || action === "both") {
     chooseExportRoute(action, source);
+  } else if (action === "archive" || action === "delete") {
+    runSelectedEstateLifecycle(action, source);
   } else if (action === "select-visible") {
     selectVisibleLeadsFromControls(source);
   } else if (action === "clear") {
@@ -9533,7 +10046,8 @@ function loadSavedState() {
   if (Number.isFinite(storedWidth)) state.railWidth = clampRailWidth(storedWidth);
   const storedFilterWidth = Number(storageGetItem(filterWidthKey));
   if (Number.isFinite(storedFilterWidth)) state.filterWidth = clampFilterWidth(storedFilterWidth);
-  state.filterCollapsed = storageGetItem(filterCollapsedKey) === "true";
+  const storedFilterCollapsed = storageGetItem(filterCollapsedKey);
+  state.filterCollapsed = storedFilterCollapsed === null ? true : storedFilterCollapsed === "true";
   applyFilterWidth();
   try {
     const storedFilled = JSON.parse(storageGetItem(filledKey) ?? "[]");
@@ -9549,11 +10063,12 @@ function loadSavedState() {
   } catch {
     state.railNames = {};
   }
-	  loadDiscoveryState();
-	  loadDocPrepEstateState();
-	  loadCrmImports();
-	  loadAssetDiscoveryState();
-	  loadShellSettings();
+  loadDiscoveryState();
+  loadDocPrepEstateState();
+  loadDealStatuses();
+  loadCrmImports();
+  loadAssetDiscoveryState();
+  loadShellSettings();
   loadDripSettings();
   loadOutreachWorkspace();
   state.shellEvents = defaultShellEvents();
@@ -9614,6 +10129,7 @@ function normalizeDocPrepFlowState(flowId, value = {}) {
     notes: normalizeDocPrepPreferences(source.notes),
     preferences: normalizeDocPrepPreferences(source.preferences),
     generatedPackets: Array.isArray(source.generatedPackets) ? source.generatedPackets.slice(0, 25) : [],
+    startedAt: source.startedAt || "",
     updatedAt: source.updatedAt || ""
   };
 }
@@ -9650,6 +10166,32 @@ function docPrepFlowState(row = selectedRow(), flowId = state.activeDocPrepFlow)
   return docPrepEstateRecord(row)[flowKey];
 }
 
+function existingDocPrepFlowState(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  if (!row) return null;
+  const record = state.docPrepEstateState[docPrepEstateKey(row)];
+  return record?.[docPrepFlows[flowId] ? flowId : "discovery"] || null;
+}
+
+function docPrepFlowStarted(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  const flowState = existingDocPrepFlowState(row, flowId);
+  if (!flowState) return false;
+  return Boolean(
+    flowState.startedAt ||
+    flowState.updatedAt ||
+    flowState.completed?.length ||
+    flowState.generatedPackets?.length
+  );
+}
+
+function ensureDocPrepStarted(row = selectedRow(), flowId = state.activeDocPrepFlow, { persist = true } = {}) {
+  if (!row) return null;
+  const flowState = docPrepFlowState(row, flowId);
+  if (!flowState.startedAt) flowState.startedAt = isoNow();
+  flowState.updatedAt = flowState.updatedAt || flowState.startedAt;
+  if (persist) persistDocPrepEstateState();
+  return flowState;
+}
+
 function docPrepCurrentIndex(row = selectedRow(), flowId = state.activeDocPrepFlow) {
   return clampDocPrepPhaseIndex(flowId, docPrepFlowState(row, flowId).phaseIndex);
 }
@@ -9670,6 +10212,7 @@ function docPrepPhaseMarkedComplete(row = selectedRow(), flowId = state.activeDo
 
 function markDocPrepPhaseComplete(row = selectedRow(), flowId = state.activeDocPrepFlow, phaseId = "") {
   const flowState = docPrepFlowState(row, flowId);
+  if (!flowState.startedAt) flowState.startedAt = isoNow();
   if (!flowState.completed.includes(phaseId)) flowState.completed.push(phaseId);
   flowState.phaseIndex = clampDocPrepPhaseIndex(flowId, docPrepPhases(flowId).findIndex((phase) => phase.id === phaseId));
   flowState.updatedAt = new Date().toISOString();
@@ -9922,7 +10465,7 @@ function loadOutreachWorkspace() {
 
 function persistOutreachWorkspace(reason = "") {
   storageSetItem(outreachWorkspaceKey, JSON.stringify(state.outreachWorkspace));
-  if (reason) addShellEvent(reason, "Outreach campaign and template changes were saved locally. Podio sync still requires approval and connection checks.", "review", false);
+  if (reason) addShellEvent(reason, "Outreach campaign and template changes were saved through the review workspace. Podio sync still requires approval and connection checks.", "review", false);
 }
 
 function selectedOutreachCampaign() {
@@ -10266,6 +10809,7 @@ function nucleoIcon(name = "check-circle", size = 19, extraClass = "") {
     "packet-clock": '<path d="M5.5 4.5h8.2l4.8 4.8v10.2h-13V4.5Z"/><path d="M13.5 4.8v4.7h4.7"/><circle cx="11" cy="14.5" r="3.1"/><path d="M11 12.8v1.9l1.3.8"/>',
     "magnifier-route": '<path d="m20.5 20.5-4.2-4.2"/><circle cx="10.4" cy="10.4" r="6"/><path d="M7.4 8.3h.01M13.5 12.7h.01M7.5 8.4c3.2.1 5.6.8 5.6 2.4 0 1.8-3.4 1.5-4.8 3.1"/>',
     flag: '<path d="M6.2 20V5.2"/><path d="M6.2 5.2h9.8l-1.4 3.1L16 11.4H6.2"/><path d="M6.2 15.3h6.5"/>',
+    trash: '<path d="M5.2 7h13.6"/><path d="M9.2 7V4.9h5.6V7"/><path d="M7.3 7.1 8 19.2h8l.7-12.1"/><path d="M10.2 10.3v5.7M13.8 10.3v5.7"/>',
     "check-circle": '<circle cx="12" cy="12" r="8.4"/><path d="m8.4 12.2 2.4 2.4 4.9-5.2"/>'
   };
   const className = ["nucleo-icon", extraClass].filter(Boolean).join(" ");
@@ -10305,6 +10849,47 @@ function docPrepFlow(flowId = state.activeDocPrepFlow) {
 
 function docPrepPhases(flowId = state.activeDocPrepFlow) {
   return docPrepFlow(flowId).phases;
+}
+
+function dealStatusMeta(statusId = "pre-discovery") {
+  return dealStatusOptions.find((item) => item.id === statusId) ?? dealStatusOptions[0];
+}
+
+function dealStatusForRow(row = selectedRow()) {
+  if (!row) return "pre-discovery";
+  const key = assetDiscoveryKey(row);
+  return dealStatusMeta(state.dealStatuses[key]).id;
+}
+
+function dealStatusOptionsHtml(selectedStatus = "pre-discovery") {
+  return dealStatusOptions.map((status) => `
+    <option value="${escapeHtml(status.id)}" ${status.id === selectedStatus ? "selected" : ""}>${escapeHtml(status.label)}</option>
+  `).join("");
+}
+
+function setDealStatusForRow(row = selectedRow(), statusId = "pre-discovery", { rerender = true } = {}) {
+  if (!row) return;
+  const status = dealStatusMeta(statusId);
+  state.dealStatuses[assetDiscoveryKey(row)] = status.id;
+  persistDealStatuses();
+  if (status.flowId === "closing-docs") {
+    setActiveDocPrepFlow("closing-docs", { persist: true, rerender: false });
+  }
+  const routeCopy = status.id === "cold"
+    ? "Cold status is ready for the SMS drip outreach pipeline."
+    : `${status.label} routes this estate toward ${status.route}.`;
+  document.getElementById("topStatus").textContent = `${row.leadName || row.title} updated to ${status.label}. ${routeCopy}`;
+  addShellEvent("Deal status updated", `${row.leadName || row.title} moved to ${status.label}. ${routeCopy}`, "review", false);
+  if (rerender) {
+    renderCurrentLoopView();
+    renderRail();
+  }
+}
+
+function seedImportedDealStatus(row) {
+  if (!row) return;
+  const key = assetDiscoveryKey(row);
+  if (!state.dealStatuses[key]) state.dealStatuses[key] = "pre-discovery";
 }
 
 function setActiveDocPrepFlow(flowId = "discovery", { persist = true, rerender = true } = {}) {
@@ -11321,6 +11906,8 @@ function submitBatchCrmImport(formData) {
     ...imports,
     ...state.crmImports.filter((item) => !ids.has(item.id))
   ].slice(0, 40);
+  imports.map(crmImportRow).forEach(seedImportedDealStatus);
+  persistDealStatuses();
   persistCrmImports(`${imports.length} CRM estates imported`);
   state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
   state.selectedId = imports[0]?.id ?? state.selectedId;
@@ -11349,8 +11936,10 @@ function submitCrmImport(formData) {
   }
   const imported = normalizeCrmImport(Object.fromEntries(formData.entries()));
   state.crmImports = [imported, ...state.crmImports.filter((item) => item.id !== imported.id)].slice(0, 40);
-  persistCrmImports(`${crmProviderLabel(imported.provider)} estate imported`);
   const importedRow = crmImportRow(imported);
+  seedImportedDealStatus(importedRow);
+  persistDealStatuses();
+  persistCrmImports(`${crmProviderLabel(imported.provider)} estate imported`);
   if (state.data && state.dossier) {
     state.rows = buildRows(state.data, state.dossier);
   } else {
@@ -11821,14 +12410,14 @@ function queueReadinessItems() {
 }
 
 function queueDestinationItems() {
-  const names = ["Podio", "Google Workspace"];
+  const names = ["Podio", "Google Workspace", "Resend", "SMS Gateway"];
   return names.map((name) => {
     const connection = connectionByName(name === "Google Workspace" ? "Google" : name);
-    const connected = Boolean(connection?.connected);
+    const connected = Boolean(connection?.ok && connection?.mode === "live");
     return {
       title: name,
       connected,
-      status: connected ? "Connected" : "Not connected"
+      status: connected ? "Ready" : "Setup needed"
     };
   });
 }
@@ -12447,23 +13036,237 @@ function renderDashboardView() {
   });
 }
 
+function docPrepFlowHasWork(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  if (!row) return false;
+  if (docPrepFlowStarted(row, flowId)) return true;
+  const docs = docsForFlow(row, dossierForRow(row), flowId);
+  return docs.some((doc) => documentFileRecord(doc.id, row));
+}
+
+function docPrepListRows() {
+  return state.rows.filter((row) => !row.isArchived && Object.keys(docPrepFlows).some((flowId) => docPrepFlowHasWork(row, flowId)));
+}
+
+function docPrepRowStageEligible(row, flowId = state.activeDocPrepFlow) {
+  if (!row || row.isArchived) return false;
+  const status = dealStatusForRow(row);
+  if (flowId === "closing-docs") {
+    return ["warm", "hot", "post-discovery"].includes(status) || discoveryProgress("discovery", row) >= 100;
+  }
+  return !["warm", "hot"].includes(status);
+}
+
+function eligibleDocPrepRows(flowId = state.activeDocPrepFlow) {
+  return state.rows.filter((row) => (
+    docPrepRowStageEligible(row, flowId) &&
+    discoveryProgress(flowId, row) < 100 &&
+    !docPrepFlowStarted(row, flowId)
+  ));
+}
+
+function openDocPrepAddModal(flowId = state.activeDocPrepFlow) {
+  state.docPrepAddModal = {
+    open: true,
+    flowId: docPrepFlows[flowId] ? flowId : state.activeDocPrepFlow
+  };
+  renderDossiersView();
+}
+
+function closeDocPrepAddModal() {
+  state.docPrepAddModal.open = false;
+  renderDossiersView();
+}
+
+function addDocPrepForRow(rowId, flowId = state.docPrepAddModal.flowId || state.activeDocPrepFlow) {
+  const row = rowById(rowId);
+  if (!row) return;
+  state.selectedId = row.id;
+  state.docPrepListOpen = false;
+  state.docPrepAddModal.open = false;
+  setActiveDocPrepFlow(flowId, { persist: true, rerender: false });
+  ensureDocPrepStarted(row, flowId);
+  document.getElementById("topStatus").textContent = `${row.leadName || row.title} added to ${docPrepFlow(flowId).title}.`;
+  addShellEvent("DocPrep added", `${row.leadName || row.title} is now in ${docPrepFlow(flowId).title}.`, "ready", false);
+  renderDossiersView();
+  renderRail();
+  syncSelectionLabels();
+}
+
+function openDocPrepRow(rowId, flowId = state.activeDocPrepFlow) {
+  const row = rowById(rowId);
+  if (!row) return;
+  state.selectedId = row.id;
+  state.docPrepListOpen = false;
+  setActiveDocPrepFlow(flowId, { persist: true, rerender: false });
+  renderDossiersView();
+  renderRail();
+  updateFooterLeadContext(row);
+}
+
+function docPrepFlowLineHtml(row, flowId) {
+  const progress = discoveryProgress(flowId, row);
+  const started = docPrepFlowStarted(row, flowId);
+  const label = started || progress > 0 ? `${progress}%` : "Not started";
+  return `
+    <span class="docprep-flow-line">
+      <span class="docprep-flow-meter" aria-hidden="true"><i style="--docprep-progress:${progress}%"></i></span>
+      <strong>${escapeHtml(docPrepFlow(flowId).shortTitle)}</strong>
+      <span>${escapeHtml(label)}</span>
+    </span>
+  `;
+}
+
+function docPrepClientRowHtml(row) {
+  const checked = state.selectedIds.has(row.id);
+  const status = dealStatusMeta(dealStatusForRow(row));
+  const flowId = status.flowId === "closing-docs" ? "closing-docs" : state.activeDocPrepFlow;
+  const selected = row.id === state.selectedId;
+  return `
+    <article class="docprep-client-row ${selected ? "is-selected" : ""}" data-dossier-row="${escapeHtml(row.id)}">
+      <div class="docprep-client-main">
+        ${checkboxHtml(row.id, `Select ${row.leadName} for document prep actions`, checked, `data-row-select="${escapeHtml(row.id)}"`)}
+        <div class="docprep-client-title">
+          <strong>${escapeHtml(row.leadName || row.title)}</strong>
+          <span>${escapeHtml(row.address || "Address needs review")}</span>
+        </div>
+        <button class="btn" type="button" data-open-docprep-row="${escapeHtml(row.id)}" data-open-docprep-flow="${escapeHtml(flowId)}">Open</button>
+      </div>
+      <div class="docprep-client-meta">
+        <span class="docprep-flow-line"><strong>Status</strong><span>${escapeHtml(status.label)}</span></span>
+        ${Object.keys(docPrepFlows).map((item) => docPrepFlowLineHtml(row, item)).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function docPrepAddModalHtml() {
+  if (!state.docPrepAddModal.open) return "";
+  const flowId = docPrepFlows[state.docPrepAddModal.flowId] ? state.docPrepAddModal.flowId : state.activeDocPrepFlow;
+  const flow = docPrepFlow(flowId);
+  const eligible = eligibleDocPrepRows(flowId);
+  return `
+    <div class="docprep-modal-layer" role="presentation" data-docprep-add-layer>
+      <section class="docprep-add-modal" role="dialog" aria-modal="true" aria-labelledby="docprepAddTitle">
+        <header class="docprep-add-head">
+          <div>
+            <p class="eyebrow">Add prep</p>
+            <h3 id="docprepAddTitle">${escapeHtml(flow.title)}</h3>
+          </div>
+          <button class="btn icon-only" type="button" data-close-docprep-add aria-label="Close add prep">${nucleoIcon("check-circle", 16)}</button>
+        </header>
+        <div class="docprep-add-flow-tabs" role="tablist" aria-label="Choose document prep flow">
+          ${Object.values(docPrepFlows).map((item) => `
+            <button type="button" role="tab" data-docprep-add-flow="${escapeHtml(item.id)}" aria-pressed="${item.id === flowId ? "true" : "false"}">${escapeHtml(item.title)}</button>
+          `).join("")}
+        </div>
+        <div class="docprep-add-list">
+          ${eligible.map((row) => {
+            const status = dealStatusMeta(dealStatusForRow(row));
+            return `
+              <button class="docprep-add-option" type="button" data-add-docprep-row="${escapeHtml(row.id)}" data-add-docprep-flow="${escapeHtml(flowId)}">
+                <span>
+                  <strong>${escapeHtml(row.leadName || row.title)}</strong>
+                  <span>${escapeHtml(row.address || "Address needs review")} - ${escapeHtml(status.label)}</span>
+                </span>
+                <span>${escapeHtml(`${discoveryProgress(flowId, row)}%`)}</span>
+              </button>
+            `;
+          }).join("") || `<div class="docprep-empty-state"><strong>No eligible estates for ${escapeHtml(flow.title)}.</strong><span class="copy">Update an estate status or finish the previous prep stage before adding it here.</span></div>`}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderDossiersListView(target) {
+  const rows = docPrepListRows();
+  const flow = docPrepFlow();
+  target.innerHTML = `
+    <div class="document-prep">
+      <div class="document-prep-topline docprep-list-topline">
+        <div class="docprep-title-stack">
+          <div class="docprep-breadcrumb-row">
+            <span>Document Prep</span>
+            <span>/</span>
+            <strong>All clients</strong>
+          </div>
+          <h2>All clients</h2>
+          <p class="copy">${rows.length ? `${rows.length} document prep${rows.length === 1 ? "" : "s"} in progress.` : "No document preps are in progress yet."}</p>
+        </div>
+        <div class="docprep-toolbar">
+          <button class="btn" type="button" data-docprep-list-back>Current estate</button>
+          <button class="btn primary solvys-liquid-glass" type="button" data-open-docprep-add="${escapeHtml(flow.id)}">Add prep</button>
+        </div>
+      </div>
+      <section class="document-panel" aria-label="Document prep clients">
+        <div class="docprep-client-list">
+          ${rows.map(docPrepClientRowHtml).join("") || `<div class="docprep-empty-state"><strong>No active document prep rows.</strong><span class="copy">Use Add prep to start Discovery or Closing Docs from eligible estates.</span></div>`}
+        </div>
+      </section>
+    </div>
+    ${docPrepAddModalHtml()}
+  `;
+  target.querySelector("[data-docprep-list-back]")?.addEventListener("click", () => {
+    state.docPrepListOpen = false;
+    renderDossiersView();
+  });
+  target.querySelectorAll("[data-open-docprep-add]").forEach((button) => {
+    button.addEventListener("click", () => openDocPrepAddModal(button.dataset.openDocprepAdd));
+  });
+  target.querySelectorAll("[data-open-docprep-row]").forEach((button) => {
+    button.addEventListener("click", () => openDocPrepRow(button.dataset.openDocprepRow, button.dataset.openDocprepFlow));
+  });
+  wireDocPrepAddModal(target);
+  wireBatchSelection(target, "[data-dossier-row]", "dossiers");
+  syncSelectionLabels();
+}
+
+function wireDocPrepAddModal(root) {
+  root.querySelector("[data-close-docprep-add]")?.addEventListener("click", closeDocPrepAddModal);
+  root.querySelector("[data-docprep-add-layer]")?.addEventListener("click", (event) => {
+    if (event.target?.matches?.("[data-docprep-add-layer]")) closeDocPrepAddModal();
+  });
+  root.querySelectorAll("[data-docprep-add-flow]").forEach((button) => {
+    button.addEventListener("click", () => openDocPrepAddModal(button.dataset.docprepAddFlow));
+  });
+  root.querySelectorAll("[data-add-docprep-row]").forEach((button) => {
+    button.addEventListener("click", () => addDocPrepForRow(button.dataset.addDocprepRow, button.dataset.addDocprepFlow));
+  });
+}
+
 function renderDossiersView() {
   const target = document.getElementById("dossiersView");
   if (!target) return;
   const row = selectedRow();
+  if (state.docPrepListOpen) {
+    renderDossiersListView(target);
+    return;
+  }
   const dossier = dossierForRow(row);
   const flow = docPrepFlow();
   const docs = docsForFlow(row, dossier, flow.id);
   const stats = documentPrepStats(row, dossier, flow.id);
   const facts = currentProcessFacts(row, dossier);
   const missingDocs = docs.filter((doc) => !documentFileRecord(doc.id, row));
+  const dealStatus = dealStatusMeta(dealStatusForRow(row));
   target.innerHTML = `
     <div class="document-prep">
       <div class="document-prep-topline">
-        <div>
+        <div class="docprep-title-stack">
+          <div class="docprep-breadcrumb-row">
+            <button class="docprep-breadcrumb" type="button" data-show-docprep-list>All clients</button>
+            <span>/</span>
+            <strong>${escapeHtml(row?.leadName || row?.title || "Current estate")}</strong>
+          </div>
           <h2>Document Prep</h2>
           <p class="copy">${escapeHtml(row ? `${row.leadName || row.title} · ${row.address || "Address needs review"}` : "Load a lead packet from Estates to start document prep.")}</p>
         </div>
+        <label class="docprep-status-control">
+          <span>Deal status</span>
+          <select data-deal-status aria-label="Deal status for ${escapeHtml(row?.leadName || row?.title || "current estate")}">
+            ${dealStatusOptionsHtml(dealStatus.id)}
+          </select>
+        </label>
         <div class="doc-flow-selector" role="tablist" aria-label="DocPrep workflow templates">
           ${Object.values(docPrepFlows).map((item) => `
             <button class="doc-flow-tab" type="button" role="tab" data-doc-flow="${escapeHtml(item.id)}" aria-pressed="${item.id === flow.id ? "true" : "false"}">
@@ -12529,6 +13332,15 @@ function renderDossiersView() {
       </div>
     </div>
   `;
+  target.querySelector("[data-show-docprep-list]")?.addEventListener("click", () => {
+    state.docPrepListOpen = true;
+    state.discoveryOpen = false;
+    renderDossiersView();
+    renderRail();
+  });
+  target.querySelector("[data-deal-status]")?.addEventListener("change", (event) => {
+    setDealStatusForRow(selectedRow(), event.target.value);
+  });
   target.querySelectorAll("[data-doc-flow]").forEach((button) => {
     button.addEventListener("click", () => {
       setActiveDocPrepFlow(button.dataset.docFlow, { persist: true, rerender: false });
@@ -13192,8 +14004,8 @@ function restoreOutreachTemplate(templateId) {
 function deleteArchivedOutreachTemplate(templateId) {
   const template = state.outreachWorkspace.templates.find((item) => item.id === templateId);
   if (!template || template.status !== "Archived") return;
+  addOutreachAudit(template.id, "Deleted", `${template.name} was permanently removed from active template lists. Audit history retained.`, currentActorEmail());
   state.outreachWorkspace.templates = state.outreachWorkspace.templates.filter((item) => item.id !== templateId);
-  state.outreachWorkspace.audit = state.outreachWorkspace.audit.filter((event) => event.templateId !== templateId);
   state.selectedOutreachTemplateId = activeOutreachTemplates()[0]?.id || archivedOutreachTemplates()[0]?.id || null;
   persistOutreachWorkspace("Archived template permanently deleted");
   renderDripsView();
@@ -13212,13 +14024,13 @@ function syncOutreachTemplate(templateId) {
     return;
   }
   const podio = connectionByName("Podio");
-  if (!podio?.connected) {
-    addOutreachAudit(template.id, "Podio sync blocked", "Podio is not connected; Linear fallback ticket should be created by the backend path.");
+  if (!(podio?.ok && podio?.mode === "live")) {
+    addOutreachAudit(template.id, "Podio sync blocked", operatorConnectionMessage(podio, "Podio"));
     persistOutreachWorkspace();
     showOutreachNotification({
       tone: "blocked",
       title: "Podio is not connected",
-      copy: "No SMS, email, CRM card, Google Doc, or Resend message was created. Open Settings to reconnect Podio, then retry sync.",
+      copy: "No SMS, email, CRM card, Google Doc, or Resend message was created. Open Settings to finish Podio access, backup, approval, and readback setup.",
       action: "settings"
     });
     return;
@@ -13512,9 +14324,10 @@ function renderQueueView() {
 function renderAdminLoopView() {
   const target = document.getElementById("adminView");
   if (!target) return;
+  const readinessNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search"];
   target.innerHTML = `
     <div class="loop-grid three">
-      <section class="loop-panel"><p class="eyebrow">Admin</p><h2 class="loop-title">Workspace readiness</h2><ul class="mini-list"><li><strong>Podio</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Podio"), "Podio"))}</span></li><li><strong>Google</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Google"), "Google"))}</span></li><li><strong>Web Search</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName("Web Search"), "Web Search"))}</span></li></ul></section>
+      <section class="loop-panel"><p class="eyebrow">Admin</p><h2 class="loop-title">Workspace readiness</h2><ul class="mini-list">${readinessNames.map((name) => `<li><strong>${escapeHtml(name)}</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName(name), name))}</span></li>`).join("")}</ul></section>
       <section class="loop-panel"><p class="eyebrow">Automation</p><h2 class="loop-title">Scheduled work prep</h2><p class="copy">Scheduled checks are staged as review preparation for dossier source notes and drip drafts. A background route can replace the review path after operator approval.</p><ul class="mini-list"><li><strong>Mode</strong><span>Review-only</span></li><li><strong>Runs</strong><span>Scheduled drip preparation and dossier packet checks</span></li><li><strong>Stop</strong><span>No live outreach or CRM card creation</span></li></ul></section>
       <section class="loop-panel"><p class="eyebrow">Analytics</p><h2 class="loop-title">Operator trail</h2><div class="admin-grid"><div class="admin-metric"><span>Commands</span><strong>${escapeHtml(state.shellCommandCount)}</strong></div><div class="admin-metric"><span>Blockers</span><strong>${escapeHtml(milestoneBlockers(state.dossier).length)}</strong></div><div class="admin-metric"><span>Events</span><strong>${escapeHtml(state.shellEvents.length)}</strong></div></div></section>
     </div>
@@ -13522,27 +14335,40 @@ function renderAdminLoopView() {
 }
 
 function integrationOnboardingCardHtml(kind) {
+  const meta = {
+    podio: {
+      name: "Podio",
+      title: "Podio",
+      action: "Review Podio setup",
+      steps: ["Add Podio access, Leads app, and verified field map", "Confirm CSV backup before the sample write", "Create one approved sample card and read it back"]
+    },
+    google: {
+      name: "Google",
+      title: "Google Workspace",
+      action: "Connect Google",
+      steps: ["Sign in with the approved Google account", "Add Drive, Docs, and Sheets destination access", "Run one approved Sheet row export and read it back"]
+    },
+    resend: {
+      name: "Resend",
+      title: "Resend Fallback",
+      action: "Review Resend setup",
+      steps: ["Add Resend access", "Approve internal test-recipient use only", "Keep Podio as the primary work queue"]
+    },
+    sms: {
+      name: "SMS Gateway",
+      title: "SMS Gateway",
+      action: "Review SMS setup",
+      steps: ["Choose Podio-native SMS or an approved carrier gateway", "Add carrier access and internal-test approval", "Keep messages queued until each template is approved"]
+    }
+  }[kind] ?? null;
+  if (!meta) return "";
   const isGoogle = kind === "google";
-  const connection = connectionByName(isGoogle ? "Google" : "Podio");
+  const connection = connectionByName(meta.name);
   const connected = Boolean(connection?.ok && connection?.mode === "live");
   const sessionReady = Boolean(state.session?.auth?.configured);
-  const actionLabel = connected ? "Connected" : isGoogle ? "Connect Google" : "Review Podio setup";
+  const actionLabel = connected ? "Connected" : meta.action;
   const statusLabel = connected ? "Live" : connection?.mode ? displayStatus(connection.mode) : "Setup required";
-  const title = isGoogle ? "Google Workspace" : "Podio";
-  const copy = isGoogle
-    ? operatorConnectionMessage(connection, "Google")
-    : operatorConnectionMessage(connection, "Podio");
-  const steps = isGoogle
-    ? [
-        state.session?.authenticated ? "Google account signed in" : "Sign in with the approved Google account",
-        connected ? "Drive, Docs, and Sheets access present" : "Add Google Workspace access and the tracking Sheet destination",
-        "Run one approved export and confirm readback before live handoff"
-      ]
-    : [
-        connected ? "Podio access present" : "Add Podio access, Leads app, and verified field map",
-        "Create one approved sample card only after authorization",
-        "Confirm readback before live CRM handoff"
-      ];
+  const steps = meta.steps.map((step, index) => index === 0 && connected ? `${meta.title} setup present` : step);
   const action = isGoogle && sessionReady
     ? `<a class="btn primary solvys-liquid-glass" href="/auth/login?integration=google-workspace">${actionLabel}</a>`
     : `<button class="btn ${connected ? "" : "primary solvys-liquid-glass"}" type="button" data-integration-onboarding="${escapeHtml(kind)}" ${connected ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>`;
@@ -13551,11 +14377,11 @@ function integrationOnboardingCardHtml(kind) {
       <div class="integration-card-head">
         <div>
           <p class="eyebrow">Integration</p>
-          <h3>${escapeHtml(title)}</h3>
+          <h3>${escapeHtml(meta.title)}</h3>
         </div>
         <span class="pill ${connected ? "ready" : "review"}">${escapeHtml(statusLabel)}</span>
       </div>
-      <p class="copy">${escapeHtml(copy)}</p>
+      <p class="copy">${escapeHtml(operatorConnectionMessage(connection, meta.name))}</p>
       <ul class="integration-steps">
         ${steps.map((step) => `<li><span>${escapeHtml(step)}</span></li>`).join("")}
       </ul>
@@ -13565,18 +14391,17 @@ function integrationOnboardingCardHtml(kind) {
 }
 
 function handleIntegrationOnboarding(kind) {
+  const name = kind === "google" ? "Google" : kind === "resend" ? "Resend" : kind === "sms" ? "SMS Gateway" : "Podio";
   const isGoogle = kind === "google";
-  const connection = connectionByName(isGoogle ? "Google" : "Podio");
+  const connection = connectionByName(name);
   if (isGoogle && !state.session?.auth?.configured) {
     document.getElementById("topStatus").textContent = "Google OAuth is not configured yet. Add the approved client details before Workspace login opens.";
     addShellEvent("Google onboarding blocked", "Google OAuth configuration is still required before the Workspace login flow can start.", "blocked", false);
     return;
   }
-  const message = isGoogle
-    ? operatorConnectionMessage(connection, "Google")
-    : operatorConnectionMessage(connection, "Podio");
+  const message = operatorConnectionMessage(connection, name);
   document.getElementById("topStatus").textContent = message;
-  addShellEvent(`${isGoogle ? "Google Workspace" : "Podio"} onboarding reviewed`, message, connectionTone(connection), false);
+  addShellEvent(`${name} onboarding reviewed`, message, connectionTone(connection), false);
   renderSettingsView();
 }
 
@@ -13590,6 +14415,8 @@ function renderSettingsView() {
         <div class="integration-onboarding">
           ${integrationOnboardingCardHtml("podio")}
           ${integrationOnboardingCardHtml("google")}
+          ${integrationOnboardingCardHtml("resend")}
+          ${integrationOnboardingCardHtml("sms")}
         </div>
       </section>
       <section class="loop-panel full">
@@ -13736,8 +14563,8 @@ function syncFilterWidthToggle() {
   if (!toggle) return;
   toggle.tabIndex = state.filterCollapsed ? 0 : -1;
   toggle.setAttribute("aria-expanded", state.filterCollapsed ? "false" : "true");
-  toggle.setAttribute("aria-label", state.filterCollapsed ? "Expand filters" : "Collapse filters");
-  toggle.setAttribute("title", state.filterCollapsed ? "Expand filters" : "Collapse filters");
+  toggle.setAttribute("aria-label", state.filterCollapsed ? "Open add estates rail" : "Close add estates rail");
+  toggle.setAttribute("title", state.filterCollapsed ? "Open add estates rail" : "Close add estates rail");
 }
 
 function setFilterCollapsed(collapsed, persist = true) {
@@ -13959,6 +14786,7 @@ function beginDiscoveryWizard(source = null) {
   const row = selectedRow();
   if (!row) return;
   const flow = docPrepFlow();
+  ensureDocPrepStarted(row, flow.id, { persist: false });
   setDocPrepPhaseIndex(row, flow.id, docPrepCurrentIndex(row, flow.id), { persist: false });
   state.discoveryOpen = true;
   state.railTab = "flow";
@@ -14259,13 +15087,10 @@ function scoreHtml(row) {
 
 function importedEstateLifecycleHtml(row) {
   if (row.sourceKind !== "crm-import") return "";
-  const action = row.isArchived ? "restore" : "archive";
-  const label = row.isArchived ? "Restore" : "Archive";
   return `
-    <span class="estate-actions" aria-label="Imported estate actions">
-      <button class="estate-action" type="button" data-estate-lifecycle="${escapeHtml(action)}" data-estate-id="${escapeHtml(row.id)}">${label}</button>
-      <button class="estate-action is-destructive" type="button" data-estate-lifecycle="delete" data-estate-id="${escapeHtml(row.id)}">Delete</button>
-    </span>
+    <button class="row-trash-action" type="button" data-estate-lifecycle="delete" data-estate-id="${escapeHtml(row.id)}" aria-label="Delete ${escapeHtml(row.leadName || row.title)}">
+      ${nucleoIcon("trash", 15)}
+    </button>
   `;
 }
 
@@ -14753,6 +15578,8 @@ function operatorConnectionMessage(connection, name) {
   if (!raw || hasSetupDetail) {
     if (name === "Podio") return "Podio is not connected yet. Keep CRM handoff prep-only until access, one approved sample card, and confirmation are complete.";
     if (name === "Google") return "Google Workspace handoff is not connected yet. Keep Docs and Sheets prep-only until destination approval is complete.";
+    if (name === "Resend") return "Resend fallback is not approved yet. Keep email drafts queued in Podio and use only controlled internal test recipients after approval.";
+    if (name === "SMS Gateway") return "SMS delivery is not configured yet. Keep SMS templates in the app-owned queue until a carrier or Podio-native SMS path is approved.";
     if (name === "Web Search") return "Public-source validation needs a fresh checked lead packet before promotion.";
   }
   return raw;
@@ -15448,6 +16275,13 @@ function wireEvents() {
       event.preventDefault();
       setCrmImportMenuOpen(false);
       openCrmImportModal({ mode: "single" });
+    });
+  });
+  document.querySelectorAll("[data-open-external-import]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      setCrmImportMenuOpen(false);
+      openCrmImportModal({ mode: "batch", provider: "podio" });
     });
   });
   document.getElementById("crmImportBatchToggle")?.addEventListener("click", (event) => {
