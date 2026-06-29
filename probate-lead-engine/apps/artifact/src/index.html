@@ -1394,19 +1394,23 @@
       backdrop-filter: saturate(180%) blur(32px);
       -webkit-backdrop-filter: saturate(180%) blur(32px);
       opacity: 0;
+      visibility: hidden;
       transform: translateY(-4px);
       pointer-events: none;
-      transition: opacity .18s var(--ease), transform .18s var(--ease);
+      transition: opacity .18s var(--ease), transform .18s var(--ease), visibility 0s linear .18s;
     }
 
     .export-menu:not([data-open="true"]) .export-popover {
       opacity: 0;
+      visibility: hidden;
       pointer-events: none;
     }
 
     .export-menu[data-open="true"] .export-popover {
       opacity: 1;
+      visibility: visible;
       pointer-events: auto;
+      transition: opacity .18s var(--ease), transform .18s var(--ease), visibility 0s linear 0s;
     }
 
     .export-option {
