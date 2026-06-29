@@ -5066,13 +5066,16 @@
       backdrop-filter: saturate(190%) blur(26px);
       -webkit-backdrop-filter: saturate(190%) blur(26px);
       box-shadow: -28px 0 80px rgba(15,23,42,.08);
+      visibility: visible;
       overflow: hidden;
-      transition: width .42s var(--ease-out), margin-right .42s var(--ease-out), transform .42s var(--ease-out), opacity .28s var(--ease);
+      transition: width .42s var(--ease-out), margin-right .42s var(--ease-out), transform .42s var(--ease-out), opacity .28s var(--ease), visibility 0s linear 0s;
     }
 
     .research-rail[data-open="false"] {
       pointer-events: none;
       opacity: 0;
+      visibility: hidden;
+      transition: width .42s var(--ease-out), margin-right .42s var(--ease-out), transform .42s var(--ease-out), opacity .28s var(--ease), visibility 0s linear .42s;
     }
 
     .rail-resizer {
