@@ -8387,22 +8387,19 @@ function applyServerBackedStateValue(key, value) {
 }
 
 async function hydrateServerBackedState() {
-  if (!localStateEndpointEnabled()) {
-    document.documentElement.dataset.crmImportCount = String(state.crmImports.length);
-    document.documentElement.dataset.serverHydrated = "false";
-    return false;
-  }
   let changed = false;
-  for (const key of serverBackedStateKeys) {
-    try {
-      const response = await fetch(`/local-state/${encodeURIComponent(key)}`, { cache: "no-store" });
-      if (!response.ok) continue;
-      const payload = await response.json();
-      if (typeof payload.value === "string" && payload.value !== storageGetItem(key)) {
-        storageSetItem(key, payload.value);
-        changed = applyServerBackedStateValue(key, payload.value) || changed;
-      }
-    } catch {}
+  if (localStateEndpointEnabled()) {
+    for (const key of serverBackedStateKeys) {
+      try {
+        const response = await fetch(`/local-state/${encodeURIComponent(key)}`, { cache: "no-store" });
+        if (!response.ok) continue;
+        const payload = await response.json();
+        if (typeof payload.value === "string" && payload.value !== storageGetItem(key)) {
+          storageSetItem(key, payload.value);
+          changed = applyServerBackedStateValue(key, payload.value) || changed;
+        }
+      } catch {}
+    }
   }
   document.documentElement.dataset.crmImportCount = String(state.crmImports.length);
   document.documentElement.dataset.serverHydrated = changed ? "true" : "false";
