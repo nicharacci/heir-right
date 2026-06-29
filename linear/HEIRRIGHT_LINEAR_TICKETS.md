@@ -1012,7 +1012,7 @@ pnpm --filter @ple/artifact build
 Owner: Codex Automation
 Milestone: Contract implementation
 Brief: `@sprint-md/S24-BRIEF-outreach-google-podio-integration.md`
-Status: ready / external credentials required for live completion
+Status: reviewed in S26; app routes and approval gates complete, live Google/Podio readback externally blocked
 
 Child tracks:
 
@@ -1046,7 +1046,7 @@ pnpm --filter @ple/artifact build
 Owner: Codex Automation
 Milestone: Contract implementation
 Brief: `@sprint-md/S25-BRIEF-website-legal-finalization.md`
-Status: mostly implemented / ready for route split verification
+Status: reviewed in S26; Vercel website/app aliases production-proved, custom domain migration remains optional/external
 
 Child tracks:
 
@@ -1076,7 +1076,7 @@ pnpm build
 Owner: Human reviewer + Codex Automation
 Milestone: FULL-APP HUMAN-PRACTICAL TESTING
 Brief: `@sprint-md/S26-BRIEF-full-app-human-practical-testing.md`
-Status: pending S23-S25
+Status: complete on `v1.1.0/heirright-contract-completion-s26-s27`; see `docs/run-point-daily/2026-06-29-s26-s27-completion.md`
 
 Child tracks:
 
@@ -1092,6 +1092,14 @@ Acceptance:
 - Google/Podio status is proved or exactly blocked.
 - IDI duplicate blocking is verified without rerunning paid IDI after proof exists.
 - Defects are routed back to S23/S24/S25 by owner.
+
+Completion proof:
+
+- Production app practical test passed on `https://heirright-landing-demo.vercel.app`.
+- Defects found during S26 were fixed and redeployed: artifact API guardrails, closed rail hit testing, fresh-lead blocker copy, DocPrep estate labels, and mobile export-menu overflow.
+- Fresh lead generation is available as a guarded capability and fails closed until `HEIRRIGHT_WORKER_URL` or `WORKER_API_URL` is configured.
+- IDI path was exercised through operator import with `paidRun: false`; duplicate blocking was verified without triggering another paid IDI Core run.
+- Google/Podio live routes fail closed with exact missing credential/config blockers; no unapproved live write was performed.
 
 Validation:
 
@@ -1112,7 +1120,7 @@ pnpm build
 Owner: Human reviewer + Codex Automation
 Milestone: UX AND PRODUCT LOOP HUMAN REVIEW
 Brief: `@sprint-md/S27-BRIEF-ux-product-loop-human-review.md`
-Status: pending S26
+Status: complete as final review packet; external signoffs remain tracked below
 
 Child tracks:
 
@@ -1128,6 +1136,13 @@ Acceptance:
 - TP annotations are incorporated into follow-up issues or acceptance notes after this planning pass.
 - Google Sheets, Podio, IDI, website, DocPrep, and outreach statuses are backed by proof or exact blockers.
 - No new feature work is introduced unless S26 found a launch-blocking defect.
+
+Final packet:
+
+- Contract objective is implementation-complete for app code, website/legal pages, guarded outreach prep, and integration onboarding.
+- Remaining external decisions: closing-template legal/client approval, outreach compliance approval, SMS provider/Podio-native SMS decision, Google/Podio credential owner plus one controlled readback, optional `heirright.com` migration, and timing for fresh lead generation activation.
+- IDI Core remains locked: it is expensive per run, was not rerun in S26/S27, and should only receive one explicitly approved paid Asset Discovery proof if still required.
+- Evidence file: `docs/run-point-daily/2026-06-29-s26-s27-completion.md`.
 
 Validation:
 
