@@ -135,6 +135,52 @@
         inset 0 -1px 0 color-mix(in srgb, black 30%, transparent);
     }
 
+    body[data-surface-system="fluid-functionalism"] {
+      --page: #17181b;
+      --page-2: #17181b;
+      --surface-flat: #17181b;
+      --surface-lift: #1b1c20;
+      --surface-row: rgba(255, 255, 255, .044);
+      --surface-row-strong: rgba(255, 255, 255, .074);
+      --surface-1: #17181b;
+      --surface-2: #1b1c20;
+      --surface-3: #202127;
+      --surface-4: #252730;
+      --surface-5: #2b2e38;
+      --surface-6: #323641;
+      --surface-7: #3a3f4c;
+      --surface-8: #444957;
+      --surface-highlight-base: rgba(255, 255, 255, .014);
+      --surface-highlight-mid: rgba(255, 255, 255, .027);
+      --surface-highlight-high: rgba(255, 255, 255, .046);
+      --surface-ring-base: rgba(235, 235, 245, .095);
+      --surface-ring-mid: rgba(235, 235, 245, .155);
+      --surface-ring-high: rgba(235, 235, 245, .235);
+      --surface-drop: rgba(0, 0, 0, .34);
+      --shadow-1: inset 0 0 0 1px var(--surface-ring-base), 0 8px 18px rgba(0,0,0,.16);
+      --shadow-2: inset 0 1px 0 0 var(--surface-highlight-base), inset 0 0 0 1px var(--surface-ring-base), 0 14px 28px rgba(0,0,0,.22);
+      --shadow-3: inset 0 1px 0 0 var(--surface-highlight-mid), inset 0 0 0 1px var(--surface-ring-base), 0 0 0 1px rgba(0,0,0,.18), 0 16px 34px rgba(0,0,0,.28);
+      --shadow-4: inset 0 1px 0 0 var(--surface-highlight-mid), inset 0 0 0 1px var(--surface-ring-mid), 0 0 0 1px rgba(0,0,0,.22), 0 20px 42px rgba(0,0,0,.32);
+      --shadow-5: inset 0 1px 0 0 var(--surface-highlight-high), inset 0 0 0 1px var(--surface-ring-mid), 0 0 0 1px rgba(0,0,0,.26), 0 24px 52px rgba(0,0,0,.38);
+      --shadow-6: inset 0 1px 0 0 var(--surface-highlight-high), inset 0 0 0 1px var(--surface-ring-high), 0 0 0 1px rgba(0,0,0,.30), 0 28px 64px rgba(0,0,0,.46);
+      --shadow-7: inset 0 1px 0 0 rgba(255,255,255,.056), inset 0 0 0 1px var(--surface-ring-high), 0 0 0 1px rgba(0,0,0,.34), 0 36px 84px rgba(0,0,0,.52);
+      --shadow-8: inset 0 1px 0 0 rgba(255,255,255,.064), inset 0 0 0 1px var(--surface-ring-high), 0 0 0 1px rgba(0,0,0,.38), 0 48px 112px rgba(0,0,0,.58);
+      --glass: rgba(27, 28, 32, .70);
+      --glass-strong: rgba(27, 28, 32, .90);
+      --glass-soft: rgba(27, 28, 32, .52);
+      --line: rgba(235, 235, 245, .105);
+      --line-strong: rgba(235, 235, 245, .19);
+      --ios-fill: rgba(235, 235, 245, .070);
+      --ios-fill-strong: rgba(235, 235, 245, .115);
+      --shell-surface: #17181b;
+      --shell-surface-glass: rgba(23, 24, 27, .84);
+      --shell-surface-soft: rgba(23, 24, 27, .62);
+      --solvys-lg-tint-source: var(--surface-2);
+      --solvys-lg-dark-plate: rgb(23 24 27);
+      --solvys-lg-control-bg: color-mix(in srgb, var(--solvys-lg-dark-plate) 74%, transparent);
+      --solvys-lg-control-hover-bg: color-mix(in srgb, var(--solvys-lg-dark-plate) 86%, transparent);
+    }
+
     :root[data-solvys-liquid-glass="off"] {
       --solvys-lg-bg: var(--glass);
       --solvys-lg-border: var(--line);
@@ -6362,373 +6408,266 @@
       color: #787878;
     }
 
-    #dashboardView,
-    #dripsView,
-    #queueView,
-    #adminView,
-    #settingsView,
-    body[data-theme] #dashboardView,
-    body[data-theme] #dripsView,
-    body[data-theme] #queueView,
-    body[data-theme] #adminView,
-    body[data-theme] #settingsView {
-      background: #202124;
-      background-color: #202124;
+    html:has(body[data-surface-system="fluid-functionalism"]),
+    html:has(> body[data-surface-system="fluid-functionalism"]),
+    body[data-surface-system="fluid-functionalism"] {
+      background: var(--surface-1);
+      background-color: var(--surface-1);
     }
 
-    #dashboardView .loop-panel,
-    #dripsView .loop-panel,
-    #queueView .loop-panel,
-    #adminView .loop-panel,
-    #settingsView .loop-panel,
-    .dossier-list-panel,
-    .dossier-reader-panel,
-    body[data-theme] #dashboardView .loop-panel,
-    body[data-theme] #dripsView .loop-panel,
-    body[data-theme] #queueView .loop-panel,
-    body[data-theme] #adminView .loop-panel,
-    body[data-theme] #settingsView .loop-panel,
-    body[data-theme] .dossier-list-panel,
-    body[data-theme] .dossier-reader-panel {
+    body[data-surface-system="fluid-functionalism"] #dashboardView,
+    body[data-surface-system="fluid-functionalism"] #dripsView,
+    body[data-surface-system="fluid-functionalism"] #queueView,
+    body[data-surface-system="fluid-functionalism"] #adminView,
+    body[data-surface-system="fluid-functionalism"] #settingsView {
+      background: var(--surface-1);
+      background-color: var(--surface-1);
+    }
+
+    body[data-surface-system="fluid-functionalism"] #dashboardView .loop-panel,
+    body[data-surface-system="fluid-functionalism"] #dripsView .loop-panel,
+    body[data-surface-system="fluid-functionalism"] #queueView .loop-panel,
+    body[data-surface-system="fluid-functionalism"] #adminView .loop-panel,
+    body[data-surface-system="fluid-functionalism"] #settingsView .loop-panel,
+    body[data-surface-system="fluid-functionalism"] .dossier-list-panel,
+    body[data-surface-system="fluid-functionalism"] .dossier-reader-panel {
       color: var(--text);
-      background: #202124;
-      background-color: #202124;
-      border-color: rgba(235,235,245,.08);
+      background: var(--surface-2);
+      background-color: var(--surface-2);
+      border-color: var(--surface-ring-base);
       border-radius: 16px;
-      box-shadow: none;
+      box-shadow: var(--shadow-3);
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
     }
 
-    #dashboardView .tracker-item,
-    #dashboardView .drip-item,
-    #dripsView .drip-item,
-    #queueView .queue-item,
-    body[data-theme] #dashboardView .tracker-item,
-    body[data-theme] #dashboardView .drip-item,
-    body[data-theme] #dripsView .drip-item,
-    body[data-theme] #queueView .queue-item {
+    body[data-surface-system="fluid-functionalism"] #dashboardView .tracker-item,
+    body[data-surface-system="fluid-functionalism"] #dashboardView .drip-item,
+    body[data-surface-system="fluid-functionalism"] #dripsView .drip-item,
+    body[data-surface-system="fluid-functionalism"] #queueView .queue-item {
       background: transparent;
       background-color: transparent;
       border-color: transparent;
     }
 
-    #dripsView .setting-card,
-    #settingsView .setting-card,
-    body[data-theme] #dripsView .setting-card,
-    body[data-theme] #settingsView .setting-card {
-      background: #202124;
-      background-color: #202124;
-      border-color: rgba(235,235,245,.08);
-      box-shadow: none;
+    body[data-surface-system="fluid-functionalism"] #dripsView .setting-card,
+    body[data-surface-system="fluid-functionalism"] #settingsView .setting-card {
+      background: var(--surface-2);
+      background-color: var(--surface-2);
+      border-color: var(--surface-ring-base);
+      box-shadow: var(--shadow-3);
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
     }
 
-    #dashboardView .suggestion-chip,
-    body[data-theme] #dashboardView .suggestion-chip {
+    body[data-surface-system="fluid-functionalism"] #dashboardView .suggestion-chip {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.016)),
-        rgba(32,33,36,.86);
-      background-color: #202124;
-      border-color: rgba(235,235,245,.105);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.07);
+        linear-gradient(180deg, rgba(255,255,255,.034), rgba(255,255,255,.010)),
+        var(--surface-2);
+      background-color: var(--surface-2);
+      border-color: var(--surface-ring-base);
+      box-shadow: var(--shadow-2);
       backdrop-filter: blur(14px) saturate(1.04);
       -webkit-backdrop-filter: blur(14px) saturate(1.04);
     }
 
-    #dashboardView .suggestion-chip:hover,
-    #dashboardView .suggestion-chip:focus-visible,
-    body[data-theme] #dashboardView .suggestion-chip:hover,
-    body[data-theme] #dashboardView .suggestion-chip:focus-visible {
+    body[data-surface-system="fluid-functionalism"] #dashboardView .suggestion-chip:hover,
+    body[data-surface-system="fluid-functionalism"] #dashboardView .suggestion-chip:focus-visible {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.068), rgba(255,255,255,.022)),
-        rgba(32,33,36,.92);
-      background-color: #202124;
-      border-color: rgba(235,235,245,.16);
+        linear-gradient(180deg, rgba(255,255,255,.046), rgba(255,255,255,.014)),
+        var(--surface-3);
+      background-color: var(--surface-3);
+      border-color: var(--surface-ring-mid);
       outline: 0;
     }
 
-    .topbar .search-control.solvys-liquid-glass,
-    body[data-theme] .topbar .search-control.solvys-liquid-glass {
-      --solvys-lg-tint-source: rgb(32 33 36);
-      --solvys-lg-rim-source: rgba(235, 235, 245, .24);
-      background: rgba(32,33,36,.78);
-      border-color: rgba(235,235,245,.18);
+    body[data-surface-system="fluid-functionalism"] .topbar .search-control.solvys-liquid-glass {
+      --solvys-lg-tint-source: rgb(23 24 27);
+      --solvys-lg-rim-source: rgba(235, 235, 245, .22);
+      background: rgba(23,24,27,.82);
+      border-color: var(--surface-ring-mid);
     }
 
-    .workspace,
-    .app,
-    .sidebar,
-    .topbar,
-    .content,
-    .workbench,
-    .loop-view,
-    .results,
-    .filters,
-    .statusbar,
-    body[data-theme] .workspace,
-    body[data-theme] .app,
-    body[data-theme] .sidebar,
-    body[data-theme] .topbar,
-    body[data-theme] .content,
-    body[data-theme] .workbench,
-    body[data-theme] .loop-view,
-    body[data-theme] .results,
-    body[data-theme] .filters,
-    body[data-theme] .statusbar {
+    body[data-surface-system="fluid-functionalism"] .workspace,
+    body[data-surface-system="fluid-functionalism"] .app,
+    body[data-surface-system="fluid-functionalism"] .sidebar,
+    body[data-surface-system="fluid-functionalism"] .topbar,
+    body[data-surface-system="fluid-functionalism"] .content,
+    body[data-surface-system="fluid-functionalism"] .workbench,
+    body[data-surface-system="fluid-functionalism"] .loop-view,
+    body[data-surface-system="fluid-functionalism"] .results,
+    body[data-surface-system="fluid-functionalism"] .filters,
+    body[data-surface-system="fluid-functionalism"] .statusbar {
       background: var(--surface-1);
       background-color: var(--surface-1);
     }
 
-    .search-control,
-    .import-split,
-    .quick-actions,
-    .composer-actions,
-    .connection-statuses,
-    .theme-strip,
-    .account-chip,
-    .brand-mark,
-    .avatar,
-    body[data-theme] .search-control,
-    body[data-theme] .import-split,
-    body[data-theme] .quick-actions,
-    body[data-theme] .composer-actions,
-    body[data-theme] .connection-statuses,
-    body[data-theme] .theme-strip,
-    body[data-theme] .account-chip,
-    body[data-theme] .brand-mark,
-    body[data-theme] .avatar {
+    body[data-surface-system="fluid-functionalism"] .search-control,
+    body[data-surface-system="fluid-functionalism"] .import-split,
+    body[data-surface-system="fluid-functionalism"] .quick-actions,
+    body[data-surface-system="fluid-functionalism"] .composer-actions,
+    body[data-surface-system="fluid-functionalism"] .connection-statuses,
+    body[data-surface-system="fluid-functionalism"] .theme-strip,
+    body[data-surface-system="fluid-functionalism"] .account-chip,
+    body[data-surface-system="fluid-functionalism"] .brand-mark,
+    body[data-surface-system="fluid-functionalism"] .avatar {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.036), rgba(255,255,255,.012)),
+        linear-gradient(180deg, rgba(255,255,255,.024), rgba(255,255,255,.008)),
         var(--surface-2);
       border-color: var(--surface-ring-base);
       box-shadow: var(--shadow-1);
     }
 
-    .loop-panel,
-    .glass-card,
-    .setting-card,
-    .runtime-card,
-    .admin-metric,
-    .connection-card,
-    .dossier-list-panel,
-    .dossier-reader-panel,
-    .document-prep-shell,
-    .attention-card,
-    .library-summary,
-    .process-folder-card,
-    body[data-theme] .loop-panel,
-    body[data-theme] .glass-card,
-    body[data-theme] .setting-card,
-    body[data-theme] .runtime-card,
-    body[data-theme] .admin-metric,
-    body[data-theme] .connection-card,
-    body[data-theme] .dossier-list-panel,
-    body[data-theme] .dossier-reader-panel,
-    body[data-theme] .document-prep-shell,
-    body[data-theme] .attention-card,
-    body[data-theme] .library-summary,
-    body[data-theme] .process-folder-card {
+    body[data-surface-system="fluid-functionalism"] .loop-panel,
+    body[data-surface-system="fluid-functionalism"] .glass-card,
+    body[data-surface-system="fluid-functionalism"] .setting-card,
+    body[data-surface-system="fluid-functionalism"] .runtime-card,
+    body[data-surface-system="fluid-functionalism"] .admin-metric,
+    body[data-surface-system="fluid-functionalism"] .connection-card,
+    body[data-surface-system="fluid-functionalism"] .dossier-list-panel,
+    body[data-surface-system="fluid-functionalism"] .dossier-reader-panel,
+    body[data-surface-system="fluid-functionalism"] .document-prep-shell,
+    body[data-surface-system="fluid-functionalism"] .attention-card,
+    body[data-surface-system="fluid-functionalism"] .library-summary,
+    body[data-surface-system="fluid-functionalism"] .process-folder-card {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.044), rgba(255,255,255,.014)),
+        linear-gradient(180deg, rgba(255,255,255,.030), rgba(255,255,255,.009)),
         var(--surface-2);
       border-color: var(--surface-ring-base);
-      box-shadow: var(--shadow-1);
+      box-shadow: var(--shadow-3);
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
     }
 
-    .process-folder-card::before,
-    .process-folder-card::after,
-    body[data-theme] .process-folder-card::before,
-    body[data-theme] .process-folder-card::after {
+    body[data-surface-system="fluid-functionalism"] .process-folder-card::before,
+    body[data-surface-system="fluid-functionalism"] .process-folder-card::after {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.018)),
+        linear-gradient(180deg, rgba(255,255,255,.034), rgba(255,255,255,.011)),
         var(--surface-3);
       border-color: var(--surface-ring-base);
     }
 
-    .folder-doc-stack span,
-    .template-preview-box,
-    .template-body-card,
-    .template-required-card,
-    body[data-theme] .folder-doc-stack span,
-    body[data-theme] .template-preview-box,
-    body[data-theme] .template-body-card,
-    body[data-theme] .template-required-card {
+    body[data-surface-system="fluid-functionalism"] .folder-doc-stack span,
+    body[data-surface-system="fluid-functionalism"] .template-preview-box,
+    body[data-surface-system="fluid-functionalism"] .template-body-card,
+    body[data-surface-system="fluid-functionalism"] .template-required-card {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.048), rgba(255,255,255,.016)),
+        linear-gradient(180deg, rgba(255,255,255,.032), rgba(255,255,255,.010)),
         var(--surface-3);
       border-color: var(--surface-ring-base);
-      box-shadow: var(--shadow-1);
-    }
-
-    .document-panel-head,
-    .process-side-head,
-    .process-side,
-    .document-filter-tabs,
-    .document-requirement,
-    .doc-flow-tab,
-    .process-template-card,
-    .file-control-box,
-    .file-drop-icon,
-    .document-type-pill,
-    .process-tag,
-    body[data-theme] .document-panel-head,
-    body[data-theme] .process-side-head,
-    body[data-theme] .process-side,
-    body[data-theme] .document-filter-tabs,
-    body[data-theme] .document-requirement,
-    body[data-theme] .doc-flow-tab,
-    body[data-theme] .process-template-card,
-    body[data-theme] .file-control-box,
-    body[data-theme] .file-drop-icon,
-    body[data-theme] .document-type-pill,
-    body[data-theme] .process-tag {
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.050), rgba(255,255,255,.017)),
-        var(--surface-3);
-      border-color: var(--surface-ring-base);
-      box-shadow: var(--shadow-1);
-    }
-
-    .document-requirement.is-linked,
-    .document-filter-tabs button[aria-pressed="true"],
-    .campaign-item.is-selected,
-    .template-list-item.is-selected,
-    body[data-theme] .document-requirement.is-linked,
-    body[data-theme] .document-filter-tabs button[aria-pressed="true"],
-    body[data-theme] .campaign-item.is-selected,
-    body[data-theme] .template-list-item.is-selected {
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.062), rgba(255,255,255,.022)),
-        var(--surface-4);
-      border-color: var(--surface-ring-mid);
       box-shadow: var(--shadow-2);
     }
 
-    .doc-flow-tab,
-    body[data-theme] .doc-flow-tab {
+    body[data-surface-system="fluid-functionalism"] .document-panel-head,
+    body[data-surface-system="fluid-functionalism"] .process-side-head,
+    body[data-surface-system="fluid-functionalism"] .process-side,
+    body[data-surface-system="fluid-functionalism"] .document-filter-tabs,
+    body[data-surface-system="fluid-functionalism"] .document-requirement,
+    body[data-surface-system="fluid-functionalism"] .doc-flow-tab,
+    body[data-surface-system="fluid-functionalism"] .process-template-card,
+    body[data-surface-system="fluid-functionalism"] .file-control-box,
+    body[data-surface-system="fluid-functionalism"] .file-drop-icon,
+    body[data-surface-system="fluid-functionalism"] .document-type-pill,
+    body[data-surface-system="fluid-functionalism"] .process-tag {
       background:
         linear-gradient(180deg, rgba(255,255,255,.034), rgba(255,255,255,.010)),
+        var(--surface-3);
+      border-color: var(--surface-ring-base);
+      box-shadow: var(--shadow-2);
+    }
+
+    body[data-surface-system="fluid-functionalism"] .document-requirement.is-linked,
+    body[data-surface-system="fluid-functionalism"] .document-filter-tabs button[aria-pressed="true"],
+    body[data-surface-system="fluid-functionalism"] .campaign-item.is-selected,
+    body[data-surface-system="fluid-functionalism"] .template-list-item.is-selected {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.044), rgba(255,255,255,.014)),
+        var(--surface-4);
+      border-color: var(--surface-ring-mid);
+      box-shadow: var(--shadow-3);
+    }
+
+    body[data-surface-system="fluid-functionalism"] .doc-flow-tab {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.022), rgba(255,255,255,.007)),
         var(--surface-2);
       border-color: rgba(235,235,245,.09);
       box-shadow: var(--shadow-1);
     }
 
-    .doc-flow-tab[aria-pressed="true"],
-    body[data-theme] .doc-flow-tab[aria-pressed="true"] {
+    body[data-surface-system="fluid-functionalism"] .doc-flow-tab[aria-pressed="true"] {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.066), rgba(255,255,255,.022)),
+        linear-gradient(180deg, rgba(255,255,255,.046), rgba(255,255,255,.014)),
         var(--surface-3);
       border-color: rgba(142,200,255,.34);
-      box-shadow: var(--shadow-2);
+      box-shadow: var(--shadow-3);
     }
 
-    .document-modal,
-    .outreach-template-modal,
-    .outreach-toast,
-    .import-popover,
-    .export-popover,
-    .shell-info-popover,
-    .headless-menu,
-    .select-menu,
-    .template-attachment-popover,
-    body[data-theme] .document-modal,
-    body[data-theme] .outreach-template-modal,
-    body[data-theme] .outreach-toast,
-    body[data-theme] .import-popover,
-    body[data-theme] .export-popover,
-    body[data-theme] .shell-info-popover,
-    body[data-theme] .headless-menu,
-    body[data-theme] .select-menu,
-    body[data-theme] .template-attachment-popover {
+    body[data-surface-system="fluid-functionalism"] .document-modal,
+    body[data-surface-system="fluid-functionalism"] .outreach-template-modal,
+    body[data-surface-system="fluid-functionalism"] .outreach-toast,
+    body[data-surface-system="fluid-functionalism"] .import-popover,
+    body[data-surface-system="fluid-functionalism"] .export-popover,
+    body[data-surface-system="fluid-functionalism"] .shell-info-popover,
+    body[data-surface-system="fluid-functionalism"] .headless-menu,
+    body[data-surface-system="fluid-functionalism"] .select-menu,
+    body[data-surface-system="fluid-functionalism"] .template-attachment-popover {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.070), rgba(255,255,255,.026)),
+        linear-gradient(180deg, rgba(255,255,255,.050), rgba(255,255,255,.016)),
         var(--surface-5);
       border-color: var(--surface-ring-mid);
-      box-shadow: var(--shadow-5);
+      box-shadow: var(--shadow-6);
       backdrop-filter: blur(20px) saturate(1.06);
       -webkit-backdrop-filter: blur(20px) saturate(1.06);
     }
 
-    .document-modal-head,
-    .document-modal-foot,
-    .outreach-modal-head,
-    .outreach-modal-foot,
-    .template-body-head,
-    body[data-theme] .document-modal-head,
-    body[data-theme] .document-modal-foot,
-    body[data-theme] .outreach-modal-head,
-    body[data-theme] .outreach-modal-foot,
-    body[data-theme] .template-body-head {
+    body[data-surface-system="fluid-functionalism"] .document-modal-head,
+    body[data-surface-system="fluid-functionalism"] .document-modal-foot,
+    body[data-surface-system="fluid-functionalism"] .outreach-modal-head,
+    body[data-surface-system="fluid-functionalism"] .outreach-modal-foot,
+    body[data-surface-system="fluid-functionalism"] .template-body-head {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.080), rgba(255,255,255,.026)),
+        linear-gradient(180deg, rgba(255,255,255,.056), rgba(255,255,255,.017)),
         var(--surface-6);
       border-color: var(--surface-ring-mid);
     }
 
-    .import-option:hover,
-    .import-option:focus-visible,
-    .export-option:hover,
-    .export-option:focus-visible,
-    .headless-menu button:hover,
-    .headless-menu button:focus-visible,
-    .headless-menu button[data-active="true"],
-    .select-option:hover,
-    .select-option[aria-selected="true"],
-    body[data-theme] .import-option:hover,
-    body[data-theme] .import-option:focus-visible,
-    body[data-theme] .export-option:hover,
-    body[data-theme] .export-option:focus-visible,
-    body[data-theme] .headless-menu button:hover,
-    body[data-theme] .headless-menu button:focus-visible,
-    body[data-theme] .headless-menu button[data-active="true"],
-    body[data-theme] .select-option:hover,
-    body[data-theme] .select-option[aria-selected="true"] {
+    body[data-surface-system="fluid-functionalism"] .import-option:hover,
+    body[data-surface-system="fluid-functionalism"] .import-option:focus-visible,
+    body[data-surface-system="fluid-functionalism"] .export-option:hover,
+    body[data-surface-system="fluid-functionalism"] .export-option:focus-visible,
+    body[data-surface-system="fluid-functionalism"] .headless-menu button:hover,
+    body[data-surface-system="fluid-functionalism"] .headless-menu button:focus-visible,
+    body[data-surface-system="fluid-functionalism"] .headless-menu button[data-active="true"],
+    body[data-surface-system="fluid-functionalism"] .select-option:hover,
+    body[data-surface-system="fluid-functionalism"] .select-option[aria-selected="true"] {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.060), rgba(255,255,255,.020)),
+        linear-gradient(180deg, rgba(255,255,255,.044), rgba(255,255,255,.014)),
         var(--surface-6);
       border-color: transparent;
     }
 
-    .field select,
-    .field input:not([type="checkbox"]),
-    .field textarea,
-    .setting-card select,
-    .setting-card input[type="text"],
-    .discovery-notes,
-    .crm-import-grid textarea,
-    .approval-row input,
-    .approval-row select,
-    .template-field input,
-    .template-field select,
-    .template-field textarea,
-    .template-body-editor textarea,
-    body[data-theme] .field select,
-    body[data-theme] .field input:not([type="checkbox"]),
-    body[data-theme] .field textarea,
-    body[data-theme] .setting-card select,
-    body[data-theme] .setting-card input[type="text"],
-    body[data-theme] .discovery-notes,
-    body[data-theme] .crm-import-grid textarea,
-    body[data-theme] .approval-row input,
-    body[data-theme] .approval-row select,
-    body[data-theme] .template-field input,
-    body[data-theme] .template-field select,
-    body[data-theme] .template-field textarea,
-    body[data-theme] .template-body-editor textarea {
+    body[data-surface-system="fluid-functionalism"] .field select,
+    body[data-surface-system="fluid-functionalism"] .field input:not([type="checkbox"]),
+    body[data-surface-system="fluid-functionalism"] .field textarea,
+    body[data-surface-system="fluid-functionalism"] .setting-card select,
+    body[data-surface-system="fluid-functionalism"] .setting-card input[type="text"],
+    body[data-surface-system="fluid-functionalism"] .discovery-notes,
+    body[data-surface-system="fluid-functionalism"] .crm-import-grid textarea,
+    body[data-surface-system="fluid-functionalism"] .approval-row input,
+    body[data-surface-system="fluid-functionalism"] .approval-row select,
+    body[data-surface-system="fluid-functionalism"] .template-field input,
+    body[data-surface-system="fluid-functionalism"] .template-field select,
+    body[data-surface-system="fluid-functionalism"] .template-field textarea,
+    body[data-surface-system="fluid-functionalism"] .template-body-editor textarea {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.034), rgba(255,255,255,.012)),
+        linear-gradient(180deg, rgba(255,255,255,.024), rgba(255,255,255,.008)),
         var(--surface-3);
       border-color: var(--surface-ring-base);
       box-shadow: var(--shadow-1);
     }
 
-    .next-link,
-    body[data-theme] .next-link,
-    body[data-theme="dark"] .next-link {
+    body[data-surface-system="fluid-functionalism"] .next-link {
       min-width: 74px;
       color: #f8fbff;
       background:
@@ -6742,12 +6681,8 @@
       text-shadow: 0 1px 1px rgba(0,0,0,.20);
     }
 
-    .next-link:hover,
-    .next-link:focus-visible,
-    body[data-theme] .next-link:hover,
-    body[data-theme] .next-link:focus-visible,
-    body[data-theme="dark"] .next-link:hover,
-    body[data-theme="dark"] .next-link:focus-visible {
+    body[data-surface-system="fluid-functionalism"] .next-link:hover,
+    body[data-surface-system="fluid-functionalism"] .next-link:focus-visible {
       color: #fff;
       background:
         linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,.075)),
