@@ -181,7 +181,8 @@
       --solvys-lg-control-hover-bg: color-mix(in srgb, var(--solvys-lg-dark-plate) 86%, transparent);
     }
 
-    :root[data-solvys-liquid-glass="off"] {
+    :root[data-solvys-liquid-glass="off"],
+    :root[data-solvys-liquid-glass="off"] body {
       --solvys-lg-bg: var(--glass);
       --solvys-lg-border: var(--line);
       --solvys-lg-backdrop-filter: none;
@@ -6603,6 +6604,81 @@
       box-shadow: var(--shadow-3);
     }
 
+    body[data-surface-system="fluid-functionalism"] .nav-item.is-active,
+    body[data-surface-system="fluid-functionalism"] .doc-flow-tab[aria-pressed="true"],
+    body[data-surface-system="fluid-functionalism"] .document-filter-tabs button[aria-pressed="true"],
+    body[data-surface-system="fluid-functionalism"] .rail-tab[aria-pressed="true"],
+    body[data-surface-system="fluid-functionalism"] .loop-tab[aria-pressed="true"],
+    body[data-surface-system="fluid-functionalism"] .template-channel-switch button[aria-pressed="true"],
+    body[data-surface-system="fluid-functionalism"] .theme-option[aria-pressed="true"] {
+      --solvys-lg-tint-source: var(--surface-4);
+      --solvys-lg-rim-source: rgba(142, 200, 255, .44);
+      --solvys-lg-bg: color-mix(in srgb, var(--surface-4) 76%, transparent);
+      --solvys-lg-border: color-mix(in srgb, rgba(142, 200, 255, .58) 72%, var(--surface-ring-mid));
+      --solvys-selected-glass-shadow: var(--shadow-4), var(--solvys-lg-shadow);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.060), rgba(255,255,255,.018)),
+        var(--solvys-lg-bg);
+      border-color: var(--solvys-lg-border);
+      box-shadow: var(--solvys-selected-glass-shadow);
+      backdrop-filter: var(--solvys-lg-backdrop-filter);
+      -webkit-backdrop-filter: var(--solvys-lg-backdrop-filter);
+    }
+
+    :root[data-solvys-liquid-glass="off"] body[data-surface-system="fluid-functionalism"] .nav-item.is-active,
+    :root[data-solvys-liquid-glass="off"] body[data-surface-system="fluid-functionalism"] .doc-flow-tab[aria-pressed="true"],
+    :root[data-solvys-liquid-glass="off"] body[data-surface-system="fluid-functionalism"] .document-filter-tabs button[aria-pressed="true"],
+    :root[data-solvys-liquid-glass="off"] body[data-surface-system="fluid-functionalism"] .rail-tab[aria-pressed="true"],
+    :root[data-solvys-liquid-glass="off"] body[data-surface-system="fluid-functionalism"] .loop-tab[aria-pressed="true"],
+    :root[data-solvys-liquid-glass="off"] body[data-surface-system="fluid-functionalism"] .template-channel-switch button[aria-pressed="true"],
+    :root[data-solvys-liquid-glass="off"] body[data-surface-system="fluid-functionalism"] .theme-option[aria-pressed="true"] {
+      --solvys-selected-glass-shadow: var(--shadow-4);
+    }
+
+    body[data-surface-system="fluid-functionalism"] .nav-item.is-active::before,
+    body[data-surface-system="fluid-functionalism"] .doc-flow-tab[aria-pressed="true"]::before,
+    body[data-surface-system="fluid-functionalism"] .document-filter-tabs button[aria-pressed="true"]::before,
+    body[data-surface-system="fluid-functionalism"] .rail-tab[aria-pressed="true"]::before,
+    body[data-surface-system="fluid-functionalism"] .loop-tab[aria-pressed="true"]::before,
+    body[data-surface-system="fluid-functionalism"] .template-channel-switch button[aria-pressed="true"]::before,
+    body[data-surface-system="fluid-functionalism"] .theme-option[aria-pressed="true"]::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      border-radius: inherit;
+      padding: 1.2px;
+      pointer-events: none;
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, .48) 0%,
+        rgba(255, 255, 255, .16) 24%,
+        transparent 46%,
+        transparent 58%,
+        rgba(142, 200, 255, .14) 82%,
+        rgba(142, 200, 255, .42) 100%
+      );
+      -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+
+    body[data-surface-system="fluid-functionalism"] .nav-item.is-active > *,
+    body[data-surface-system="fluid-functionalism"] .doc-flow-tab[aria-pressed="true"] > *,
+    body[data-surface-system="fluid-functionalism"] .document-filter-tabs button[aria-pressed="true"] > *,
+    body[data-surface-system="fluid-functionalism"] .rail-tab[aria-pressed="true"] > *,
+    body[data-surface-system="fluid-functionalism"] .loop-tab[aria-pressed="true"] > *,
+    body[data-surface-system="fluid-functionalism"] .template-channel-switch button[aria-pressed="true"] > *,
+    body[data-surface-system="fluid-functionalism"] .theme-option[aria-pressed="true"] > * {
+      position: relative;
+      z-index: 2;
+    }
+
     body[data-surface-system="fluid-functionalism"] .document-modal,
     body[data-surface-system="fluid-functionalism"] .outreach-template-modal,
     body[data-surface-system="fluid-functionalism"] .outreach-toast,
@@ -7075,7 +7151,7 @@
                 <option value="5">5</option>
               </select>
             </div>
-            <button id="freshBatch" class="btn primary source-pull-button" type="button" aria-busy="false">
+            <button id="freshBatch" class="btn primary solvys-liquid-glass source-pull-button" type="button" aria-busy="false">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M18.5 9A7 7 0 0 0 6.2 6.7L4 11m16 2-2.2 4.3A7 7 0 0 1 5.5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
               Pull fresh leads
             </button>
@@ -12526,7 +12602,7 @@ function renderQueueView() {
   target.innerHTML = `
     <div class="queue-layout">
       <section class="loop-panel queue-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch handoff prep</h2></div><button class="btn primary" type="button" data-queue-stage ${items.length ? "" : "disabled"}>Stage batch</button></div>
+        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch handoff prep</h2></div><button class="btn primary solvys-liquid-glass" type="button" data-queue-stage ${items.length ? "" : "disabled"}>Stage batch</button></div>
         <p class="copy">Use this queue after dossier review to stage the documents, CRM fields, and spreadsheet row as one batch. Nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
         <ul class="queue-list">
           ${items.map((item, index) => `<li class="queue-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Estate Search and select leads before staging a batch.</span></li>`}
