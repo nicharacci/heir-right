@@ -32,6 +32,7 @@ const sessionTtlSeconds = Number(process.env.AUTH_SESSION_TTL_SECONDS || 60 * 60
 const localIdiRuns = new Map();
 const localSourceCaptures = new Map();
 const localContactReviews = new Map();
+const localClientState = new Map();
 
 function firstExistingPath(...paths) {
   return paths.find((path) => existsSync(path));
@@ -161,6 +162,21 @@ function sendJson(res, status, body, headers = {}) {
 function sendHtml(res, status, body, headers = {}) {
   res.writeHead(status, { "content-type": "text/html; charset=utf-8", ...headers });
   res.end(body);
+}
+
+function readRequestBody(req, maxBytes = 1_000_000) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > maxBytes) {
+        reject(new Error("Request body is too large."));
+        req.destroy();
+      }
+    });
+    req.on("end", () => resolve(body));
+    req.on("error", reject);
+  });
 }
 
 function escapeHtml(value) {
@@ -762,6 +778,29 @@ function handleRequest(req, res) {
       return;
     }
     sendHtml(res, 401, loginPage(req));
+    return;
+  }
+
+  if (url.pathname.startsWith("/local-state/")) {
+    const key = decodeURIComponent(url.pathname.slice("/local-state/".length));
+    if (!key || key.length > 160) {
+      sendJson(res, 400, { ok: false, error: "invalid_state_key" });
+      return;
+    }
+    if (req.method === "GET") {
+      sendJson(res, 200, { ok: true, key, value: localClientState.get(key) ?? null }, { "cache-control": "no-store" });
+      return;
+    }
+    if (req.method === "POST") {
+      readRequestBody(req)
+        .then((body) => {
+          localClientState.set(key, body);
+          sendJson(res, 200, { ok: true, key, bytes: Buffer.byteLength(body) }, { "cache-control": "no-store" });
+        })
+        .catch((error) => sendJson(res, 413, { ok: false, error: error.message }));
+      return;
+    }
+    sendJson(res, 405, { ok: false, error: "method_not_allowed" });
     return;
   }
 

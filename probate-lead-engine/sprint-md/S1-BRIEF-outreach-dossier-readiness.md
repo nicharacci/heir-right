@@ -38,6 +38,11 @@ Operators can select a dossier and immediately understand what is done, what rem
 - Do not add a new component library, icon runtime, auth provider, animation system, or database unless the existing repo requires it.
 - Do not make the Dossiers section a full-width document workspace again; it stays list-plus-right-rail.
 - Do not silently bypass approval gates for live Podio writes.
+- Do not run IDI Core from Outreach, template preview, Podio sync, or retry behavior.
+
+## Strict IDI Core Advisory
+
+IDI Core is expensive per run. Outreach and Dossier readiness can consume accepted contact-review data, but they must not trigger enrichment. Do not add paid lookup retries, per-person searches, background enrichment, or any mutation to the verified Asset Discovery intake pipeline.
 
 ## Known Issues to Preserve
 

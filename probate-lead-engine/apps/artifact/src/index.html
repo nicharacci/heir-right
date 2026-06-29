@@ -1000,12 +1000,30 @@
     .import-plus {
       display: inline-grid;
       place-items: center;
-      width: 13px;
-      height: 13px;
+      position: relative;
+      flex: 0 0 14px;
+      width: 14px;
+      height: 14px;
       color: var(--text);
-      font-size: 18px;
-      font-weight: 620;
-      line-height: 1;
+      font-size: 0;
+      line-height: 0;
+    }
+
+    .import-plus::before,
+    .import-plus::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      transform: translate(-50%, -50%);
+    }
+
+    .import-plus::after {
+      transform: translate(-50%, -50%) rotate(90deg);
     }
 
     .import-split-menu {
@@ -1040,6 +1058,10 @@
 
     .import-popover[hidden] {
       display: none;
+    }
+
+    .import-popover.t-dropdown {
+      transform-origin: top right;
     }
 
     .import-option {
@@ -1165,6 +1187,24 @@
       font-weight: 720;
       transition: background .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease), transform .18s var(--ease);
       white-space: nowrap;
+    }
+
+    .btn.text-action {
+      min-height: 32px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      padding-inline: 6px;
+      color: var(--muted);
+    }
+
+    .btn.text-action:hover,
+    .btn.text-action:focus-visible {
+      border-color: transparent;
+      background: transparent;
+      color: var(--text);
+      box-shadow: none;
+      outline: 0;
     }
 
     .btn:hover {
@@ -1360,13 +1400,12 @@
     }
 
     .export-menu:not([data-open="true"]) .export-popover {
-      display: none;
+      opacity: 0;
+      pointer-events: none;
     }
 
     .export-menu[data-open="true"] .export-popover {
-      display: block;
       opacity: 1;
-      transform: translateY(0);
       pointer-events: auto;
     }
 
@@ -2261,20 +2300,20 @@
 
     .document-prep-shell {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+      grid-template-columns: minmax(0, 1fr) minmax(248px, 308px);
       min-height: 100%;
-      gap: 0;
-      border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
-      border-radius: 8px;
-      background: rgba(255,255,255,.36);
-      overflow: hidden;
+      gap: 12px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      overflow: visible;
     }
 
     .document-panel {
       min-width: 0;
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
-      border-right: 1px solid color-mix(in srgb, var(--line-strong) 68%, transparent);
+      gap: 10px;
     }
 
     .document-panel-head,
@@ -2284,9 +2323,11 @@
       align-items: start;
       justify-content: space-between;
       gap: 12px;
-      padding: 16px 18px;
-      border-bottom: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
-      background: rgba(255,255,255,.50);
+      padding: 12px 14px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+      border-radius: 12px;
+      background: rgba(255,255,255,.42);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.44), 0 12px 30px rgba(0,0,0,.10);
     }
 
     .document-progress-row {
@@ -2329,19 +2370,23 @@
       min-height: 0;
       overflow: auto;
       display: grid;
-      gap: 12px;
-      padding: 18px;
+      gap: 9px;
+      padding: 12px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+      border-radius: 14px;
+      background: rgba(255,255,255,.28);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.30);
     }
 
     .document-requirement {
       display: grid;
-      grid-template-columns: 70px minmax(0, 1fr) auto;
-      gap: 16px;
+      grid-template-columns: 56px minmax(0, 1fr) auto;
+      gap: 12px;
       align-items: center;
-      min-height: 86px;
-      padding: 14px;
+      min-height: 72px;
+      padding: 10px 12px;
       border: 1px dashed color-mix(in srgb, var(--line-strong) 84%, transparent);
-      border-radius: 8px;
+      border-radius: 10px;
       background: rgba(255,255,255,.42);
       color: var(--text);
     }
@@ -2352,8 +2397,8 @@
     }
 
     .file-drop-icon {
-      width: 54px;
-      height: 46px;
+      width: 46px;
+      height: 40px;
       display: grid;
       place-items: center;
       border: 1px dashed color-mix(in srgb, var(--line-strong) 90%, transparent);
@@ -2413,7 +2458,32 @@
       min-width: 0;
       display: grid;
       grid-template-rows: auto minmax(0, 1fr) auto;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+      border-radius: 16px;
       background: rgba(255,255,255,.34);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.36), 0 18px 42px rgba(0,0,0,.16);
+      overflow: hidden;
+    }
+
+    .process-side .process-side-head {
+      border: 0;
+      border-radius: 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+      box-shadow: none;
+    }
+
+    .process-side-title {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .process-side-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .process-side-body {
@@ -2421,14 +2491,14 @@
       overflow: auto;
       display: grid;
       align-content: start;
-      gap: 18px;
-      padding: 18px;
+      gap: 14px;
+      padding: 12px 14px 14px;
     }
 
     .process-facts {
       display: grid;
       gap: 10px;
-      padding-bottom: 18px;
+      padding-bottom: 14px;
       border-bottom: 1px dashed color-mix(in srgb, var(--line-strong) 64%, transparent);
     }
 
@@ -2468,7 +2538,7 @@
     .process-side-foot {
       display: grid;
       gap: 10px;
-      padding: 16px 18px;
+      padding: 12px 14px;
       border-top: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
     }
 
@@ -2743,6 +2813,15 @@
       color: var(--text);
     }
 
+    body[data-theme="dark"] .document-prep-shell,
+    body[data-surface-system="fluid-functionalism"] .document-prep-shell {
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
     @media (max-width: 1100px) {
       .attention-grid,
       .process-card-grid,
@@ -2766,6 +2845,7 @@
       }
 
       .doc-flow-selector,
+      .integration-onboarding,
       .crm-import-grid {
         grid-template-columns: 1fr;
       }
@@ -3546,6 +3626,15 @@
       font-size: 12px;
     }
 
+    .results-toolbar-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
     .results-count strong {
       color: var(--text);
       font-weight: 780;
@@ -3776,6 +3865,44 @@
       border-color: rgba(16,24,40,.12);
     }
 
+    .estate-next-stack {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .estate-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .estate-action {
+      min-height: 26px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 3px 2px;
+      font-size: 11px;
+      font-weight: 780;
+      cursor: pointer;
+    }
+
+    .estate-action:hover,
+    .estate-action:focus-visible {
+      color: var(--text);
+      outline: 0;
+    }
+
+    .estate-action.is-destructive:hover,
+    .estate-action.is-destructive:focus-visible {
+      color: var(--red);
+    }
+
     .results-footer {
       display: flex;
       align-items: center;
@@ -4004,6 +4131,72 @@
       gap: 6px;
     }
 
+    .integration-onboarding {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .integration-card {
+      min-width: 0;
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)),
+        rgba(32,33,36,.64);
+    }
+
+    .integration-card-head,
+    .integration-card-actions {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .integration-card h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .integration-steps {
+      display: grid;
+      gap: 7px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .integration-steps li {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .integration-steps li::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      margin-top: 5px;
+      border-radius: 999px;
+      background: var(--muted);
+      opacity: .58;
+    }
+
+    .integration-card[data-connected="true"] .integration-steps li::before {
+      background: var(--green);
+      opacity: 1;
+    }
+
     .setting-card select,
     .setting-card input[type="text"] {
       width: 100%;
@@ -4209,6 +4402,31 @@
       transition:
         transform var(--t-dropdown-close-dur) var(--t-dropdown-ease),
         opacity var(--t-dropdown-close-dur) var(--t-dropdown-ease);
+    }
+
+    .solvys-liquid-glass,
+    .solvys-liquid-glass-strong,
+    .loop-panel,
+    .glass-card,
+    .setting-card,
+    .runtime-card,
+    .connection-card,
+    .document-panel-head,
+    .document-list,
+    .document-requirement,
+    .process-side,
+    .process-side-head,
+    .doc-flow-tab,
+    .campaign-item,
+    .template-list-item,
+    .import-split,
+    .quick-actions,
+    .export-popover,
+    .import-popover,
+    .headless-menu {
+      transition-property: transform, opacity, background, background-color, border-color, box-shadow, color, filter;
+      transition-duration: .22s;
+      transition-timing-function: var(--ease-out);
     }
 
     body[data-theme="dark"] .select-button {
@@ -6604,6 +6822,14 @@
       box-shadow: var(--shadow-3);
     }
 
+    body[data-surface-system="fluid-functionalism"] .document-prep-shell {
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
     body[data-surface-system="fluid-functionalism"] .nav-item.is-active,
     body[data-surface-system="fluid-functionalism"] .doc-flow-tab[aria-pressed="true"],
     body[data-surface-system="fluid-functionalism"] .document-filter-tabs button[aria-pressed="true"],
@@ -7250,7 +7476,10 @@
           <section class="results" aria-label="Estate results">
             <div class="results-toolbar">
               <span id="resultsCount" class="results-count"><strong>0</strong> results</span>
-              <span id="selectionState">0 selected</span>
+              <span class="results-toolbar-actions">
+                <button id="estateArchiveToggle" class="btn text-action" type="button" aria-pressed="false">Archive</button>
+                <span id="selectionState">0 selected</span>
+              </span>
             </div>
             <div class="table-wrap">
               <table>
@@ -7538,6 +7767,7 @@ const state = {
     discovery: 0,
     "closing-docs": 0
   },
+  docPrepEstateState: {},
   discoveryOpen: false,
   discoveryPhaseIndex: 0,
   discoveryCompleted: new Set(),
@@ -7553,6 +7783,7 @@ const state = {
     action: "add"
   },
   crmImports: [],
+  showArchivedEstates: false,
   crmImportModal: {
     open: false,
     mode: "single",
@@ -7603,6 +7834,7 @@ const railNamesKey = "heirright:rail-names";
 const themeKey = "heirright:theme";
 const shellSettingsKey = "heirright:shell-settings";
 const discoveryStateKey = "heirright:discovery-workflow-state";
+const docPrepEstateStateKey = "heirright:docprep-estate-state";
 const crmImportStateKey = "heirright:crm-imported-estates";
 const sourceCaptureStateKey = "heirright:source-capture-state";
 const idiImportStateKey = "heirright:idi-asset-imports";
@@ -7611,6 +7843,15 @@ const documentFilesStateKey = "heirright:document-files-state";
 const columnOrderStateKey = "heirright:column-order-state";
 const dripSettingsKey = "heirright:drip-settings";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
+const serverBackedStateKeys = new Set([
+  crmImportStateKey,
+  docPrepEstateStateKey,
+  discoveryStateKey,
+  sourceCaptureStateKey,
+  idiImportStateKey,
+  contactReviewStateKey,
+  documentFilesStateKey
+]);
 const outreachAllowedApprovers = ["sam@heirright.com", "joshua@heirright.com"];
 const outreachStatuses = ["Draft", "Ready", "Approved", "Sync to Podio", "Archived"];
 const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -7774,6 +8015,136 @@ const docPrepFlows = {
   }
 };
 
+const closingTemplateFamilies = [
+  {
+    id: "fund-transfer-bank-account-transfer",
+    title: "Fund Transfer / Bank Account Transfer",
+    phaseId: "closing-package",
+    type: "Disbursement setup",
+    copy: "Seller proceeds, wire/ACH destination, and payment authorization placeholders.",
+    variables: ["seller_heirs", "property_address", "offer_amount", "bank_transfer", "closing_date"],
+    required: ["seller_heirs", "property_address", "offer_amount", "bank_transfer", "closing_date"]
+  },
+  {
+    id: "contract-for-deed",
+    title: "Contract for Deed",
+    phaseId: "offer-underwriting",
+    type: "Draft agreement",
+    copy: "Buyer, seller, purchase price, legal description, and default/recording review fields.",
+    variables: ["buyer_entity", "seller_heirs", "property_address", "folio", "offer_amount", "closing_date"],
+    required: ["buyer_entity", "seller_heirs", "property_address", "folio", "offer_amount"]
+  },
+  {
+    id: "quit-claim-deed",
+    title: "Quit Claim Deed",
+    phaseId: "title-clearance",
+    type: "Deed prep",
+    copy: "Grantor, grantee, legal description, folio, county, and recording review fields.",
+    variables: ["seller_heirs", "buyer_entity", "property_address", "county", "folio", "title_evidence"],
+    required: ["seller_heirs", "buyer_entity", "property_address", "county", "folio", "title_evidence"]
+  },
+  {
+    id: "limited-power-of-attorney",
+    title: "Limited Power of Attorney",
+    phaseId: "seller-approval",
+    type: "Authority review",
+    copy: "Principal, attorney-in-fact, property scope, and expiration/authority review fields.",
+    variables: ["seller_heirs", "representative", "property_address", "county", "closing_date"],
+    required: ["seller_heirs", "representative", "property_address", "county"]
+  },
+  {
+    id: "assignment-of-surplus-rights",
+    title: "Assignment of Surplus Rights Purchase Agreement",
+    phaseId: "offer-underwriting",
+    type: "Surplus rights draft",
+    copy: "Surplus assignment terms with explicit entity review because the examples differ between HeirRight and Somi.",
+    variables: ["seller_heirs", "buyer_entity", "assignment_amount", "property_address", "probate_case"],
+    required: ["seller_heirs", "buyer_entity", "assignment_amount", "property_address"],
+    reviewNote: "Template examples use both HeirRight, LLC and Somi Home Buyers, LLC. Confirm the correct buyer/assignee entity before external use."
+  },
+  {
+    id: "same-name-affidavit",
+    title: "Same Name Affidavit",
+    phaseId: "seller-approval",
+    type: "Identity affidavit",
+    copy: "Name variants, signer identity, estate relationship, and notarization review fields.",
+    variables: ["seller_heirs", "deceased_name", "property_address", "county", "name_variants"],
+    required: ["seller_heirs", "deceased_name", "property_address", "name_variants"]
+  },
+  {
+    id: "joinder-waiver-consent",
+    title: "Joinder / Waiver / Consent",
+    phaseId: "seller-approval",
+    type: "Consent packet",
+    copy: "Non-signing party consent, relationship, authority, and acknowledgement fields.",
+    variables: ["seller_heirs", "heir_relationships", "property_address", "probate_case"],
+    required: ["seller_heirs", "heir_relationships", "property_address"]
+  },
+  {
+    id: "affidavit-of-heirs",
+    title: "Affidavit of Heirs",
+    phaseId: "seller-approval",
+    type: "Heirship affidavit",
+    copy: "Family tree, deceased details, spouse/children, and heir-contact support fields.",
+    variables: ["deceased_name", "deceased_dob_dod", "seller_heirs", "heir_relationships", "property_address"],
+    required: ["deceased_name", "deceased_dob_dod", "seller_heirs", "heir_relationships"]
+  },
+  {
+    id: "valuable-consideration-disbursement",
+    title: "Valuable Consideration Disbursement",
+    phaseId: "closing-package",
+    type: "Payment review",
+    copy: "Per-heir consideration, amount, payment route, and review owner fields.",
+    variables: ["seller_heirs", "offer_amount", "per_heir_amount", "bank_transfer", "closing_date"],
+    required: ["seller_heirs", "offer_amount", "per_heir_amount", "bank_transfer"]
+  },
+  {
+    id: "assignment-disclaimer-interest",
+    title: "Assignment and Disclaimer of Interest",
+    phaseId: "seller-approval",
+    type: "Interest transfer",
+    copy: "Assignor, assignee, estate interest, relationship, and property reference fields.",
+    variables: ["seller_heirs", "buyer_entity", "heir_relationships", "property_address", "probate_case"],
+    required: ["seller_heirs", "buyer_entity", "heir_relationships", "property_address"]
+  },
+  {
+    id: "land-trust-agreement",
+    title: "Land Trust Agreement",
+    phaseId: "closing-package",
+    type: "Trust setup",
+    copy: "Trust name, trustee, beneficiary, property, and recording/title review fields.",
+    variables: ["trust_name", "trustee", "buyer_entity", "property_address", "folio", "title_evidence"],
+    required: ["trust_name", "trustee", "buyer_entity", "property_address", "folio"]
+  },
+  {
+    id: "tax-reimbursement",
+    title: "Tax Reimbursement",
+    phaseId: "title-clearance",
+    type: "Tax credit",
+    copy: "Paid-by party, unpaid years, tax amount, reimbursement party, and receipt fields.",
+    variables: ["seller_heirs", "property_address", "tax_paid_by", "taxes_due", "title_evidence"],
+    required: ["seller_heirs", "property_address", "tax_paid_by", "taxes_due"]
+  },
+  {
+    id: "buyer-purchase-agreement",
+    title: "Buyer Purchase Agreement",
+    phaseId: "offer-underwriting",
+    type: "Purchase agreement",
+    copy: "Buyer/seller, price, property, assignment, inspection, and closing deadline fields.",
+    variables: ["buyer_entity", "seller_heirs", "property_address", "folio", "offer_amount", "closing_date"],
+    required: ["buyer_entity", "seller_heirs", "property_address", "folio", "offer_amount"]
+  },
+  {
+    id: "unclaimed-funds-instructions",
+    title: "Unclaimed Funds Instructions",
+    phaseId: "closing-package",
+    type: "Claim instructions",
+    copy: "Court/agency claim route, claimant identity, funds source, and supporting documents checklist.",
+    variables: ["seller_heirs", "probate_case", "deceased_name", "property_address", "claim_instructions"],
+    required: ["seller_heirs", "probate_case", "deceased_name", "claim_instructions"]
+  }
+];
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -7813,9 +8184,95 @@ function assetDiscoveryKey(row = selectedRow()) {
     .join(":") || row.id;
 }
 
+function storageCookieName(key) {
+  return `hr_${encodeURIComponent(key).replace(/%/g, "_")}`;
+}
+
+function storageNameRecord() {
+  const prefix = "heirright-storage:";
+  try {
+    const value = String(window.name || "");
+    if (!value.startsWith(prefix)) return {};
+    const parsed = JSON.parse(value.slice(prefix.length));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function setStorageNameRecord(record) {
+  try {
+    window.name = `heirright-storage:${JSON.stringify(record)}`;
+  } catch {}
+}
+
+function persistServerState(key, value) {
+  if (!serverBackedStateKeys.has(key)) return;
+  try {
+    fetch(`/local-state/${encodeURIComponent(key)}`, {
+      method: "POST",
+      headers: { "content-type": "text/plain;charset=utf-8" },
+      body: String(value ?? ""),
+      keepalive: String(value ?? "").length < 60000
+    }).catch(() => {});
+  } catch {}
+}
+
+function storageGetItem(key) {
+  try {
+    const store = window.localStorage;
+    if (store && typeof store.getItem === "function") {
+      const stored = store.getItem(key);
+      if (stored !== null) return stored;
+    }
+  } catch {}
+  try {
+    const store = window.sessionStorage;
+    if (store && typeof store.getItem === "function") {
+      const stored = store.getItem(key);
+      if (stored !== null) return stored;
+    }
+  } catch {}
+  try {
+    const name = `${storageCookieName(key)}=`;
+    const entry = document.cookie.split("; ").find((item) => item.startsWith(name));
+    if (entry) return decodeURIComponent(entry.slice(name.length));
+  } catch {}
+  try {
+    const record = storageNameRecord();
+    return Object.prototype.hasOwnProperty.call(record, key) ? record[key] : null;
+  } catch {}
+  return null;
+}
+
+function storageSetItem(key, value) {
+  const text = String(value ?? "");
+  try {
+    const store = window.localStorage;
+    if (store && typeof store.setItem === "function") {
+      store.setItem(key, text);
+    }
+  } catch {}
+  try {
+    const store = window.sessionStorage;
+    if (store && typeof store.setItem === "function") {
+      store.setItem(key, text);
+    }
+  } catch {}
+  try {
+    document.cookie = `${storageCookieName(key)}=${encodeURIComponent(text)}; path=/; max-age=31536000; SameSite=Lax`;
+  } catch {}
+  try {
+    const record = storageNameRecord();
+    record[key] = text;
+    setStorageNameRecord(record);
+  } catch {}
+  persistServerState(key, text);
+}
+
 function restoreObjectFromStorage(key, fallback = {}) {
   try {
-    const stored = JSON.parse(localStorage.getItem(key) ?? "null");
+    const stored = JSON.parse(storageGetItem(key) ?? "null");
     return stored && typeof stored === "object" && !Array.isArray(stored) ? stored : fallback;
   } catch {
     return fallback;
@@ -7823,18 +8280,18 @@ function restoreObjectFromStorage(key, fallback = {}) {
 }
 
 function persistAssetDiscoveryState() {
-  localStorage.setItem(sourceCaptureStateKey, JSON.stringify(state.sourceCaptures));
-  localStorage.setItem(idiImportStateKey, JSON.stringify(state.idiImports));
-  localStorage.setItem(contactReviewStateKey, JSON.stringify(state.contactReviews));
+  storageSetItem(sourceCaptureStateKey, JSON.stringify(state.sourceCaptures));
+  storageSetItem(idiImportStateKey, JSON.stringify(state.idiImports));
+  storageSetItem(contactReviewStateKey, JSON.stringify(state.contactReviews));
 }
 
 function persistDocumentFiles() {
-  localStorage.setItem(documentFilesStateKey, JSON.stringify(state.documentFiles));
+  storageSetItem(documentFilesStateKey, JSON.stringify(state.documentFiles));
 }
 
 function loadCrmImports() {
   try {
-    const stored = JSON.parse(localStorage.getItem(crmImportStateKey) ?? "[]");
+    const stored = JSON.parse(storageGetItem(crmImportStateKey) ?? "[]");
     state.crmImports = Array.isArray(stored) ? stored.map(normalizeCrmImport) : [];
   } catch {
     state.crmImports = [];
@@ -7843,7 +8300,7 @@ function loadCrmImports() {
 
 function persistCrmImports(reason = "") {
   state.crmImports = state.crmImports.map(normalizeCrmImport);
-  localStorage.setItem(crmImportStateKey, JSON.stringify(state.crmImports));
+  storageSetItem(crmImportStateKey, JSON.stringify(state.crmImports));
   if (reason) addShellEvent(reason, "The imported estate is saved locally in the HRight workspace. Live CRM writes and readback remain gated.", "review", false);
 }
 
@@ -7866,7 +8323,90 @@ function normalizeColumnOrder(scope, order) {
 }
 
 function persistColumnOrder() {
-  localStorage.setItem(columnOrderStateKey, JSON.stringify(state.columnOrder));
+  storageSetItem(columnOrderStateKey, JSON.stringify(state.columnOrder));
+}
+
+function applyServerBackedStateValue(key, value) {
+  let parsed;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return false;
+  }
+  if (key === crmImportStateKey) {
+    state.crmImports = Array.isArray(parsed) ? parsed.map(normalizeCrmImport) : [];
+    return true;
+  }
+  if (key === docPrepEstateStateKey) {
+    state.docPrepEstateState = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? Object.fromEntries(Object.entries(parsed)
+        .filter(([recordKey, recordValue]) => recordKey && recordValue && typeof recordValue === "object" && !Array.isArray(recordValue))
+        .map(([recordKey, recordValue]) => [recordKey, normalizeDocPrepEstateRecord(recordValue)]))
+      : {};
+    return true;
+  }
+  if (key === sourceCaptureStateKey) {
+    state.sourceCaptures = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    return true;
+  }
+  if (key === idiImportStateKey) {
+    state.idiImports = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    return true;
+  }
+  if (key === contactReviewStateKey) {
+    state.contactReviews = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    return true;
+  }
+  if (key === documentFilesStateKey) {
+    state.documentFiles = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    return true;
+  }
+  if (key === discoveryStateKey && parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const validPhaseIds = new Set(Object.values(docPrepFlows).flatMap((flow) => flow.phases.map((phase) => phase.id)));
+    const completed = Array.isArray(parsed.completed) ? parsed.completed.map(String) : [];
+    state.discoveryCompleted = new Set(completed.filter((phaseId) => validPhaseIds.has(phaseId)));
+    const storedFlow = String(parsed.activeFlow || "").trim();
+    state.activeDocPrepFlow = docPrepFlows[storedFlow] ? storedFlow : state.activeDocPrepFlow;
+    const storedIndices = parsed.phaseIndices && typeof parsed.phaseIndices === "object" && !Array.isArray(parsed.phaseIndices) ? parsed.phaseIndices : {};
+    state.docPrepPhaseIndex = Object.fromEntries(Object.keys(docPrepFlows).map((flowId) => [flowId, clampDocPrepPhaseIndex(flowId, storedIndices[flowId])]));
+    state.discoveryPhaseIndex = state.docPrepPhaseIndex.discovery ?? 0;
+    state.discoveryNotes = parsed.notes && typeof parsed.notes === "object" && !Array.isArray(parsed.notes) ? parsed.notes : {};
+    state.discoveryPreferences = parsed.preferences && typeof parsed.preferences === "object" && !Array.isArray(parsed.preferences) ? parsed.preferences : {};
+    return true;
+  }
+  return false;
+}
+
+async function hydrateServerBackedState() {
+  let changed = false;
+  for (const key of serverBackedStateKeys) {
+    try {
+      const response = await fetch(`/local-state/${encodeURIComponent(key)}`, { cache: "no-store" });
+      if (!response.ok) continue;
+      const payload = await response.json();
+      if (typeof payload.value === "string" && payload.value !== storageGetItem(key)) {
+        storageSetItem(key, payload.value);
+        changed = applyServerBackedStateValue(key, payload.value) || changed;
+      }
+    } catch {}
+  }
+  document.documentElement.dataset.crmImportCount = String(state.crmImports.length);
+  document.documentElement.dataset.serverHydrated = changed ? "true" : "false";
+  const hasActiveCrmImports = state.crmImports.some((item) => !item.deletedAt && !item.archivedAt);
+  if (!changed && !hasActiveCrmImports) return false;
+  rebuildRowsFromCurrentSources();
+  const currentSelection = rowById(state.selectedId);
+  const preferredCrmRow = crmImportRows()[0] ?? null;
+  if (preferredCrmRow && (!currentSelection || currentSelection.sourceKind !== "crm-import")) {
+    state.selectedId = preferredCrmRow.id;
+  }
+  if (!state.selectedId || !rowById(state.selectedId)) state.selectedId = state.rows[0]?.id ?? null;
+  applyFilters();
+  updateFooterLeadContext(selectedRow());
+  renderShellPanels();
+  renderCurrentLoopView();
+  document.documentElement.dataset.crmRowCount = String(state.rows.filter((row) => row.sourceKind === "crm-import").length);
+  return true;
 }
 
 function sourceCaptureForRow(row = selectedRow()) {
@@ -7980,7 +8520,7 @@ function rowDisplayClassification(row) {
 
 function rowNextAction(row) {
   if (!row) return "Review";
-  if (row.sourceKind === "crm-import" && !phaseIsComplete("dossier-export", row)) return "Begin Discovery";
+  if (row.sourceKind === "crm-import" && !phaseIsComplete("dossier-export", row, "discovery")) return "Begin Discovery";
   if (!idiImportForRow(row)) return "Import IDI";
   if (!acceptedContactCandidates(row).length) return "Review contacts";
   return row.next || "Review dossier";
@@ -7995,10 +8535,10 @@ function assetPhaseComplete(row, phaseId) {
   if (phaseId === "obituary") return Boolean(capture.obituary?.sourceUrl || capture.obituary?.status === "reviewed-not-found");
   if (phaseId === "idi-asset-search") return Boolean(idiImportForRow(row));
   if (phaseId === "contact-review") return acceptedContactCandidates(row).length > 0;
-  if (phaseId === "dossier-export") return state.discoveryCompleted.has(phaseId);
+  if (phaseId === "dossier-export") return docPrepPhaseMarkedComplete(row, "discovery", phaseId);
   if (phaseId === "closing-intake") return Boolean(row?.address && (row?.owner || row?.leadName));
   if (phaseId === "title-clearance") return assetPhaseComplete(row, "deed") && assetPhaseComplete(row, "tax-receipt");
-  if (phaseId === "seller-approval") return acceptedContactCandidates(row).length > 0 || state.discoveryCompleted.has("contact-review");
+  if (phaseId === "seller-approval") return acceptedContactCandidates(row).length > 0 || docPrepPhaseMarkedComplete(row, "discovery", "contact-review");
   if (phaseId === "offer-underwriting") return Boolean(dossier?.completedLeadReport?.offerMath);
   if (phaseId === "closing-package") return Boolean(row?.id && (state.queueIds.has(row.id) || state.exportResult?.ok));
   return false;
@@ -8221,6 +8761,7 @@ function qualificationScoreText(decision) {
 }
 
 function rowTone(row) {
+  if (row.status === "archived") return "neutral";
   if (row.status === "blocked") return "blocked";
   if (row.score >= 80 && row.missing.length <= 2) return "ready";
   return "review";
@@ -8360,7 +8901,9 @@ function normalizeCrmImport(input = {}) {
     sourceUrl: String(input.sourceUrl || "").trim().slice(0, 240),
     notes: String(input.notes || "").trim().slice(0, 800),
     importedAt: input.importedAt || isoNow(),
-    importedBy: input.importedBy || currentActorEmail()
+    importedBy: input.importedBy || currentActorEmail(),
+    archivedAt: input.archivedAt || "",
+    deletedAt: input.deletedAt || ""
   };
 }
 
@@ -8433,12 +8976,14 @@ function crmImportRow(imported) {
   const normalized = normalizeCrmImport(imported);
   const dossier = minimalImportedDossier(normalized);
   const missing = buildMissingSections(dossier);
+  const archived = Boolean(normalized.archivedAt);
   const row = {
     id: normalized.id,
     kind: "CRM Import",
     sourceKind: "crm-import",
     sourceProvider: normalized.provider,
     sourceRecordId: normalized.sourceRecordId,
+    isArchived: archived,
     title: normalized.estateName,
     file: normalized.sourceRecordId || crmProviderLabel(normalized.provider),
     leadName: leadNameInitialLabel(normalized.ownerName, normalized.estateName),
@@ -8447,11 +8992,11 @@ function crmImportRow(imported) {
     parcel: normalized.parcelId,
     owner: normalized.ownerName,
     score: 44,
-    evidence: 1,
+    evidence: 3,
     evidenceTotal: 9,
-    status: "review",
-    next: "Begin Discovery",
-    classification: "CRM Import",
+    status: archived ? "archived" : "review",
+    next: archived ? "Archived" : "Begin Discovery",
+    classification: archived ? "Archived Import" : "CRM Import",
     missing,
     search: `${normalized.estateName} ${normalized.ownerName} ${normalized.propertyAddress} ${normalized.parcelId} ${normalized.sourceRecordId} ${crmProviderLabel(normalized.provider)} imported crm closing docs discovery`,
     leadType: "probate",
@@ -8472,7 +9017,71 @@ function crmImportRow(imported) {
 }
 
 function crmImportRows() {
-  return state.crmImports.map(crmImportRow);
+  return state.crmImports
+    .map(normalizeCrmImport)
+    .filter((item) => !item.deletedAt && (state.showArchivedEstates ? item.archivedAt : !item.archivedAt))
+    .map(crmImportRow);
+}
+
+function crmImportCounts() {
+  const active = state.crmImports.filter((item) => !item.deletedAt && !item.archivedAt).length;
+  const archived = state.crmImports.filter((item) => !item.deletedAt && item.archivedAt).length;
+  return { active, archived };
+}
+
+function rebuildRowsFromCurrentSources() {
+  state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
+  pruneBatchSets();
+}
+
+function syncEstateArchiveToggle() {
+  const toggle = document.getElementById("estateArchiveToggle");
+  if (!toggle) return;
+  const counts = crmImportCounts();
+  toggle.hidden = counts.active + counts.archived === 0;
+  toggle.textContent = state.showArchivedEstates ? `Active (${counts.active})` : `Archive (${counts.archived})`;
+  toggle.setAttribute("aria-pressed", state.showArchivedEstates ? "true" : "false");
+  toggle.title = state.showArchivedEstates ? "Show active imported estates" : "Show archived imported estates";
+}
+
+function setEstateArchiveMode(showArchived) {
+  state.showArchivedEstates = Boolean(showArchived);
+  rebuildRowsFromCurrentSources();
+  applyFilters();
+  syncEstateArchiveToggle();
+}
+
+function updateImportedEstateLifecycle(id, action) {
+  const index = state.crmImports.findIndex((item) => item.id === id);
+  if (index < 0) return;
+  const current = normalizeCrmImport(state.crmImports[index]);
+  const label = current.estateName || "Imported estate";
+  if (action === "delete" && !window.confirm(`Delete ${label} from this local workspace?`)) return;
+  const next = { ...current };
+  if (action === "archive") {
+    next.archivedAt = isoNow();
+  } else if (action === "restore") {
+    next.archivedAt = "";
+  } else if (action === "delete") {
+    next.deletedAt = isoNow();
+  } else {
+    return;
+  }
+  state.crmImports[index] = next;
+  persistCrmImports(`Estate ${action === "delete" ? "deleted" : action === "restore" ? "restored" : "archived"}`);
+  state.selectedIds.delete(id);
+  state.queueIds.delete(id);
+  if (state.selectedId === id && action !== "restore") state.selectedId = null;
+  if (action === "restore") state.showArchivedEstates = false;
+  rebuildRowsFromCurrentSources();
+  if (!state.selectedId || !rowById(state.selectedId)) state.selectedId = state.rows[0]?.id ?? null;
+  applyFilters();
+  updateFooterLeadContext(selectedRow());
+  document.getElementById("topStatus").textContent = action === "delete"
+    ? `${label} was deleted from the local estate list.`
+    : action === "restore"
+    ? `${label} was restored to active estates.`
+    : `${label} was moved to Archive.`;
 }
 
 function buildRows(data, dossier) {
@@ -8791,7 +9400,7 @@ function railNameFor(row = selectedRow()) {
 }
 
 function persistRailNames() {
-  localStorage.setItem(railNamesKey, JSON.stringify(state.railNames ?? {}));
+  storageSetItem(railNamesKey, JSON.stringify(state.railNames ?? {}));
 }
 
 function setRailRenaming(isRenaming) {
@@ -8903,26 +9512,26 @@ function applyTheme(theme, persist = true) {
     const active = button.dataset.themeOption === mode;
     button.setAttribute("aria-pressed", active ? "true" : "false");
   });
-  if (persist) localStorage.setItem(themeKey, mode);
+  if (persist) storageSetItem(themeKey, mode);
 }
 
 function loadSavedState() {
-  const storedTheme = localStorage.getItem(themeKey);
+  const storedTheme = storageGetItem(themeKey);
   applyTheme(["light", "dark", "system"].includes(storedTheme) ? storedTheme : "dark", false);
-  const storedWidth = Number(localStorage.getItem(railWidthKey));
+  const storedWidth = Number(storageGetItem(railWidthKey));
   if (Number.isFinite(storedWidth)) state.railWidth = clampRailWidth(storedWidth);
-  const storedFilterWidth = Number(localStorage.getItem(filterWidthKey));
+  const storedFilterWidth = Number(storageGetItem(filterWidthKey));
   if (Number.isFinite(storedFilterWidth)) state.filterWidth = clampFilterWidth(storedFilterWidth);
-  state.filterCollapsed = localStorage.getItem(filterCollapsedKey) === "true";
+  state.filterCollapsed = storageGetItem(filterCollapsedKey) === "true";
   applyFilterWidth();
   try {
-    const storedFilled = JSON.parse(localStorage.getItem(filledKey) ?? "[]");
+    const storedFilled = JSON.parse(storageGetItem(filledKey) ?? "[]");
     if (Array.isArray(storedFilled)) state.filled = new Set(storedFilled.map(String));
   } catch {
     state.filled = new Set();
   }
   try {
-    const storedRailNames = JSON.parse(localStorage.getItem(railNamesKey) ?? "{}");
+    const storedRailNames = JSON.parse(storageGetItem(railNamesKey) ?? "{}");
     state.railNames = storedRailNames && typeof storedRailNames === "object" && !Array.isArray(storedRailNames)
       ? storedRailNames
       : {};
@@ -8930,6 +9539,7 @@ function loadSavedState() {
     state.railNames = {};
   }
 	  loadDiscoveryState();
+	  loadDocPrepEstateState();
 	  loadCrmImports();
 	  loadAssetDiscoveryState();
 	  loadShellSettings();
@@ -8941,12 +9551,12 @@ function loadSavedState() {
 }
 
 function persistFilled() {
-  localStorage.setItem(filledKey, JSON.stringify([...state.filled]));
+  storageSetItem(filledKey, JSON.stringify([...state.filled]));
 }
 
 function loadDiscoveryState() {
   try {
-    const stored = JSON.parse(localStorage.getItem(discoveryStateKey) ?? "{}");
+    const stored = JSON.parse(storageGetItem(discoveryStateKey) ?? "{}");
     const completed = Array.isArray(stored.completed) ? stored.completed.map(String) : [];
     const phaseIndex = Number(stored.phaseIndex);
     const validPhaseIds = new Set(Object.values(docPrepFlows).flatMap((flow) => flow.phases.map((phase) => phase.id)));
@@ -8971,8 +9581,116 @@ function loadDiscoveryState() {
   }
 }
 
+function clampDocPrepPhaseIndex(flowId, value = 0) {
+  const phases = docPrepPhases(flowId);
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.max(0, Math.min(Math.max(0, phases.length - 1), numeric)) : 0;
+}
+
+function normalizeDocPrepPreferences(preferences = {}) {
+  return preferences && typeof preferences === "object" && !Array.isArray(preferences) ? { ...preferences } : {};
+}
+
+function normalizeDocPrepFlowState(flowId, value = {}) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const validPhaseIds = new Set(docPrepPhases(flowId).map((phase) => phase.id));
+  const completed = Array.isArray(source.completed)
+    ? [...new Set(source.completed.map(String).filter((phaseId) => validPhaseIds.has(phaseId)))]
+    : [];
+  return {
+    phaseIndex: clampDocPrepPhaseIndex(flowId, source.phaseIndex),
+    completed,
+    notes: normalizeDocPrepPreferences(source.notes),
+    preferences: normalizeDocPrepPreferences(source.preferences),
+    generatedPackets: Array.isArray(source.generatedPackets) ? source.generatedPackets.slice(0, 25) : [],
+    updatedAt: source.updatedAt || ""
+  };
+}
+
+function normalizeDocPrepEstateRecord(record = {}) {
+  const source = record && typeof record === "object" && !Array.isArray(record) ? record : {};
+  return Object.fromEntries(Object.keys(docPrepFlows).map((flowId) => [flowId, normalizeDocPrepFlowState(flowId, source[flowId])]));
+}
+
+function loadDocPrepEstateState() {
+  const stored = restoreObjectFromStorage(docPrepEstateStateKey, {});
+  state.docPrepEstateState = Object.fromEntries(Object.entries(stored)
+    .filter(([key, value]) => key && value && typeof value === "object" && !Array.isArray(value))
+    .map(([key, value]) => [key, normalizeDocPrepEstateRecord(value)]));
+}
+
+function persistDocPrepEstateState() {
+  storageSetItem(docPrepEstateStateKey, JSON.stringify(state.docPrepEstateState));
+}
+
+function docPrepEstateKey(row = selectedRow()) {
+  return assetDiscoveryKey(row);
+}
+
+function docPrepEstateRecord(row = selectedRow()) {
+  if (!row) return normalizeDocPrepEstateRecord();
+  const key = docPrepEstateKey(row);
+  state.docPrepEstateState[key] = normalizeDocPrepEstateRecord(state.docPrepEstateState[key]);
+  return state.docPrepEstateState[key];
+}
+
+function docPrepFlowState(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  const flowKey = docPrepFlows[flowId] ? flowId : "discovery";
+  return docPrepEstateRecord(row)[flowKey];
+}
+
+function docPrepCurrentIndex(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  return clampDocPrepPhaseIndex(flowId, docPrepFlowState(row, flowId).phaseIndex);
+}
+
+function setDocPrepPhaseIndex(row = selectedRow(), flowId = state.activeDocPrepFlow, index = 0, { persist = true } = {}) {
+  const flowKey = docPrepFlows[flowId] ? flowId : "discovery";
+  const flowState = docPrepFlowState(row, flowKey);
+  flowState.phaseIndex = clampDocPrepPhaseIndex(flowKey, index);
+  flowState.updatedAt = new Date().toISOString();
+  state.docPrepPhaseIndex[flowKey] = flowState.phaseIndex;
+  state.discoveryPhaseIndex = state.docPrepPhaseIndex.discovery ?? state.discoveryPhaseIndex;
+  if (persist) persistDiscoveryState();
+}
+
+function docPrepPhaseMarkedComplete(row = selectedRow(), flowId = state.activeDocPrepFlow, phaseId = "") {
+  return docPrepFlowState(row, flowId).completed.includes(phaseId);
+}
+
+function markDocPrepPhaseComplete(row = selectedRow(), flowId = state.activeDocPrepFlow, phaseId = "") {
+  const flowState = docPrepFlowState(row, flowId);
+  if (!flowState.completed.includes(phaseId)) flowState.completed.push(phaseId);
+  flowState.phaseIndex = clampDocPrepPhaseIndex(flowId, docPrepPhases(flowId).findIndex((phase) => phase.id === phaseId));
+  flowState.updatedAt = new Date().toISOString();
+  state.discoveryCompleted.add(phaseId);
+  setDocPrepPhaseIndex(row, flowId, flowState.phaseIndex, { persist: false });
+  persistDiscoveryState();
+}
+
+function docPrepNoteValue(phaseId, row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  const flowState = docPrepFlowState(row, flowId);
+  return flowState.notes[phaseId] ?? state.discoveryNotes[phaseId] ?? "";
+}
+
+function setDocPrepNote(phaseId, value, row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  const flowState = docPrepFlowState(row, flowId);
+  flowState.notes[phaseId] = value;
+  flowState.updatedAt = new Date().toISOString();
+  state.discoveryNotes[phaseId] = value;
+  persistDiscoveryState();
+}
+
+function setDocPrepPreference(key, checked, row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  const flowState = docPrepFlowState(row, flowId);
+  flowState.preferences[key] = Boolean(checked);
+  flowState.updatedAt = new Date().toISOString();
+  state.discoveryPreferences[key] = Boolean(checked);
+  persistDiscoveryState();
+}
+
 function persistDiscoveryState() {
-  localStorage.setItem(discoveryStateKey, JSON.stringify({
+  persistDocPrepEstateState();
+  storageSetItem(discoveryStateKey, JSON.stringify({
     activeFlow: state.activeDocPrepFlow,
     phaseIndex: state.docPrepPhaseIndex.discovery ?? state.discoveryPhaseIndex,
     phaseIndices: state.docPrepPhaseIndex,
@@ -9021,7 +9739,7 @@ function signalWeightLabel(value) {
 
 function loadShellSettings() {
   try {
-    const stored = JSON.parse(localStorage.getItem(shellSettingsKey) ?? "{}");
+    const stored = JSON.parse(storageGetItem(shellSettingsKey) ?? "{}");
     state.shellSettings = { ...state.shellSettings, ...stored };
   } catch {
     state.shellSettings = { ...state.shellSettings };
@@ -9029,16 +9747,16 @@ function loadShellSettings() {
 }
 
 function persistShellSettings(reason = "Settings changed") {
-  localStorage.setItem(shellSettingsKey, JSON.stringify(state.shellSettings));
+  storageSetItem(shellSettingsKey, JSON.stringify(state.shellSettings));
   addShellEvent(reason, "Lead-quality settings were updated locally. Review-only guardrails remain active.", "review", false);
   syncShellSettings();
 }
 
 function loadDripSettings() {
   try {
-    const stored = JSON.parse(localStorage.getItem(dripSettingsKey) ?? "{}");
+    const stored = JSON.parse(storageGetItem(dripSettingsKey) ?? "{}");
     state.dripSettings = normalizeDripSettings({ ...state.dripSettings, ...(stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {}) });
-    localStorage.setItem(dripSettingsKey, JSON.stringify(state.dripSettings));
+    storageSetItem(dripSettingsKey, JSON.stringify(state.dripSettings));
   } catch {
     state.dripSettings = normalizeDripSettings(state.dripSettings);
   }
@@ -9046,7 +9764,7 @@ function loadDripSettings() {
 
 function persistDripSettings(reason = "") {
   state.dripSettings = normalizeDripSettings(state.dripSettings);
-  localStorage.setItem(dripSettingsKey, JSON.stringify(state.dripSettings));
+  storageSetItem(dripSettingsKey, JSON.stringify(state.dripSettings));
   if (reason) {
     addShellEvent(reason, "Scheduled follow-up controls were saved locally. Live sends and CRM card creation remain locked.", "review", false);
   }
@@ -9177,7 +9895,7 @@ function normalizeOutreachTemplate(template = {}) {
 
 function loadOutreachWorkspace() {
   try {
-    const stored = JSON.parse(localStorage.getItem(outreachWorkspaceKey) || "{}");
+    const stored = JSON.parse(storageGetItem(outreachWorkspaceKey) || "{}");
     state.outreachWorkspace = normalizeOutreachWorkspace(stored);
   } catch {
     state.outreachWorkspace = normalizeOutreachWorkspace();
@@ -9192,7 +9910,7 @@ function loadOutreachWorkspace() {
 }
 
 function persistOutreachWorkspace(reason = "") {
-  localStorage.setItem(outreachWorkspaceKey, JSON.stringify(state.outreachWorkspace));
+  storageSetItem(outreachWorkspaceKey, JSON.stringify(state.outreachWorkspace));
   if (reason) addShellEvent(reason, "Outreach campaign and template changes were saved locally. Podio sync still requires approval and connection checks.", "review", false);
 }
 
@@ -9582,7 +10300,7 @@ function setActiveDocPrepFlow(flowId = "discovery", { persist = true, rerender =
   const nextFlow = docPrepFlows[flowId] ? flowId : "discovery";
   state.activeDocPrepFlow = nextFlow;
   const phases = docPrepPhases(nextFlow);
-  const currentIndex = Number(state.docPrepPhaseIndex[nextFlow]);
+  const currentIndex = docPrepCurrentIndex(selectedRow(), nextFlow);
   state.docPrepPhaseIndex[nextFlow] = Number.isFinite(currentIndex)
     ? Math.max(0, Math.min(phases.length - 1, currentIndex))
     : 0;
@@ -9594,36 +10312,45 @@ function setActiveDocPrepFlow(flowId = "discovery", { persist = true, rerender =
   }
 }
 
-function currentDiscoveryPhase(flowId = state.activeDocPrepFlow) {
+function currentDiscoveryPhase(flowId = state.activeDocPrepFlow, row = selectedRow()) {
   const phases = docPrepPhases(flowId);
-  const index = Math.max(0, Math.min(phases.length - 1, Number(state.docPrepPhaseIndex[flowId]) || 0));
+  const index = docPrepCurrentIndex(row, flowId);
   return phases[index] ?? phases[0] ?? discoveryPhases[0];
 }
 
 function firstIncompletePhaseIndex(flowId = state.activeDocPrepFlow, row = selectedRow()) {
   const phases = docPrepPhases(flowId);
-  const index = phases.findIndex((phase) => !phaseIsComplete(phase.id, row));
+  const index = phases.findIndex((phase) => !phaseIsComplete(phase.id, row, flowId));
   return index < 0 ? Math.max(0, phases.length - 1) : index;
 }
 
-function discoveryProgress(flowId = state.activeDocPrepFlow) {
-  const row = selectedRow();
+function discoveryProgress(flowId = state.activeDocPrepFlow, row = selectedRow()) {
   const phases = docPrepPhases(flowId);
-  const completed = phases.filter((phase) => phaseIsComplete(phase.id, row)).length;
+  const completed = phases.filter((phase) => phaseIsComplete(phase.id, row, flowId)).length;
   const total = phases.length;
   return Math.round((completed / total) * 100);
 }
 
-function phaseIsComplete(phaseId = currentDiscoveryPhase().id, row = selectedRow()) {
-  return state.discoveryCompleted.has(phaseId) || assetPhaseComplete(row, phaseId);
+function flowIdForPhaseId(phaseId = "") {
+  return Object.values(docPrepFlows).find((flow) => flow.phases.some((phase) => phase.id === phaseId))?.id || state.activeDocPrepFlow;
+}
+
+function phaseIsComplete(phaseId = currentDiscoveryPhase().id, row = selectedRow(), flowId = flowIdForPhaseId(phaseId)) {
+  const flowKey = docPrepFlows[flowId] ? flowId : flowIdForPhaseId(phaseId);
+  if (docPrepPhaseMarkedComplete(row, flowKey, phaseId)) return true;
+  return flowKey === "discovery" ? assetPhaseComplete(row, phaseId) : false;
 }
 
 function discoveryPreferenceKey(phaseId, index) {
   return `${phaseId}:${index}`;
 }
 
-function discoveryPreferenceChecked(phaseId, index) {
+function discoveryPreferenceChecked(phaseId, index, row = selectedRow(), flowId = state.activeDocPrepFlow) {
   const key = discoveryPreferenceKey(phaseId, index);
+  const flowState = docPrepFlowState(row, flowId);
+  if (Object.prototype.hasOwnProperty.call(flowState.preferences, key)) {
+    return Boolean(flowState.preferences[key]);
+  }
   if (Object.prototype.hasOwnProperty.call(state.discoveryPreferences, key)) {
     return Boolean(state.discoveryPreferences[key]);
   }
@@ -9729,6 +10456,181 @@ function queueItems() {
   }));
 }
 
+function closingRegistryEntry(key, label, value, { fallback = "Needs review", resolved } = {}) {
+  const display = cleanDisplayValue(value || fallback);
+  const autoResolved = Boolean(value) && !/needs review|missing|blocked|unknown|confirm|required/i.test(display);
+  return {
+    key,
+    label,
+    value: display,
+    resolved: typeof resolved === "boolean" ? resolved : autoResolved
+  };
+}
+
+function closingVariableRegistry(row = selectedRow(), dossier = dossierForRow(row)) {
+  const report = dossier?.completedLeadReport ?? {};
+  const offer = report.offerMath ?? {};
+  const capture = sourceCaptureForRow(row);
+  const acceptedContacts = acceptedContactCandidates(row);
+  const primaryContacts = primaryContactCandidates(row);
+  const sellerNames = acceptedContacts.map((contact) => contact.name).filter(Boolean).join(", ");
+  const contactRelationships = acceptedContacts.map((contact) => `${contact.name || "Contact"}: ${displayStatus(contact.relationship, "relationship needs review")}`).join("; ");
+  const deceasedName = row?.owner || dossier?.owner?.name?.value || dossier?.summary?.estateName || row?.leadName;
+  const deedInstrument = capture.deed?.instrument || dossier?.deedHistory?.latestInstrument || "";
+  const taxPaidBy = capture.taxReceipt?.paidBy || report?.taxStatus?.paidBy || "";
+  const titleEvidence = [deedInstrument ? `Deed ${deedInstrument}` : "", taxPaidBy ? `Tax receipt paid by ${taxPaidBy}` : ""].filter(Boolean).join("; ");
+  const probateCase = row?.file || report?.probateStatus?.caseNumber || dossier?.probate?.caseNumber || "";
+  const offerAmount = offer.offerAmount ? moneyClaimValue(offer.offerAmount) : "";
+  const perHeirAmount = offer.equityPerHeir ? moneyClaimValue(offer.equityPerHeir) : "";
+  const taxesDue = report?.taxStatus?.amountDue ? moneyClaimValue(report.taxStatus.amountDue) : report?.taxSummary || dossier?.taxHistory?.status || "";
+  return [
+    closingRegistryEntry("estate_name", "Estate / lead file", dossier?.summary?.estateName || row?.leadName || row?.title),
+    closingRegistryEntry("deceased_name", "Deceased / owner name", deceasedName),
+    closingRegistryEntry("deceased_dob_dod", "DOB / DOD", "", { fallback: "Needs vital, obituary, probate, or memorial source review" }),
+    closingRegistryEntry("property_address", "Property address", row?.address || dossier?.property?.address?.value),
+    closingRegistryEntry("county", "County", row?.county || dossier?.property?.county?.value || "Miami-Dade County, FL"),
+    closingRegistryEntry("folio", "Folio / parcel", row?.parcel || dossier?.property?.parcelId?.value || row?.folio),
+    closingRegistryEntry("seller_heirs", "Seller / heir signers", sellerNames, { fallback: "Needs accepted signer contacts from Contact Review" }),
+    closingRegistryEntry("heir_relationships", "Heir relationships", contactRelationships, { fallback: "Needs family-tree relationship review" }),
+    closingRegistryEntry("buyer_entity", "Buyer / assignee entity", "Confirm HeirRight, LLC vs Somi Home Buyers, LLC", { resolved: false }),
+    closingRegistryEntry("representative", "Representative / attorney-in-fact", primaryContacts[0]?.name || "", { fallback: "Needs representative or attorney-in-fact" }),
+    closingRegistryEntry("trust_name", "Land trust name", "", { fallback: "Needs title-approved trust name" }),
+    closingRegistryEntry("trustee", "Trustee", "", { fallback: "Needs trustee" }),
+    closingRegistryEntry("title_company", "Title company / closer", "", { fallback: "Needs title-company contact" }),
+    closingRegistryEntry("offer_amount", "Offer amount", offerAmount),
+    closingRegistryEntry("assignment_amount", "Assignment amount", offerAmount),
+    closingRegistryEntry("per_heir_amount", "Per-heir amount", perHeirAmount),
+    closingRegistryEntry("tax_paid_by", "Last tax paid by", taxPaidBy, { fallback: "Needs Tax Collector receipt payer" }),
+    closingRegistryEntry("taxes_due", "Taxes due / reimbursement amount", taxesDue),
+    closingRegistryEntry("title_evidence", "Title / deed evidence", titleEvidence, { fallback: "Needs deed instrument and tax receipt evidence" }),
+    closingRegistryEntry("probate_case", "Probate / court case", probateCase, { fallback: "Needs probate or official-record case reference" }),
+    closingRegistryEntry("bank_transfer", "Bank transfer instructions", "", { fallback: "Needs seller-approved disbursement instructions" }),
+    closingRegistryEntry("closing_date", "Closing / signing date", "", { fallback: "Needs approved closing date" }),
+    closingRegistryEntry("name_variants", "Name variants", "", { fallback: "Needs same-name review notes" }),
+    closingRegistryEntry("claim_instructions", "Claim instructions", "", { fallback: "Needs court or agency claim route" })
+  ];
+}
+
+function closingVariableMap(row = selectedRow(), dossier = dossierForRow(row)) {
+  return new Map(closingVariableRegistry(row, dossier).map((entry) => [entry.key, entry]));
+}
+
+function closingTemplateBlockers(template, row = selectedRow(), dossier = dossierForRow(row)) {
+  const variables = closingVariableMap(row, dossier);
+  return (template.required ?? [])
+    .map((key) => variables.get(key) || closingRegistryEntry(key, displayStatus(key), "", { fallback: "Needs review" }))
+    .filter((entry) => !entry.resolved);
+}
+
+function closingTemplateStatus(template, row = selectedRow(), dossier = dossierForRow(row)) {
+  const blockers = closingTemplateBlockers(template, row, dossier);
+  return blockers.length ? `Blocked: ${blockers.length} missing` : "Review draft";
+}
+
+function closingVariableRowsHtml(template, row = selectedRow(), dossier = dossierForRow(row)) {
+  const variables = closingVariableMap(row, dossier);
+  return (template.variables ?? []).map((key) => {
+    const entry = variables.get(key) || closingRegistryEntry(key, displayStatus(key), "", { fallback: "Needs review" });
+    return `<tr><th>${escapeHtml(entry.label)}</th><td>${escapeHtml(entry.value)}</td><td>${escapeHtml(entry.resolved ? "Ready" : "Needs review")}</td></tr>`;
+  }).join("");
+}
+
+function closingBlockerListHtml(blockers) {
+  return blockers.length
+    ? `<ul>${blockers.map((entry) => `<li><strong>${escapeHtml(entry.label)}</strong> - ${escapeHtml(entry.value)}</li>`).join("")}</ul>`
+    : "<ul><li>No missing required fields beyond final operator/legal review.</li></ul>";
+}
+
+function closingTemplateSourceRows(row = selectedRow(), dossier = dossierForRow(row)) {
+  const report = dossier?.completedLeadReport ?? {};
+  return [
+    ["Estate source", row?.sourceProvider || "HeirRight lead packet / CRM import"],
+    ["Property", row?.address || dossier?.property?.address?.value || "Needs review"],
+    ["Folio / parcel", row?.parcel || dossier?.property?.parcelId?.value || "Needs review"],
+    ["Deed evidence", phaseIsComplete("deed", row, "discovery") ? "Captured or source-complete" : "Needs Official Records review"],
+    ["Tax evidence", phaseIsComplete("tax-receipt", row, "discovery") ? "Captured or source-complete" : "Needs Tax Collector review"],
+    ["Contacts", acceptedContactCandidates(row).length ? `${acceptedContactCandidates(row).length} accepted` : "Needs accepted signer contacts"],
+    ["Review gate", report?.reviewGate?.externalUseBlocked ? "External use blocked" : "Operator approval still required"]
+  ].map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(formatSourceFactValue(value))}</td></tr>`).join("");
+}
+
+function closingPacketOverviewHtml(row = selectedRow(), dossier = dossierForRow(row)) {
+  const allBlockers = closingTemplateFamilies.flatMap((template) => closingTemplateBlockers(template, row, dossier).map((entry) => `${template.title}: ${entry.label}`));
+  return pageShellHtml("Closing Packet Review", row?.leadName ?? row?.title ?? "Lead file", `
+    <p class="muted">Generated from the selected estate file and the reviewed closing-template packet. This is a field map and review draft, not a live closing action.</p>
+    <div class="notice"><strong>Review draft only.</strong> No live Podio card, Google Doc, Google Sheet row, email, SMS, signature request, escrow instruction, recording task, or legal finalization is created from this preview.</div>
+    <h2>Template Families</h2>
+    <table>
+      <thead><tr><th>Template</th><th>Phase</th><th>Status</th><th>Required fields</th></tr></thead>
+      <tbody>
+        ${closingTemplateFamilies.map((template) => `
+          <tr>
+            <td>${escapeHtml(template.title)}</td>
+            <td>${escapeHtml(docPrepPhases("closing-docs").find((phase) => phase.id === template.phaseId)?.label || "Closing")}</td>
+            <td>${escapeHtml(closingTemplateStatus(template, row, dossier))}</td>
+            <td>${escapeHtml((template.required ?? []).map(displayStatus).join(", "))}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+    <h2>Shared Source Evidence</h2>
+    <table>${closingTemplateSourceRows(row, dossier)}</table>
+    <h2>Open Blockers</h2>
+    <ul>${allBlockers.length ? [...new Set(allBlockers)].map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>No required template fields are missing beyond final operator/legal approval.</li>"}</ul>
+    <p class="small">Entity review remains explicit because the reviewed examples use both HeirRight, LLC and Somi Home Buyers, LLC.</p>
+  `);
+}
+
+function closingTemplateDraftHtml(row = selectedRow(), dossier = dossierForRow(row), template = closingTemplateFamilies[0]) {
+  const blockers = closingTemplateBlockers(template, row, dossier);
+  return pageShellHtml(template.title, row?.leadName ?? row?.title ?? "Lead file", `
+    <p class="muted">${escapeHtml(template.copy)}</p>
+    <div class="notice"><strong>Review draft only.</strong> This preview prepares fields and blockers for operator review. It does not create a live Podio card, Google Doc, Google Sheet row, email, SMS, signature request, escrow instruction, recording task, or legal final document.</div>
+    ${template.reviewNote ? `<div class="notice">${escapeHtml(template.reviewNote)}</div>` : ""}
+    <h2>Required Field Map</h2>
+    <table>
+      <thead><tr><th>Field</th><th>Current value</th><th>Status</th></tr></thead>
+      <tbody>${closingVariableRowsHtml(template, row, dossier)}</tbody>
+    </table>
+    <h2>Missing Field Blockers</h2>
+    ${closingBlockerListHtml(blockers)}
+    <h2>Source Evidence</h2>
+    <table>${closingTemplateSourceRows(row, dossier)}</table>
+    <h2>Next Operator Actions</h2>
+    <ol>
+      <li>Resolve every missing required field listed above.</li>
+      <li>Confirm the correct legal entity and template version with the review owner.</li>
+      <li>Only after approval, route the reviewed packet through Google/Podio readback gates.</li>
+    </ol>
+  `);
+}
+
+function closingTemplateDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
+  const overviewBlockers = closingTemplateFamilies.reduce((count, template) => count + closingTemplateBlockers(template, row, dossier).length, 0);
+  return [
+    {
+      id: "closing-packet-review",
+      title: "Closing Packet Review",
+      flowId: "closing-docs",
+      phaseId: "closing-package",
+      type: "Generated packet",
+      copy: "One overview of every reviewed closing-template family, required variables, blockers, and source evidence.",
+      status: overviewBlockers ? `Blocked: ${overviewBlockers} missing` : "Review draft",
+      body: closingPacketOverviewHtml(row, dossier)
+    },
+    ...closingTemplateFamilies.map((template) => ({
+      id: `closing-template-${template.id}`,
+      title: template.title,
+      flowId: "closing-docs",
+      phaseId: template.phaseId,
+      type: template.type,
+      copy: template.copy,
+      status: closingTemplateStatus(template, row, dossier),
+      body: closingTemplateDraftHtml(row, dossier, template)
+    }))
+  ];
+}
+
 function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
   const report = dossier?.completedLeadReport;
   const missing = row?.missing ?? buildMissingSections(dossier ?? {});
@@ -9749,6 +10651,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
       title: "Completed Lead Report",
       flowIds: ["discovery", "closing-docs"],
       phaseId: "dossier-export",
+      flowPhaseIds: { discovery: "dossier-export", "closing-docs": "closing-intake" },
       type: "Rendered report",
       copy: "Lead report draft with offer, source notes, and review gate.",
       status: report?.reviewGate?.externalUseBlocked ? "Review blocked" : "Prepared",
@@ -9769,6 +10672,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
       title: "Deed & Title Notes",
       flowIds: ["discovery", "closing-docs"],
       phaseId: "deed",
+      flowPhaseIds: { discovery: "deed", "closing-docs": "title-clearance" },
       type: "Official records",
       copy: "Owner chain, deed gaps, OR book/page notes, and title review blockers.",
       status: (dossier?.deedHistory?.reviewTasks ?? []).length ? "Needs review" : "Staged",
@@ -9779,6 +10683,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
       title: "Tax History Packet",
       flowIds: ["discovery", "closing-docs"],
       phaseId: "tax-receipt",
+      flowPhaseIds: { discovery: "tax-receipt", "closing-docs": "title-clearance" },
       type: "Tax collector",
       copy: "Unpaid years, receipt status, payer notes, reassessment, and lien review.",
       status: missing.some((item) => item.type === "tax") ? "Open" : "Staged",
@@ -9799,6 +10704,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
       title: "Heir Contact Matrix",
       flowIds: ["discovery", "closing-docs"],
       phaseId: "contact-review",
+      flowPhaseIds: { discovery: "contact-review", "closing-docs": "seller-approval" },
       type: "Contact review",
       copy: "Potential heirs, contact confidence, approval gates, and source notes.",
       status: (dossier?.familyTree?.reviewTasks ?? []).length ? "Needs review" : "Staged",
@@ -9829,101 +10735,13 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
       title: "CRM Handoff",
       flowIds: ["discovery", "closing-docs"],
       phaseId: "dossier-export",
+      flowPhaseIds: { discovery: "dossier-export", "closing-docs": "closing-package" },
       type: "Podio fields",
       copy: "Batch export fields, tasks, drip route, and readback checklist.",
       status: "Prep only",
       body: crmHandoffHtml(row, dossier)
     },
-    {
-      id: "closing-intake-sheet",
-      title: "Closing Intake Sheet",
-      flowId: "closing-docs",
-      phaseId: "closing-intake",
-      type: "CRM import",
-      copy: "Imported estate row, review owner, title-company contact, and closing workspace notes.",
-      status: row?.sourceKind === "crm-import" ? "Imported" : "Needs CRM row",
-      body: closingDocHtml(row, dossier, "Closing Intake Sheet", [
-        ["CRM source", row?.sourceProvider || "Podio or Google Sheets"],
-        ["Estate", row?.title || row?.owner || "Needs review"],
-        ["Property", row?.address || "Needs review"],
-        ["Review owner", "Operator required before live handoff"]
-      ])
-    },
-    {
-      id: "purchase-agreement-draft",
-      title: "Purchase Agreement Draft",
-      flowId: "closing-docs",
-      phaseId: "offer-underwriting",
-      type: "Draft agreement",
-      copy: "Draft purchase terms sourced from offer math and held until underwriting review clears.",
-      status: report?.reviewGate?.externalUseBlocked ? "Review blocked" : "Draft",
-      body: closingDocHtml(row, dossier, "Purchase Agreement Draft", [
-        ["Offer amount", moneyClaimValue(report?.offerMath?.offerAmount)],
-        ["Minimum net", moneyClaimValue(report?.offerMath?.minimumNetProfit)],
-        ["External use", report?.reviewGate?.externalUseBlocked ? "Blocked until review clears" : "Needs final approval"],
-        ["Underwriting note", reportClaimNote(report?.offerMath?.offerAmount, "Draft only until underwriting clears.")]
-      ])
-    },
-    {
-      id: "seller-signature-packet",
-      title: "Seller Signature Packet",
-      flowId: "closing-docs",
-      phaseId: "seller-approval",
-      type: "Signer packet",
-      copy: "Accepted heirs or seller contacts, signature authority notes, and approval gates.",
-      status: acceptedContactCandidates(row).length ? "Review contacts" : "Needs signers",
-      body: closingDocHtml(row, dossier, "Seller Signature Packet", [
-        ["Accepted contacts", `${acceptedContactCandidates(row).length} accepted`],
-        ["Primary contacts", `${primaryContactCandidates(row).length} primary`],
-        ["Authority", "Needs operator confirmation"],
-        ["Stop rule", "No external signature request before approval"]
-      ])
-    },
-    {
-      id: "title-company-request",
-      title: "Title Company Request",
-      flowId: "closing-docs",
-      phaseId: "title-clearance",
-      type: "Title request",
-      copy: "Deed, tax, lien, mortgage, probate, and title blocker request bundle.",
-      status: phaseIsComplete("title-clearance", row) ? "Ready for review" : "Needs title facts",
-      body: closingDocHtml(row, dossier, "Title Company Request", [
-        ["Deed proof", phaseIsComplete("deed", row) ? "Attached or captured" : "Needs Official Records evidence"],
-        ["Tax proof", phaseIsComplete("tax-receipt", row) ? "Attached or captured" : "Needs Tax Collector evidence"],
-        ["Probate status", report?.probateStatus?.label || report?.probateStatus?.value || "Needs review"],
-        ["Title blockers", (dossier?.deedHistory?.reviewTasks ?? []).length ? `${dossier.deedHistory.reviewTasks.length} open` : "None recorded"]
-      ])
-    },
-    {
-      id: "escrow-closing-statement",
-      title: "Escrow & Closing Statement",
-      flowId: "closing-docs",
-      phaseId: "closing-package",
-      type: "Escrow prep",
-      copy: "Escrow notes, closing-cost placeholders, seller proceeds, and review-only final statement.",
-      status: state.queueIds.has(row?.id) ? "Queued" : "Prep only",
-      body: closingDocHtml(row, dossier, "Escrow & Closing Statement", [
-        ["Post equity value", moneyClaimValue(report?.offerMath?.postEquityValue)],
-        ["Profit", moneyClaimValue(report?.offerMath?.profit)],
-        ["Per-heir amount", moneyClaimValue(report?.offerMath?.equityPerHeir)],
-        ["Queue state", state.queueIds.has(row?.id) ? "Staged for handoff" : "Not queued"]
-      ])
-    },
-    {
-      id: "recording-checklist",
-      title: "Recording Checklist",
-      flowId: "closing-docs",
-      phaseId: "closing-package",
-      type: "Recording prep",
-      copy: "Final signed docs, recording task, Podio follow-up, and readback checklist.",
-      status: state.exportResult?.ok ? "Prepared" : "Needs approval",
-      body: closingDocHtml(row, dossier, "Recording Checklist", [
-        ["Live writes", "Blocked until approval and readback proof"],
-        ["Podio task", "Prepared only"],
-        ["Google row", "Prepared only"],
-        ["Readback", state.exportResult?.ok ? "Handoff result visible" : "Not proven"]
-      ])
-    }
+    ...closingTemplateDocuments(row, dossier)
   ];
 }
 
@@ -9939,10 +10757,12 @@ function docsForFlow(row = selectedRow(), dossier = dossierForRow(row), flowId =
 function dossierDocWorkflowState(doc, index = 0) {
   const flowId = documentFlowMatches(doc, state.activeDocPrepFlow) ? state.activeDocPrepFlow : (doc.flowId || doc.flowIds?.[0] || "discovery");
   const phases = docPrepPhases(flowId);
-  const phaseIndex = phases.findIndex((phase) => phase.id === doc.phaseId);
+  const phaseId = doc.flowPhaseIds?.[flowId] || doc.phaseId;
+  const phaseIndex = phases.findIndex((phase) => phase.id === phaseId);
   const phase = phases[phaseIndex] ?? phases[0];
-  const complete = phaseIsComplete(phase.id);
-  const active = !complete && phase.id === currentDiscoveryPhase(flowId).id;
+  const row = selectedRow();
+  const complete = phaseIsComplete(phase.id, row, flowId);
+  const active = !complete && phase.id === currentDiscoveryPhase(flowId, row).id;
   const blocked = /blocked|locked/i.test(doc.status || "") && !complete;
   return {
     phase,
@@ -10052,8 +10872,8 @@ function documentPrepStats(row = selectedRow(), dossier = dossierForRow(row), fl
 function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
   const docs = dossierDocuments(row, dossier);
   const stats = documentPrepStats(row, dossier);
-  const discoveryDone = docPrepPhases("discovery").filter((phase) => phaseIsComplete(phase.id, row)).length;
-  const closingDone = docPrepPhases("closing-docs").filter((phase) => phaseIsComplete(phase.id, row)).length;
+  const discoveryDone = docPrepPhases("discovery").filter((phase) => phaseIsComplete(phase.id, row, "discovery")).length;
+  const closingDone = docPrepPhases("closing-docs").filter((phase) => phaseIsComplete(phase.id, row, "closing-docs")).length;
   const reviewTasks = taskCount(dossier ?? {});
   const closingDocs = docs.filter((doc) => documentFlowMatches(doc, "closing-docs"));
   const closingReadyDocs = closingDocs.filter((doc) => documentFileRecord(doc.id, row) || !/blocked|locked|open/i.test(doc.status || "")).length;
@@ -10212,9 +11032,9 @@ function documentRequirementHtml(doc, row = selectedRow()) {
         <span class="document-type-pill">${escapeHtml(doc.type)}</span>
         <button class="btn" type="button" data-document-action="preview" data-document-id="${escapeHtml(doc.id)}">Quick Look</button>
         <button class="btn primary solvys-liquid-glass" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}">${escapeHtml(file.action)}</button>
-        <span class="headless-menu-wrap" data-ui-menu>
-          <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Document actions for ${escapeHtml(doc.title)}">${nucleoIcon("sliders", 16)}</button>
-          <span class="headless-menu" role="menu" hidden>
+            <span class="headless-menu-wrap" data-ui-menu>
+              <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Document actions for ${escapeHtml(doc.title)}">${nucleoIcon("sliders", 16)}</button>
+          <span class="headless-menu t-dropdown" data-origin="top-right" role="menu" hidden>
             <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("open-book", 15)}<span>Quick Look</span></button>
             <button type="button" role="menuitem" data-ui-menu-action="link-generated" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("batch-tray", 15)}<span>Link generated packet</span></button>
             <button type="button" role="menuitem" data-ui-menu-action="replace" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("packet-clock", 15)}<span>Save new version</span></button>
@@ -10494,6 +11314,7 @@ function submitBatchCrmImport(formData) {
   state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
   state.selectedId = imports[0]?.id ?? state.selectedId;
   state.selectedIds.clear();
+  state.showArchivedEstates = false;
   setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
   closeCrmImportModal();
   document.querySelector('[data-shell-nav="find-estates"]')?.click();
@@ -10526,6 +11347,7 @@ function submitCrmImport(formData) {
   }
   state.selectedId = importedRow.id;
   state.selectedIds.clear();
+  state.showArchivedEstates = false;
   setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
   closeCrmImportModal();
   document.querySelector('[data-shell-nav="find-estates"]')?.click();
@@ -10544,11 +11366,33 @@ function submitCrmImport(formData) {
   addShellEvent("Estate imported from CRM", `${imported.estateName} is now available in Estates and DocPrep. No live CRM write was attempted.`, "ready", false);
 }
 
+function closeHeadlessMenu(wrap, immediate = false) {
+  if (!wrap) return;
+  const button = wrap.querySelector("[data-ui-menu-button]");
+  const menu = wrap.querySelector(".headless-menu");
+  button?.setAttribute("aria-expanded", "false");
+  if (!menu) return;
+  window.clearTimeout(Number(menu.dataset.closeTimer || 0));
+  menu.classList.remove("is-open");
+  if (immediate || !menu.classList.contains("t-dropdown")) {
+    menu.classList.remove("is-closing");
+    menu.setAttribute("hidden", "");
+    return;
+  }
+  menu.classList.add("is-closing");
+  menu.dataset.closeTimer = String(window.setTimeout(() => {
+    const stillOpen = button?.getAttribute("aria-expanded") === "true";
+    if (!stillOpen) {
+      menu.setAttribute("hidden", "");
+      menu.classList.remove("is-closing");
+    }
+  }, dropdownCloseDelay()));
+}
+
 function closeHeadlessMenus(except = null) {
   document.querySelectorAll("[data-ui-menu]").forEach((wrap) => {
     if (wrap === except) return;
-    wrap.querySelector("[data-ui-menu-button]")?.setAttribute("aria-expanded", "false");
-    wrap.querySelector(".headless-menu")?.setAttribute("hidden", "");
+    closeHeadlessMenu(wrap);
   });
 }
 
@@ -10575,12 +11419,17 @@ function wireHeadlessMenus(root = document) {
       event.stopPropagation();
       const opening = menu.hasAttribute("hidden");
       closeHeadlessMenus(wrap);
-      button.setAttribute("aria-expanded", opening ? "true" : "false");
       if (opening) {
+        window.clearTimeout(Number(menu.dataset.closeTimer || 0));
+        button.setAttribute("aria-expanded", "true");
         menu.removeAttribute("hidden");
-        requestAnimationFrame(() => menu.querySelector("[role='menuitem']")?.focus());
+        menu.classList.remove("is-closing");
+        requestAnimationFrame(() => {
+          menu.classList.add("is-open");
+          menu.querySelector("[role='menuitem']")?.focus();
+        });
       } else {
-        menu.setAttribute("hidden", "");
+        closeHeadlessMenu(wrap);
       }
     });
     menu.querySelectorAll("[data-ui-menu-action]").forEach((item) => {
@@ -10595,7 +11444,7 @@ function wireHeadlessMenus(root = document) {
 
 function handleDocumentMenuAction(action, docId) {
   if (action === "preview") {
-    popOutDossierDocument(docId);
+    previewDossierDocument(docId);
     return;
   }
   if (action === "link-generated") {
@@ -10607,6 +11456,15 @@ function handleDocumentMenuAction(action, docId) {
     return;
   }
   openDocumentActionModal(docId, action === "replace" ? "replace" : "add");
+}
+
+function previewDossierDocument(docId) {
+  state.selectedDossierDocId = docId || selectedDossierDocument()?.id || "discovery-dossier";
+  state.discoveryOpen = false;
+  state.railMode = "dossier";
+  state.railTab = "docs";
+  renderRail();
+  setRailOpen(true);
 }
 
 function assetStepStatusHtml(complete, active, index) {
@@ -10622,11 +11480,11 @@ function assetStepStatusHtml(complete, active, index) {
 function assetDiscoveryChecklistHtml(row = selectedRow()) {
   const flow = docPrepFlow();
   const phases = docPrepPhases(flow.id);
-  const current = currentDiscoveryPhase(flow.id);
+  const current = currentDiscoveryPhase(flow.id, row);
   return `
     <div class="asset-step-stack" role="list">
       ${phases.map((phase, index) => {
-        const complete = phaseIsComplete(phase.id, row);
+        const complete = phaseIsComplete(phase.id, row, flow.id);
         const active = !complete && phase.id === current.id;
         return `
           <article class="asset-step-row" role="listitem" data-state="${complete ? "complete" : active ? "active" : "pending"}">
@@ -10646,9 +11504,14 @@ function assetDiscoveryChecklistHtml(row = selectedRow()) {
 function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(row)) {
   const report = dossier?.completedLeadReport ?? {};
   const offer = report.offerMath ?? {};
+  const templateSummaries = closingTemplateFamilies.map((template) => ({
+    title: template.title,
+    status: closingTemplateStatus(template, row, dossier),
+    blockers: closingTemplateBlockers(template, row, dossier).length
+  }));
   const rows = [
     ["CRM estate row", row?.sourceKind === "crm-import" ? `${displayStatus(row.sourceProvider)} import` : "Import from CRM or use current lead packet"],
-    ["Title proof", phaseIsComplete("title-clearance", row) ? "Deed and tax evidence captured" : "Needs deed and tax evidence"],
+    ["Title proof", assetPhaseComplete(row, "title-clearance") ? "Deed and tax evidence captured" : "Needs deed and tax evidence"],
     ["Seller contacts", acceptedContactCandidates(row).length ? `${acceptedContactCandidates(row).length} accepted` : "Needs accepted signer contacts"],
     ["Offer math", offer.offerAmount ? moneyClaimValue(offer.offerAmount) : "Needs underwriting review"],
     ["Bundle state", state.queueIds.has(row?.id) ? "Queued for handoff prep" : "Not queued"]
@@ -10662,16 +11525,11 @@ function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(r
       </ul>
     </section>
     <section class="glass-card rail-card">
-      <h3>Template builder</h3>
-      <p class="copy">Use these rows as the first editable closing template. A production version can save custom templates per county, title company, or seller packet after the operators approve the fields.</p>
-      <div class="preference-grid">
-        ${["Purchase agreement", "Seller packet", "Title request", "Escrow notes"].map((label, index) => `
-          <div class="preference-card">
-            <label>${escapeHtml(label)}<input type="checkbox" data-discovery-preference="${escapeHtml(discoveryPreferenceKey(`closing-template-${index}`, index))}" ${discoveryPreferenceChecked(`closing-template-${index}`, index) ? "checked" : ""}></label>
-            <span class="copy">${index === 0 ? "Primary closing template." : "Saved as a reusable operator preference."}</span>
-          </div>
-        `).join("")}
-      </div>
+      <h3>Closing template families</h3>
+      <p class="copy">The generated packet maps every reviewed template family to estate facts and keeps missing fields visible before handoff.</p>
+      <ul class="mini-list">
+        ${templateSummaries.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.blockers ? `${item.blockers} blocker${item.blockers === 1 ? "" : "s"}` : item.status)}</span></li>`).join("")}
+      </ul>
     </section>
   `;
 }
@@ -11111,7 +11969,7 @@ function sourceCaptureEvidenceRows(row) {
 
 function assetDiscoveryReportRows(row) {
   return discoveryPhases.map((phase) => {
-    const complete = phaseIsComplete(phase.id, row);
+    const complete = phaseIsComplete(phase.id, row, "discovery");
     return `<tr><th>${escapeHtml(phase.name)}</th><td>${escapeHtml(complete ? "Complete" : "Needs review")}</td><td>${escapeHtml(phase.summary)}</td></tr>`;
   }).join("");
 }
@@ -11298,7 +12156,7 @@ function discoveryDossierHtml(row, dossier) {
 	      <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
 	      <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Miami-Dade County, FL"))}</td></tr>
 	      <tr><th>Case / file</th><td>${escapeHtml(row?.file ?? claimValue(property.caseNumber, "Needs review"))}</td></tr>
-	      <tr><th>Current phase</th><td>${escapeHtml(currentDiscoveryPhase().label)}</td></tr>
+	      <tr><th>Current phase</th><td>${escapeHtml(currentDiscoveryPhase("discovery", row).label)}</td></tr>
 	    </table>
 	    <h2>Asset-first Discovery checklist</h2>
 	    <table>
@@ -11599,7 +12457,7 @@ function renderDossiersView() {
           ${Object.values(docPrepFlows).map((item) => `
             <button class="doc-flow-tab" type="button" role="tab" data-doc-flow="${escapeHtml(item.id)}" aria-pressed="${item.id === flow.id ? "true" : "false"}">
               <strong>${escapeHtml(item.title)}</strong>
-              <span>${escapeHtml(`${discoveryProgress(item.id)}% · ${item.tag}`)}</span>
+              <span>${escapeHtml(`${discoveryProgress(item.id, row)}% · ${item.tag}`)}</span>
             </button>
           `).join("")}
         </div>
@@ -11627,17 +12485,20 @@ function renderDossiersView() {
         </section>
         <aside class="process-side" aria-label="Process details">
           <div class="process-side-head">
-            <div>
+            <div class="process-side-title">
               <p class="eyebrow">Process</p>
               <h3>${escapeHtml(flow.title)}</h3>
             </div>
-            <span class="headless-menu-wrap" data-ui-menu>
-              <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Process actions">${nucleoIcon("sliders", 16)}</button>
-              <span class="headless-menu" role="menu" hidden>
-                <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("batch-tray", 15)}<span>Stage bundle</span></button>
-                <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("open-book", 15)}<span>Quick Look packet</span></button>
+            <div class="process-side-actions">
+              <button class="btn primary solvys-liquid-glass" type="button" data-queue-stage>Export bundle</button>
+              <span class="headless-menu-wrap" data-ui-menu>
+                <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Process actions">${nucleoIcon("sliders", 16)}</button>
+                <span class="headless-menu t-dropdown" data-origin="top-right" role="menu" hidden>
+                  <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("batch-tray", 15)}<span>Stage bundle</span></button>
+                  <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("open-book", 15)}<span>Quick Look packet</span></button>
+                </span>
               </span>
-            </span>
+            </div>
           </div>
           <div class="process-side-body">
             <div class="process-facts">
@@ -11649,13 +12510,8 @@ function renderDossiersView() {
                 ${missingDocs.map((doc) => `<li><span>+</span><strong>${escapeHtml(doc.title)}</strong></li>`).join("") || `<li><span>✓</span><strong>All listed documents are linked.</strong></li>`}
               </ul>
             </section>
-            <section>
-              <p class="eyebrow">Notes</p>
-              <p class="copy">${escapeHtml(flow.copy)}</p>
-            </section>
           </div>
           <div class="process-side-foot">
-            <button class="btn primary solvys-liquid-glass" type="button" data-queue-stage>Export bundle</button>
             <button class="btn" type="button" data-shell-nav-shortcut="find-estates">Back to Estates</button>
           </div>
         </aside>
@@ -11725,7 +12581,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
           <h2 class="rail-title">${escapeHtml(flow.shortTitle)} checklist</h2>
           <p class="copy">${escapeHtml(flow.copy)}</p>
         </div>
-        ${statusPill(discoveryProgress(flow.id) >= 100 ? "ready" : "review", discoveryProgress(flow.id) >= 100 ? "Complete" : "In progress")}
+      ${statusPill(discoveryProgress(flow.id, row) >= 100 ? "ready" : "review", discoveryProgress(flow.id, row) >= 100 ? "Complete" : "In progress")}
       </div>
       ${discoveryStripHtml(row, dossier)}
     </section>
@@ -11787,8 +12643,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   wireAssetDiscoveryControls(content, row);
   content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
     input.addEventListener("change", (event) => {
-      state.discoveryPreferences[event.target.dataset.discoveryPreference] = event.target.checked;
-      persistDiscoveryState();
+      setDocPrepPreference(event.target.dataset.discoveryPreference, event.target.checked, row, flow.id);
       addShellEvent("DocPrep preference saved", "The workflow template preference was saved locally for this review session.", "review", false);
     });
   });
@@ -12503,7 +13358,7 @@ function renderDripsView() {
           <div><p class="eyebrow">Outreach</p><h2 class="loop-title">Campaign templates</h2></div>
           <div class="outreach-actions">
             <button class="btn quick" type="button" data-toggle-outreach-archive>${state.outreachArchiveOpen ? "Active" : "Archive"}</button>
-            <button class="btn quick solvys-liquid-glass" type="button" data-new-template="email">New Email</button>
+            <button class="btn text-action" type="button" data-new-template="email">New Email</button>
             <button class="btn primary solvys-liquid-glass" type="button" data-new-template="sms">New SMS</button>
           </div>
         </div>
@@ -12655,11 +13510,77 @@ function renderAdminLoopView() {
   `;
 }
 
+function integrationOnboardingCardHtml(kind) {
+  const isGoogle = kind === "google";
+  const connection = connectionByName(isGoogle ? "Google" : "Podio");
+  const connected = Boolean(connection?.ok && connection?.mode === "live");
+  const sessionReady = Boolean(state.session?.auth?.configured);
+  const actionLabel = connected ? "Connected" : isGoogle ? "Connect Google" : "Review Podio setup";
+  const statusLabel = connected ? "Live" : connection?.mode ? displayStatus(connection.mode) : "Setup required";
+  const title = isGoogle ? "Google Workspace" : "Podio";
+  const copy = isGoogle
+    ? operatorConnectionMessage(connection, "Google")
+    : operatorConnectionMessage(connection, "Podio");
+  const steps = isGoogle
+    ? [
+        state.session?.authenticated ? "Google account signed in" : "Sign in with the approved Google account",
+        connected ? "Drive, Docs, and Sheets access present" : "Add Google Workspace access and the tracking Sheet destination",
+        "Run one approved export and confirm readback before live handoff"
+      ]
+    : [
+        connected ? "Podio access present" : "Add Podio access, Leads app, and verified field map",
+        "Create one approved sample card only after authorization",
+        "Confirm readback before live CRM handoff"
+      ];
+  const action = isGoogle && sessionReady
+    ? `<a class="btn primary solvys-liquid-glass" href="/auth/login?integration=google-workspace">${actionLabel}</a>`
+    : `<button class="btn ${connected ? "" : "primary solvys-liquid-glass"}" type="button" data-integration-onboarding="${escapeHtml(kind)}" ${connected ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>`;
+  return `
+    <article class="integration-card" data-connected="${connected ? "true" : "false"}">
+      <div class="integration-card-head">
+        <div>
+          <p class="eyebrow">Integration</p>
+          <h3>${escapeHtml(title)}</h3>
+        </div>
+        <span class="pill ${connected ? "ready" : "review"}">${escapeHtml(statusLabel)}</span>
+      </div>
+      <p class="copy">${escapeHtml(copy)}</p>
+      <ul class="integration-steps">
+        ${steps.map((step) => `<li><span>${escapeHtml(step)}</span></li>`).join("")}
+      </ul>
+      <div class="integration-card-actions">${action}</div>
+    </article>
+  `;
+}
+
+function handleIntegrationOnboarding(kind) {
+  const isGoogle = kind === "google";
+  const connection = connectionByName(isGoogle ? "Google" : "Podio");
+  if (isGoogle && !state.session?.auth?.configured) {
+    document.getElementById("topStatus").textContent = "Google OAuth is not configured yet. Add the approved client details before Workspace login opens.";
+    addShellEvent("Google onboarding blocked", "Google OAuth configuration is still required before the Workspace login flow can start.", "blocked", false);
+    return;
+  }
+  const message = isGoogle
+    ? operatorConnectionMessage(connection, "Google")
+    : operatorConnectionMessage(connection, "Podio");
+  document.getElementById("topStatus").textContent = message;
+  addShellEvent(`${isGoogle ? "Google Workspace" : "Podio"} onboarding reviewed`, message, connectionTone(connection), false);
+  renderSettingsView();
+}
+
 function renderSettingsView() {
   const target = document.getElementById("settingsView");
   if (!target) return;
   target.innerHTML = `
     <div class="loop-grid">
+      <section class="loop-panel full">
+        <div class="loop-panel-head"><div><p class="eyebrow">Onboarding</p><h2 class="loop-title">Integration login and readback</h2></div><span class="pill review">Gated</span></div>
+        <div class="integration-onboarding">
+          ${integrationOnboardingCardHtml("podio")}
+          ${integrationOnboardingCardHtml("google")}
+        </div>
+      </section>
       <section class="loop-panel full">
         <div class="loop-panel-head"><div><p class="eyebrow">Settings</p><h2 class="loop-title">Discovery and review preferences</h2></div><span class="pill review">Local</span></div>
         <div class="settings-grid">
@@ -12677,6 +13598,9 @@ function renderSettingsView() {
   if (tax) tax.value = state.shellSettings.taxThreshold;
   if (reason) reason.value = state.shellSettings.reasonCodes;
   enhanceSelectMenus(target);
+  target.querySelectorAll("[data-integration-onboarding]").forEach((button) => {
+    button.addEventListener("click", () => handleIntegrationOnboarding(button.dataset.integrationOnboarding));
+  });
   target.querySelector("#settingsSignalWeight")?.addEventListener("input", (event) => {
     state.shellSettings.signalWeight = event.target.value;
     persistShellSettings("Source signal weight updated");
@@ -12811,8 +13735,8 @@ function setFilterCollapsed(collapsed, persist = true) {
     state.filterWidth = 320;
   }
   if (persist) {
-    localStorage.setItem(filterCollapsedKey, state.filterCollapsed ? "true" : "false");
-    localStorage.setItem(filterWidthKey, String(state.filterWidth));
+    storageSetItem(filterCollapsedKey, state.filterCollapsed ? "true" : "false");
+    storageSetItem(filterWidthKey, String(state.filterWidth));
   }
   applyFilterWidth();
 }
@@ -13009,8 +13933,8 @@ function openRailPreview(sectionId, source = null) {
 
 function discoveryStripHtml(row, dossier) {
   const flow = docPrepFlow();
-  const pct = discoveryProgress(flow.id);
-  const phase = currentDiscoveryPhase(flow.id);
+  const pct = discoveryProgress(flow.id, row);
+  const phase = currentDiscoveryPhase(flow.id, row);
   return `
     <div class="discovery-strip" aria-label="${escapeHtml(flow.label)} completion">
       <div class="discovery-fuse" style="--fuse-progress: ${pct}%" aria-label="${escapeHtml(flow.label)} ${pct}% complete"></div>
@@ -13021,10 +13945,10 @@ function discoveryStripHtml(row, dossier) {
 }
 
 function beginDiscoveryWizard(source = null) {
-  if (!selectedRow()) return;
+  const row = selectedRow();
+  if (!row) return;
   const flow = docPrepFlow();
-  state.docPrepPhaseIndex[flow.id] = firstIncompletePhaseIndex(flow.id);
-  state.discoveryPhaseIndex = state.docPrepPhaseIndex.discovery ?? state.discoveryPhaseIndex;
+  setDocPrepPhaseIndex(row, flow.id, docPrepCurrentIndex(row, flow.id), { persist: false });
   state.discoveryOpen = true;
   state.railTab = "flow";
   if (state.activeView === "dossiers" || state.railMode === "dossier") {
@@ -13040,10 +13964,11 @@ function beginDiscoveryWizard(source = null) {
 
 function closeDiscoveryWizard() {
   const flow = docPrepFlow();
+  const row = selectedRow();
   state.discoveryOpen = false;
   state.railPreview = {
     title: `${flow.label} paused`,
-    markdown: `${currentDiscoveryPhase(flow.id).label} is saved locally for this review session. Continue from the fuse when ready.`,
+    markdown: `${currentDiscoveryPhase(flow.id, row).label} is saved locally for this estate. Continue from the fuse when ready.`,
     updatedAt: Date.now()
   };
   persistDiscoveryState();
@@ -13052,9 +13977,9 @@ function closeDiscoveryWizard() {
 
 function completeDiscoveryPhase() {
   const flow = docPrepFlow();
-  const phase = currentDiscoveryPhase(flow.id);
-  state.discoveryCompleted.add(phase.id);
-  persistDiscoveryState();
+  const row = selectedRow();
+  const phase = currentDiscoveryPhase(flow.id, row);
+  markDocPrepPhaseComplete(row, flow.id, phase.id);
   addShellEvent(`${phase.label} complete`, `${phase.summary} The operator can close ${flow.label} or continue to the next phase.`, "ready", false);
   renderRail();
   renderCurrentLoopView();
@@ -13062,21 +13987,21 @@ function completeDiscoveryPhase() {
 
 function advanceDiscoveryPhase(direction = 1) {
   const flow = docPrepFlow();
+  const row = selectedRow();
   const phases = docPrepPhases(flow.id);
-  const current = Number(state.docPrepPhaseIndex[flow.id]) || 0;
+  const current = docPrepCurrentIndex(row, flow.id);
   const next = Math.max(0, Math.min(phases.length - 1, current + direction));
-  state.docPrepPhaseIndex[flow.id] = next;
-  state.discoveryPhaseIndex = state.docPrepPhaseIndex.discovery ?? state.discoveryPhaseIndex;
-  persistDiscoveryState();
+  setDocPrepPhaseIndex(row, flow.id, next);
   renderRail();
 }
 
 function renderDiscoveryWizard(row, dossier) {
   const flow = docPrepFlow();
   const phases = docPrepPhases(flow.id);
-  const phase = currentDiscoveryPhase(flow.id);
-  const phaseComplete = phaseIsComplete(phase.id);
-  const pct = discoveryProgress(flow.id);
+  const phase = currentDiscoveryPhase(flow.id, row);
+  const currentIndex = docPrepCurrentIndex(row, flow.id);
+  const phaseComplete = phaseIsComplete(phase.id, row, flow.id);
+  const pct = discoveryProgress(flow.id, row);
   const missing = row.missing.length ? row.missing : buildMissingSections(dossier);
   return `
     <section class="discovery-wizard" aria-label="${escapeHtml(flow.label)} workflow">
@@ -13089,7 +14014,7 @@ function renderDiscoveryWizard(row, dossier) {
         <span class="pill ${phaseComplete ? "ready" : "review"}">${phaseComplete ? "Phase complete" : `${pct}% complete`}</span>
       </div>
       <div class="phase-ruler" style="--phase-count: ${phases.length}" aria-hidden="true">
-        ${phases.map((item, index) => `<span class="${phaseIsComplete(item.id, row) ? "is-complete" : index === (state.docPrepPhaseIndex[flow.id] ?? 0) ? "is-active" : ""}"></span>`).join("")}
+        ${phases.map((item, index) => `<span class="${phaseIsComplete(item.id, row, flow.id) ? "is-complete" : index === currentIndex ? "is-active" : ""}"></span>`).join("")}
       </div>
       <div class="discovery-body">
         <section class="glass-card rail-card">
@@ -13117,7 +14042,7 @@ function renderDiscoveryWizard(row, dossier) {
           <div class="preference-grid">
             ${phase.preferences.map((preference, index) => `
               <div class="preference-card">
-                <label>${escapeHtml(preference)}<input type="checkbox" data-discovery-preference="${escapeHtml(discoveryPreferenceKey(phase.id, index))}" ${discoveryPreferenceChecked(phase.id, index) ? "checked" : ""}></label>
+                <label>${escapeHtml(preference)}<input type="checkbox" data-discovery-preference="${escapeHtml(discoveryPreferenceKey(phase.id, index))}" ${discoveryPreferenceChecked(phase.id, index, row, flow.id) ? "checked" : ""}></label>
                 <span class="copy">${index === 0 ? "Default for this workflow." : index === 1 ? "Recommended for the current lead." : "Optional operator preference."}</span>
               </div>
             `).join("")}
@@ -13125,15 +14050,15 @@ function renderDiscoveryWizard(row, dossier) {
         </section>
         <section class="glass-card rail-card">
           <h3>Operator notes</h3>
-          <textarea class="discovery-notes" data-discovery-notes="${escapeHtml(phase.id)}" placeholder="Add source notes, blockers, or handoff context for this phase.">${escapeHtml(state.discoveryNotes[phase.id] ?? "")}</textarea>
+          <textarea class="discovery-notes" data-discovery-notes="${escapeHtml(phase.id)}" placeholder="Add source notes, blockers, or handoff context for this phase.">${escapeHtml(docPrepNoteValue(phase.id, row, flow.id))}</textarea>
         </section>
       </div>
       <div class="discovery-actions">
-        <button class="btn" type="button" data-discovery-prev ${(state.docPrepPhaseIndex[flow.id] ?? 0) === 0 ? "disabled" : ""}>Previous</button>
+        <button class="btn" type="button" data-discovery-prev ${currentIndex === 0 ? "disabled" : ""}>Previous</button>
         <div>
           ${phaseComplete ? `<button class="btn" type="button" data-close-discovery>Close ${escapeHtml(flow.shortTitle)}</button>` : ""}
           <button class="btn primary solvys-liquid-glass" type="button" data-complete-phase>${phaseComplete ? "Save Again" : "Complete Phase"}</button>
-          <button class="btn" type="button" data-discovery-next ${(state.docPrepPhaseIndex[flow.id] ?? 0) === phases.length - 1 ? "disabled" : ""}>Next Phase</button>
+          <button class="btn" type="button" data-discovery-next ${currentIndex === phases.length - 1 ? "disabled" : ""}>Next Phase</button>
         </div>
       </div>
     </section>
@@ -13146,13 +14071,11 @@ function wireDiscoveryWizard(content) {
   content.querySelector("[data-discovery-prev]")?.addEventListener("click", () => advanceDiscoveryPhase(-1));
   content.querySelector("[data-discovery-next]")?.addEventListener("click", () => advanceDiscoveryPhase(1));
   content.querySelector("[data-discovery-notes]")?.addEventListener("input", (event) => {
-    state.discoveryNotes[event.target.dataset.discoveryNotes] = event.target.value;
-    persistDiscoveryState();
+    setDocPrepNote(event.target.dataset.discoveryNotes, event.target.value, selectedRow(), state.activeDocPrepFlow);
   });
   content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
     input.addEventListener("change", (event) => {
-      state.discoveryPreferences[event.target.dataset.discoveryPreference] = event.target.checked;
-      persistDiscoveryState();
+      setDocPrepPreference(event.target.dataset.discoveryPreference, event.target.checked, selectedRow(), state.activeDocPrepFlow);
       addShellEvent("Discovery preference saved", "The phase preference was saved for this review session.", "review", false);
     });
   });
@@ -13323,6 +14246,18 @@ function scoreHtml(row) {
   return `<span class="score ${escapeHtml(row.tone)}">${escapeHtml(rowDisplayScore(row))}</span>`;
 }
 
+function importedEstateLifecycleHtml(row) {
+  if (row.sourceKind !== "crm-import") return "";
+  const action = row.isArchived ? "restore" : "archive";
+  const label = row.isArchived ? "Restore" : "Archive";
+  return `
+    <span class="estate-actions" aria-label="Imported estate actions">
+      <button class="estate-action" type="button" data-estate-lifecycle="${escapeHtml(action)}" data-estate-id="${escapeHtml(row.id)}">${label}</button>
+      <button class="estate-action is-destructive" type="button" data-estate-lifecycle="delete" data-estate-id="${escapeHtml(row.id)}">Delete</button>
+    </span>
+  `;
+}
+
 function resultCellHtml(key, row) {
   const addressParts = addressDisplayParts(row.address, row.county);
   if (key === "address") {
@@ -13335,7 +14270,7 @@ function resultCellHtml(key, row) {
   if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowDisplayClassification(row))}</span></td>`;
   if (key === "next") {
     const next = rowNextAction(row);
-    return `<td data-column="next"><button class="next-link solvys-liquid-glass" type="button" title="${escapeHtml(next)}" data-open-next="${escapeHtml(row.id)}">${escapeHtml(conciseNextStep(next))}</button></td>`;
+    return `<td data-column="next"><span class="estate-next-stack"><button class="next-link solvys-liquid-glass" type="button" title="${escapeHtml(next)}" data-open-next="${escapeHtml(row.id)}">${escapeHtml(conciseNextStep(next))}</button>${importedEstateLifecycleHtml(row)}</span></td>`;
   }
   return "";
 }
@@ -13391,6 +14326,7 @@ function wireColumnReorder(root, scope) {
 function renderResults() {
   const rows = state.filteredRows;
   document.getElementById("resultsCount").innerHTML = `<strong>${rows.length}</strong> result${rows.length === 1 ? "" : "s"}`;
+  syncEstateArchiveToggle();
   const header = document.getElementById("resultsHeaderRow");
   if (header) header.innerHTML = tableHeaderHtml("results", rows);
   const selectAllMount = document.getElementById("resultsSelectAllMount");
@@ -13434,6 +14370,13 @@ function renderResults() {
       setDetailRailOpen(false);
       renderAll();
       openRailPreview(row?.missing[0]?.id ?? "tax", button);
+    });
+  });
+  body.querySelectorAll("[data-estate-lifecycle]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      updateImportedEstateLifecycle(button.dataset.estateId, button.dataset.estateLifecycle);
     });
   });
 	  wireBatchSelection(document, "[data-row-id]", "results");
@@ -13942,6 +14885,7 @@ async function loadRun() {
       const firstLead = firstSeed.ownerName || firstSeed.estateName || cleanDisplayValue(firstSeed.propertyAddress) || "live public-source lead";
       const summary = freshBatch.operatorSummary || `Pulled ${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead(s).`;
       document.getElementById("topStatus").textContent = `${summary} First lead: ${firstLead}.`;
+      await hydrateServerBackedState();
       return;
     }
     const data = await loadLatestRunPacket();
@@ -13949,6 +14893,7 @@ async function loadRun() {
     state.dailyRun = await loadDailyRun();
     state.qualificationReview = state.dailyRun?.qualificationReview ?? await loadQualificationReview();
     renderLoadedState(data, data.dossier);
+    await hydrateServerBackedState();
   } catch (error) {
     state.data = null;
     state.dossier = null;
@@ -13967,6 +14912,7 @@ async function loadRun() {
     updateConnectionStatuses();
     renderShellPanels();
     if (state.rows.length) renderAll();
+    await hydrateServerBackedState();
   }
 }
 
@@ -14116,9 +15062,21 @@ function setCrmImportMenuOpen(open) {
   if (!menu || !toggle || !popover) return;
   menu.dataset.open = open ? "true" : "false";
   toggle.setAttribute("aria-expanded", open ? "true" : "false");
-  popover.hidden = !open;
-  popover.classList.toggle("is-open", open);
-  popover.classList.toggle("is-closing", !open);
+  window.clearTimeout(Number(popover.dataset.closeTimer || 0));
+  if (open) {
+    popover.hidden = false;
+    popover.classList.remove("is-closing");
+    requestAnimationFrame(() => popover.classList.add("is-open"));
+  } else {
+    popover.classList.remove("is-open");
+    popover.classList.add("is-closing");
+    popover.dataset.closeTimer = String(window.setTimeout(() => {
+      if (menu.dataset.open !== "true") {
+        popover.hidden = true;
+        popover.classList.remove("is-closing");
+      }
+    }, dropdownCloseDelay()));
+  }
 }
 
 function dropdownCloseDelay() {
@@ -14575,6 +15533,9 @@ function wireEvents() {
     state.shellSettings.paidSourceApproval = event.target.checked;
     persistShellSettings("Paid-source approval gate updated");
   });
+  document.getElementById("estateArchiveToggle")?.addEventListener("click", () => {
+    setEstateArchiveMode(!state.showArchivedEstates);
+  });
   document.getElementById("exportToggle").addEventListener("click", (event) => {
     event.stopPropagation();
     const isOpen = document.getElementById("exportMenu").dataset.open === "true";
@@ -14654,7 +15615,7 @@ function wireRailResize() {
   let startWidth = state.railWidth;
   function resize(event) {
     state.railWidth = clampRailWidth(startWidth + startX - event.clientX);
-    localStorage.setItem(railWidthKey, String(state.railWidth));
+    storageSetItem(railWidthKey, String(state.railWidth));
     setRailOpen(true);
   }
   function stopResize() {
@@ -14696,9 +15657,9 @@ function wireFilterResize() {
       return;
     }
     state.filterCollapsed = false;
-    localStorage.setItem(filterCollapsedKey, "false");
+    storageSetItem(filterCollapsedKey, "false");
     state.filterWidth = clampFilterWidth(nextWidth);
-    localStorage.setItem(filterWidthKey, String(state.filterWidth));
+    storageSetItem(filterWidthKey, String(state.filterWidth));
     applyFilterWidth();
   }
   function stopResize() {
@@ -14718,8 +15679,8 @@ function wireFilterResize() {
   handle.addEventListener("dblclick", () => {
     state.filterWidth = 320;
     state.filterCollapsed = false;
-    localStorage.setItem(filterCollapsedKey, "false");
-    localStorage.setItem(filterWidthKey, String(state.filterWidth));
+    storageSetItem(filterCollapsedKey, "false");
+    storageSetItem(filterWidthKey, String(state.filterWidth));
     applyFilterWidth();
   });
 }

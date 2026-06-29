@@ -6,11 +6,18 @@ Make Discovery work from the estate asset first. Operators confirm owner details
 
 ## Locked Assumptions
 
+- IDI Core is expensive per run. Treat every paid pull as a controlled, logged action.
 - IDI is operator-import first. No background IDI cron, no per-person paid lookup automation, and no repeated paid runs in this sprint.
 - The IDI run guard is keyed by normalized address, owner last name, and provider. A duplicate import is blocked unless an admin override reason is recorded.
 - Raw IDI attachments can be stored as review artifacts. Score/status movement happens after accepted contact candidates, not raw import alone.
 - Column ordering is local-only unless a user persistence layer is already present.
 - Public-record capture supports manual fallback when county pages cannot be machine-read.
+
+## Strict IDI Core Advisory
+
+This sprint owns the only approved IDI Core intake path. Once a verified test proves that one expanded asset-search import can fill the Asset Discovery file with the deceased's information, immediate family, relatives, spouse/children where present, contact candidates, and alternative contacts, the pipeline is locked.
+
+Do not refactor, reroute, rename, bypass, or "clean up" the verified IDI intake path after it works once unless TP explicitly reopens the pipeline. Do not add background IDI cron, duplicate paid pulls, per-person lookup loops, retry loops, or lead-volume IDI sweeps.
 
 ## Product Loop
 

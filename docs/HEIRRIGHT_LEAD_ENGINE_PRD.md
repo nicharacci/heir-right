@@ -1,9 +1,9 @@
 # HeirRight Lead Engine PRD
 
-Status: Friday delivery record + post-Friday run-point PRD
+Status: Friday delivery record + contract-completion PRD
 Owner: TP / Solvys
 Client: HeirRight Real Estate
-Target: S1-S4 Friday delivery preserved; S5-S11 planned by milestone gates
+Target: S1-S21 delivery history preserved; S22-S27 complete the corrected contract scope
 
 ## Goal
 
@@ -19,6 +19,20 @@ Podio is now the leading CRM path unless smoke tests disprove it. The lead engin
 
 Post-Friday execution is milestone-based. S5-S11 can stay granular for agent execution and parallel Cursor Web PWA sessions, but human testing is requested only at milestone gates or when a blocker needs credentials, legal/compliance approval, live-write approval, or client acceptance. Daily run-point automation owns regression checks, smoke gates, Solvys UI audit, Linear updates, and human-attention assignment to `sam@solvys.io`.
 
+## Corrected Contract Objective - 2026-06-29
+
+The current acceptance target is contract completion, not proving lead-generation volume. The client explicitly wanted enriched leads now, plus the capability to generate leads later when the time comes.
+
+Current scope:
+
+- Automate both Doc Prep processes: Discovery and Closing.
+- Ship the new website with landing, Terms of Use, and Privacy Policy content as readable public pages/subpages.
+- Automate SMS and email outreach through Podio, Resend, or an owned app queue plus an approved SMS gateway. The app owns templates, approvals, audit, retries, and stop rules; SMS carrier delivery still requires a provider.
+- Keep the user interface error-free on the tested app and website surfaces.
+- Prove Google Sheets and Podio integrations with controlled writes and readback.
+
+Lead generation remains a supported capability path, but it is no longer the deciding completion score for the current contract objective.
+
 ## Source Materials
 
 - `Heir Right (Notion).pdf`
@@ -30,6 +44,9 @@ Post-Friday execution is milestone-based. S5-S11 can stay granular for agent exe
 - `leads.json`
 - `proposal.html`
 - `faces_handoff_prompt.md`
+- `docs/HEIRRIGHT_CONTRACT_COMPLETION_PLAN_2026-06-29.md`
+- `/Users/tifos/Downloads/Automation Project.pdf`
+- `/Users/tifos/Downloads/AutomationProject .pdf`
 - Zoom meeting notes link: blocked by Zoom Docs permissions as of May 21, 2026; user-supplied pasted notes are incorporated in `docs/HEIRRIGHT_ZOOM_ONBOARDING_NOTES_SYNTHESIS.md`.
 
 ## Friday Done
@@ -94,7 +111,16 @@ Planned post-Friday interfaces:
 
 ## Execution Batches
 
-The S1-S11 labels remain useful for brief paths and Linear issue grouping. They are not sprint-review loops. Agent work rolls up to milestone acceptance tickets, with human testing only at those gates.
+The S1-S21 labels remain useful for brief paths, Linear issue grouping, and evidence history. They are not sprint-review loops. Agent work rolls up to milestone acceptance tickets, with human testing only at those gates.
+
+The remaining completion pack is exactly six sprints:
+
+- S22: Contract Completion PRD + Source Lock.
+- S23: Discovery and Closing DocPrep Automation.
+- S24: Outreach Automation + Google/Podio Integration.
+- S25: Website + Legal Page Finalization.
+- S26: Full-App Human-Practical Testing.
+- S27: UX + Product Loop Human Review.
 
 ### S1 - Live Property + Records Search
 
@@ -310,9 +336,10 @@ The workspace now contains:
 - `docs/HEIRRIGHT_ZOOM_ONBOARDING_NOTES_SYNTHESIS.md`: pasted meeting-note synthesis including timeline, CRM decision path, automation priorities, and website sequencing.
 - `docs/CLAUDE_COWORK_PODIO_AUTOMATION_ARTIFACT.md`: Claude Cowork worker architecture for direct Podio automation without core Zapier dependency.
 - `docs/HEIRRIGHT_RUN_POINT_AUTOMATION.md`: daily Codex Automation, Cursor Web PWA, Linear, and milestone gate operating plan.
+- `docs/HEIRRIGHT_CONTRACT_COMPLETION_PLAN_2026-06-29.md`: corrected contract objective, S22-S27 completion pack, closing-template review, and IDI guardrails.
 - `docs/FRIDAY_HANDOFF_RUNBOOK.md`: setup, outputs, blockers, acceptance.
 - `linear/HEIRRIGHT_LINEAR_TICKETS.md`: parent ORCH + child ticket load sheet.
-- `sprint-md/`: S1-S11 Solvys briefs.
+- `sprint-md/`: S1-S27 Solvys briefs and completion-pack briefs.
 
 ## Validation
 
@@ -323,6 +350,9 @@ cd probate-lead-engine
 pnpm install
 pnpm build
 pnpm --filter @ple/worker run:dry -- --address="20611 NW 33rd Pl, Miami Gardens, FL 33056" --owner="Fresh public-source lead"
+pnpm --filter @ple/worker run:daily
+pnpm --filter @ple/worker export:dry
+pnpm --filter @ple/worker milestone:30-day
 pnpm --filter @ple/worker test
 pnpm --filter @ple/artifact build
 pnpm --filter @ple/artifact dev
@@ -339,13 +369,13 @@ Expected outputs:
 
 ## Known Blockers
 
-- Podio credentials are not configured.
-- Podio API/MCP/hooks/workflow viability is not yet proven in the real workspace.
-- A Podio account/invite or company email setup is needed for integration testing.
+- Google Sheets controlled write/readback needs target config and credentials.
+- Podio controlled write/readback needs credentials, field map, controlled test values, CSV backup/export access, and explicit live-write approval.
+- SMS delivery needs a provider decision if Podio-native SMS is unavailable; an OSS-owned app queue cannot deliver carrier SMS by itself.
 - Macro and Close remain fallback candidates, not the leading path.
 - Browserbase/browser automation credentials are not configured.
 - Miami-Dade Property Search and Official Records are reachable, but reliable record extraction still needs endpoint discovery or browser automation.
 - Native PDF/Word conversion is represented as HTML/markdown dry-run until conversion dependency is selected.
 - Direct Zoom meeting notes are not readable from the supplied link; pasted notes are incorporated, but export/share is still needed for source provenance.
-- Paid/manual source approval is not yet confirmed for IDI, Intelius, Ancestry, ForeWarn, VitalChek, PI requests, code enforcement, door knocks, or neighbor research.
-- Compliance approval is not yet confirmed for outreach scripts, text messages, emails, offer letters, or neighbor/relative contact workflows.
+- IDI Core is expensive per run. The Asset Discovery pipeline may be verified once with approval, then must remain locked unless TP explicitly reopens it.
+- Legal/compliance approval is still needed before closing templates or outreach copy are used externally.
