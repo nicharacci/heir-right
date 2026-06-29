@@ -1481,8 +1481,9 @@
       backdrop-filter: saturate(180%) blur(18px);
       -webkit-backdrop-filter: saturate(180%) blur(18px);
       opacity: 1;
+      visibility: visible;
       transform: translateX(0);
-      transition: opacity .2s var(--ease), transform .26s var(--ease-out), border-color .2s var(--ease);
+      transition: opacity .2s var(--ease), transform .26s var(--ease-out), border-color .2s var(--ease), visibility 0s linear 0s;
     }
 
     .filters::after {
@@ -1503,6 +1504,8 @@
       overflow: hidden;
       pointer-events: none;
       transform: translateX(-18px);
+      visibility: hidden;
+      transition: opacity .2s var(--ease), transform .26s var(--ease-out), border-color .2s var(--ease), visibility 0s linear .26s;
     }
 
     .content.is-filter-collapsed .filters::after {
@@ -7534,6 +7537,8 @@
         opacity: 1;
         pointer-events: auto;
         transform: none;
+        visibility: visible;
+        transition: none;
       }
       .filter-reopen { display: none; }
       .filter-resizer { display: none; }
