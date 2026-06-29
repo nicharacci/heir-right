@@ -8206,8 +8206,17 @@ function setStorageNameRecord(record) {
   } catch {}
 }
 
+function localStateEndpointEnabled() {
+  try {
+    const host = window.location.hostname;
+    return host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
+  } catch {
+    return false;
+  }
+}
+
 function persistServerState(key, value) {
-  if (!serverBackedStateKeys.has(key)) return;
+  if (!localStateEndpointEnabled() || !serverBackedStateKeys.has(key)) return;
   try {
     fetch(`/local-state/${encodeURIComponent(key)}`, {
       method: "POST",
@@ -8378,6 +8387,11 @@ function applyServerBackedStateValue(key, value) {
 }
 
 async function hydrateServerBackedState() {
+  if (!localStateEndpointEnabled()) {
+    document.documentElement.dataset.crmImportCount = String(state.crmImports.length);
+    document.documentElement.dataset.serverHydrated = "false";
+    return false;
+  }
   let changed = false;
   for (const key of serverBackedStateKeys) {
     try {
