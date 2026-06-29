@@ -11,7 +11,7 @@ module.exports = async function handler(request, response) {
       return;
     }
 
-    sendJson(response, 503, {
+    sendJson(response, 200, {
       ok: false,
       status: "blocked",
       error: "worker_not_configured",

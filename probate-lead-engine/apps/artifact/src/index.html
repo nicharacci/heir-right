@@ -13090,8 +13090,8 @@ function addDocPrepForRow(rowId, flowId = state.docPrepAddModal.flowId || state.
   state.docPrepAddModal.open = false;
   setActiveDocPrepFlow(flowId, { persist: true, rerender: false });
   ensureDocPrepStarted(row, flowId);
-  document.getElementById("topStatus").textContent = `${row.leadName || row.title} added to ${docPrepFlow(flowId).title}.`;
-  addShellEvent("DocPrep added", `${row.leadName || row.title} is now in ${docPrepFlow(flowId).title}.`, "ready", false);
+  document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} added to ${docPrepFlow(flowId).title}.`;
+  addShellEvent("DocPrep added", `${docPrepEstateLabel(row)} is now in ${docPrepFlow(flowId).title}.`, "ready", false);
   renderDossiersView();
   renderRail();
   syncSelectionLabels();
@@ -13121,17 +13121,22 @@ function docPrepFlowLineHtml(row, flowId) {
   `;
 }
 
+function docPrepEstateLabel(row) {
+  return row?.title || row?.leadName || "Current estate";
+}
+
 function docPrepClientRowHtml(row) {
   const checked = state.selectedIds.has(row.id);
   const status = dealStatusMeta(dealStatusForRow(row));
   const flowId = status.flowId === "closing-docs" ? "closing-docs" : state.activeDocPrepFlow;
   const selected = row.id === state.selectedId;
+  const estateLabel = docPrepEstateLabel(row);
   return `
     <article class="docprep-client-row ${selected ? "is-selected" : ""}" data-dossier-row="${escapeHtml(row.id)}">
       <div class="docprep-client-main">
-        ${checkboxHtml(row.id, `Select ${row.leadName} for document prep actions`, checked, `data-row-select="${escapeHtml(row.id)}"`)}
+        ${checkboxHtml(row.id, `Select ${estateLabel} for document prep actions`, checked, `data-row-select="${escapeHtml(row.id)}"`)}
         <div class="docprep-client-title">
-          <strong>${escapeHtml(row.leadName || row.title)}</strong>
+          <strong>${escapeHtml(estateLabel)}</strong>
           <span>${escapeHtml(row.address || "Address needs review")}</span>
         </div>
         <button class="btn" type="button" data-open-docprep-row="${escapeHtml(row.id)}" data-open-docprep-flow="${escapeHtml(flowId)}">Open</button>
@@ -13167,10 +13172,11 @@ function docPrepAddModalHtml() {
         <div class="docprep-add-list">
           ${eligible.map((row) => {
             const status = dealStatusMeta(dealStatusForRow(row));
+            const estateLabel = docPrepEstateLabel(row);
             return `
               <button class="docprep-add-option" type="button" data-add-docprep-row="${escapeHtml(row.id)}" data-add-docprep-flow="${escapeHtml(flowId)}">
                 <span>
-                  <strong>${escapeHtml(row.leadName || row.title)}</strong>
+                  <strong>${escapeHtml(estateLabel)}</strong>
                   <span>${escapeHtml(row.address || "Address needs review")} - ${escapeHtml(status.label)}</span>
                 </span>
                 <span>${escapeHtml(`${discoveryProgress(flowId, row)}%`)}</span>
@@ -13261,14 +13267,14 @@ function renderDossiersView() {
           <div class="docprep-breadcrumb-row">
             <button class="docprep-breadcrumb" type="button" data-show-docprep-list>All clients</button>
             <span>/</span>
-            <strong>${escapeHtml(row?.leadName || row?.title || "Current estate")}</strong>
+            <strong>${escapeHtml(docPrepEstateLabel(row))}</strong>
           </div>
           <h2>Document Prep</h2>
-          <p class="copy">${escapeHtml(row ? `${row.leadName || row.title} · ${row.address || "Address needs review"}` : "Load a lead packet from Estates to start document prep.")}</p>
+          <p class="copy">${escapeHtml(row ? `${docPrepEstateLabel(row)} · ${row.address || "Address needs review"}` : "Load a lead packet from Estates to start document prep.")}</p>
         </div>
         <label class="docprep-status-control">
           <span>Deal status</span>
-          <select data-deal-status aria-label="Deal status for ${escapeHtml(row?.leadName || row?.title || "current estate")}">
+          <select data-deal-status aria-label="Deal status for ${escapeHtml(docPrepEstateLabel(row) || "current estate")}">
             ${dealStatusOptionsHtml(dealStatus.id)}
           </select>
         </label>
