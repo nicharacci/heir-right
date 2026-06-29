@@ -71,6 +71,7 @@ Completed on 2026-06-29 on branch `v1.1.0/heirright-contract-completion-s22-s23`
 - Discovery and Closing Docs maintain independent flow progress for the same estate file.
 - Browser proof imported `Estate of S23 Server 12092`, completed Discovery Tax Receipt to 29%, reloaded, and confirmed Closing remained 0%.
 - Final Chrome proof imported `Estate of S23 Final 58448`, advanced from Owner Details to Tax Receipt, completed Tax Receipt, reloaded, and confirmed Discovery persisted at 29% while Closing stayed at 0%.
+- Production proof on `https://heirright-landing-demo.vercel.app` imported `Estate of S23 Prod Pass 00444`, completed Tax Receipt to 29%, reloaded, and confirmed the imported estate stayed selected while Closing remained at 0%.
 - Closing Docs includes Closing Packet Review plus all reviewed template-family rows.
 - In-app Quick Look renders the Closing Packet Review into the rail iframe with open blockers and template-family names.
 - IDI Core was not run; the intake path remains locked pending a single explicit controlled proof.

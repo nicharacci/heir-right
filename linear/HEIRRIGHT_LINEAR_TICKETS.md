@@ -986,6 +986,7 @@ Completion evidence:
 - Estate-scoped DocPrep state added for Discovery and Closing Docs.
 - CRM imports persist through browser storage plus local review fallback and reopen in DocPrep after reload.
 - Discovery completion survived reload for `Estate of S23 Server 12092`; Closing remained at 0% until Closing's own phases are completed.
+- Production proof on `https://heirright-landing-demo.vercel.app` imported `Estate of S23 Prod Pass 00444`, completed Tax Receipt to 29%, reloaded, and kept the imported estate selected while Closing remained at 0%.
 - Closing Packet Review and reviewed template-family rows render in the app with operator blockers.
 - IDI Core was not run; intake remains locked pending explicit controlled proof approval.
 
