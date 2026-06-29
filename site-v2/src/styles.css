@@ -781,7 +781,7 @@ main {
   grid-template-rows: auto 1fr auto;
   padding: 2.5rem 2.6rem 2rem;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, #fff, #f3f1e8);
+  background: linear-gradient(135deg, #f1eee6, #e5dfd1);
   color: var(--ink);
 }
 
