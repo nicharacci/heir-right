@@ -2,7 +2,9 @@ import type { ConnectionStatus, ExportRequest, ExportResult, ExportRoute, Export
 import { nowIso, slug } from "../lib";
 import {
   PODIO_LIVE_WRITE_APPROVAL_KEY,
+  PODIO_CSV_BACKUP_CONFIRMATION_KEY,
   podioLiveWriteApproved,
+  podioCsvBackupConfirmed,
   podioMissingExportConfig,
   resolvePodioFieldMap,
   type PodioFieldKind,
@@ -10,6 +12,7 @@ import {
 } from "./podio-config";
 
 type RuntimeEnv = Record<string, string | undefined>;
+export const GOOGLE_LIVE_WRITE_APPROVAL_KEY = "GOOGLE_LIVE_WRITE_APPROVED";
 
 function missing(keys: string[], env: RuntimeEnv): string[] {
   return keys.filter((key) => !env[key]);
@@ -67,6 +70,17 @@ async function exportGoogle(dossier: RawDossier, env: RuntimeEnv, dryRun: boolea
       externalId: `dry-google-${slug(dossier.id)}`,
       blockers: ["Live Google readback skipped in dry-run mode."],
       message: "Google Drive folder, Doc, and Sheet row are prepared for controlled live export.",
+    });
+  }
+
+  if (env[GOOGLE_LIVE_WRITE_APPROVAL_KEY] !== "true") {
+    return routeResult({
+      route: "google",
+      ok: false,
+      mode: "blocked",
+      readbackOk: false,
+      blockers: [`${GOOGLE_LIVE_WRITE_APPROVAL_KEY}=true is required before writing the controlled Google test row.`],
+      message: "Google live export is blocked by the explicit write-approval guard.",
     });
   }
 
@@ -147,12 +161,30 @@ async function exportGoogle(dossier: RawDossier, env: RuntimeEnv, dryRun: boolea
     token,
     { method: "POST", body: JSON.stringify({ values: row }) },
   );
+  const sheetAppend = sheetResponse.ok
+    ? await sheetResponse.json().catch(() => ({})) as { updates?: { updatedRange?: string } }
+    : {};
+  const updatedRange = sheetAppend.updates?.updatedRange;
+  const sheetReadbackResponse = sheetResponse.ok && updatedRange
+    ? await googleFetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_TRACKING_SHEET_ID}/values/${encodeURIComponent(updatedRange)}`,
+        token,
+        { method: "GET" },
+      )
+    : null;
+  const sheetReadback = sheetReadbackResponse?.ok
+    ? await sheetReadbackResponse.json().catch(() => ({})) as { values?: unknown[][] }
+    : {};
+  const sheetReadbackOk = Boolean(sheetReadbackResponse?.ok && sheetReadback.values?.some((readRow) => readRow.includes(dossier.summary.displayName)));
   const readbackResponse = await googleFetch(`https://www.googleapis.com/drive/v3/files/${doc.id}?fields=id,webViewLink`, token, {
     method: "GET",
   });
-  const readbackOk = sheetResponse.ok && readbackResponse.ok;
+  const readbackOk = sheetResponse.ok && sheetReadbackOk && readbackResponse.ok;
   const blockers = [
     ...(sheetResponse.ok ? [] : [`Google Sheet append failed: ${sheetResponse.status}`]),
+    ...(sheetResponse.ok && !updatedRange ? ["Google Sheet append response did not include a readback range."] : []),
+    ...(sheetResponse.ok && updatedRange && !sheetReadbackResponse?.ok ? [`Google Sheet readback failed: ${sheetReadbackResponse?.status ?? "not available"}`] : []),
+    ...(sheetReadbackResponse?.ok && !sheetReadbackOk ? ["Google Sheet readback did not include the controlled test row label."] : []),
     ...(readbackResponse.ok ? [] : [`Google report readback failed: ${readbackResponse.status}`]),
   ];
 
@@ -165,8 +197,8 @@ async function exportGoogle(dossier: RawDossier, env: RuntimeEnv, dryRun: boolea
     readbackOk,
     blockers,
     message: readbackOk
-      ? "Google export created the folder, report Doc, and tracking Sheet row."
-      : "Google export created the report Doc but failed to append the tracking Sheet row.",
+      ? "Google export created the folder, report Doc, tracking Sheet row, and read the controlled row back."
+      : "Google export created the report Doc but failed one or more tracking Sheet readback checks.",
   });
 }
 
@@ -352,6 +384,17 @@ async function exportPodio(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean
     });
   }
 
+  if (!podioCsvBackupConfirmed(env)) {
+    return routeResult({
+      route: "podio",
+      ok: false,
+      mode: "blocked",
+      readbackOk: false,
+      blockers: [`${PODIO_CSV_BACKUP_CONFIRMATION_KEY}=true is required before the controlled Podio test write.`],
+      message: "Podio live export is blocked until the CSV backup/export safety check is confirmed.",
+    });
+  }
+
   const podioExternalId = `heirright-${slug(dossier.id)}-${Date.now()}`;
 
   const itemResponse = await fetch(`https://api.podio.com/item/app/${env.PODIO_APP_ID}/`, {
@@ -414,13 +457,29 @@ async function exportPodio(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean
       ref_id: item.item_id,
     }),
   });
+  const task = taskResponse.ok ? await taskResponse.json().catch(() => ({})) as { task_id?: number; id?: number } : {};
+  const taskId = task.task_id ?? task.id;
 
   const readbackResponse = await fetch(`https://api.podio.com/item/${item.item_id}`, {
     headers: { "authorization": `Bearer ${env.PODIO_ACCESS_TOKEN}` },
   });
+  const commentReadbackResponse = commentResponse.ok
+    ? await fetch(`https://api.podio.com/comment/item/${item.item_id}/`, {
+        headers: { "authorization": `Bearer ${env.PODIO_ACCESS_TOKEN}` },
+      })
+    : null;
+  const taskReadbackResponse = taskId
+    ? await fetch(`https://api.podio.com/task/${taskId}`, {
+        headers: { "authorization": `Bearer ${env.PODIO_ACCESS_TOKEN}` },
+      })
+    : null;
+  const readbackOk = Boolean(readbackResponse.ok && commentReadbackResponse?.ok && taskReadbackResponse?.ok);
   const blockers = [
     ...(commentResponse.ok ? [] : [`Podio source-note comment failed: ${commentResponse.status}`]),
     ...(taskResponse.ok ? [] : [`Podio review task create failed: ${taskResponse.status}`]),
+    ...(commentResponse.ok && !commentReadbackResponse?.ok ? [`Podio source-note comment readback failed: ${commentReadbackResponse?.status ?? "not available"}`] : []),
+    ...(taskResponse.ok && !taskId ? ["Podio review task create response did not include a task id."] : []),
+    ...(taskId && !taskReadbackResponse?.ok ? [`Podio review task readback failed: ${taskReadbackResponse?.status ?? "not available"}`] : []),
     ...(readbackResponse.ok ? [] : [`Podio readback failed: ${readbackResponse.status}`]),
   ];
 
@@ -430,7 +489,7 @@ async function exportPodio(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean
     mode: "live",
     externalId: String(item.item_id ?? ""),
     url: item.link,
-    readbackOk: readbackResponse.ok,
+    readbackOk,
     blockers,
     message: blockers.length
       ? "Podio item was created, but one or more handoff/readback checks failed."
@@ -466,25 +525,53 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
   const checkedAt = nowIso();
   const missingPodio = podioMissingExportConfig(env);
   const podioApproved = podioLiveWriteApproved(env);
+  const podioBackup = podioCsvBackupConfirmed(env);
+  const missingGoogle = missing(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"], env);
+  const googleApproved = env[GOOGLE_LIVE_WRITE_APPROVAL_KEY] === "true";
+  const resendReady = Boolean(env.RESEND_API_KEY && env.RESEND_LIVE_SEND_APPROVED === "true");
+  const smsProvider = env.SMS_CARRIER_GATEWAY || env.SMS_PROVIDER || env.PODIO_NATIVE_SMS_PATH;
+  const smsReady = Boolean((env.PODIO_NATIVE_SMS_APPROVED === "true" && env.PODIO_ACCESS_TOKEN) || (smsProvider && env.SMS_GATEWAY_API_KEY && env.SMS_LIVE_SEND_APPROVED === "true"));
   return [
     {
       name: "Podio",
-      ok: !missingPodio.length,
-      mode: missingPodio.length ? "blocked" : "live",
+      ok: !missingPodio.length && podioApproved && podioBackup,
+      mode: !missingPodio.length && podioApproved && podioBackup ? "live" : "blocked",
       message: missingPodio.length
         ? `Podio export/readback config is missing: ${missingPodio.join(", ")}.`
-        : podioApproved
-          ? "Podio bearer-token export config and controlled write approval are present."
-          : `Podio bearer-token export config is present; controlled write still requires ${PODIO_LIVE_WRITE_APPROVAL_KEY}=true.`,
+        : !podioApproved
+          ? `Podio bearer-token export config is present; controlled write still requires ${PODIO_LIVE_WRITE_APPROVAL_KEY}=true.`
+          : !podioBackup
+            ? `Podio controlled write still requires ${PODIO_CSV_BACKUP_CONFIRMATION_KEY}=true before mutation.`
+            : "Podio bearer-token export config, CSV backup confirmation, and controlled write approval are present.",
       checkedAt,
     },
     {
       name: "Google",
-      ok: !missing(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"], env).length,
-      mode: missing(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"], env).length ? "blocked" : "live",
-      message: missing(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"], env).length
+      ok: !missingGoogle.length && googleApproved,
+      mode: !missingGoogle.length && googleApproved ? "live" : "blocked",
+      message: missingGoogle.length
         ? "Google Drive/Docs/Sheets export config is missing."
-        : "Google export config is present; controlled write still requires operator approval.",
+        : googleApproved
+          ? "Google export config and controlled write approval are present."
+          : `Google export config is present; controlled write still requires ${GOOGLE_LIVE_WRITE_APPROVAL_KEY}=true.`,
+      checkedAt,
+    },
+    {
+      name: "Resend",
+      ok: resendReady,
+      mode: resendReady ? "live" : "blocked",
+      message: resendReady
+        ? "Resend fallback is configured for approved internal email tests only."
+        : "Resend fallback is blocked until RESEND_API_KEY and RESEND_LIVE_SEND_APPROVED=true are configured.",
+      checkedAt,
+    },
+    {
+      name: "SMS Gateway",
+      ok: smsReady,
+      mode: smsReady ? "live" : "blocked",
+      message: smsReady
+        ? "An approved SMS carrier or Podio-native SMS path is configured; app queues still require per-template approval."
+        : "SMS delivery is blocked until an approved carrier gateway or Podio-native SMS path is configured and approved.",
       checkedAt,
     },
     {

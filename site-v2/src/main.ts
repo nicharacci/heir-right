@@ -191,14 +191,19 @@ function setupContactForm(): void {
         body: JSON.stringify(payload),
       });
 
-      const result = (await response.json()) as {
-        ok?: boolean;
-        receiptId?: string;
-        message?: string;
-      };
+      const contentType = response.headers.get("content-type") ?? "";
+      const result = contentType.includes("application/json")
+        ? ((await response.json()) as {
+            ok?: boolean;
+            receiptId?: string;
+            message?: string;
+          })
+        : null;
 
-      if (!response.ok || !result.ok) {
-        throw new Error(result.message ?? "The request could not be submitted.");
+      if (!response.ok || !result?.ok) {
+        throw new Error(
+          result?.message ?? "The request could not be submitted. Please contact HeirRight or try again shortly."
+        );
       }
 
       form.reset();

@@ -15,6 +15,7 @@ export type PipelineOutputName =
   | "readback-evidence.json"
   | "readback-evidence.md"
   | "podio-live-export-result.json"
+  | "google-live-export-result.json"
   | "connection-status.json"
   | "thirty-day-milestone-evidence.json"
   | "thirty-day-milestone-evidence.md"

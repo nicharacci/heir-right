@@ -484,7 +484,7 @@ export interface ExportResult {
 }
 
 export interface ConnectionStatus {
-  name: "Podio" | "Google" | "Web Search";
+  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search";
   ok: boolean;
   mode: "live" | "dry_run" | "blocked";
   message: string;

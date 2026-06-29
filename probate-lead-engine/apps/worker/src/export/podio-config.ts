@@ -3,6 +3,7 @@ export const TEXAS_EQUITY_PROS_LEADS_SPACE_ID = "7008942";
 export const TEXAS_EQUITY_PROS_LEADS_WORKSPACE = "Texas Equity Pros LLC";
 export const TEXAS_EQUITY_PROS_LEADS_APP = "Leads";
 export const PODIO_LIVE_WRITE_APPROVAL_KEY = "PODIO_LIVE_WRITE_APPROVED";
+export const PODIO_CSV_BACKUP_CONFIRMATION_KEY = "PODIO_CSV_BACKUP_CONFIRMED";
 
 type RuntimeEnv = Record<string, string | undefined>;
 
@@ -205,4 +206,8 @@ export function podioMissingExportConfig(env: RuntimeEnv): string[] {
 
 export function podioLiveWriteApproved(env: RuntimeEnv): boolean {
   return env[PODIO_LIVE_WRITE_APPROVAL_KEY] === "true";
+}
+
+export function podioCsvBackupConfirmed(env: RuntimeEnv): boolean {
+  return env[PODIO_CSV_BACKUP_CONFIRMATION_KEY] === "true";
 }

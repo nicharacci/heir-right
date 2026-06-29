@@ -1,5 +1,6 @@
 const { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { dirname, join } = require("node:path");
+const { buildConnectionStatuses } = require("./api/connections/status.js");
 
 const distDir = join(__dirname, "dist");
 rmSync(distDir, { recursive: true, force: true });
@@ -63,7 +64,10 @@ writeJsonFallback("auth/session", {
     allowedEmails: [],
   },
 });
-writeJsonFallback("api/connections/status", []);
+writeJsonFallback("api/connections/status", buildConnectionStatuses(process.env, {
+  freshBatchExists: existsSync(distFreshLeadBatchPath),
+  latestRunExists: existsSync(join(distDir, "latest-run.json")),
+}));
 writeJsonFallback("fresh-lead-batch.json", { leadRuns: [] });
 writeJsonFallback("daily-run.json", null);
 writeJsonFallback("qualification-review.json", null);

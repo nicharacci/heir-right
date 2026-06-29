@@ -15,6 +15,7 @@
     "seeds:validate": "node dist/seed-validation-cli.js",
     "milestone:30-day": "node dist/milestone-30-day-cli.js",
     "export:dry": "node dist/export-cli.js",
+    "export:google-live-test": "node dist/google-live-test-cli.js",
     "export:podio-live-test": "node dist/podio-live-test-cli.js",
     "run:dry": "node dist/cli.js"
   },
