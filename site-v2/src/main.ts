@@ -25,59 +25,37 @@ function setupAmbientCanvas(): void {
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   };
 
-  const drawRibbon = (index: number, time: number) => {
-    const yBase = height * (0.18 + index * 0.145);
-    const amplitude = 18 + index * 8;
-    const pointerPull = (pointer.y - 0.5) * 42;
-    const offset = (pointer.x - 0.5) * 58;
+  const drawField = (time: number) => {
+    const driftX = (pointer.x - 0.5) * width * 0.08;
+    const driftY = (pointer.y - 0.5) * height * 0.08;
+    const fields = [
+      {
+        x: width * 0.2 + driftX,
+        y: height * 0.16 + driftY,
+        radius: Math.min(width, height) * 0.48,
+        color: "rgba(199, 159, 74, 0.11)",
+      },
+      {
+        x: width * 0.78 - driftX * 0.6,
+        y: height * 0.34 - driftY * 0.8,
+        radius: Math.min(width, height) * 0.42,
+        color: "rgba(240, 234, 214, 0.055)",
+      },
+      {
+        x: width * (0.5 + Math.sin(time * 0.08) * 0.035),
+        y: height * 0.94,
+        radius: Math.min(width, height) * 0.56,
+        color: "rgba(199, 159, 74, 0.075)",
+      },
+    ];
 
-    context.beginPath();
-    for (let step = 0; step <= 96; step += 1) {
-      const progress = step / 96;
-      const x = progress * width;
-      const wave =
-        Math.sin(progress * Math.PI * 2 + time * (0.38 + index * 0.04) + index) * amplitude +
-        Math.sin(progress * Math.PI * 5 - time * 0.18) * (amplitude * 0.32);
-      const y = yBase + wave + pointerPull * Math.sin(progress * Math.PI) + offset * 0.08;
-      if (step === 0) {
-        context.moveTo(x, y);
-      } else {
-        context.lineTo(x, y);
-      }
-    }
-    context.strokeStyle = index % 2 === 0 ? "rgba(205, 168, 92, 0.18)" : "rgba(255, 255, 255, 0.08)";
-    context.lineWidth = index % 2 === 0 ? 1.2 : 0.8;
-    context.stroke();
-  };
-
-  const drawKeyField = (time: number) => {
-    const centerX = width * (0.5 + (pointer.x - 0.5) * 0.08);
-    const centerY = height * (0.53 + (pointer.y - 0.5) * 0.06);
-    const radius = Math.min(width, height) * 0.24;
-
-    context.save();
-    context.translate(centerX, centerY);
-    context.rotate(Math.sin(time * 0.16) * 0.06);
-    context.strokeStyle = "rgba(205, 168, 92, 0.11)";
-    context.lineWidth = 1;
-    context.beginPath();
-    context.ellipse(0, 0, radius * 1.75, radius * 0.64, 0, 0, Math.PI * 2);
-    context.stroke();
-
-    context.strokeStyle = "rgba(255, 255, 255, 0.055)";
-    context.beginPath();
-    context.moveTo(-radius * 1.45, 0);
-    context.bezierCurveTo(-radius * 0.55, -radius * 0.35, radius * 0.55, radius * 0.35, radius * 1.45, 0);
-    context.stroke();
-
-    context.strokeStyle = "rgba(205, 168, 92, 0.16)";
-    context.beginPath();
-    context.moveTo(0, -radius * 0.52);
-    context.lineTo(0, radius * 0.52);
-    context.moveTo(-radius * 0.18, radius * 0.18);
-    context.lineTo(radius * 0.18, radius * 0.18);
-    context.stroke();
-    context.restore();
+    fields.forEach((field) => {
+      const gradient = context.createRadialGradient(field.x, field.y, 0, field.x, field.y, field.radius);
+      gradient.addColorStop(0, field.color);
+      gradient.addColorStop(1, "rgba(5, 4, 2, 0)");
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, width, height);
+    });
   };
 
   const render = () => {
@@ -88,17 +66,9 @@ function setupAmbientCanvas(): void {
 
     context.clearRect(0, 0, width, height);
 
-    const gradient = context.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, "rgba(15, 29, 50, 0.68)");
-    gradient.addColorStop(0.55, "rgba(8, 20, 37, 0.26)");
-    gradient.addColorStop(1, "rgba(0, 0, 0, 0.1)");
-    context.fillStyle = gradient;
+    context.fillStyle = "rgba(5, 4, 2, 0.68)";
     context.fillRect(0, 0, width, height);
-
-    for (let index = 0; index < 7; index += 1) {
-      drawRibbon(index, time);
-    }
-    drawKeyField(time);
+    drawField(time);
 
     if (!reducedMotion) {
       window.requestAnimationFrame(render);
