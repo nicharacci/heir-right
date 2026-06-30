@@ -8420,22 +8420,22 @@ const closingDocPhases = [
 const docPrepFlows = {
   discovery: {
     id: "discovery",
-    label: "Discovery",
+    label: "Estate Discovery",
     title: "Estate Discovery",
-    shortTitle: "Discovery",
-    cta: "Begin Discovery",
-    tag: "County source review",
-    copy: "Build the source-backed estate file: owner, tax, deed, probate, obituary, IDI, contacts, and dossier export.",
+    shortTitle: "Estate Discovery",
+    cta: "Begin Estate Discovery",
+    tag: "Running the play",
+    copy: "Run the source-backed estate play: owner, property, deed, taxes, probate, heirs, IDI, contacts, and lead report.",
     phases: discoveryPhases
   },
   "closing-docs": {
     id: "closing-docs",
-    label: "Closing Docs",
-    title: "Closing Docs",
-    shortTitle: "Closing",
-    cta: "Begin Closing Docs",
-    tag: "Closing packet",
-    copy: "Turn a reviewed estate into title, seller, underwriting, offer, escrow, and recording prep without leaving the same workspace.",
+    label: "Closing Prep",
+    title: "Closing Prep",
+    shortTitle: "Closing Prep",
+    cta: "Begin Closing Prep",
+    tag: "Closing templates",
+    copy: "Turn a reviewed estate into the closing-template packet without leaving the same estate file.",
     phases: closingDocPhases
   }
 };
@@ -8466,15 +8466,15 @@ const dealStatusOptions = [
     id: "warm",
     label: "Warm",
     flowId: "closing-docs",
-    route: "Closing Docs",
-    copy: "Move the estate toward Closing Docs prep."
+    route: "Closing Prep",
+    copy: "Move the estate toward Closing Prep."
   },
   {
     id: "hot",
     label: "Hot",
     flowId: "closing-docs",
-    route: "Closing Docs",
-    copy: "Prioritize Closing Docs and seller packet prep."
+    route: "Closing Prep",
+    copy: "Prioritize Closing Prep and seller packet prep."
   },
   {
     id: "cold",
@@ -9021,7 +9021,7 @@ function rowDisplayClassification(row) {
 
 function rowNextAction(row) {
   if (!row) return "Review";
-  if (row.sourceKind === "crm-import" && !phaseIsComplete("dossier-export", row, "discovery")) return "Begin Discovery";
+  if (row.sourceKind === "crm-import" && !phaseIsComplete("dossier-export", row, "discovery")) return "Begin Estate Discovery";
   if (!idiImportForRow(row)) return "Import IDI";
   if (!acceptedContactCandidates(row).length) return "Review contacts";
   return row.next || "Review dossier";
@@ -9417,7 +9417,7 @@ function minimalImportedDossier(imported) {
       estateName: imported.estateName,
       displayName: imported.estateName,
       caseNumber: imported.sourceRecordId || "CRM row",
-      nextBestAction: "Begin Discovery or Closing Docs from the DocPrep workflow."
+      nextBestAction: "Begin Estate Discovery first; move to Closing Prep after review."
     },
     property: {
       address: { value: imported.propertyAddress },
@@ -9456,7 +9456,7 @@ function minimalImportedDossier(imported) {
             owner_name: imported.ownerName,
             source_record_id: imported.sourceRecordId
           },
-          pipelineStages: ["Imported", "Discovery", "Closing Docs", "Review"]
+          pipelineStages: ["Imported", "Estate Discovery", "Closing Prep", "Review"]
         },
         podioReadiness: {
           classification: "prep_only",
@@ -9496,7 +9496,7 @@ function crmImportRow(imported) {
     evidence: 3,
     evidenceTotal: 9,
     status: archived ? "archived" : "review",
-    next: archived ? "Archived" : "Begin Discovery",
+    next: archived ? "Archived" : "Begin Estate Discovery",
     classification: archived ? "Archived Import" : "CRM Import",
     missing,
     search: `${normalized.estateName} ${normalized.ownerName} ${normalized.propertyAddress} ${normalized.parcelId} ${normalized.sourceRecordId} ${crmProviderLabel(normalized.provider)} imported crm closing docs discovery`,
@@ -11479,43 +11479,33 @@ function documentPrepStats(row = selectedRow(), dossier = dossierForRow(row), fl
 
 function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
   const docs = dossierDocuments(row, dossier);
-  const stats = documentPrepStats(row, dossier);
+  const discoveryStats = documentPrepStats(row, dossier, "discovery");
+  const closingStats = documentPrepStats(row, dossier, "closing-docs");
   const discoveryDone = docPrepPhases("discovery").filter((phase) => phaseIsComplete(phase.id, row, "discovery")).length;
-  const closingDone = docPrepPhases("closing-docs").filter((phase) => phaseIsComplete(phase.id, row, "closing-docs")).length;
+  const closingTemplateReady = closingTemplateFamilies.filter((template) => closingTemplateBlockers(template, row, dossier).length === 0).length;
   const reviewTasks = taskCount(dossier ?? {});
   const closingDocs = docs.filter((doc) => documentFlowMatches(doc, "closing-docs"));
-  const closingReadyDocs = closingDocs.filter((doc) => documentFileRecord(doc.id, row) || !/blocked|locked|open/i.test(doc.status || "")).length;
   const readyDocs = docs.filter((doc) => !/blocked|locked|open/i.test(doc.status || "")).length;
   return [
     {
       id: "estate-discovery",
       title: "Estate Discovery",
-      done: discoveryDone,
-      total: docPrepPhases("discovery").length,
+      done: discoveryStats.linked,
+      total: discoveryStats.total,
       tag: docPrepFlow("discovery").tag,
-      due: row?.next || "Review next action",
-      status: discoveryDone >= docPrepPhases("discovery").length ? "Ready to submit" : `${discoveryDone}/${docPrepPhases("discovery").length}`,
-      ready: discoveryDone >= docPrepPhases("discovery").length
-    },
-    {
-      id: "document-prep",
-      title: "Document Prep",
-      done: stats.linked,
-      total: stats.total,
-      tag: "Dossier packet",
-      due: `${stats.missing} missing`,
-      status: stats.missing ? `${stats.linked}/${stats.total}` : "Ready to bundle",
-      ready: stats.missing === 0
+      due: `${discoveryDone}/${docPrepPhases("discovery").length} source steps`,
+      status: discoveryStats.missing ? `${discoveryStats.linked}/${discoveryStats.total}` : "Ready to submit",
+      ready: discoveryStats.missing === 0 && discoveryDone >= docPrepPhases("discovery").length
     },
     {
       id: "closing-docs",
-      title: "Closing Docs",
-      done: closingDone,
-      total: docPrepPhases("closing-docs").length,
+      title: "Closing Prep",
+      done: closingTemplateReady,
+      total: closingTemplateFamilies.length,
       tag: docPrepFlow("closing-docs").tag,
-      due: closingReadyDocs ? `${closingReadyDocs}/${Math.max(closingDocs.length, 1)} docs` : "Needs title review",
-      status: closingDone >= docPrepPhases("closing-docs").length ? "Ready to bundle" : `${closingDone}/${docPrepPhases("closing-docs").length}`,
-      ready: closingDone >= docPrepPhases("closing-docs").length
+      due: `${Math.max(0, closingDocs.length - closingStats.missing)}/${closingDocs.length} packet docs`,
+      status: closingTemplateReady >= closingTemplateFamilies.length ? "Ready to bundle" : `${closingTemplateReady}/${closingTemplateFamilies.length}`,
+      ready: closingTemplateReady >= closingTemplateFamilies.length
     },
     {
       id: "handoff-review",
@@ -11587,7 +11577,7 @@ function dashboardActivityRows(row = selectedRow()) {
     },
     {
       title: `${fileCount} source file${fileCount === 1 ? "" : "s"} linked`,
-      copy: "Document Prep updates the packet wherever the file is reused.",
+      copy: "Estate Discovery and Closing Prep update the packet wherever the file is reused.",
       tone: fileCount ? "check" : "clock",
       at: Date.now() - (3 * 60 * 60 * 1000)
     }
@@ -11937,7 +11927,7 @@ function submitBatchCrmImport(formData) {
   syncAllEnhancedSelects();
   applyFilters();
   updateFooterLeadContext(selectedRow());
-  document.getElementById("topStatus").textContent = `${imports.length} estates imported from ${crmProviderLabel(imports[0]?.provider)}. Begin Discovery before Closing Docs.`;
+  document.getElementById("topStatus").textContent = `${imports.length} estates imported from ${crmProviderLabel(imports[0]?.provider)}. Begin Estate Discovery before Closing Prep.`;
   addShellEvent("CRM batch imported", `${imports.length} estates are now available in Estates and DocPrep. No live CRM write was attempted.`, "ready", false);
 }
 
@@ -11974,7 +11964,7 @@ function submitCrmImport(formData) {
   syncAllEnhancedSelects();
   applyFilters();
   updateFooterLeadContext(selectedRow());
-  document.getElementById("topStatus").textContent = `${imported.estateName} imported from ${crmProviderLabel(imported.provider)}. Begin Discovery or switch to Closing Docs in Document Prep.`;
+  document.getElementById("topStatus").textContent = `${imported.estateName} imported from ${crmProviderLabel(imported.provider)}. Begin Estate Discovery or switch to Closing Prep in Document Prep.`;
   addShellEvent("Estate imported from CRM", `${imported.estateName} is now available in Estates and DocPrep. No live CRM write was attempted.`, "ready", false);
 }
 
@@ -12131,7 +12121,7 @@ function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(r
   return `
     <section class="glass-card rail-card">
       <h3>Closing package inputs</h3>
-      <p class="copy">Closing Docs reuses the same estate facts, source attachments, CRM row, contact decisions, and offer math. Add source facts once; reuse them across every closing document.</p>
+      <p class="copy">Closing Prep reuses the same estate facts, source attachments, CRM row, contact decisions, and offer math. Add source facts once; reuse them across every closing document.</p>
       <ul class="mini-list">
         ${rows.map(([label, value]) => `<li><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></li>`).join("")}
       </ul>
@@ -12935,7 +12925,7 @@ function crmHandoffHtml(row, dossier) {
 function closingDocHtml(row, dossier, title, rows = []) {
   const safeRows = rows.length ? rows : [["Status", "Needs review"]];
   return pageShellHtml(title, row?.leadName ?? row?.title ?? "Lead file", `
-    <p class="muted">Closing Docs uses the same estate file and linked source facts. This packet is review-only until approval and readback proof clear.</p>
+    <p class="muted">Closing Prep uses the same estate file and linked source facts. This packet is review-only until approval and readback proof clear.</p>
     <div class="notice">No live Podio card, Google Doc, Google Sheet row, email, SMS, signature request, escrow instruction, or recording task is created from this preview.</div>
     <table>
       ${safeRows.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join("")}
@@ -13042,8 +13032,7 @@ function renderDashboardView() {
     button.addEventListener("click", () => {
       if (button.dataset.processCard === "estate-discovery") setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
       if (button.dataset.processCard === "closing-docs") setActiveDocPrepFlow("closing-docs", { persist: true, rerender: false });
-      const view = button.dataset.processCard === "estate-discovery" ? "find-estates" : "dossiers";
-      document.querySelector(`[data-shell-nav="${view}"]`)?.click();
+      document.querySelector('[data-shell-nav="dossiers"]')?.click();
     });
   });
 }
@@ -13218,7 +13207,7 @@ function renderDossiersListView(target) {
       </div>
       <section class="document-panel" aria-label="Document prep clients">
         <div class="docprep-client-list">
-          ${rows.map(docPrepClientRowHtml).join("") || `<div class="docprep-empty-state"><strong>No active document prep rows.</strong><span class="copy">Use Add prep to start Discovery or Closing Docs from eligible estates.</span></div>`}
+          ${rows.map(docPrepClientRowHtml).join("") || `<div class="docprep-empty-state"><strong>No active document prep rows.</strong><span class="copy">Use Add prep to start Estate Discovery or Closing Prep from eligible estates.</span></div>`}
         </div>
       </section>
     </div>
