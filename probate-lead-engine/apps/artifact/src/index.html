@@ -2049,7 +2049,7 @@
     .arsip-dashboard,
     .document-prep {
       display: grid;
-      gap: 18px;
+      gap: 26px;
       min-width: 0;
       color: var(--text);
     }
@@ -2149,9 +2149,13 @@
 
     .arsip-section {
       display: grid;
-      gap: 12px;
-      padding: 0 0 18px;
+      gap: 18px;
+      padding: 8px 0 28px;
       border-bottom: 1px dashed color-mix(in srgb, var(--line-strong) 76%, transparent);
+    }
+
+    .arsip-dashboard > .arsip-section:first-of-type {
+      padding-top: 2px;
     }
 
     .arsip-section:last-child {
@@ -2169,7 +2173,7 @@
 
     .arsip-section-title {
       display: grid;
-      gap: 2px;
+      gap: 5px;
       min-width: 0;
     }
 
@@ -2391,6 +2395,16 @@
       align-items: start;
     }
 
+    .dashboard-lower-grid > .arsip-section,
+    .dashboard-lower-grid > aside {
+      display: grid;
+      gap: 14px;
+    }
+
+    .dashboard-lower-grid > .arsip-section {
+      padding-top: 8px;
+    }
+
     .activity-list {
       display: grid;
       gap: 0;
@@ -2405,6 +2419,7 @@
       gap: 10px;
       align-items: center;
       min-height: 44px;
+      padding: 10px 0;
       border-bottom: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
       color: var(--muted);
       font-size: 12px;
@@ -2445,6 +2460,7 @@
       justify-content: space-between;
       gap: 12px;
       min-height: 32px;
+      padding: 7px 0;
       border-bottom: 1px dashed color-mix(in srgb, var(--line-strong) 62%, transparent);
       color: var(--muted);
       font-size: 12px;
