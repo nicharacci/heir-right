@@ -9104,19 +9104,19 @@ function leadNameInitialLabel(...candidates) {
     .find((candidate) => candidate && !/needs review|current estate/i.test(candidate));
   const clean = String(raw || "Lead prospect")
     .split(/\s+-\s+/)[0]
-    .replace(/\b(the\s+)?(estate\s+of|est\s+of|estate|est)\b.*$/i, "")
+    .replace(/\b(the\s+)?(estate\s+of|est\s+of)\b\s*/i, "")
+    .replace(/\b(est|estate)\b\.?$/i, "")
     .replace(/[^\p{L}\p{N},'\-\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
   if (clean.includes(",")) {
-    const [lastPart, firstPart = ""] = clean.split(",").map((part) => part.trim());
-    const firstInitial = firstPart[0]?.toUpperCase() || lastPart[0]?.toUpperCase() || "L";
-    return `${titleCaseNamePart(lastPart || "Lead")}, ${firstInitial}.`;
+    return clean
+      .split(",")
+      .map((part) => titleCaseNamePart(part.trim()))
+      .filter(Boolean)
+      .join(", ");
   }
-  const parts = clean.split(/\s+/).filter(Boolean);
-  const first = parts[0] || "Lead";
-  const last = parts.length > 1 ? parts.at(-1) : first;
-  return `${titleCaseNamePart(last)}, ${first[0]?.toUpperCase() || "L"}.`;
+  return titleCaseNamePart(clean || "Lead prospect");
 }
 
 function displayStatus(value, fallback = "Needs review") {

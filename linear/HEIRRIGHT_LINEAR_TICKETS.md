@@ -52,6 +52,18 @@ Live Linear updates are blocked by reauthentication (`oauth_token_invalid_grant`
 - Latest sample-file evidence: `DAILY_RUN_SEEDS_FILE=input/production-seeds.example.json pnpm --filter @ple/worker milestone:30-day` reports `overallStatus: blocked`, `blockedGateCount: 5`, 2 raw leads, 0 qualified leads, and no live Google/Podio readback.
 - Human/external blockers: Google Workspace target/config, Podio credentials/controlled test values, CSV backup/export access, explicit live-write approval, SMS provider decision if Podio lacks SMS, legal/compliance approval for live outreach and closing documents, optional production seed volume, and Linear reauthentication.
 
+## Current Repo Status - 2026-06-30
+
+Live Linear updates were not performed from this run; this section is the repo-local fallback status for S26/S27 closeout.
+
+- S26 full-app human-practical testing: repo-implemented, locally verified, production-smoke-passed. The practical pass found and fixed the operator-dashboard lead-label regression where the current dry-run lead displayed as `Lead, F.` instead of `Fresh Public-Source Lead`.
+- S27 UX and product-loop human review: repo-implemented, locally verified, production-smoke-passed. The daily handoff at `docs/run-point-daily/2026-06-30-heirright-run-point.md` is the final review packet for this branch.
+- Website: `site-v2` was deployed to `https://heirright.vercel.app` as deployment `dpl_fuaqa1EbYQiNBAQyq3AFTa38Qy1P`. Routes `/`, `/contact.html`, `/legal.html`, `/terms.html`, and `/privacy.html` returned 200, and production browser checks passed at desktop and mobile widths.
+- Operator app: `probate-lead-engine` was deployed to `https://heirright-landing-demo.vercel.app` as deployment `dpl_12gtibGrHCTQNuJUsJrSFJARaQzw`. Routes `/`, `/health`, `/api/connections/status`, and `/latest-run.json` returned 200, and production browser checks passed at desktop and mobile widths.
+- Form route: production `/api/review-request` returned honeypot-safe receipt `HR-20260630-0D7070BD`; no real consultation lead was created.
+- Required smoke gates passed: `pnpm build`, `pnpm --filter @ple/worker test`, dry-run, daily run, dry export, milestone packet, artifact build, `site-v2` build, `git diff --check`, and local/production Playwright route checks.
+- Expected blocked gates remain external: Google Workspace credentials/target Sheet, Podio credentials/field map/controlled-write approval, outreach compliance approval, SMS provider decision, final closing-template approval, optional custom-domain migration, optional approved single IDI proof, canonical workflow PDF placement, and Linear reauthentication.
+
 ## S1-ORCH: HeirRight live public-source search
 
 Owner: TP
