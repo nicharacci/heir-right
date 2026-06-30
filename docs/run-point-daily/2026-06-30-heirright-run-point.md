@@ -7,7 +7,7 @@ Thread title fallback: `HEI-001 2026-06-30` because thread renaming was unavaila
 - Working branch: `v1.1.1/heirright-2026-06-30-s26-s27`
 - Base branch reviewed: `v1.1.0/heirright-contract-completion-s26-s27` at `41c56a8`
 - Pushed remote branch: `origin/v1.1.1/heirright-2026-06-30-s26-s27`
-- Preserved unrelated dirty state: `probate-lead-engine/package.json` and `probate-lead-engine/pnpm-lock.yaml` dependency edits were stashed during deployment so they would not leak into the app deploy. Restore after commit/push and keep them separate unless TP explicitly accepts them.
+- Preserved unrelated dirty state: `probate-lead-engine/package.json` and `probate-lead-engine/pnpm-lock.yaml` dependency edits were stashed during deployment so they would not leak into the app deploy, then restored after push. They remain uncommitted and should stay separate unless TP explicitly accepts them.
 
 ## Previous-Day Touchups Reviewed
 
