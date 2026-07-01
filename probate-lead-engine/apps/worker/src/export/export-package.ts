@@ -3,9 +3,17 @@ import { nowIso, slug } from "../lib";
 import {
   PODIO_LIVE_WRITE_APPROVAL_KEY,
   PODIO_CSV_BACKUP_CONFIRMATION_KEY,
+  TEXAS_EQUITY_PROS_LEADS_SPACE_ID,
   podioLiveWriteApproved,
   podioCsvBackupConfirmed,
   podioMissingExportConfig,
+  podioAccessToken,
+  podioAppId,
+  podioAppToken,
+  podioAuthConfigured,
+  podioClientId,
+  podioClientSecret,
+  podioRefreshToken,
   resolvePodioFieldMap,
   type PodioFieldKind,
   type PodioFieldMapEntry,
@@ -25,15 +33,100 @@ function routeResult(input: Omit<ExportRouteResult, "blockers"> & { blockers?: s
   };
 }
 
-function reportTitle(dossier: RawDossier): string {
-  return `Completed Lead Report - ${dossier.summary.displayName}`;
+function reportTitle(dossier: RawDossier, overrideTitle?: string): string {
+  return overrideTitle || `Completed Lead Report - ${dossier.summary.displayName}`;
 }
 
-function reportText(dossier: RawDossier): string {
-  return dossier.completedLeadReport?.formats.markdown
+function reportText(dossier: RawDossier, overrideBody?: string): string {
+  return overrideBody || (
+    dossier.completedLeadReport?.formats.markdown
     ?? dossier.documentPacket?.formats.markdown
     ?? dossier.narrative
-    ?? reportTitle(dossier);
+    ?? reportTitle(dossier)
+  );
+}
+
+async function exportGoogleWebhook(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean, documentTitle?: string, documentBody?: string): Promise<ExportRouteResult | null> {
+  if (!env.GOOGLE_WORKSPACE_WEBHOOK_URL) return null;
+  if (!env.GOOGLE_WORKSPACE_WEBHOOK_SECRET) {
+    return routeResult({
+      route: "google",
+      ok: false,
+      mode: "blocked",
+      readbackOk: false,
+      blockers: ["Missing Google Workspace webhook secret."],
+      message: "Google Workspace webhook export is blocked until the shared webhook secret is configured.",
+    });
+  }
+  if (dryRun) {
+    return routeResult({
+      route: "google",
+      ok: true,
+      mode: "dry_run",
+      readbackOk: false,
+      externalId: `dry-google-webhook-${slug(dossier.id)}`,
+      blockers: ["Live Google readback skipped in dry-run mode."],
+      message: "Google Workspace webhook export is prepared for controlled live export.",
+    });
+  }
+  if (env[GOOGLE_LIVE_WRITE_APPROVAL_KEY] !== "true") {
+    return routeResult({
+      route: "google",
+      ok: false,
+      mode: "blocked",
+      readbackOk: false,
+      blockers: [`${GOOGLE_LIVE_WRITE_APPROVAL_KEY}=true is required before writing through the Google Workspace webhook.`],
+      message: "Google live export is blocked by the explicit write-approval guard.",
+    });
+  }
+  const response = await fetch(env.GOOGLE_WORKSPACE_WEBHOOK_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "x-heirright-workspace-secret": env.GOOGLE_WORKSPACE_WEBHOOK_SECRET,
+    },
+    body: JSON.stringify({
+      source: "HeirRight Leads",
+      secret: env.GOOGLE_WORKSPACE_WEBHOOK_SECRET,
+      dossierId: dossier.id,
+      displayName: dossier.summary.displayName,
+      propertyAddress: dossier.property.address.value,
+      folio: dossier.property.parcelId.value,
+      county: dossier.property.county.value,
+      title: reportTitle(dossier, documentTitle),
+      markdown: reportText(dossier, documentBody),
+      generatedAt: nowIso(),
+    }),
+  });
+  const data = await response.json().catch(() => ({})) as {
+    ok?: boolean;
+    docId?: string;
+    docUrl?: string;
+    folderId?: string;
+    folderUrl?: string;
+    sheetId?: string;
+    updatedRange?: string;
+    readbackOk?: boolean;
+    blockers?: string[];
+    message?: string;
+  };
+  const blockers = [
+    ...(response.ok ? [] : [`Google Workspace webhook failed: ${response.status}`]),
+    ...(data.blockers ?? []),
+    ...(data.readbackOk ? [] : ["Google Workspace webhook did not return readback proof."]),
+  ];
+  return routeResult({
+    route: "google",
+    ok: Boolean(response.ok && data.ok && data.readbackOk && !blockers.length),
+    mode: "live",
+    externalId: data.docId || data.updatedRange,
+    url: data.docUrl || data.folderUrl,
+    readbackOk: Boolean(data.readbackOk),
+    blockers,
+    message: data.message || (blockers.length
+      ? "Google Workspace webhook export needs review before handoff."
+      : "Google Workspace webhook created the Doc, appended the Sheet row, and returned readback proof."),
+  });
 }
 
 async function googleFetch(path: string, token: string, init: RequestInit): Promise<Response> {
@@ -47,7 +140,10 @@ async function googleFetch(path: string, token: string, init: RequestInit): Prom
   });
 }
 
-async function exportGoogle(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean): Promise<ExportRouteResult> {
+async function exportGoogle(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean, documentTitle?: string, documentBody?: string): Promise<ExportRouteResult> {
+  const webhook = await exportGoogleWebhook(dossier, env, dryRun, documentTitle, documentBody);
+  if (webhook) return webhook;
+
   const required = ["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"];
   const missingConfig = missing(required, env);
   if (missingConfig.length) {
@@ -88,7 +184,7 @@ async function exportGoogle(dossier: RawDossier, env: RuntimeEnv, dryRun: boolea
   const folderResponse = await googleFetch("https://www.googleapis.com/drive/v3/files", token, {
     method: "POST",
     body: JSON.stringify({
-      name: reportTitle(dossier),
+      name: reportTitle(dossier, documentTitle),
       mimeType: "application/vnd.google-apps.folder",
       parents: env.GOOGLE_DRIVE_PARENT_FOLDER_ID ? [env.GOOGLE_DRIVE_PARENT_FOLDER_ID] : undefined,
     }),
@@ -108,7 +204,7 @@ async function exportGoogle(dossier: RawDossier, env: RuntimeEnv, dryRun: boolea
   const docResponse = await googleFetch("https://www.googleapis.com/drive/v3/files?fields=id,webViewLink", token, {
     method: "POST",
     body: JSON.stringify({
-      name: reportTitle(dossier),
+      name: reportTitle(dossier, documentTitle),
       mimeType: "application/vnd.google-apps.document",
       parents: [folder.id],
     }),
@@ -130,7 +226,7 @@ async function exportGoogle(dossier: RawDossier, env: RuntimeEnv, dryRun: boolea
   const writeResponse = await googleFetch(`https://docs.googleapis.com/v1/documents/${doc.id}:batchUpdate`, token, {
     method: "POST",
     body: JSON.stringify({
-      requests: [{ insertText: { location: { index: 1 }, text: reportText(dossier) } }],
+      requests: [{ insertText: { location: { index: 1 }, text: reportText(dossier, documentBody) } }],
     }),
   });
   if (!writeResponse.ok) {
@@ -294,6 +390,76 @@ function invalidEncodedValue(kind: PodioFieldKind, value: unknown): string | nul
     : `Podio category field value must resolve to a numeric option id; received ${String(value)}.`;
 }
 
+export async function resolvePodioAccessToken(env: RuntimeEnv): Promise<{ token?: string; mode: "bearer" | "app_auth" | "refresh" | "missing"; blocker?: string }> {
+  const clientId = podioClientId(env);
+  const clientSecret = podioClientSecret(env);
+  const appId = podioAppId(env);
+  const appToken = podioAppToken(env);
+  const refreshToken = podioRefreshToken(env);
+  const accessToken = podioAccessToken(env);
+
+  if (clientId && clientSecret && appId && appToken) {
+    const body = new URLSearchParams({
+      grant_type: "app",
+      app_id: appId,
+      app_token: appToken,
+      client_id: clientId,
+      client_secret: clientSecret,
+    });
+    const response = await fetch("https://api.podio.com/oauth/token/v2", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded; charset=utf-8" },
+      body,
+    });
+    const data = await response.json().catch(() => ({})) as { access_token?: string; error?: string; error_description?: string };
+    if (response.ok && data.access_token) {
+      return { token: data.access_token, mode: "app_auth" };
+    }
+    return {
+      mode: "app_auth",
+      blocker: `Podio app-auth token exchange failed: ${response.status}${data.error ? ` ${data.error}` : ""}${data.error_description ? ` - ${data.error_description}` : ""}`,
+    };
+  }
+  if (clientId && clientSecret && refreshToken) {
+    const body = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: clientId,
+      client_secret: clientSecret,
+    });
+    const response = await fetch("https://api.podio.com/oauth/token/v2", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded; charset=utf-8" },
+      body,
+    });
+    const data = await response.json().catch(() => ({})) as { access_token?: string; error?: string; error_description?: string };
+    if (response.ok && data.access_token) {
+      return { token: data.access_token, mode: "refresh" };
+    }
+    return {
+      mode: "refresh",
+      blocker: `Podio refresh-token exchange failed: ${response.status}${data.error ? ` ${data.error}` : ""}${data.error_description ? ` - ${data.error_description}` : ""}`,
+    };
+  }
+  if (accessToken) return { token: accessToken, mode: "bearer" };
+  return {
+    mode: "missing",
+    blocker: "Missing Podio access: configure a Podio access token, refresh token, or client/app token set.",
+  };
+}
+
+async function podioAuthHeaders(env: RuntimeEnv): Promise<{ headers?: Record<string, string>; mode: "bearer" | "app_auth" | "refresh" | "missing"; blocker?: string }> {
+  const resolved = await resolvePodioAccessToken(env);
+  if (!resolved.token) return { mode: resolved.mode, blocker: resolved.blocker };
+  return {
+    mode: resolved.mode,
+    headers: {
+      "authorization": `Bearer ${resolved.token}`,
+      "content-type": "application/json; charset=utf-8",
+    },
+  };
+}
+
 function podioFields(dossier: RawDossier, env: RuntimeEnv, reportUrl?: string): PodioFieldBuild {
   const fieldMap = resolvePodioFieldMap(env);
   if (fieldMap.blockers.length) {
@@ -324,9 +490,42 @@ function podioFields(dossier: RawDossier, env: RuntimeEnv, reportUrl?: string): 
   return { fields, blockers, mapSource: fieldMap.source };
 }
 
+async function podioEnvWithLeadPoint(env: RuntimeEnv): Promise<RuntimeEnv> {
+  if (env.PODIO_LEAD_POINT_PROFILE_ID) return env;
+  const auth = await podioAuthHeaders(env);
+  if (!auth.headers) return env;
+  const response = await fetch("https://api.podio.com/user/status", {
+    headers: auth.headers,
+  });
+  if (response.ok) {
+    const data = await response.json().catch(() => ({})) as {
+      profile_id?: number;
+      profile?: { profile_id?: number };
+      user?: { profile_id?: number; profile?: { profile_id?: number } };
+    };
+    const profileId = data.profile_id ?? data.profile?.profile_id ?? data.user?.profile_id ?? data.user?.profile?.profile_id;
+    if (profileId) return { ...env, PODIO_LEAD_POINT_PROFILE_ID: String(profileId) };
+  }
+
+  const spaceId = env.PODIO_SPACE_ID || TEXAS_EQUITY_PROS_LEADS_SPACE_ID;
+  const membersResponse = await fetch(`https://api.podio.com/space/${spaceId}/member/`, {
+    headers: auth.headers,
+  });
+  if (!membersResponse.ok) return env;
+  const members = await membersResponse.json().catch(() => []) as Array<{
+    profile_id?: number;
+    profile?: { profile_id?: number };
+    user?: { profile_id?: number; profile?: { profile_id?: number } };
+  }>;
+  const member = members.find((item) => item.profile_id || item.profile?.profile_id || item.user?.profile_id || item.user?.profile?.profile_id);
+  const memberProfileId = member?.profile_id ?? member?.profile?.profile_id ?? member?.user?.profile_id ?? member?.user?.profile?.profile_id;
+  return memberProfileId ? { ...env, PODIO_LEAD_POINT_PROFILE_ID: String(memberProfileId) } : env;
+}
+
 async function exportPodio(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean, reportUrl?: string): Promise<ExportRouteResult> {
-  const missingConfig = podioMissingExportConfig(env);
-  const fieldBuild = podioFields(dossier, env, reportUrl);
+  const podioEnv = await podioEnvWithLeadPoint(env);
+  const missingConfig = podioMissingExportConfig(podioEnv);
+  const fieldBuild = podioFields(dossier, podioEnv, reportUrl);
   if (missingConfig.length) {
     const configDetailBlockers = fieldBuild.blockers.filter((blocker) => !blocker.includes("PODIO_FIELD_MAP_JSON or PODIO_APP_ID=24265877"));
     return routeResult({
@@ -362,7 +561,7 @@ async function exportPodio(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean
     });
   }
 
-  if (!podioLiveWriteApproved(env)) {
+  if (!podioLiveWriteApproved(podioEnv)) {
     return routeResult({
       route: "podio",
       ok: false,
@@ -384,7 +583,7 @@ async function exportPodio(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean
     });
   }
 
-  if (!podioCsvBackupConfirmed(env)) {
+  if (!podioCsvBackupConfirmed(podioEnv)) {
     return routeResult({
       route: "podio",
       ok: false,
@@ -395,14 +594,23 @@ async function exportPodio(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean
     });
   }
 
+  const auth = await podioAuthHeaders(podioEnv);
+  if (!auth.headers) {
+    return routeResult({
+      route: "podio",
+      ok: false,
+      mode: "blocked",
+      readbackOk: false,
+      blockers: [auth.blocker ?? "Podio authorization failed before item creation."],
+      message: "Podio export is blocked until the Worker can mint or use a valid Podio access token.",
+    });
+  }
+
   const podioExternalId = `heirright-${slug(dossier.id)}-${Date.now()}`;
 
-  const itemResponse = await fetch(`https://api.podio.com/item/app/${env.PODIO_APP_ID}/`, {
+  const itemResponse = await fetch(`https://api.podio.com/item/app/${podioEnv.PODIO_APP_ID}/`, {
     method: "POST",
-    headers: {
-      "authorization": `Bearer ${env.PODIO_ACCESS_TOKEN}`,
-      "content-type": "application/json; charset=utf-8",
-    },
+    headers: auth.headers,
     body: JSON.stringify({
       external_id: podioExternalId,
       fields: fieldBuild.fields,
@@ -431,13 +639,9 @@ async function exportPodio(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean
     });
   }
 
-  const authHeaders = {
-    "authorization": `Bearer ${env.PODIO_ACCESS_TOKEN}`,
-    "content-type": "application/json; charset=utf-8",
-  };
   const commentResponse = await fetch(`https://api.podio.com/comment/item/${item.item_id}/`, {
     method: "POST",
-    headers: authHeaders,
+    headers: auth.headers,
     body: JSON.stringify({
       value: [
         "HeirRight completed report package is ready for review.",
@@ -449,7 +653,7 @@ async function exportPodio(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean
   });
   const taskResponse = await fetch("https://api.podio.com/task/", {
     method: "POST",
-    headers: authHeaders,
+    headers: auth.headers,
     body: JSON.stringify({
       text: `Review HeirRight report - ${dossier.summary.displayName}`,
       description: "Confirm source notes, missing data, offer math, and manual outreach approval before external use.",
@@ -461,16 +665,16 @@ async function exportPodio(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean
   const taskId = task.task_id ?? task.id;
 
   const readbackResponse = await fetch(`https://api.podio.com/item/${item.item_id}`, {
-    headers: { "authorization": `Bearer ${env.PODIO_ACCESS_TOKEN}` },
+    headers: auth.headers,
   });
   const commentReadbackResponse = commentResponse.ok
     ? await fetch(`https://api.podio.com/comment/item/${item.item_id}/`, {
-        headers: { "authorization": `Bearer ${env.PODIO_ACCESS_TOKEN}` },
+        headers: auth.headers,
       })
     : null;
   const taskReadbackResponse = taskId
     ? await fetch(`https://api.podio.com/task/${taskId}`, {
-        headers: { "authorization": `Bearer ${env.PODIO_ACCESS_TOKEN}` },
+        headers: auth.headers,
       })
     : null;
   const readbackOk = Boolean(readbackResponse.ok && commentReadbackResponse?.ok && taskReadbackResponse?.ok);
@@ -503,7 +707,7 @@ export async function exportCompletedReport(request: ExportRequest, env: Runtime
   let googleReportUrl: string | undefined;
   for (const route of routes) {
     if (route === "google") {
-      const google = await exportGoogle(request.dossier, env, request.dryRun ?? true);
+      const google = await exportGoogle(request.dossier, env, request.dryRun ?? true, request.documentTitle, request.documentBody);
       if (google.url) googleReportUrl = google.url;
       results.push(google);
       continue;
@@ -526,23 +730,41 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
   const missingPodio = podioMissingExportConfig(env);
   const podioApproved = podioLiveWriteApproved(env);
   const podioBackup = podioCsvBackupConfirmed(env);
-  const missingGoogle = missing(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"], env);
+  const podioAuth = missingPodio.length ? { token: undefined, blocker: missingPodio.join(", ") } : await resolvePodioAccessToken(env);
+  const configuredPodioAppId = podioAppId(env) || "24265877";
+  const podioReadback = podioAuth.token
+    ? await fetch(`https://api.podio.com/app/${configuredPodioAppId}`, {
+        headers: { "authorization": `Bearer ${podioAuth.token}` },
+      }).then(async (response) => ({
+        ok: response.ok,
+        status: response.status,
+        body: response.ok ? null : await response.text().catch(() => ""),
+      })).catch((error) => ({ ok: false, status: 0, body: error instanceof Error ? error.message : String(error) }))
+    : { ok: false, status: 0, body: podioAuth.blocker ?? "Missing Podio access token." };
+  const googleWebhookReady = Boolean(env.GOOGLE_WORKSPACE_WEBHOOK_URL && env.GOOGLE_WORKSPACE_WEBHOOK_SECRET);
+  const missingGoogle = googleWebhookReady ? [] : missing(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"], env);
   const googleApproved = env[GOOGLE_LIVE_WRITE_APPROVAL_KEY] === "true";
   const resendReady = Boolean(env.RESEND_API_KEY && env.RESEND_LIVE_SEND_APPROVED === "true");
   const smsProvider = env.SMS_CARRIER_GATEWAY || env.SMS_PROVIDER || env.PODIO_NATIVE_SMS_PATH;
-  const smsReady = Boolean((env.PODIO_NATIVE_SMS_APPROVED === "true" && env.PODIO_ACCESS_TOKEN) || (smsProvider && env.SMS_GATEWAY_API_KEY && env.SMS_LIVE_SEND_APPROVED === "true"));
+  const podioAuthReady = podioAuthConfigured(env);
+  const smsReady = Boolean((env.PODIO_NATIVE_SMS_APPROVED === "true" && podioAuthReady) || (smsProvider && env.SMS_GATEWAY_API_KEY && env.SMS_LIVE_SEND_APPROVED === "true"));
+  const activepiecesReady = Boolean(env.ACTIVEPIECES_WEBHOOK_URL || env.HEIRRIGHT_ACTIVEPIECES_WEBHOOK_URL);
+  const linearReady = Boolean((env.HEIRRIGHT_LINEAR_API_KEY || env.LINEAR_API_KEY) && (env.HEIRRIGHT_LINEAR_TEAM_ID || env.LINEAR_TEAM_ID));
+  const leadsEngineReady = Boolean(env.HEIRRIGHT_ACCESS_WEBHOOK_URL || linearReady);
   return [
     {
       name: "Podio",
-      ok: !missingPodio.length && podioApproved && podioBackup,
-      mode: !missingPodio.length && podioApproved && podioBackup ? "live" : "blocked",
+      ok: !missingPodio.length && podioApproved && podioBackup && podioReadback.ok,
+      mode: !missingPodio.length && podioApproved && podioBackup && podioReadback.ok ? "live" : "blocked",
       message: missingPodio.length
         ? `Podio export/readback config is missing: ${missingPodio.join(", ")}.`
+        : !podioReadback.ok
+          ? `Podio access is configured but the Leads app readback failed: ${podioReadback.status}. ${String(podioReadback.body || "").slice(0, 160)}`
         : !podioApproved
           ? `Podio bearer-token export config is present; controlled write still requires ${PODIO_LIVE_WRITE_APPROVAL_KEY}=true.`
           : !podioBackup
             ? `Podio controlled write still requires ${PODIO_CSV_BACKUP_CONFIRMATION_KEY}=true before mutation.`
-            : "Podio bearer-token export config, CSV backup confirmation, and controlled write approval are present.",
+            : "Podio access, Leads app readback, CSV backup confirmation, and controlled write approval are present.",
       checkedAt,
     },
     {
@@ -552,7 +774,9 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
       message: missingGoogle.length
         ? "Google Drive/Docs/Sheets export config is missing."
         : googleApproved
-          ? "Google export config and controlled write approval are present."
+          ? googleWebhookReady
+            ? "Google Workspace webhook export and tracking readback are enabled."
+            : "Google export config and controlled write approval are present."
           : `Google export config is present; controlled write still requires ${GOOGLE_LIVE_WRITE_APPROVAL_KEY}=true.`,
       checkedAt,
     },
@@ -579,6 +803,33 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
       ok: true,
       mode: "dry_run",
       message: "Public web search/source checks are handled by the worker and reported per run.",
+      checkedAt,
+    },
+    {
+      name: "Activepieces",
+      ok: activepiecesReady,
+      mode: activepiecesReady ? "live" : "blocked",
+      message: activepiecesReady
+        ? "Activepieces Podio outreach workflow webhook is configured."
+        : "Activepieces webhook is not configured; first-party outreach fallback will stage Podio-ready packages and Linear setup tickets.",
+      checkedAt,
+    },
+    {
+      name: "Linear Support",
+      ok: linearReady,
+      mode: linearReady ? "live" : "blocked",
+      message: linearReady
+        ? "Linear support ticket filing is configured for integration/setup blockers."
+        : "Linear support ticket filing is not configured on the Worker.",
+      checkedAt,
+    },
+    {
+      name: "Leads Engine Access",
+      ok: leadsEngineReady,
+      mode: leadsEngineReady ? "live" : "dry_run",
+      message: leadsEngineReady
+        ? "Leads engine access changes can be routed for approval."
+        : "Leads engine access changes are captured in-app until access webhook or Linear support routing is configured.",
       checkedAt,
     },
   ];

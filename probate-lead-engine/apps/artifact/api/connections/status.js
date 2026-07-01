@@ -2,9 +2,50 @@ function missing(keys, env) {
   return keys.filter((key) => !env[key]);
 }
 
+function envValue(env, keys) {
+  return keys.map((key) => env[key]).find(Boolean);
+}
+
+function podioAccessToken(env) {
+  return envValue(env, ["PODIO_ACCESS_TOKEN", "PODIO_OAUTH_ACCESS_TOKEN"]);
+}
+
+function podioRefreshToken(env) {
+  return envValue(env, ["PODIO_REFRESH_TOKEN", "PODIO_OAUTH_REFRESH_TOKEN", "PODIO_REFRESH_ACCESS_TOKEN"]);
+}
+
+function podioClientId(env) {
+  return envValue(env, ["PODIO_CLIENT_ID", "PODIO_API_CLIENT_ID"]);
+}
+
+function podioClientSecret(env) {
+  return envValue(env, ["PODIO_CLIENT_SECRET", "PODIO_API_CLIENT_SECRET"]);
+}
+
+function podioAppId(env) {
+  return envValue(env, ["PODIO_APP_ID", "PODIO_LEADS_APP_ID"]);
+}
+
+function podioAppToken(env) {
+  return envValue(env, ["PODIO_APP_TOKEN", "PODIO_LEADS_APP_TOKEN"]);
+}
+
+function podioAuthConfigured(env) {
+  const clientId = podioClientId(env);
+  const clientSecret = podioClientSecret(env);
+  return Boolean(
+    podioAccessToken(env)
+      || (clientId && clientSecret && podioRefreshToken(env))
+      || (clientId && clientSecret && podioAppId(env) && podioAppToken(env))
+  );
+}
+
 function podioMissingConfig(env) {
-  const missingKeys = missing(["PODIO_ACCESS_TOKEN", "PODIO_APP_ID"], env);
-  if (!env.PODIO_FIELD_MAP_JSON && env.PODIO_APP_ID !== "24265877") {
+  const missingKeys = podioAppId(env) ? [] : ["PODIO_APP_ID"];
+  if (!podioAuthConfigured(env)) {
+    missingKeys.push("PODIO_ACCESS_TOKEN, PODIO_REFRESH_TOKEN, or PODIO_CLIENT_ID/PODIO_CLIENT_SECRET/PODIO_APP_TOKEN");
+  }
+  if (!env.PODIO_FIELD_MAP_JSON && podioAppId(env) !== "24265877") {
     missingKeys.push("PODIO_FIELD_MAP_JSON or PODIO_APP_ID=24265877");
   }
   return Array.from(new Set([
@@ -14,6 +55,7 @@ function podioMissingConfig(env) {
 }
 
 function googleMissingConfig(env) {
+  if (env.GOOGLE_WORKSPACE_WEBHOOK_URL && env.GOOGLE_WORKSPACE_WEBHOOK_SECRET) return [];
   return missing(["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"], env);
 }
 
@@ -25,17 +67,38 @@ function resendMissingConfig(env) {
 }
 
 function smsMissingConfig(env) {
-  if (env.PODIO_NATIVE_SMS_APPROVED === "true" && env.PODIO_ACCESS_TOKEN) return [];
+  if (env.PODIO_NATIVE_SMS_APPROVED === "true" && podioAuthConfigured(env)) return [];
   return ["SMS_CARRIER_GATEWAY", "SMS_GATEWAY_API_KEY", "SMS_LIVE_SEND_APPROVED"].filter((key) => {
     if (key === "SMS_LIVE_SEND_APPROVED") return env[key] !== "true";
     return !env[key];
   });
 }
 
+function activepiecesMissingConfig(env) {
+  return ["ACTIVEPIECES_WEBHOOK_URL"].filter((key) => !env[key] && !env.HEIRRIGHT_ACTIVEPIECES_WEBHOOK_URL);
+}
+
+function linearMissingConfig(env) {
+  return ["HEIRRIGHT_LINEAR_API_KEY", "HEIRRIGHT_LINEAR_TEAM_ID"].filter((key) => {
+    if (key === "HEIRRIGHT_LINEAR_API_KEY") return !env[key] && !env.LINEAR_API_KEY;
+    if (key === "HEIRRIGHT_LINEAR_TEAM_ID") return !env[key] && !env.LINEAR_TEAM_ID;
+    return !env[key];
+  });
+}
+
+function leadsEngineMissingConfig(env) {
+  if (env.HEIRRIGHT_ACCESS_WEBHOOK_URL || ((env.HEIRRIGHT_LINEAR_API_KEY || env.LINEAR_API_KEY) && (env.HEIRRIGHT_LINEAR_TEAM_ID || env.LINEAR_TEAM_ID))) return [];
+  return ["HEIRRIGHT_ACCESS_WEBHOOK_URL or Linear support env"];
+}
+
 function operatorAccessList(items) {
   return (items ?? []).map((item) => String(item || "")
     .replace(/PODIO_FIELD_MAP_JSON or PODIO_APP_ID=24265877/g, "Podio field map or verified Leads app")
     .replace(/PODIO_ACCESS_TOKEN/g, "Podio access")
+    .replace(/PODIO_REFRESH_TOKEN/g, "Podio refresh access")
+    .replace(/PODIO_CLIENT_ID/g, "Podio API client")
+    .replace(/PODIO_CLIENT_SECRET/g, "Podio API secret")
+    .replace(/PODIO_APP_TOKEN/g, "Podio app token")
     .replace(/PODIO_APP_ID/g, "Podio Leads app")
     .replace(/PODIO_LIVE_WRITE_APPROVED/g, "Podio controlled write approval")
     .replace(/PODIO_CSV_BACKUP_CONFIRMED/g, "Podio CSV backup confirmation")
@@ -50,6 +113,10 @@ function operatorAccessList(items) {
     .replace(/SMS_CARRIER_GATEWAY/g, "approved SMS carrier gateway")
     .replace(/SMS_GATEWAY_API_KEY/g, "SMS gateway access")
     .replace(/SMS_LIVE_SEND_APPROVED/g, "SMS internal-test approval")
+    .replace(/ACTIVEPIECES_WEBHOOK_URL/g, "Activepieces Podio workflow webhook")
+    .replace(/HEIRRIGHT_LINEAR_API_KEY/g, "Linear API access")
+    .replace(/HEIRRIGHT_LINEAR_TEAM_ID/g, "Linear team")
+    .replace(/HEIRRIGHT_ACCESS_WEBHOOK_URL or Linear support env/g, "Leads engine access webhook or Linear support routing")
   ).join(", ");
 }
 
@@ -62,6 +129,9 @@ function buildConnectionStatuses(env = process.env, options = {}) {
   const googleApproved = env.GOOGLE_LIVE_WRITE_APPROVED === "true";
   const missingResend = resendMissingConfig(env);
   const missingSms = smsMissingConfig(env);
+  const missingActivepieces = activepiecesMissingConfig(env);
+  const missingLinear = linearMissingConfig(env);
+  const missingLeadsEngine = leadsEngineMissingConfig(env);
   const freshBatchExists = Boolean(options.freshBatchExists);
   const latestRunExists = Boolean(options.latestRunExists);
 
@@ -117,6 +187,33 @@ function buildConnectionStatuses(env = process.env, options = {}) {
         : latestRunExists
           ? "Public source checks are represented in the latest lead packet."
           : "Public-source status needs a fresh lead packet before validation.",
+      checkedAt,
+    },
+    {
+      name: "Activepieces",
+      ok: !missingActivepieces.length,
+      mode: missingActivepieces.length ? "blocked" : "live",
+      message: missingActivepieces.length
+        ? `Activepieces outreach automation is incomplete: ${operatorAccessList(missingActivepieces)}. The app will use the Architecturally Free Outreach fallback.`
+        : "Activepieces Podio outreach workflow webhook is configured.",
+      checkedAt,
+    },
+    {
+      name: "Linear Support",
+      ok: !missingLinear.length,
+      mode: missingLinear.length ? "blocked" : "live",
+      message: missingLinear.length
+        ? `Linear support ticket filing is incomplete: ${operatorAccessList(missingLinear)}. Admin tickets stay local until support routing is configured.`
+        : "Linear support ticket filing is configured.",
+      checkedAt,
+    },
+    {
+      name: "Leads Engine Access",
+      ok: !missingLeadsEngine.length,
+      mode: missingLeadsEngine.length ? "review" : "live",
+      message: missingLeadsEngine.length
+        ? `Leads engine access changes are captured locally: ${operatorAccessList(missingLeadsEngine)}.`
+        : "Leads engine access changes can be routed for approval.",
       checkedAt,
     },
   ];

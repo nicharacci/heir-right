@@ -1130,6 +1130,7 @@ textarea {
 button {
   border: 0;
   cursor: pointer;
+  border-radius: 999px;
 }
 
 img,

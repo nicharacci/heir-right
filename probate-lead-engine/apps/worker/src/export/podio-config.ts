@@ -29,6 +29,44 @@ export interface PodioFieldMapResolution {
   blockers: string[];
 }
 
+export function podioEnvValue(env: RuntimeEnv, keys: string[]): string | undefined {
+  return keys.map((key) => env[key]).find((value): value is string => Boolean(value));
+}
+
+export function podioAccessToken(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_ACCESS_TOKEN", "PODIO_OAUTH_ACCESS_TOKEN"]);
+}
+
+export function podioRefreshToken(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_REFRESH_TOKEN", "PODIO_OAUTH_REFRESH_TOKEN", "PODIO_REFRESH_ACCESS_TOKEN"]);
+}
+
+export function podioClientId(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_CLIENT_ID", "PODIO_API_CLIENT_ID"]);
+}
+
+export function podioClientSecret(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_CLIENT_SECRET", "PODIO_API_CLIENT_SECRET"]);
+}
+
+export function podioAppId(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_APP_ID", "PODIO_LEADS_APP_ID"]);
+}
+
+export function podioAppToken(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_APP_TOKEN", "PODIO_LEADS_APP_TOKEN"]);
+}
+
+export function podioAuthConfigured(env: RuntimeEnv): boolean {
+  const clientId = podioClientId(env);
+  const clientSecret = podioClientSecret(env);
+  return Boolean(
+    podioAccessToken(env)
+      || (clientId && clientSecret && podioRefreshToken(env))
+      || (clientId && clientSecret && podioAppId(env) && podioAppToken(env))
+  );
+}
+
 export const TEXAS_EQUITY_PROS_LEADS_FIELD_MAP: PodioFieldMap = {
   estate_name: "address-2",
   lead_status: {
@@ -167,7 +205,7 @@ function parsePodioFieldMap(raw: string): PodioFieldMapResolution {
 }
 
 export function resolvePodioFieldMap(env: RuntimeEnv): PodioFieldMapResolution {
-  const hasTexasPreset = env.PODIO_APP_ID === TEXAS_EQUITY_PROS_LEADS_APP_ID;
+  const hasTexasPreset = podioAppId(env) === TEXAS_EQUITY_PROS_LEADS_APP_ID;
   if (env.PODIO_FIELD_MAP_JSON) {
     const parsed = parsePodioFieldMap(env.PODIO_FIELD_MAP_JSON);
     if (parsed.blockers.length) return parsed;
@@ -196,7 +234,10 @@ export function resolvePodioFieldMap(env: RuntimeEnv): PodioFieldMapResolution {
 }
 
 export function podioMissingExportConfig(env: RuntimeEnv): string[] {
-  const missing = ["PODIO_ACCESS_TOKEN", "PODIO_APP_ID"].filter((key) => !env[key]);
+  const missing = podioAppId(env) ? [] : ["PODIO_APP_ID"];
+  if (!podioAuthConfigured(env)) {
+    missing.push("PODIO_ACCESS_TOKEN, PODIO_REFRESH_TOKEN, or PODIO_CLIENT_ID/PODIO_CLIENT_SECRET/PODIO_APP_TOKEN");
+  }
   const fieldMap = resolvePodioFieldMap(env);
   if (fieldMap.blockers.length) {
     missing.push("PODIO_FIELD_MAP_JSON or PODIO_APP_ID=24265877");

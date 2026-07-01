@@ -462,6 +462,8 @@ export interface ExportRequest {
   dossier: RawDossier;
   dryRun?: boolean;
   controlledTest?: boolean;
+  documentTitle?: string;
+  documentBody?: string;
 }
 
 export interface ExportRouteResult {
@@ -484,7 +486,7 @@ export interface ExportResult {
 }
 
 export interface ConnectionStatus {
-  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search";
+  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search" | "Activepieces" | "Linear Support" | "Leads Engine Access";
   ok: boolean;
   mode: "live" | "dry_run" | "blocked";
   message: string;

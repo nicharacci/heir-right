@@ -201,7 +201,11 @@
     }
 
     button, input, select { font: inherit; }
-    button { cursor: pointer; }
+    button {
+      cursor: pointer;
+      --control-radius: 12px;
+      border-radius: var(--control-radius);
+    }
     svg { display: block; }
 
     .solvys-liquid-glass,
@@ -437,7 +441,7 @@
       color: #5f6368;
       background: transparent;
       border: 1px solid transparent;
-      border-radius: 8px;
+      border-radius: 14px;
       isolation: isolate;
       text-align: left;
       transition: border-color .18s var(--ease), color .18s var(--ease), box-shadow .18s var(--ease);
@@ -612,7 +616,7 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
       align-items: center;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 14px;
       color: var(--muted);
       background: var(--ios-fill);
       padding: 3px;
@@ -627,7 +631,7 @@
       color: var(--muted);
       background: transparent;
       border: 0;
-      border-radius: 6px;
+      border-radius: 10px;
       padding: 0;
       transition: background .18s var(--ease), color .18s var(--ease), box-shadow .18s var(--ease);
     }
@@ -663,7 +667,7 @@
       gap: 8px;
       align-items: center;
       border: 1px solid transparent;
-      border-radius: 8px;
+      border-radius: 14px;
       background: transparent;
     }
 
@@ -931,7 +935,7 @@
       min-width: 24px;
       height: 23px;
       border: 1px solid var(--line);
-      border-radius: 6px;
+      border-radius: 10px;
       color: var(--muted);
       font-family: var(--mono);
       font-size: 11px;
@@ -1178,7 +1182,7 @@
       align-items: center;
       justify-content: center;
       gap: 7px;
-      border-radius: 8px;
+      border-radius: 12px;
       border: 1px solid var(--line);
       background: rgba(255,255,255,.62);
       color: var(--text);
@@ -1238,7 +1242,7 @@
       color: #374151;
       background: transparent;
       border: 0;
-      border-radius: 0;
+      border-radius: 10px;
       box-shadow: none;
       position: relative;
     }
@@ -1358,8 +1362,8 @@
       line-height: 1.35;
     }
 
-    .right-rail-toggle {
-      width: 38px;
+    .walkthrough-replay {
+      width: 34px;
       padding: 0;
     }
 
@@ -1439,7 +1443,7 @@
       height: 24px;
       display: grid;
       place-items: center;
-      border-radius: 7px;
+      border-radius: 10px;
       color: #51515a;
       background: var(--ios-fill);
     }
@@ -2258,7 +2262,7 @@
       gap: 0;
       padding: 76px 14px 14px;
       border: 1px solid color-mix(in srgb, var(--line-strong) 72%, transparent);
-      border-radius: 8px;
+      border-radius: 14px;
       background:
         linear-gradient(180deg, rgba(255,255,255,.76), rgba(255,255,255,.48)),
         color-mix(in srgb, var(--surface-lift) 13%, white);
@@ -2376,7 +2380,7 @@
       align-items: center;
       min-height: 24px;
       padding: 3px 8px;
-      border-radius: 7px;
+      border-radius: 10px;
       background: rgba(255,255,255,.62);
       color: var(--muted);
       font-size: 12px;
@@ -2545,6 +2549,66 @@
       gap: 12px;
       flex-wrap: wrap;
       padding-left: 34px;
+    }
+
+    .docprep-file-status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(118px, 1fr));
+      gap: 8px;
+      min-width: 0;
+      padding-left: 34px;
+    }
+
+    .docprep-file-status {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      align-items: center;
+      gap: 7px;
+      padding: 8px 9px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 58%, transparent);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--ios-fill) 70%, transparent);
+    }
+
+    .docprep-file-status span {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+    }
+
+    .docprep-file-status strong,
+    .docprep-file-status em {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-style: normal;
+      line-height: 1.15;
+    }
+
+    .docprep-file-status strong {
+      color: var(--text);
+      font-size: 10px;
+      font-weight: 820;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .docprep-file-status em {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .docprep-file-status[data-state="complete"] {
+      border-color: color-mix(in srgb, var(--green) 34%, var(--line-strong));
+      background: color-mix(in srgb, var(--green) 10%, var(--ios-fill));
+    }
+
+    .docprep-file-status[data-state="blocked"] {
+      border-color: color-mix(in srgb, var(--red) 38%, var(--line-strong));
+      background: color-mix(in srgb, var(--red) 10%, var(--ios-fill));
     }
 
     .docprep-flow-line {
@@ -2726,7 +2790,7 @@
     .document-filter-tabs button {
       min-height: 30px;
       border: 0;
-      border-radius: 6px;
+      border-radius: 10px;
       padding: 5px 11px;
       background: transparent;
       color: var(--muted);
@@ -2755,7 +2819,7 @@
 
     .document-requirement {
       display: grid;
-      grid-template-columns: 56px minmax(0, 1fr) auto;
+      grid-template-columns: 46px minmax(0, 1fr) minmax(280px, auto);
       gap: 12px;
       align-items: center;
       min-height: 72px;
@@ -2777,11 +2841,64 @@
       display: grid;
       place-items: center;
       border: 1px dashed color-mix(in srgb, var(--line-strong) 90%, transparent);
-      border-radius: 8px;
+      border-radius: 12px;
       color: var(--muted);
       background: rgba(255,255,255,.44);
       font-size: 22px;
       font-weight: 500;
+    }
+
+    .linear-status-icon {
+      width: 26px;
+      height: 26px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid var(--line-strong);
+      color: var(--muted);
+      background: rgba(255,255,255,.06);
+      flex: 0 0 auto;
+    }
+
+    .linear-status-icon[data-state="complete"] {
+      color: var(--green);
+      border-color: color-mix(in srgb, var(--green) 58%, transparent);
+      background: var(--green-soft);
+    }
+
+    .linear-status-icon[data-state="active"],
+    .linear-status-icon[data-state="processing"] {
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+    }
+
+    .linear-status-icon[data-state="blocked"] {
+      color: var(--red);
+      border-color: color-mix(in srgb, var(--red) 48%, transparent);
+      background: var(--red-soft);
+    }
+
+    .linear-status-spinner,
+    .admin-processing-spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid color-mix(in srgb, currentColor 24%, transparent);
+      border-top-color: currentColor;
+      animation: statusSpin .72s linear infinite;
+    }
+
+    .linear-status-pending-mark {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      opacity: .72;
+      box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--panel) 88%, transparent);
+    }
+
+    @keyframes statusSpin {
+      to { transform: rotate(360deg); }
     }
 
     .document-requirement.is-linked .file-drop-icon {
@@ -2814,7 +2931,8 @@
       align-items: center;
       gap: 8px;
       justify-content: flex-end;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      min-width: 0;
     }
 
     .document-type-pill {
@@ -2827,6 +2945,19 @@
       background: rgba(255,255,255,.62);
       font-size: 12px;
       font-weight: 780;
+    }
+
+    .document-icon-button {
+      width: 34px;
+      min-width: 34px;
+      height: 32px;
+      padding: 0;
+    }
+
+    .document-action-status {
+      min-width: 26px;
+      display: inline-flex;
+      justify-content: center;
     }
 
     .process-side {
@@ -2951,7 +3082,7 @@
       gap: 8px;
       align-items: center;
       border: 0;
-      border-radius: 7px;
+      border-radius: 10px;
       padding: 7px 9px;
       color: var(--text);
       background: transparent;
@@ -3062,7 +3193,7 @@
       display: grid;
       gap: 4px;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 12px;
       padding: 8px 10px;
       color: var(--muted);
       background: rgba(255,255,255,.44);
@@ -3221,8 +3352,13 @@
 
       .doc-flow-selector,
       .integration-onboarding,
+      .docprep-file-status-grid,
       .crm-import-grid {
         grid-template-columns: 1fr;
+      }
+
+      .settings-center-shell {
+        width: 100%;
       }
     }
 
@@ -3251,6 +3387,11 @@
         width: 100%;
       }
 
+      .docprep-client-meta,
+      .docprep-file-status-grid {
+        padding-left: 0;
+      }
+
       .attention-card {
         grid-template-columns: 18px minmax(0, 1fr);
       }
@@ -3272,12 +3413,13 @@
       }
 
       .document-requirement {
-        grid-template-columns: 54px minmax(0, 1fr);
+        grid-template-columns: 46px minmax(0, 1fr);
       }
 
       .document-actions {
         grid-column: 2;
         justify-content: flex-start;
+        flex-wrap: wrap;
       }
     }
 
@@ -3337,6 +3479,18 @@
       grid-column: 1 / -1;
     }
 
+    .loop-panel.is-tall {
+      min-height: min(820px, calc(100vh - 170px));
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .admin-tall-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      align-items: stretch;
+    }
+
     .loop-panel-head {
       display: flex;
       align-items: start;
@@ -3365,12 +3519,47 @@
     .loop-tab {
       min-height: 28px;
       border: 0;
-      border-radius: 6px;
+      border-radius: 10px;
       padding: 5px 9px;
       background: transparent;
       color: var(--muted);
       font-size: 12px;
       font-weight: 730;
+    }
+
+    .tabbed-panel {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .tab-strip {
+      display: inline-flex;
+      width: fit-content;
+      max-width: 100%;
+      gap: 4px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.05);
+      overflow-x: auto;
+    }
+
+    .tab-strip button {
+      border: 0;
+      border-radius: 10px;
+      padding: 7px 10px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tab-strip button[aria-pressed="true"] {
+      color: var(--text);
+      background: var(--ios-fill-strong);
     }
 
     .loop-tab[aria-pressed="true"] {
@@ -3610,9 +3799,9 @@
       gap: 10px;
       align-items: center;
       min-height: 58px;
-      padding: 11px 0;
+      padding: 11px;
       border: 0;
-      border-radius: 0;
+      border-radius: 14px;
       background: transparent;
       color: var(--text);
       text-align: left;
@@ -3883,7 +4072,7 @@
       content: "";
       position: absolute;
       inset: 1px;
-      border-radius: 7px;
+      border-radius: 10px;
       background: linear-gradient(180deg, rgba(255,255,255,.13), transparent 54%);
       pointer-events: none;
     }
@@ -4193,7 +4382,7 @@
       display: inline-flex;
       min-width: 38px;
       justify-content: center;
-      border-radius: 7px;
+      border-radius: 10px;
       padding: 4px 7px;
       font-family: var(--mono);
       font-size: 12px;
@@ -4334,7 +4523,7 @@
       width: 30px;
       height: 30px;
       border: 1px solid var(--line);
-      border-radius: 7px;
+      border-radius: 10px;
       background: rgba(255,255,255,.72);
       color: var(--muted);
     }
@@ -4356,7 +4545,7 @@
     .summary-pager button {
       width: 27px;
       height: 26px;
-      border-radius: 6px;
+      border-radius: 10px;
       font-size: 11px;
     }
 
@@ -4446,7 +4635,7 @@
       align-items: center;
       width: fit-content;
       min-height: 24px;
-      border-radius: 7px;
+      border-radius: 10px;
       padding: 4px 8px;
       font-size: 11px;
       font-weight: 760;
@@ -4519,6 +4708,211 @@
       gap: 8px;
     }
 
+    .settings-center-shell {
+      width: clamp(680px, 72vw, 1060px);
+      max-width: 100%;
+      min-height: 100%;
+      display: grid;
+      align-content: start;
+      margin: 0 auto;
+    }
+
+    .settings-unified-card {
+      display: grid;
+      gap: 18px;
+      padding: 18px;
+      border-radius: 18px;
+    }
+
+    .settings-section,
+    .settings-status-list {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+      padding-top: 14px;
+      border-top: 1px solid color-mix(in srgb, var(--line-strong) 62%, transparent);
+    }
+
+    .settings-section:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .settings-section-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .settings-section-head h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .admin-tall-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .loop-panel.is-tall {
+      min-height: min(820px, calc(100vh - 170px));
+      grid-template-rows: auto minmax(0, 1fr);
+      align-content: start;
+    }
+
+    .admin-log-layout,
+    .admin-access-layout,
+    .team-activity-layout {
+      min-height: 0;
+      display: grid;
+      gap: 12px;
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    .admin-error-list {
+      min-height: 0;
+      max-height: 100%;
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+      padding-right: 4px;
+    }
+
+    .admin-error-row,
+    .admin-access-row,
+    .team-kpi-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 0;
+      position: relative;
+    }
+
+    .admin-error-row > span:first-child,
+    .admin-access-row > span:first-child,
+    .team-kpi-row > span:first-child {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .admin-error-row strong,
+    .admin-access-row strong,
+    .team-kpi-row strong {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .admin-error-row .copy,
+    .admin-access-row .copy,
+    .team-kpi-row .copy {
+      display: block;
+      margin: 0;
+    }
+
+    .admin-error-row + .admin-error-row::before,
+    .admin-access-row + .admin-access-row::before,
+    .team-kpi-row + .team-kpi-row::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 1px;
+      background: var(--divider-line);
+    }
+
+    .admin-ticket-form,
+    .admin-access-form {
+      min-height: 0;
+      display: grid;
+      gap: 9px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    .admin-ticket-form textarea {
+      min-height: 120px;
+      max-height: 340px;
+      resize: vertical;
+    }
+
+    .admin-ticket-form input,
+    .admin-ticket-form textarea,
+    .admin-access-form input,
+    .admin-access-form select {
+      width: 100%;
+      min-width: 0;
+      color: var(--text);
+      background: rgba(17,17,19,.78);
+      border: 1px solid rgba(235,235,245,.14);
+      border-radius: 10px;
+      padding: 10px 11px;
+      font: inherit;
+      outline: 0;
+    }
+
+    .admin-inline-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(130px, .45fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .admin-submit-status {
+      min-height: 22px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      transition: opacity .22s var(--ease), transform .22s var(--ease);
+    }
+
+    .admin-submit-status[data-state="success"] { color: var(--green); }
+    .admin-submit-status[data-state="fading"] {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    .sparkline {
+      width: 86px;
+      height: 30px;
+      color: var(--accent);
+    }
+
+    .radial-kpi {
+      width: 44px;
+      height: 44px;
+      transform: rotate(-90deg);
+    }
+
+    .radial-kpi circle {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+    }
+
+    .radial-kpi .track { stroke: rgba(235,235,245,.12); }
+    .radial-kpi .value {
+      stroke: var(--green);
+      stroke-dasharray: var(--dash, 0) 100;
+    }
+
     .settings-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -4541,8 +4935,17 @@
 
     .integration-onboarding {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(238px, 1fr));
       gap: 10px;
+    }
+
+    .settings-integrations-list {
+      grid-template-columns: 1fr;
+      gap: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 54%, transparent);
+      background: color-mix(in srgb, rgba(255,255,255,.035) 40%, transparent);
     }
 
     .integration-card {
@@ -4555,6 +4958,18 @@
       background:
         linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)),
         rgba(32,33,36,.64);
+    }
+
+    .settings-integrations-list .integration-card {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: 14px 16px;
+    }
+
+    .settings-integrations-list .integration-card + .integration-card {
+      border-top: 1px solid color-mix(in srgb, var(--line-strong) 44%, transparent);
     }
 
     .integration-card-head,
@@ -4757,7 +5172,7 @@
       color: var(--text);
       background: transparent;
       border: 1px solid transparent;
-      border-radius: 7px;
+      border-radius: 10px;
       padding: 7px 8px;
       text-align: left;
       font-size: 12px;
@@ -5186,7 +5601,7 @@
     .rail-context-copy:focus-visible {
       outline: 2px solid rgba(10,132,255,.34);
       outline-offset: 4px;
-      border-radius: 6px;
+      border-radius: 10px;
     }
 
     .rail-context-copy:hover .rail-context-title {
@@ -5227,7 +5642,7 @@
       width: 100%;
       min-height: 30px;
       border: 1px solid rgba(10,132,255,.34);
-      border-radius: 7px;
+      border-radius: 10px;
       padding: 5px 8px;
       outline: 0;
       background: rgba(255,255,255,.92);
@@ -5278,7 +5693,7 @@
       color: var(--muted);
       background: transparent;
       border: 1px solid transparent;
-      border-radius: 7px;
+      border-radius: 10px;
       font-size: 12px;
       font-weight: 720;
       padding: 0 6px;
@@ -5409,6 +5824,60 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       background: white;
+    }
+
+    .pdf-packet-toolbar {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .pdf-date-select {
+      display: grid;
+      gap: 5px;
+      min-width: min(220px, 100%);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .pdf-packet-frame {
+      width: 100%;
+      height: min(590px, calc(100vh - 320px));
+      min-height: 420px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f7f7f2;
+    }
+
+    .pdf-blocker-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .pdf-blocker-list li {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: start;
+      padding: 10px 0;
+      position: relative;
+    }
+
+    .pdf-blocker-list li + li::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--divider-line);
     }
 
     .report-cover {
@@ -5816,7 +6285,7 @@
       place-items: center;
       flex: 0 0 auto;
       border: 0;
-      border-radius: 7px;
+      border-radius: 10px;
       background: transparent;
       color: var(--muted);
     }
@@ -6454,6 +6923,87 @@
       min-width: 0;
     }
 
+    .outreach-workflow-controls {
+      display: grid;
+      gap: 12px;
+      margin: 12px 0 16px;
+      padding: 14px 0 16px;
+      border-top: 1px solid var(--divider-line);
+      border-bottom: 1px solid var(--divider-line);
+    }
+
+    .workflow-control-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .workflow-control-head h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .workflow-control-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .workflow-control-item {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+      align-content: start;
+      padding: 11px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 54%, transparent);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--ios-fill) 72%, transparent);
+    }
+
+    .workflow-control-item span {
+      color: var(--soft);
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+
+    .workflow-control-item strong,
+    .workflow-control-item em {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-style: normal;
+      line-height: 1.25;
+    }
+
+    .workflow-control-item strong {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .workflow-control-item em {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .workflow-control-item select {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 58%, transparent);
+      border-radius: 12px;
+      background: rgba(17,17,19,.72);
+      color: var(--text);
+      padding: 0 36px 0 10px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 760;
+    }
+
     .outreach-column {
       min-width: 0;
       display: grid;
@@ -6467,6 +7017,64 @@
       font-weight: 850;
       letter-spacing: .08em;
       text-transform: uppercase;
+    }
+
+    .outreach-template-count {
+      align-self: center;
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .template-section-list {
+      display: grid;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .template-status-section {
+      display: grid;
+      gap: 9px;
+      padding: 14px 0;
+      position: relative;
+    }
+
+    .template-status-section + .template-status-section::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 1px;
+      background: var(--divider-line);
+    }
+
+    .template-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .template-section-head strong {
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .outreach-side-card {
+      max-height: min(640px, calc(100vh - 220px));
+    }
+
+    .variable-scroll {
+      min-height: 240px;
+      max-height: min(430px, calc(100vh - 360px));
+      overflow: auto;
+      padding-right: 4px;
     }
 
     .campaign-list,
@@ -6554,6 +7162,7 @@
       justify-content: flex-end;
     }
 
+    .plain-action,
     .template-action-row .plain-action {
       appearance: none;
       border: 0;
@@ -6562,7 +7171,15 @@
       font: inherit;
       font-weight: 800;
       cursor: pointer;
-      padding: 7px 3px;
+      border-radius: 10px;
+      padding: 7px 8px;
+    }
+
+    .plain-action:hover,
+    .plain-action:focus-visible {
+      color: var(--text);
+      background: rgba(255,255,255,.055);
+      outline: 0;
     }
 
     .outreach-editor-panel {
@@ -6662,6 +7279,78 @@
     .outreach-toast-actions {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .walkthrough-popover {
+      position: fixed;
+      z-index: 95;
+      width: min(344px, calc(100vw - 28px));
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line-strong));
+      border-radius: 20px;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025)),
+        color-mix(in srgb, var(--panel) 94%, transparent);
+      box-shadow: 0 24px 70px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.12);
+      backdrop-filter: blur(24px) saturate(1.12);
+      -webkit-backdrop-filter: blur(24px) saturate(1.12);
+      opacity: 0;
+      transform: translate3d(0, 8px, 0) scale(.985);
+      animation: walkthroughIn .22s var(--ease-out) forwards;
+    }
+
+    .walkthrough-popover::before {
+      content: "";
+      position: absolute;
+      left: -7px;
+      top: 22px;
+      width: 14px;
+      height: 14px;
+      border-left: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line-strong));
+      border-bottom: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line-strong));
+      background: color-mix(in srgb, var(--panel) 94%, transparent);
+      transform: rotate(45deg);
+    }
+
+    .walkthrough-step-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .walkthrough-step-count {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    @keyframes walkthroughIn {
+      to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    }
+
+    .walkthrough-popover h3 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .walkthrough-popover p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    .walkthrough-actions {
+      display: flex;
       justify-content: flex-end;
       gap: 8px;
       flex-wrap: wrap;
@@ -7450,7 +8139,12 @@
     }
 
     @media (max-width: 820px) {
-      body { overflow: auto; }
+      html,
+      body {
+        max-width: 100vw;
+        overflow-x: hidden;
+      }
+      body { overflow-y: auto; }
       .workspace,
       .workspace.is-collapsed,
       .workspace.is-auto-collapsed {
@@ -7470,16 +8164,57 @@
         box-shadow: none;
         grid-template-rows: auto auto auto auto;
       }
-      .topbar { grid-template-columns: 1fr; }
+      .topbar {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+        padding: 10px 12px;
+        overflow: hidden;
+      }
+      .search-control {
+        width: 100%;
+        max-width: calc(100vw - 24px);
+      }
+      .search-control .kbd {
+        display: none;
+      }
       .top-actions {
+        width: 100%;
+        min-width: 0;
+        max-width: calc(100vw - 24px);
         justify-content: flex-start;
         flex-wrap: wrap;
         overflow: visible;
       }
+      .top-actions > * {
+        min-width: 0;
+        max-width: 100%;
+      }
+      .import-menu,
+      .export-menu,
+      .import-split {
+        max-width: 100%;
+      }
       .quick-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
         flex: 1 1 100%;
-        flex-wrap: wrap;
+        max-width: calc(100vw - 24px);
         overflow: visible;
+      }
+      .quick-actions .btn,
+      .export-toggle,
+      .quick-actions .btn.quick {
+        min-width: 0;
+        width: 100%;
+        flex: 1 1 0;
+        padding-inline: 9px;
+        justify-content: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .quick-actions .btn.quick + .btn.quick::before {
+        display: none;
       }
       .top-status { text-align: left; }
       .floating-list-controls {
@@ -7507,11 +8242,34 @@
       .shell-composer { grid-template-columns: 1fr; }
       .composer-actions { justify-content: flex-start; }
       .settings-grid,
-      .admin-grid { grid-template-columns: 1fr; }
+      .admin-grid,
+      .admin-tall-grid,
+      .admin-inline-form { grid-template-columns: 1fr; }
+      .admin-error-row,
+      .admin-access-row,
+      .team-kpi-row {
+        grid-template-columns: 1fr;
+        align-items: start;
+        min-width: 0;
+        overflow: hidden;
+      }
+      .admin-error-list,
+      .admin-error-row .copy,
+      .admin-access-row .copy,
+      .team-kpi-row .copy {
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+      }
+      .admin-error-row .btn,
+      .admin-access-row button {
+        justify-self: start;
+      }
       .loop-grid,
       .loop-grid.three,
       #queueView .queue-layout,
       #dripsView .outreach-layout,
+      .workflow-control-grid,
       .dossier-shell,
       .preference-grid,
       .dossier-doc-grid {
@@ -7528,7 +8286,110 @@
         grid-column: auto;
       }
       .loop-view {
+        width: 100%;
+        max-width: 100vw;
         padding: 14px 12px 76px;
+        overflow-x: hidden;
+      }
+      .loop-panel {
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+      .loop-panel-head {
+        flex-wrap: wrap;
+      }
+      .loop-panel-head > div {
+        min-width: 0;
+        max-width: 100%;
+      }
+      .loop-panel .copy {
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+      #dripsView .outreach-actions {
+        flex: 1 1 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
+        justify-content: flex-start;
+      }
+      #dripsView .outreach-actions .btn {
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
+        flex: 1 1 auto;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+      #dripsView .outreach-template-card,
+      #dripsView .outreach-template-section,
+      #dripsView .outreach-workspace,
+      #dripsView .outreach-campaigns,
+      #dripsView .outreach-templates,
+      #adminView .admin-error-row,
+      #adminView .admin-access-row,
+      #adminView .team-kpi-row {
+        min-width: 0;
+        max-width: 100%;
+      }
+      #adminView .admin-error-row span,
+      #adminView .admin-access-row span,
+      #adminView .team-kpi-row span {
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+      #dripsView .outreach-workspace {
+        grid-template-columns: 1fr;
+      }
+      .document-prep-topline,
+      .docprep-list-topline {
+        align-items: stretch;
+        flex-wrap: wrap;
+      }
+      .docprep-toolbar {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+      .docprep-client-row {
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+      }
+      .docprep-client-main {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+      .docprep-client-main > .btn {
+        grid-column: 2;
+        justify-self: start;
+        min-height: 30px;
+        padding-inline: 10px;
+      }
+      .docprep-client-title strong,
+      .docprep-client-title span {
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+      .docprep-client-meta {
+        display: grid;
+        grid-template-columns: 1fr;
+        padding-left: 34px;
+        gap: 7px;
+      }
+      .docprep-flow-line {
+        min-width: 0;
+        width: 100%;
+        flex-wrap: wrap;
+      }
+      .docprep-flow-meter {
+        flex: 0 0 56px;
       }
       .app[data-active-view="dossiers"] #dossiersView {
         padding-right: 12px;
@@ -7619,9 +8480,9 @@
       </div>
     </div>
     <nav class="nav-list" aria-label="HeirRight sections">
-      <button class="nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" title="Dashboard" data-shell-nav="dashboard" data-hover-label="Dashboard" data-hover-description="Task tracker, activity, and drips"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 5h7v6H4V5Zm9 0h7v4h-7V5ZM4 13h7v6H4v-6Zm9-2h7v8h-7v-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dashboard</span></button>
+      <button class="nav-item" type="button" title="Dashboard" data-shell-nav="dashboard" data-hover-label="Dashboard" data-hover-description="Task tracker, activity, and drips"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 5h7v6H4V5Zm9 0h7v4h-7V5ZM4 13h7v6H4v-6Zm9-2h7v8h-7v-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dashboard</span></button>
       <button class="nav-item" type="button" title="Estates" data-shell-nav="find-estates" data-hover-label="Estates" data-hover-description="Lead intake and source status"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Estates</span></button>
-      <button class="nav-item" type="button" title="Document Prep" data-shell-nav="dossiers" data-hover-label="Document Prep" data-hover-description="Source files and dossier documents"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Document Prep</span></button>
+      <button class="nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" title="Document Prep" data-shell-nav="dossiers" data-hover-label="Document Prep" data-hover-description="Source files and dossier documents"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Document Prep</span></button>
       <button class="nav-item" type="button" title="Outreach" data-shell-nav="drips" data-hover-label="Outreach" data-hover-description="Email and SMS template prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 7h14M7 7v12m10-12v12M6 19h12M8 4h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10 11h4m-4 4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Outreach</span></button>
       <button class="nav-item" type="button" title="Queue" data-shell-nav="queue" data-hover-label="Queue" data-hover-description="Batch export prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10h8M8 14h5M17 14l2 2 3-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Queue</span></button>
       <button class="nav-item" type="button" title="Admin" data-shell-nav="admin" data-hover-label="Admin" data-hover-description="Team review and controls"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM4 20a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 11.5a3 3 0 1 0-1-5.84M17 20h3a4.5 4.5 0 0 0-5.3-4.43" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Admin</span></button>
@@ -7656,7 +8517,7 @@
     </div>
   </aside>
 
-  <section class="app" data-active-view="dashboard" aria-label="HeirRight lead workspace">
+  <section class="app" data-active-view="dossiers" aria-label="HeirRight lead workspace">
     <header class="topbar">
       <label class="search-control solvys-liquid-glass">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -7736,8 +8597,8 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M18.5 9A7 7 0 0 0 6.2 6.7L4 11m16 2-2.2 4.3A7 7 0 0 1 5.5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Load latest
           </button>
-          <button id="rightRailToggle" class="btn quick right-rail-toggle" type="button" aria-label="Collapse right rail" title="Collapse right rail" aria-pressed="true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16v14H4V5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M15 5v14M10 9l-3 3 3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <button id="walkthroughReplay" class="btn quick walkthrough-replay" type="button" aria-label="Open guided walkthrough" title="Guided walkthrough">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v.01M12 18v-6M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
       </div>
@@ -7856,7 +8717,7 @@
           <div class="filter-note" id="filterNote">The list updates as filters change. Clicking an estate or file opens the report rail on the right.</div>
         </div>
       </aside>
-      <button id="filterWidthToggle" class="filter-reopen solvys-liquid-glass" type="button" aria-controls="leadFilters" aria-expanded="true" aria-label="Expand filters" title="Expand filters">
+      <button id="filterWidthToggle" class="filter-reopen nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" aria-controls="leadFilters" aria-expanded="true" aria-label="Expand filters" title="Expand filters">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="m8 6 6 6-6 6M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -8156,10 +9017,11 @@
 <div id="documentActionModalMount"></div>
 <div id="crmImportModalMount"></div>
 <div id="outreachNotificationMount" class="outreach-toast-mount" aria-live="polite"></div>
+<div id="walkthroughMount" aria-live="polite"></div>
 
 <script>
 const state = {
-  activeView: "dashboard",
+  activeView: "dossiers",
   data: null,
   dossier: null,
   dailyRun: null,
@@ -8195,7 +9057,7 @@ const state = {
   dashboardActivityTab: "activities",
   selectedDossierDocId: "discovery-dossier",
   activeDocPrepFlow: "discovery",
-  docPrepListOpen: false,
+  docPrepListOpen: true,
   docPrepAddModal: {
     open: false,
     flowId: "discovery"
@@ -8215,6 +9077,7 @@ const state = {
   idiImports: {},
   contactReviews: {},
   documentFiles: {},
+  closingExportState: {},
   documentActionModal: {
     open: false,
     docId: null,
@@ -8254,6 +9117,23 @@ const state = {
   selectedOutreachTemplateId: null,
   outreachArchiveOpen: false,
   outreachNotification: null,
+  outreachSideTab: "variables",
+  settingsTab: "integrations",
+  documentAutomationStates: {},
+  reportDateAdded: "",
+  walkthrough: {
+    open: false,
+    index: 0
+  },
+  adminAccessStatus: {
+    state: "idle",
+    message: ""
+  },
+  adminTicketStatus: {
+    state: "idle",
+    message: ""
+  },
+  adminAccessDomains: ["heirright.com", "texasequitypros.com"],
   shellSettings: {
     signalWeight: "3",
     taxThreshold: "2",
@@ -8273,15 +9153,19 @@ const themeKey = "heirright:theme";
 const shellSettingsKey = "heirright:shell-settings";
 const discoveryStateKey = "heirright:discovery-workflow-state";
 const docPrepEstateStateKey = "heirright:docprep-estate-state";
+const adminAccessDomainsKey = "heirright:admin-access-domains";
 const dealStatusStateKey = "heirright:deal-status-state";
 const crmImportStateKey = "heirright:crm-imported-estates";
 const sourceCaptureStateKey = "heirright:source-capture-state";
 const idiImportStateKey = "heirright:idi-asset-imports";
 const contactReviewStateKey = "heirright:contact-review-state";
 const documentFilesStateKey = "heirright:document-files-state";
+const closingExportStateKey = "heirright:closing-export-state";
 const columnOrderStateKey = "heirright:column-order-state";
 const dripSettingsKey = "heirright:drip-settings";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
+const walkthroughStateKey = "heirright:guided-walkthrough-seen";
+let walkthroughAutoTimer = null;
 const serverBackedStateKeys = new Set([
   crmImportStateKey,
   docPrepEstateStateKey,
@@ -8291,6 +9175,7 @@ const serverBackedStateKeys = new Set([
   idiImportStateKey,
   contactReviewStateKey,
   documentFilesStateKey,
+  closingExportStateKey,
   outreachWorkspaceKey
 ]);
 const outreachAllowedApprovers = ["sam@heirright.com", "joshua@heirright.com"];
@@ -8784,6 +9669,10 @@ function persistDocumentFiles() {
   storageSetItem(documentFilesStateKey, JSON.stringify(state.documentFiles));
 }
 
+function persistClosingExportState() {
+  storageSetItem(closingExportStateKey, JSON.stringify(state.closingExportState));
+}
+
 function loadCrmImports() {
   try {
     const stored = JSON.parse(storageGetItem(crmImportStateKey) ?? "[]");
@@ -8820,6 +9709,7 @@ function loadAssetDiscoveryState() {
   state.idiImports = restoreObjectFromStorage(idiImportStateKey, {});
   state.contactReviews = restoreObjectFromStorage(contactReviewStateKey, {});
   state.documentFiles = restoreObjectFromStorage(documentFilesStateKey, {});
+  state.closingExportState = restoreObjectFromStorage(closingExportStateKey, {});
   const storedColumnOrder = restoreObjectFromStorage(columnOrderStateKey, {});
   state.columnOrder = {
     results: normalizeColumnOrder("results", storedColumnOrder.results),
@@ -8874,6 +9764,10 @@ function applyServerBackedStateValue(key, value) {
   }
   if (key === documentFilesStateKey) {
     state.documentFiles = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    return true;
+  }
+  if (key === closingExportStateKey) {
+    state.closingExportState = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
     return true;
   }
   if (key === discoveryStateKey && parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -10099,6 +10993,7 @@ function loadSavedState() {
   loadShellSettings();
   loadDripSettings();
   loadOutreachWorkspace();
+  loadAdminAccessDomains();
   state.shellEvents = defaultShellEvents();
   syncShellSettings();
   renderShellPanels();
@@ -10176,6 +11071,19 @@ function loadDocPrepEstateState() {
 
 function persistDocPrepEstateState() {
   storageSetItem(docPrepEstateStateKey, JSON.stringify(state.docPrepEstateState));
+}
+
+function loadAdminAccessDomains() {
+  try {
+    const stored = JSON.parse(storageGetItem(adminAccessDomainsKey) ?? "[]");
+    state.adminAccessDomains = Array.isArray(stored) && stored.length ? stored.map(String).filter(Boolean) : ["heirright.com", "texasequitypros.com"];
+  } catch {
+    state.adminAccessDomains = ["heirright.com", "texasequitypros.com"];
+  }
+}
+
+function persistAdminAccessDomains() {
+  storageSetItem(adminAccessDomainsKey, JSON.stringify([...new Set(state.adminAccessDomains.map(String).filter(Boolean))]));
 }
 
 function docPrepEstateKey(row = selectedRow()) {
@@ -10360,6 +11268,10 @@ function normalizeDripSettings(settings = {}) {
     reviewOwnerRequired: settings.reviewOwnerRequired === false ? false : true,
     requireCourtPacket: settings.requireCourtPacket === false ? false : true,
     holdNoContact: settings.holdNoContact === false ? false : true,
+    workflowTrigger: ["manual", "post-discovery", "queue-stage"].includes(settings.workflowTrigger) ? settings.workflowTrigger : "post-discovery",
+    communicationWindow: ["weekday-9-4", "weekday-10-6", "manual-only"].includes(settings.communicationWindow) ? settings.communicationWindow : "weekday-9-4",
+    runRule: settings.runRule === "run-multiple" ? "run-multiple" : "run-once",
+    senderMode: ["lead-owner", "approval-owner", "static-manager"].includes(settings.senderMode) ? settings.senderMode : "lead-owner",
     operatorNote: String(settings.operatorNote ?? "").slice(0, 500)
   };
 }
@@ -10836,6 +11748,7 @@ function nucleoIcon(name = "check-circle", size = 19, extraClass = "") {
     sliders: '<path d="M4 6h8M16 6h4M4 12h3M11 12h9M4 18h10M18 18h2"/><circle cx="14" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>',
     "packet-clock": '<path d="M5.5 4.5h8.2l4.8 4.8v10.2h-13V4.5Z"/><path d="M13.5 4.8v4.7h4.7"/><circle cx="11" cy="14.5" r="3.1"/><path d="M11 12.8v1.9l1.3.8"/>',
     "magnifier-route": '<path d="m20.5 20.5-4.2-4.2"/><circle cx="10.4" cy="10.4" r="6"/><path d="M7.4 8.3h.01M13.5 12.7h.01M7.5 8.4c3.2.1 5.6.8 5.6 2.4 0 1.8-3.4 1.5-4.8 3.1"/>',
+    eye: '<path d="M2.8 12s3.4-6 9.2-6 9.2 6 9.2 6-3.4 6-9.2 6-9.2-6-9.2-6Z"/><circle cx="12" cy="12" r="2.7"/>',
     flag: '<path d="M6.2 20V5.2"/><path d="M6.2 5.2h9.8l-1.4 3.1L16 11.4H6.2"/><path d="M6.2 15.3h6.5"/>',
     trash: '<path d="M5.2 7h13.6"/><path d="M9.2 7V4.9h5.6V7"/><path d="M7.3 7.1 8 19.2h8l.7-12.1"/><path d="M10.2 10.3v5.7M13.8 10.3v5.7"/>',
     "check-circle": '<circle cx="12" cy="12" r="8.4"/><path d="m8.4 12.2 2.4 2.4 4.9-5.2"/>'
@@ -11414,6 +12327,34 @@ function dossierChecklistStatusHtml(workflow) {
   return `<span class="dossier-check-status" aria-label="${escapeHtml(workflow.label)}">${String(workflow.order).padStart(2, "0")}</span>`;
 }
 
+function linearStatusIconHtml(stateName = "pending", label = "Needed") {
+  const stateValue = ["complete", "active", "processing", "blocked", "pending"].includes(stateName) ? stateName : "pending";
+  if (stateValue === "processing" || stateValue === "active") {
+    return `<span class="linear-status-icon" data-state="${stateValue}" aria-label="${escapeHtml(label)}"><span class="linear-status-spinner" aria-hidden="true"></span></span>`;
+  }
+  if (stateValue === "complete") {
+    return `<span class="linear-status-icon" data-state="complete" aria-label="${escapeHtml(label)}">${nucleoIcon("check-circle", 15)}</span>`;
+  }
+  if (stateValue === "blocked") {
+    return `<span class="linear-status-icon" data-state="blocked" aria-label="${escapeHtml(label)}">${nucleoIcon("flag", 15)}</span>`;
+  }
+  return `<span class="linear-status-icon" data-state="pending" aria-label="${escapeHtml(label)}"><span class="linear-status-pending-mark" aria-hidden="true"></span></span>`;
+}
+
+function documentAutomationKey(docId, row = selectedRow()) {
+  return `${documentStorageKey(row, docId)}:automation`;
+}
+
+function documentAutomationState(docId, row = selectedRow()) {
+  return state.documentAutomationStates[documentAutomationKey(docId, row)] || "";
+}
+
+function setDocumentAutomationState(docId, stateName, row = selectedRow()) {
+  const key = documentAutomationKey(docId, row);
+  if (stateName) state.documentAutomationStates[key] = stateName;
+  else delete state.documentAutomationStates[key];
+}
+
 function dossierChecklistHtml(docs, { compact = false } = {}) {
   return `
     <div class="dossier-checklist" role="list">
@@ -11635,27 +12576,30 @@ function documentRequirementStatus(doc, row = selectedRow()) {
 function documentRequirementHtml(doc, row = selectedRow()) {
   const file = documentRequirementStatus(doc, row);
   const workflow = dossierDocWorkflowState(doc);
+  const automation = documentAutomationState(doc.id, row);
+  const statusState = automation || (file.linked ? "complete" : workflow.state === "blocked" ? "blocked" : workflow.state === "active" ? "active" : "pending");
+  const statusLabel = automation === "processing" ? "Processing" : file.linked ? "Complete" : workflow.label;
   return `
     <article class="document-requirement ${file.linked ? "is-linked" : ""}" data-document-row="${escapeHtml(doc.id)}">
-      <button class="file-drop-icon" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}" aria-label="${escapeHtml(file.action)} ${escapeHtml(doc.title)}">${file.linked ? "✓" : "+"}</button>
+      <button class="file-drop-icon" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}" aria-label="${escapeHtml(file.action)} ${escapeHtml(doc.title)}">${linearStatusIconHtml(statusState, statusLabel)}</button>
       <span class="document-copy">
         <strong>${escapeHtml(doc.title)}</strong>
         <span>${escapeHtml(file.label)}</span>
       </span>
       <span class="document-actions">
         <span class="document-type-pill">${escapeHtml(doc.type)}</span>
-        <button class="btn" type="button" data-document-action="preview" data-document-id="${escapeHtml(doc.id)}">Quick Look</button>
+        <button class="btn icon-only document-icon-button" type="button" data-document-action="preview" data-document-id="${escapeHtml(doc.id)}" aria-label="Preview ${escapeHtml(doc.title)}" title="Preview">${nucleoIcon("eye", 16)}</button>
         <button class="btn primary solvys-liquid-glass" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}">${escapeHtml(file.action)}</button>
             <span class="headless-menu-wrap" data-ui-menu>
               <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Document actions for ${escapeHtml(doc.title)}">${nucleoIcon("sliders", 16)}</button>
           <span class="headless-menu t-dropdown" data-origin="top-right" role="menu" hidden>
-            <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("open-book", 15)}<span>Quick Look</span></button>
+            <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("eye", 15)}<span>Preview</span></button>
             <button type="button" role="menuitem" data-ui-menu-action="link-generated" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("batch-tray", 15)}<span>Link generated packet</span></button>
             <button type="button" role="menuitem" data-ui-menu-action="replace" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("packet-clock", 15)}<span>Save new version</span></button>
             <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("flag", 15)}<span>Stage for handoff</span></button>
           </span>
         </span>
-        <span class="dossier-check-action">${escapeHtml(workflow.label)}</span>
+        <span class="document-action-status">${linearStatusIconHtml(statusState, statusLabel)}</span>
       </span>
     </article>
   `;
@@ -11742,11 +12686,43 @@ function saveDocumentFile(docId, file = null, source = "file") {
     linkedBy: state.session?.user?.email || "operator"
   };
   state.documentFiles[documentStorageKey(row, docId)] = record;
+  setDocumentAutomationState(docId, "complete", row);
   persistDocumentFiles();
   addShellEvent("Document linked", `${doc?.title || "Dossier document"} is linked to ${row?.leadName || row?.title || "the current lead"}.`, "ready", false);
   renderCurrentLoopView();
   renderRail();
   closeDocumentActionModal();
+}
+
+function documentNeedsHumanInput(docId, action = "add") {
+  const row = selectedRow();
+  const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === docId) ?? selectedDossierDocument(row);
+  const workflow = doc ? dossierDocWorkflowState(doc) : null;
+  if (action === "replace") return true;
+  return Boolean(workflow?.state === "blocked" || /blocked|locked/i.test(doc?.status || ""));
+}
+
+function startDocumentAutomation(docId, action = "add") {
+  const row = selectedRow();
+  const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === docId) ?? selectedDossierDocument(row);
+  if (!doc) return;
+  if (documentNeedsHumanInput(docId, action)) {
+    state.selectedDossierDocId = doc.id;
+    state.railMode = "dossier";
+    state.railTab = "docs";
+    renderRail();
+    setRailOpen(true);
+    openDocumentActionModal(doc.id, action === "replace" ? "replace" : "add");
+    addShellEvent("Human review needed", `${doc.title} needs a source file, filter, or approval note before it can be marked complete.`, "blocked", false);
+    return;
+  }
+  setDocumentAutomationState(doc.id, "processing", row);
+  renderCurrentLoopView();
+  renderRail();
+  window.setTimeout(() => {
+    saveDocumentFile(doc.id, null, "generated");
+    addShellEvent("Automated document step complete", `${doc.title} was linked from the generated packet for the selected estate.`, "ready", false);
+  }, 760);
 }
 
 function wireDocumentActionModal(mount) {
@@ -11932,8 +12908,9 @@ function submitBatchCrmImport(formData) {
   state.selectedIds.clear();
   state.showArchivedEstates = false;
   setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
+  state.docPrepListOpen = true;
   closeCrmImportModal();
-  document.querySelector('[data-shell-nav="find-estates"]')?.click();
+  document.querySelector('[data-shell-nav="dossiers"]')?.click();
   const evidenceFilter = document.getElementById("evidenceFilter");
   const statusFilter = document.getElementById("statusFilter");
   const globalSearch = document.getElementById("globalSearch");
@@ -11967,8 +12944,9 @@ function submitCrmImport(formData) {
   state.selectedIds.clear();
   state.showArchivedEstates = false;
   setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
+  state.docPrepListOpen = true;
   closeCrmImportModal();
-  document.querySelector('[data-shell-nav="find-estates"]')?.click();
+  document.querySelector('[data-shell-nav="dossiers"]')?.click();
   const evidenceFilter = document.getElementById("evidenceFilter");
   const statusFilter = document.getElementById("statusFilter");
   const countyFilter = document.getElementById("countyFilter");
@@ -12066,11 +13044,15 @@ function handleDocumentMenuAction(action, docId) {
     return;
   }
   if (action === "link-generated") {
-    saveDocumentFile(docId, null, "generated");
+    startDocumentAutomation(docId, "link-generated");
     return;
   }
   if (action === "queue") {
     addRowsToQueue(rowsForBatchAction());
+    return;
+  }
+  if (action === "add") {
+    startDocumentAutomation(docId, "add");
     return;
   }
   openDocumentActionModal(docId, action === "replace" ? "replace" : "add");
@@ -12397,6 +13379,62 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
   });
 }
 
+function docPrepReadinessItems(row = selectedRow(), dossier = dossierForRow(row), { includeOptional = true } = {}) {
+  if (!row) return [{
+    title: "No estate selected",
+    copy: "Choose an estate before reviewing export readiness.",
+    mandatory: true,
+    state: "blocked"
+  }];
+  const discoveryStats = documentPrepStats(row, dossier, "discovery");
+  const closingStats = documentPrepStats(row, dossier, "closing-docs");
+  const discoveryDone = discoveryProgress("discovery", row) >= 100;
+  const closingStarted = docPrepFlowStarted(row, "closing-docs") || state.queueIds.has(row.id);
+  const outreachReady = activeOutreachTemplates().some((template) => ["Approved", "Sync to Podio"].includes(template.status));
+  const items = [];
+  if (!discoveryDone) {
+    items.push({
+      title: "Discovery Doc Prep incomplete",
+      copy: `${discoveryProgress("discovery", row)}% complete. Finish owner, deed, tax, probate, heir/contact, and report review before export.`,
+      mandatory: true,
+      state: "blocked"
+    });
+  }
+  if (discoveryStats.missing > 0) {
+    items.push({
+      title: "Discovery packet documents missing",
+      copy: `${discoveryStats.missing} Discovery document${discoveryStats.missing === 1 ? "" : "s"} still need a linked source file or generated packet section.`,
+      mandatory: true,
+      state: "blocked"
+    });
+  }
+  if (includeOptional && closingStarted && closingStats.missing > 0) {
+    items.push({
+      title: "Closing Prep packet not finished",
+      copy: `${closingStats.missing} Closing Prep document${closingStats.missing === 1 ? "" : "s"} still need review. This is tracked for the deal file but does not block Discovery export.`,
+      mandatory: false,
+      state: "review"
+    });
+  }
+  if (includeOptional && state.queueIds.has(row.id) && !outreachReady) {
+    items.push({
+      title: "Linked outreach campaign needs approval",
+      copy: "Add or approve the outreach campaign before external follow-up. This does not block a Discovery export.",
+      mandatory: false,
+      state: "review"
+    });
+  }
+  if (!items.length) {
+    items.push({
+      title: "Discovery export ready",
+      copy: "Required Discovery Doc Prep items are complete for export review.",
+      mandatory: false,
+      state: "complete"
+    });
+  }
+  return items;
+}
+
 function exportBlockerItems(result = state.exportResult) {
   return uniqueItems((result?.blockers ?? [])
     .filter((blocker) => !/skipped in dry-run mode/i.test(blocker))
@@ -12411,24 +13449,16 @@ function queueReadinessItems() {
       copy: "Add selected Estate Search or Dossier leads to Queue before reviewing handoff stages."
     }];
   }
-  return queued.map((row) => {
-    const dossier = dossierForRow(row);
-    const missing = row?.missing ?? buildMissingSections(dossier ?? {});
-    const reviewTasks = taskCount(dossier);
-    const stages = [
-      missing.length ? `${missing.length} source-backed section${missing.length === 1 ? "" : "s"}` : "",
-      reviewTasks ? `${reviewTasks} review task${reviewTasks === 1 ? "" : "s"}` : "",
-      row.tone === "ready" ? "handoff readback" : "qualification review"
-    ].filter(Boolean);
-    return {
-      title: row.leadName || row.title,
-      copy: stages.join(" • ")
-    };
-  });
+  return queued.flatMap((row) => docPrepReadinessItems(row, dossierForRow(row)).map((item) => ({
+    title: `${row.leadName || row.title}: ${item.title}`,
+    copy: `${item.mandatory ? "Required" : "Tracked"} - ${item.copy}`,
+    state: item.state,
+    mandatory: item.mandatory
+  })));
 }
 
 function queueDestinationItems() {
-  const names = ["Podio", "Google Workspace", "Resend", "SMS Gateway"];
+  const names = ["Podio", "Google Workspace", "Resend", "SMS Gateway", "Activepieces", "Linear Support", "Leads Engine Access"];
   return names.map((name) => {
     const connection = connectionByName(name === "Google Workspace" ? "Google" : name);
     const connected = Boolean(connection?.ok && connection?.mode === "live");
@@ -13061,7 +14091,11 @@ function docPrepFlowHasWork(row = selectedRow(), flowId = state.activeDocPrepFlo
 }
 
 function docPrepListRows() {
-  return state.rows.filter((row) => !row.isArchived && Object.keys(docPrepFlows).some((flowId) => docPrepFlowHasWork(row, flowId)));
+  return state.rows.filter((row) => !row.isArchived && (
+    row.sourceKind === "crm-import" ||
+    row.sourceKind === "fresh-batch" ||
+    Object.keys(docPrepFlows).some((flowId) => docPrepFlowHasWork(row, flowId) || docPrepRowStageEligible(row, flowId))
+  ));
 }
 
 function docPrepRowStageEligible(row, flowId = state.activeDocPrepFlow) {
@@ -13094,6 +14128,62 @@ function closeDocPrepAddModal() {
   renderDossiersView();
 }
 
+async function exportClosingDocsToGoogle() {
+  const row = selectedRow();
+  if (!row) {
+    document.getElementById("topStatus").textContent = "Select an estate before exporting Closing Prep.";
+    return;
+  }
+  const dossier = dossierForRow(row);
+  const notes = state.discoveryNotes?.[assetDiscoveryKey(row)] || "";
+  document.getElementById("topStatus").textContent = "Preparing Closing Prep packet for Google Workspace...";
+  addShellEvent("Closing Prep export started", `${docPrepEstateLabel(row)} is being checked for Google Workspace export.`, "review", false);
+  let result = null;
+  try {
+    result = await postJson("/api/closing-docs/export-google?dry-run=false", {
+      dossier,
+      seed: {
+        estateName: dossier?.summary?.estateName || row.title || row.leadName,
+        ownerName: dossier?.property?.ownerName?.value || row.owner || row.leadName,
+        propertyAddress: row.address || dossier?.property?.address?.value,
+        parcelId: row.folio || dossier?.property?.parcelId?.value,
+        county: row.county || dossier?.property?.county?.value || "miami-dade",
+        source: "operator_ui"
+      },
+      notes,
+      dryRun: false
+    });
+  } catch (error) {
+    result = {
+      ok: false,
+      status: "blocked",
+      blockers: [error.message || "Closing Prep export route is unavailable."],
+      message: "Closing Prep export could not be prepared."
+    };
+  }
+  const blockers = Array.isArray(result?.blockers) ? result.blockers : [];
+  const route = result?.export?.routes?.find((item) => item.route === "google") || result?.routes?.find?.((item) => item.route === "google");
+  if (result?.ok && route?.url) {
+    document.getElementById("topStatus").textContent = "Closing Prep packet exported to Google Workspace.";
+    addShellEvent("Closing Prep exported", `${docPrepEstateLabel(row)} has a Google Workspace packet with readback evidence.`, "ready", false);
+  } else {
+    document.getElementById("topStatus").textContent = result?.message || "Closing Prep export needs review before it can complete.";
+    addShellEvent("Closing Prep export blocked", blockers[0] || "Google Workspace export is waiting on setup or required fields.", "blocked", false);
+  }
+  state.lastClosingDocsExport = {
+    rowId: row.id,
+    result,
+    updatedAt: isoNow()
+  };
+  state.closingExportState[assetDiscoveryKey(row)] = state.lastClosingDocsExport;
+  persistClosingExportState();
+  if (result?.ok && route?.url) {
+    setDealStatusForRow(row, "hot", { rerender: false });
+  }
+  renderDossiersView();
+  renderRail();
+}
+
 function addDocPrepForRow(rowId, flowId = state.docPrepAddModal.flowId || state.activeDocPrepFlow) {
   const row = rowById(rowId);
   if (!row) return;
@@ -13115,6 +14205,7 @@ function openDocPrepRow(rowId, flowId = state.activeDocPrepFlow) {
   state.selectedId = row.id;
   state.docPrepListOpen = false;
   setActiveDocPrepFlow(flowId, { persist: true, rerender: false });
+  ensureDocPrepStarted(row, flowId);
   renderDossiersView();
   renderRail();
   updateFooterLeadContext(row);
@@ -13133,6 +14224,45 @@ function docPrepFlowLineHtml(row, flowId) {
   `;
 }
 
+function closingExportForRow(row = selectedRow()) {
+  if (!row) return null;
+  return state.closingExportState?.[assetDiscoveryKey(row)] ?? null;
+}
+
+function docPrepFileStatusItems(row = selectedRow()) {
+  const discoveryStats = documentPrepStats(row, dossierForRow(row), "discovery");
+  const closingStats = documentPrepStats(row, dossierForRow(row), "closing-docs");
+  const discoveryPct = discoveryProgress("discovery", row);
+  const closingPct = discoveryProgress("closing-docs", row);
+  const closingExport = closingExportForRow(row);
+  const googleRoute = closingExport?.result?.export?.routes?.find?.((item) => item.route === "google");
+  const activeTemplates = activeOutreachTemplates().filter((template) => ["Approved", "Sync to Podio"].includes(template.status));
+  const discoveryReady = discoveryPct >= 100 && discoveryStats.missing === 0;
+  const closingReady = Boolean(closingExport?.result?.ok && googleRoute?.url);
+  return [
+    {
+      label: "Discovery",
+      value: discoveryReady ? "Complete" : discoveryPct > 0 ? `${discoveryPct}%` : "Not started",
+      state: discoveryReady ? "complete" : discoveryStats.missing ? "pending" : "active"
+    },
+    {
+      label: "Closing Docs",
+      value: closingReady ? "Exported" : closingPct > 0 ? `${closingPct}%` : "Not started",
+      state: closingReady ? "complete" : closingStats.missing ? "pending" : "active"
+    },
+    {
+      label: "Google",
+      value: closingReady ? "Doc ready" : closingExport?.result?.blockers?.length ? "Blocked" : "Not exported",
+      state: closingReady ? "complete" : closingExport?.result?.blockers?.length ? "blocked" : "pending"
+    },
+    {
+      label: "Outreach",
+      value: activeTemplates.length ? `${activeTemplates.length} ready` : "Needs approval",
+      state: activeTemplates.length ? "complete" : "pending"
+    }
+  ];
+}
+
 function docPrepEstateLabel(row) {
   return row?.title || row?.leadName || "Current estate";
 }
@@ -13143,8 +14273,9 @@ function docPrepClientRowHtml(row) {
   const flowId = status.flowId === "closing-docs" ? "closing-docs" : state.activeDocPrepFlow;
   const selected = row.id === state.selectedId;
   const estateLabel = docPrepEstateLabel(row);
+  const fileStatuses = docPrepFileStatusItems(row);
   return `
-    <article class="docprep-client-row ${selected ? "is-selected" : ""}" data-dossier-row="${escapeHtml(row.id)}">
+    <article class="docprep-client-row ${selected ? "is-selected" : ""}" data-dossier-row="${escapeHtml(row.id)}" data-open-docprep-row="${escapeHtml(row.id)}" data-open-docprep-flow="${escapeHtml(flowId)}" tabindex="0" role="button" aria-label="Open ${escapeHtml(estateLabel)} document prep">
       <div class="docprep-client-main">
         ${checkboxHtml(row.id, `Select ${estateLabel} for document prep actions`, checked, `data-row-select="${escapeHtml(row.id)}"`)}
         <div class="docprep-client-title">
@@ -13156,6 +14287,14 @@ function docPrepClientRowHtml(row) {
       <div class="docprep-client-meta">
         <span class="docprep-flow-line"><strong>Status</strong><span>${escapeHtml(status.label)}</span></span>
         ${Object.keys(docPrepFlows).map((item) => docPrepFlowLineHtml(row, item)).join("")}
+      </div>
+      <div class="docprep-file-status-grid" aria-label="File status columns">
+        ${fileStatuses.map((item) => `
+          <span class="docprep-file-status" data-state="${escapeHtml(item.state)}">
+            ${linearStatusIconHtml(item.state, item.value)}
+            <span><strong>${escapeHtml(item.label)}</strong><em>${escapeHtml(item.value)}</em></span>
+          </span>
+        `).join("")}
       </div>
     </article>
   `;
@@ -13237,7 +14376,16 @@ function renderDossiersListView(target) {
     button.addEventListener("click", () => openDocPrepAddModal(button.dataset.openDocprepAdd));
   });
   target.querySelectorAll("[data-open-docprep-row]").forEach((button) => {
-    button.addEventListener("click", () => openDocPrepRow(button.dataset.openDocprepRow, button.dataset.openDocprepFlow));
+    button.addEventListener("click", (event) => {
+      if (event.target.closest?.("input, label, button") && event.currentTarget === event.target.closest?.("article")) return;
+      openDocPrepRow(button.dataset.openDocprepRow, button.dataset.openDocprepFlow);
+    });
+    button.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openDocPrepRow(button.dataset.openDocprepRow, button.dataset.openDocprepFlow);
+      }
+    });
   });
   wireDocPrepAddModal(target);
   wireBatchSelection(target, "[data-dossier-row]", "dossiers");
@@ -13327,12 +14475,12 @@ function renderDossiersView() {
               <h3>${escapeHtml(flow.title)}</h3>
             </div>
             <div class="process-side-actions">
-              <button class="btn primary solvys-liquid-glass" type="button" data-queue-stage>Export bundle</button>
+              <button class="btn primary solvys-liquid-glass" type="button" data-queue-stage>${escapeHtml(flow.id === "closing-docs" ? "Export Google" : "Export bundle")}</button>
               <span class="headless-menu-wrap" data-ui-menu>
                 <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Process actions">${nucleoIcon("sliders", 16)}</button>
                 <span class="headless-menu t-dropdown" data-origin="top-right" role="menu" hidden>
                   <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("batch-tray", 15)}<span>Stage bundle</span></button>
-                  <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("open-book", 15)}<span>Quick Look packet</span></button>
+                  <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("eye", 15)}<span>Preview packet</span></button>
                 </span>
               </span>
             </div>
@@ -13375,7 +14523,13 @@ function renderDossiersView() {
     });
   });
   target.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
-  target.querySelector("[data-queue-stage]")?.addEventListener("click", () => addRowsToQueue(rowsForBatchAction()));
+  target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
+    if (state.activeDocPrepFlow === "closing-docs") {
+      exportClosingDocsToGoogle();
+      return;
+    }
+    addRowsToQueue(rowsForBatchAction());
+  });
   target.querySelectorAll("[data-shell-nav-shortcut]").forEach((button) => {
     button.addEventListener("click", () => document.querySelector(`[data-shell-nav="${button.dataset.shellNavShortcut}"]`)?.click());
   });
@@ -13484,7 +14638,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
       ${flow.id === "closing-docs" ? closingWorkflowPanelHtml(row, dossier) : `${assetCaptureFormHtml(row)}${idiImportPanelHtml(row)}${contactReviewPanelHtml(row)}`}
     `;
   }
-  content.innerHTML = titleCard + bodyHtml;
+  content.innerHTML = (state.railTab === "flow" ? titleCard : "") + bodyHtml;
   content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
   wireAssetDiscoveryControls(content, row);
   content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
@@ -13502,6 +14656,10 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   });
   content.querySelectorAll("[data-popout-doc]").forEach((button) => {
     button.addEventListener("click", () => popOutDossierDocument(button.dataset.popoutDoc));
+  });
+  content.querySelector("[data-report-date-added]")?.addEventListener("change", (event) => {
+    state.reportDateAdded = event.target.value;
+    renderRail();
   });
   setRailOpen(state.railOpen);
 }
@@ -14034,7 +15192,7 @@ function deleteArchivedOutreachTemplate(templateId) {
   renderDripsView();
 }
 
-function syncOutreachTemplate(templateId) {
+async function syncOutreachTemplate(templateId) {
   const template = state.outreachWorkspace.templates.find((item) => item.id === templateId);
   if (!template) return;
   if (template.status !== "Approved") {
@@ -14046,14 +15204,46 @@ function syncOutreachTemplate(templateId) {
     });
     return;
   }
+  showOutreachNotification({
+    tone: "review",
+    title: "Preparing outreach automation",
+    copy: "The app is attempting the Activepieces Podio workflow. If that route is not configured, the review-only fallback will stage the template instead.",
+    action: "retry"
+  });
   const podio = connectionByName("Podio");
-  if (!(podio?.ok && podio?.mode === "live")) {
-    addOutreachAudit(template.id, "Podio sync blocked", operatorConnectionMessage(podio, "Podio"));
-    persistOutreachWorkspace();
+  const campaign = selectedOutreachCampaign();
+  let result = null;
+  try {
+    result = await postJson("/api/outreach/sync", {
+      template,
+      campaign,
+      lead: selectedRow(),
+      podioReady: Boolean(podio?.ok && podio?.mode === "live"),
+      actor: currentActorEmail(),
+      requestedAt: isoNow()
+    });
+  } catch (error) {
+    result = {
+      ok: false,
+      status: "architecturally_free_outreach",
+      message: error.message || "Activepieces outreach route unavailable."
+    };
+  }
+  if (!result?.ok) {
+    const fallback = normalizeOutreachTemplate({
+      ...template,
+      status: "Sync to Podio",
+      podioSyncState: "Architecturally Free Outreach fallback",
+      podioArtifactId: `free-outreach-${template.id}`,
+      lastEditedBy: currentActorEmail(),
+      lastEditedAt: isoNow(),
+      updatedAt: isoNow()
+    });
+    upsertOutreachTemplate(fallback, "Fallback outreach staged", `${fallback.name} was staged in the Architecturally Free Outreach path. No outbound send was attempted.`);
     showOutreachNotification({
-      tone: "blocked",
-      title: "Podio is not connected",
-      copy: "No SMS, email, CRM card, Google Doc, or Resend message was created. Open Settings to finish Podio access, backup, approval, and readback setup.",
+      tone: "review",
+      title: "Fallback outreach staged",
+      copy: result?.message || "Activepieces is unavailable, so the reviewed template was staged in the app-owned outreach queue without sending.",
       action: "settings"
     });
     return;
@@ -14061,24 +15251,24 @@ function syncOutreachTemplate(templateId) {
   const synced = normalizeOutreachTemplate({
     ...template,
     status: "Sync to Podio",
-    podioSyncState: "Prepared for Podio",
-    podioArtifactId: `podio-template-${template.id}`,
+    podioSyncState: "Activepieces Podio automation queued",
+    podioArtifactId: result?.runId || `podio-template-${template.id}`,
     lastEditedBy: currentActorEmail(),
     lastEditedAt: isoNow(),
     updatedAt: isoNow()
   });
-  upsertOutreachTemplate(synced, "Podio sync prepared", `${synced.name} was staged for Podio artifact creation. No outbound send was attempted.`);
+  upsertOutreachTemplate(synced, "Activepieces outreach queued", `${synced.name} was handed to the Podio automation workflow. No direct SMS or email send was attempted by HeirRight Leads.`);
   showOutreachNotification({
     tone: "ready",
-    title: "Podio sync prepared",
-    copy: "The template is staged for Podio creation. Readback proof is still required before any automation runs.",
+    title: "Podio automation queued",
+    copy: "Activepieces accepted the reviewed outreach package. Readback proof is still required before any outbound send.",
     action: "retry"
   });
 }
 
-function outreachTemplateListHtml(templates) {
+function outreachTemplateListHtml(templates, sectionTitle = "templates") {
   if (!templates.length) {
-    return `<li class="template-list-item"><strong>No templates yet</strong><span>Create an SMS or email template for this campaign.</span></li>`;
+    return `<li class="template-list-item"><strong>No ${escapeHtml(sectionTitle.toLowerCase())} yet</strong><span>Create or move an SMS/email template into this section when it clears review.</span></li>`;
   }
   return templates.map((template) => `
     <li>
@@ -14089,6 +15279,129 @@ function outreachTemplateListHtml(templates) {
       </button>
     </li>
   `).join("");
+}
+
+function outreachTemplateSectionsHtml(campaignId) {
+  const templates = state.outreachWorkspace.templates.filter((template) => template.campaignId === campaignId && template.status !== "Archived");
+  const sections = [
+    {
+      title: "Active templates",
+      templates: templates.filter((template) => ["Ready", "Approved"].includes(template.status))
+    },
+    {
+      title: "Exported templates",
+      templates: templates.filter((template) => template.status === "Sync to Podio")
+    },
+    {
+      title: "Draft templates",
+      templates: templates.filter((template) => template.status === "Draft")
+    }
+  ];
+  return sections.map((section) => `
+    <section class="template-status-section" aria-label="${escapeHtml(section.title)} templates">
+      <div class="template-section-head">
+        <strong>${escapeHtml(section.title)}</strong>
+        <span class="outreach-template-count">${escapeHtml(section.templates.length)} shown</span>
+      </div>
+      <ul class="template-section-list">
+        ${outreachTemplateListHtml(section.templates, section.title)}
+      </ul>
+    </section>
+  `).join("");
+}
+
+function outreachSidePanelHtml(variables, settings) {
+  const activeTab = state.outreachSideTab === "preferences" ? "preferences" : "variables";
+  return `
+    <section class="loop-panel outreach-side-card">
+      <div class="loop-panel-head">
+        <div><p class="eyebrow">Outreach Prep</p><h2 class="loop-title">${activeTab === "preferences" ? "Cadence controls" : "Preview inputs"}</h2></div>
+        <span class="pill neutral">${activeTab === "preferences" ? "Local" : `${escapeHtml(variables.filter((entry) => entry.resolved).length)} ready`}</span>
+      </div>
+      <div class="tabbed-panel">
+        <div class="tab-strip" role="tablist" aria-label="Outreach side panel">
+          <button type="button" data-outreach-side-tab="variables" aria-pressed="${activeTab === "variables"}">Variables</button>
+          <button type="button" data-outreach-side-tab="preferences" aria-pressed="${activeTab === "preferences"}">Preferences</button>
+        </div>
+        ${activeTab === "variables" ? `
+          <div class="variable-scroll">
+            <ul class="variable-list">
+              ${variables.map((entry) => `<li class="variable-item"><strong>${escapeHtml(entry.token)}</strong><span>${escapeHtml(entry.label)} - ${escapeHtml(entry.value)}</span></li>`).join("")}
+            </ul>
+          </div>
+        ` : `
+          <div class="settings-grid">
+            <div class="setting-card"><label for="dripStartDelay"><strong>Start delay</strong><span>After dossier approval</span></label><select id="dripStartDelay" data-drip-setting="startDelay"><option value="same-day">Same day after review</option><option value="next-business">Next business morning</option></select></div>
+            <div class="setting-card"><label for="dripSmsCap"><strong>SMS cap</strong><span><span data-drip-sms-value>${escapeHtml(settings.smsCap)}</span> messages per heir, per week</span></label><input id="dripSmsCap" data-drip-setting="smsCap" type="range" min="1" max="4" value="${escapeHtml(settings.smsCap)}"></div>
+            <div class="setting-card"><label class="toggle-line"><strong>Require Finished Discovery before Auto Follow-Up</strong><input id="dripRequireCourtPacket" data-drip-setting="requireCourtPacket" type="checkbox" ${settings.requireCourtPacket ? "checked" : ""}></label><span>Auto follow-up waits until Discovery is finished and the dossier is review-ready.</span></div>
+            <div class="setting-card"><label class="toggle-line"><strong>Hold no-contact leads</strong><input id="dripHoldNoContact" data-drip-setting="holdNoContact" type="checkbox" ${settings.holdNoContact ? "checked" : ""}></label><span>No-contact, company-owned, source-blocked, and recent-sale leads stay out of outreach.</span></div>
+            <div class="setting-card"><label for="dripOperatorNote"><strong>Operator note</strong><span>Saved with the scheduled-work prep controls</span></label><textarea id="dripOperatorNote" class="discovery-notes" data-drip-setting="operatorNote" rows="3" placeholder="Example: keep SMS paused until the court packet is reviewed.">${escapeHtml(settings.operatorNote)}</textarea></div>
+          </div>
+        `}
+      </div>
+    </section>
+  `;
+}
+
+function outreachWorkflowControlsHtml(campaign, settings) {
+  const podio = connectionByName("Podio");
+  const activepieces = connectionByName("Activepieces");
+  const podioReady = Boolean(podio?.ok && podio?.mode === "live");
+  const automationReady = Boolean(activepieces?.ok && activepieces?.mode === "live");
+  return `
+    <section class="outreach-workflow-controls" aria-label="Outreach workflow controls">
+      <div class="workflow-control-head">
+        <div>
+          <p class="eyebrow">Workflow Controls</p>
+          <h3>${escapeHtml(campaign?.name || "Selected campaign")}</h3>
+        </div>
+        <span class="pill ${podioReady && automationReady ? "ready" : "review"}">${escapeHtml(podioReady ? "Podio-ready" : "Review-only")}</span>
+      </div>
+      <div class="workflow-control-grid">
+        <label class="workflow-control-item">
+          <span>Trigger</span>
+          <select data-drip-setting="workflowTrigger">
+            <option value="post-discovery">Finished Discovery</option>
+            <option value="queue-stage">Queued export</option>
+            <option value="manual">Manual only</option>
+          </select>
+        </label>
+        <label class="workflow-control-item">
+          <span>Recipient</span>
+          <strong>Reviewed primary contact</strong>
+          <em>Fallbacks stay blocked until approved.</em>
+        </label>
+        <label class="workflow-control-item">
+          <span>Send as</span>
+          <select data-drip-setting="senderMode">
+            <option value="lead-owner">Lead owner</option>
+            <option value="approval-owner">Approval owner</option>
+            <option value="static-manager">Manager fallback</option>
+          </select>
+        </label>
+        <label class="workflow-control-item">
+          <span>Window</span>
+          <select data-drip-setting="communicationWindow">
+            <option value="weekday-9-4">Weekdays 9-4</option>
+            <option value="weekday-10-6">Weekdays 10-6</option>
+            <option value="manual-only">Manual approval only</option>
+          </select>
+        </label>
+        <label class="workflow-control-item">
+          <span>Run rule</span>
+          <select data-drip-setting="runRule">
+            <option value="run-once">Run once per contact</option>
+            <option value="run-multiple">Allow repeat after approval</option>
+          </select>
+        </label>
+        <div class="workflow-control-item">
+          <span>Goals and stop rules</span>
+          <strong>Reply, call, no-contact, source blocker, status change</strong>
+          <em>${escapeHtml((campaign?.stopRules || []).join(" / ") || "Campaign stop rules required.")}</em>
+        </div>
+      </div>
+    </section>
+  `;
 }
 
 function outreachEditorHtml(template) {
@@ -14188,11 +15501,11 @@ function renderDripsView() {
   const target = document.getElementById("dripsView");
   if (!target) return;
   const campaign = selectedOutreachCampaign();
-  const activeTemplates = activeOutreachTemplates(campaign?.id);
+  const campaignTemplates = state.outreachWorkspace.templates.filter((template) => template.campaignId === campaign?.id && template.status !== "Archived");
   const archivedTemplates = archivedOutreachTemplates(campaign?.id);
-  const visibleTemplates = state.outreachArchiveOpen ? archivedTemplates : activeTemplates;
-  if (!state.selectedOutreachTemplateId || !visibleTemplates.some((template) => template.id === state.selectedOutreachTemplateId)) {
-    state.selectedOutreachTemplateId = visibleTemplates[0]?.id || activeTemplates[0]?.id || archivedTemplates[0]?.id || null;
+  const selectableTemplates = campaignTemplates.length ? campaignTemplates : archivedTemplates;
+  if (!state.selectedOutreachTemplateId || !selectableTemplates.some((template) => template.id === state.selectedOutreachTemplateId)) {
+    state.selectedOutreachTemplateId = selectableTemplates[0]?.id || null;
   }
   const selectedTemplate = selectedOutreachTemplate();
   const variables = outreachVariableRegistry();
@@ -14203,12 +15516,12 @@ function renderDripsView() {
         <div class="loop-panel-head">
           <div><p class="eyebrow">Outreach</p><h2 class="loop-title">Campaign templates</h2></div>
           <div class="outreach-actions">
-            <button class="btn quick" type="button" data-toggle-outreach-archive>${state.outreachArchiveOpen ? "Active" : "Archive"}</button>
             <button class="btn text-action" type="button" data-new-template="email">New Email</button>
             <button class="btn primary solvys-liquid-glass" type="button" data-new-template="sms">New SMS</button>
           </div>
         </div>
         <p class="copy">Create SMS and email templates, attach them to campaigns, and prepare the Podio sync path. Templates do not send until approved and synced.</p>
+        ${outreachWorkflowControlsHtml(campaign, settings)}
         <div class="outreach-workspace">
           <div class="outreach-column">
             <p class="outreach-section-label">Campaigns</p>
@@ -14226,43 +15539,29 @@ function renderDripsView() {
           </div>
           <div class="outreach-column">
             <div class="loop-panel-head">
-              <p class="outreach-section-label">${state.outreachArchiveOpen ? "Archived Templates" : "Templates"}</p>
-              <span class="results-count">${visibleTemplates.length} shown</span>
+              <p class="outreach-section-label">Templates</p>
+              <span class="outreach-template-count">${campaignTemplates.length} shown</span>
             </div>
-            <ul class="template-list">${outreachTemplateListHtml(visibleTemplates)}</ul>
+            ${outreachTemplateSectionsHtml(campaign?.id)}
           </div>
         </div>
       </section>
       <aside class="outreach-side" aria-label="Outreach review and cadence controls">
         ${outreachEditorHtml(selectedTemplate)}
-        <section class="loop-panel">
-          <div class="loop-panel-head"><div><p class="eyebrow">Dossier Variables</p><h2 class="loop-title">Preview inputs</h2></div><span class="pill neutral">${escapeHtml(variables.filter((entry) => entry.resolved).length)} ready</span></div>
-          <ul class="variable-list">
-            ${variables.slice(0, 10).map((entry) => `<li class="variable-item"><strong>${escapeHtml(entry.token)}</strong><span>${escapeHtml(entry.label)} - ${escapeHtml(entry.value)}</span></li>`).join("")}
-          </ul>
-        </section>
-        <section class="loop-panel">
-          <div class="loop-panel-head"><div><p class="eyebrow">Preferences</p><h2 class="loop-title">Cadence controls</h2></div><span class="pill neutral">Local</span></div>
-          <div class="settings-grid">
-            <div class="setting-card"><label for="dripStartDelay"><strong>Start delay</strong><span>After dossier approval</span></label><select id="dripStartDelay" data-drip-setting="startDelay"><option value="same-day">Same day after review</option><option value="next-business">Next business morning</option></select></div>
-            <div class="setting-card"><label for="dripSmsCap"><strong>SMS cap</strong><span><span data-drip-sms-value>${escapeHtml(settings.smsCap)}</span> messages per heir, per week</span></label><input id="dripSmsCap" data-drip-setting="smsCap" type="range" min="1" max="4" value="${escapeHtml(settings.smsCap)}"></div>
-            <div class="setting-card"><label class="toggle-line"><strong>Require Finished Discovery before Auto Follow-Up</strong><input id="dripRequireCourtPacket" data-drip-setting="requireCourtPacket" type="checkbox" ${settings.requireCourtPacket ? "checked" : ""}></label><span>Auto follow-up waits until Discovery is finished and the dossier is review-ready.</span></div>
-            <div class="setting-card"><label class="toggle-line"><strong>Hold no-contact leads</strong><input id="dripHoldNoContact" data-drip-setting="holdNoContact" type="checkbox" ${settings.holdNoContact ? "checked" : ""}></label><span>No-contact, company-owned, source-blocked, and recent-sale leads stay out of outreach.</span></div>
-            <div class="setting-card"><label for="dripOperatorNote"><strong>Operator note</strong><span>Saved with the scheduled-work prep controls</span></label><textarea id="dripOperatorNote" class="discovery-notes" data-drip-setting="operatorNote" rows="3" placeholder="Example: keep SMS paused until the court packet is reviewed.">${escapeHtml(settings.operatorNote)}</textarea></div>
-          </div>
-        </section>
+        ${outreachSidePanelHtml(variables, settings)}
       </aside>
     </div>
   `;
   const startDelay = target.querySelector("#dripStartDelay");
   if (startDelay) startDelay.value = settings.startDelay;
+  target.querySelectorAll("[data-drip-setting]").forEach((control) => {
+    const key = control.dataset.dripSetting;
+    if (!key || control.type === "checkbox" || control.type === "range" || control.tagName === "TEXTAREA") return;
+    if (Object.prototype.hasOwnProperty.call(settings, key)) control.value = settings[key];
+  });
   enhanceSelectMenus(target);
   target.querySelectorAll("[data-new-template]").forEach((button) => {
     button.addEventListener("click", () => openOutreachTemplateModal(button.dataset.newTemplate === "email" ? "email" : "sms"));
-  });
-  target.querySelector("[data-toggle-outreach-archive]")?.addEventListener("click", () => {
-    state.outreachArchiveOpen = !state.outreachArchiveOpen;
-    renderDripsView();
   });
   target.querySelectorAll("[data-outreach-campaign]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -14275,6 +15574,12 @@ function renderDripsView() {
   target.querySelectorAll("[data-outreach-template]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedOutreachTemplateId = button.dataset.outreachTemplate;
+      renderDripsView();
+    });
+  });
+  target.querySelectorAll("[data-outreach-side-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.outreachSideTab = button.dataset.outreachSideTab === "preferences" ? "preferences" : "variables";
       renderDripsView();
     });
   });
@@ -14298,27 +15603,21 @@ function renderQueueView() {
   if (!target) return;
   const items = queueItems();
   const readiness = queueReadinessItems();
-  const destinations = queueDestinationItems();
-  const blockers = exportBlockerItems();
   target.innerHTML = `
     <div class="queue-layout">
       <section class="loop-panel queue-panel">
         <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch handoff prep</h2></div><button class="btn primary solvys-liquid-glass" type="button" data-queue-stage ${items.length ? "" : "disabled"}>Stage batch</button></div>
-        <p class="copy">Use this queue after dossier review to stage the documents, CRM fields, and spreadsheet row as one batch. Nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
+        <p class="copy">Use this queue after Discovery review to stage documents, CRM fields, and spreadsheet rows as one batch. Nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
         <ul class="queue-list">
           ${items.map((item, index) => `<li class="queue-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Estate Search and select leads before staging a batch.</span></li>`}
         </ul>
       </section>
-      <aside class="queue-side" aria-label="Queue review and connection status">
+      <aside class="queue-side" aria-label="Queue review">
         <section class="loop-panel">
           <div class="loop-panel-head"><div><p class="eyebrow">Readiness</p><h2 class="loop-title">Needs Review (Queued Items)</h2></div><span class="pill review">Review</span></div>
           <ul class="mini-list">
-            ${readiness.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></li>`).join("")}
-            ${queuedRows().length ? blockers.slice(0, 3).map((blocker) => `<li><strong>Live handoff blocker</strong><span>${escapeHtml(blocker)}</span></li>`).join("") : ""}
+            ${readiness.map((item) => `<li><strong>${linearStatusIconHtml(item.state === "complete" ? "complete" : item.mandatory ? "blocked" : "pending", item.state)} ${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></li>`).join("")}
           </ul>
-        </section>
-        <section class="connection-card">
-          ${destinations.map((item) => `<div class="connection-row"><span class="connection-source">${escapeHtml(item.title)}</span><span class="connection-state ${item.connected ? "is-connected" : ""}">${escapeHtml(item.status)}</span></div>`).join("")}
         </section>
       </aside>
     </div>
@@ -14344,17 +15643,335 @@ function renderQueueView() {
   });
 }
 
+function adminErrorItems() {
+  const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "Activepieces", "Linear Support", "Leads Engine Access"];
+  const connectionItems = connectionNames.map((name) => {
+    const connection = connectionByName(name);
+    const ok = Boolean(connection?.ok && connection?.mode === "live");
+    return {
+      id: `connection-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      title: `${name} setup`,
+      copy: operatorConnectionMessage(connection, name),
+      severity: ok ? "ready" : "blocked",
+      ready: ok,
+      payload: {
+        source: "admin-error-log",
+        category: "integration",
+        integration: name,
+        message: operatorConnectionMessage(connection, name),
+        rawConnection: connection || null
+      }
+    };
+  }).filter((item) => !item.ready);
+  const selected = selectedRow();
+  const dossier = dossierForRow(selected);
+  const docItems = selected ? docPrepReadinessItems(selected, dossier).filter((item) => item.state !== "complete").map((item, index) => ({
+    id: `docprep-${index}`,
+    title: item.title,
+    copy: item.copy,
+    severity: item.mandatory ? "blocked" : "review",
+    ready: false,
+    payload: {
+      source: "admin-error-log",
+      category: "document-prep",
+      leadId: selected?.id,
+      lead: selected?.leadName || selected?.title,
+      item
+    }
+  })) : [];
+  const fallback = !connectionItems.length && !docItems.length ? [{
+    id: "no-errors",
+    title: "No open setup errors",
+    copy: "Current workspace blockers are clear. New integration or document-prep issues will appear here.",
+    severity: "ready",
+    ready: true,
+    payload: {}
+  }] : [];
+  return [...connectionItems, ...docItems, ...fallback].slice(0, 12);
+}
+
+function adminStatusHtml(status) {
+  if (!status?.message) return `<span class="admin-submit-status" data-state="idle"></span>`;
+  const stateName = status.state || "idle";
+  const icon = stateName === "processing"
+    ? `<span class="admin-processing-spinner" aria-hidden="true"></span>`
+    : stateName === "success" || stateName === "fading"
+      ? linearStatusIconHtml("complete", "Complete")
+      : "";
+  return `<span class="admin-submit-status" data-state="${escapeHtml(stateName)}">${icon}<span>${escapeHtml(status.message)}</span></span>`;
+}
+
+function sparklineSvg(values = []) {
+  const points = values.length ? values : [3, 6, 4, 8, 7, 10];
+  const max = Math.max(...points, 1);
+  const min = Math.min(...points, 0);
+  const range = Math.max(1, max - min);
+  const path = points.map((value, index) => {
+    const x = points.length === 1 ? 0 : (index / (points.length - 1)) * 86;
+    const y = 28 - ((value - min) / range) * 24;
+    return `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(" ");
+  return `<svg class="sparkline" viewBox="0 0 86 30" aria-hidden="true"><path d="${escapeHtml(path)}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
+function radialKpiSvg(value = 0, label = "KPI") {
+  const bounded = Math.max(0, Math.min(100, Number(value) || 0));
+  return `<svg class="radial-kpi" viewBox="0 0 44 44" role="img" aria-label="${escapeHtml(label)} ${Math.round(bounded)} percent"><circle class="track" cx="22" cy="22" r="16"></circle><circle class="value" cx="22" cy="22" r="16" pathLength="100" style="--dash:${bounded.toFixed(0)}"></circle></svg>`;
+}
+
+function teamActivityRows() {
+  const blockers = adminErrorItems().filter((item) => !item.ready).length;
+  const docs = documentPrepStats(selectedRow(), dossierForRow(selectedRow()));
+  const templates = state.outreachWorkspace.templates.filter((template) => template.status !== "Archived");
+  const activeTemplates = templates.filter((template) => ["Ready", "Approved", "Sync to Podio"].includes(template.status)).length;
+  return [
+    {
+      title: "Document Prep completion",
+      copy: `${docs.linked} of ${docs.total || 0} required files linked for the selected lead.`,
+      value: docs.total ? Math.round((docs.linked / docs.total) * 100) : 0,
+      trend: [12, 24, 38, 51, 64, docs.total ? Math.round((docs.linked / docs.total) * 100) : 0]
+    },
+    {
+      title: "Outreach readiness",
+      copy: `${activeTemplates} active/export-ready templates, ${templates.length} total templates.`,
+      value: templates.length ? Math.round((activeTemplates / templates.length) * 100) : 0,
+      trend: [10, 18, 31, 46, 54, templates.length ? Math.round((activeTemplates / templates.length) * 100) : 0]
+    },
+    {
+      title: "Integration blockers",
+      copy: `${blockers} setup or doc-prep blocker${blockers === 1 ? "" : "s"} currently visible.`,
+      value: Math.max(0, 100 - blockers * 14),
+      trend: [88, 80, 74, 70, 68, Math.max(0, 100 - blockers * 14)]
+    },
+    {
+      title: "Team activity",
+      copy: `${state.shellEvents.length} recent operator events and ${state.shellCommandCount} captured command${state.shellCommandCount === 1 ? "" : "s"}.`,
+      value: Math.min(100, Math.max(18, state.shellEvents.length * 10 + state.shellCommandCount * 8)),
+      trend: [18, 26, 32, 42, 54, Math.min(100, Math.max(18, state.shellEvents.length * 10 + state.shellCommandCount * 8))]
+    }
+  ];
+}
+
+function adminAccessRowsHtml() {
+  const domains = [...new Set(state.adminAccessDomains)];
+  return domains.map((domain) => `
+    <li class="admin-access-row">
+      <span><strong>${escapeHtml(domain)}</strong><span class="copy">Leads engine access allowed for this company domain.</span></span>
+      <button class="plain-action" type="button" data-admin-remove-access="${escapeHtml(domain)}">Remove</button>
+    </li>
+  `).join("");
+}
+
+async function supportFilePayload(file) {
+  if (!file) return null;
+  const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+  if (!isPdf) throw new Error("Upload a PDF file.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("PDF must be 10 MB or smaller.");
+  const buffer = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  const sha256 = [...new Uint8Array(digest)].map((part) => part.toString(16).padStart(2, "0")).join("");
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return {
+    name: file.name,
+    type: file.type || "application/pdf",
+    size: file.size,
+    sha256,
+    lastModified: file.lastModified ? new Date(file.lastModified).toISOString() : "",
+    base64: btoa(binary)
+  };
+}
+
+async function submitAdminAccessForm(form) {
+  const value = form.querySelector("[name='accessValue']")?.value?.trim();
+  const action = form.querySelector("[name='accessAction']")?.value === "remove" ? "remove" : "add";
+  if (!value) {
+    state.adminAccessStatus = { state: "error", message: "Enter an email domain or company email first." };
+    renderAdminLoopView();
+    return;
+  }
+  state.adminAccessStatus = { state: "processing", message: `${action === "add" ? "Adding" : "Removing"} access...` };
+  renderAdminLoopView();
+  try {
+    await postJson("/api/admin/access", { action, value, actor: currentActorEmail(), requestedAt: isoNow() });
+    const normalized = value.replace(/^@+/, "").toLowerCase();
+    state.adminAccessDomains = action === "add"
+      ? [...new Set([...state.adminAccessDomains, normalized])]
+      : state.adminAccessDomains.filter((item) => item !== normalized);
+    persistAdminAccessDomains();
+    state.adminAccessStatus = { state: "success", message: action === "add" ? "Access request queued and whitelisted locally." : "Removal request queued and removed locally." };
+    addShellEvent("Leads engine access updated", `${normalized} was ${action === "add" ? "added to" : "removed from"} the Leads engine access list.`, "ready", false);
+    renderAdminLoopView();
+    window.setTimeout(() => {
+      state.adminAccessStatus = { state: "fading", message: state.adminAccessStatus.message };
+      renderAdminLoopView();
+      window.setTimeout(() => {
+        state.adminAccessStatus = { state: "idle", message: "" };
+        renderAdminLoopView();
+      }, 340);
+    }, 950);
+  } catch (error) {
+    state.adminAccessStatus = { state: "error", message: error.message || "Access request failed." };
+    renderAdminLoopView();
+  }
+}
+
+async function fileAdminLinearTicket(payload, statusCopy = "Filing Linear support ticket...") {
+  state.adminTicketStatus = { state: "processing", message: statusCopy };
+  renderAdminLoopView();
+  try {
+    const result = await postJson("/api/support/linear", payload);
+    state.adminTicketStatus = { state: "success", message: result.issue?.identifier ? `Filed ${result.issue.identifier}` : "Support ticket queued for Linear." };
+    addShellEvent("Linear support ticket filed", payload.title || "Admin support ticket", "ready", false);
+    renderAdminLoopView();
+  } catch (error) {
+    state.adminTicketStatus = { state: "error", message: error.message || "Linear ticket failed." };
+    renderAdminLoopView();
+  }
+}
+
+async function submitAdminTicketForm(form) {
+  const title = form.querySelector("[name='ticketTitle']")?.value?.trim() || "HeirRight support request";
+  const message = form.querySelector("[name='ticketMessage']")?.value?.trim();
+  const file = form.querySelector("[name='ticketPdf']")?.files?.[0] || null;
+  if (!message && !file) {
+    state.adminTicketStatus = { state: "error", message: "Add a note or attach a PDF before filing." };
+    renderAdminLoopView();
+    return;
+  }
+  state.adminTicketStatus = { state: "processing", message: "Preparing support ticket..." };
+  renderAdminLoopView();
+  try {
+    const attachment = await supportFilePayload(file);
+    await fileAdminLinearTicket({
+      title,
+      message: message || "Support ticket submitted with uploaded PDF.",
+      severity: "medium",
+      source: "HeirRight Admin",
+      actor: currentActorEmail(),
+      attachment,
+      context: {
+        selectedLead: selectedRow()?.leadName || selectedRow()?.title || "",
+        selectedAddress: selectedRow()?.address || "",
+        connectionBlockers: adminErrorItems().filter((item) => !item.ready).map((item) => ({ title: item.title, copy: item.copy }))
+      }
+    }, "Uploading support ticket...");
+  } catch (error) {
+    state.adminTicketStatus = { state: "error", message: error.message || "Support ticket failed." };
+    renderAdminLoopView();
+  }
+}
+
 function renderAdminLoopView() {
   const target = document.getElementById("adminView");
   if (!target) return;
-  const readinessNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search"];
+  const errors = adminErrorItems();
+  const activities = teamActivityRows();
+  const recentEvents = (state.shellEvents.length ? state.shellEvents : defaultShellEvents()).slice(0, 5);
   target.innerHTML = `
-    <div class="loop-grid three">
-      <section class="loop-panel"><p class="eyebrow">Admin</p><h2 class="loop-title">Workspace readiness</h2><ul class="mini-list">${readinessNames.map((name) => `<li><strong>${escapeHtml(name)}</strong><span>${escapeHtml(operatorConnectionMessage(connectionByName(name), name))}</span></li>`).join("")}</ul></section>
-      <section class="loop-panel"><p class="eyebrow">Automation</p><h2 class="loop-title">Scheduled work prep</h2><p class="copy">Scheduled checks are staged as review preparation for dossier source notes and drip drafts. A background route can replace the review path after operator approval.</p><ul class="mini-list"><li><strong>Mode</strong><span>Review-only</span></li><li><strong>Runs</strong><span>Scheduled drip preparation and dossier packet checks</span></li><li><strong>Stop</strong><span>No live outreach or CRM card creation</span></li></ul></section>
-      <section class="loop-panel"><p class="eyebrow">Analytics</p><h2 class="loop-title">Operator trail</h2><div class="admin-grid"><div class="admin-metric"><span>Commands</span><strong>${escapeHtml(state.shellCommandCount)}</strong></div><div class="admin-metric"><span>Blockers</span><strong>${escapeHtml(milestoneBlockers(state.dossier).length)}</strong></div><div class="admin-metric"><span>Events</span><strong>${escapeHtml(state.shellEvents.length)}</strong></div></div></section>
+    <div class="admin-tall-grid">
+      <section class="loop-panel is-tall">
+        <div class="loop-panel-head"><div><p class="eyebrow">Admin</p><h2 class="loop-title">Error log</h2></div><span class="pill ${errors.some((item) => !item.ready) ? "blocked" : "ready"}">${errors.filter((item) => !item.ready).length} open</span></div>
+        <div class="admin-log-layout">
+          <ul class="admin-error-list">
+            ${errors.map((item) => `
+              <li class="admin-error-row">
+                <span><strong>${linearStatusIconHtml(item.ready ? "complete" : item.severity === "review" ? "pending" : "blocked", item.severity)} ${escapeHtml(item.title)}</strong><span class="copy">${escapeHtml(item.copy)}</span></span>
+                ${item.ready ? "" : `<button class="btn quick solvys-liquid-glass" type="button" data-admin-file-ticket="${escapeHtml(item.id)}">File Linear</button>`}
+              </li>
+            `).join("")}
+          </ul>
+          <form class="admin-ticket-form" data-admin-support-form>
+            <label><span class="eyebrow">Manual support ticket</span><input name="ticketTitle" type="text" placeholder="Short title"></label>
+            <textarea name="ticketMessage" rows="5" placeholder="What should Solvys fix or review?"></textarea>
+            <input name="ticketPdf" type="file" accept="application/pdf,.pdf">
+            <div class="loop-panel-head">
+              ${adminStatusHtml(state.adminTicketStatus)}
+              <button class="btn primary solvys-liquid-glass" type="submit">File Support Ticket</button>
+            </div>
+          </form>
+        </div>
+      </section>
+      <section class="loop-panel is-tall">
+        <div class="loop-panel-head"><div><p class="eyebrow">Automation</p><h2 class="loop-title">Scheduled work prep</h2></div><span class="pill review">Review-only</span></div>
+        <div class="admin-access-layout">
+          <div>
+            <p class="copy">Scheduled checks prepare dossier source notes, drip drafts, and Leads engine access. No live outreach or CRM card is created without approval.</p>
+            <ul class="admin-error-list" aria-label="Leads engine access">
+              ${adminAccessRowsHtml()}
+            </ul>
+          </div>
+          <form class="admin-access-form" data-admin-access-form>
+            <p class="eyebrow">Leads engine access</p>
+            <div class="admin-inline-form">
+              <input name="accessValue" type="text" placeholder="company.com or user@company.com" autocomplete="off">
+              <select name="accessAction"><option value="add">Add</option><option value="remove">Remove</option></select>
+              <button class="btn primary solvys-liquid-glass" type="submit">Add</button>
+            </div>
+            ${adminStatusHtml(state.adminAccessStatus)}
+          </form>
+        </div>
+      </section>
+      <section class="loop-panel is-tall">
+        <div class="loop-panel-head"><div><p class="eyebrow">Analytics</p><h2 class="loop-title">Team Activity</h2></div><span class="pill ready">${state.shellEvents.length} events</span></div>
+        <div class="team-activity-layout">
+          <div class="admin-error-list">
+            ${activities.map((item) => `
+              <article class="team-kpi-row">
+                <span><strong>${escapeHtml(item.title)}</strong><span class="copy">${escapeHtml(item.copy)}</span></span>
+                <span>${sparklineSvg(item.trend)}${radialKpiSvg(item.value, item.title)}</span>
+              </article>
+            `).join("")}
+            ${recentEvents.map((event) => `
+              <article class="team-kpi-row">
+                <span><strong>${escapeHtml(event.title)}</strong><span class="copy">${escapeHtml(event.copy)}</span></span>
+                <span class="tracker-date">${escapeHtml(eventTime(event.at))}</span>
+              </article>
+            `).join("")}
+          </div>
+          <div class="admin-grid">
+            <div class="admin-metric"><span>Commands</span><strong>${escapeHtml(state.shellCommandCount)}</strong></div>
+            <div class="admin-metric"><span>Blockers</span><strong>${escapeHtml(errors.filter((item) => !item.ready).length)}</strong></div>
+            <div class="admin-metric"><span>Events</span><strong>${escapeHtml(state.shellEvents.length)}</strong></div>
+          </div>
+        </div>
+      </section>
     </div>
   `;
+  target.querySelectorAll("[data-admin-file-ticket]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const item = errors.find((entry) => entry.id === button.dataset.adminFileTicket);
+      if (!item) return;
+      fileAdminLinearTicket({
+        title: `[HeirRight] ${item.title}`,
+        message: item.copy,
+        severity: item.severity === "blocked" ? "high" : "medium",
+        source: "HeirRight Admin Error Log",
+        actor: currentActorEmail(),
+        context: item.payload
+      });
+    });
+  });
+  target.querySelector("[data-admin-support-form]")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitAdminTicketForm(event.currentTarget);
+  });
+  target.querySelector("[data-admin-access-form]")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitAdminAccessForm(event.currentTarget);
+  });
+  target.querySelectorAll("[data-admin-remove-access]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const value = button.dataset.adminRemoveAccess;
+      const form = target.querySelector("[data-admin-access-form]");
+      if (!form || !value) return;
+      form.querySelector("[name='accessValue']").value = value;
+      form.querySelector("[name='accessAction']").value = "remove";
+      submitAdminAccessForm(form);
+    });
+  });
+  enhanceSelectMenus(target);
 }
 
 function integrationOnboardingCardHtml(kind) {
@@ -14382,6 +15999,30 @@ function integrationOnboardingCardHtml(kind) {
       title: "SMS Gateway",
       action: "Review SMS setup",
       steps: ["Choose Podio-native SMS or an approved carrier gateway", "Add carrier access and internal-test approval", "Keep messages queued until each template is approved"]
+    },
+    activepieces: {
+      name: "Activepieces",
+      title: "Activepieces Outreach",
+      action: "Review automation",
+      steps: ["Add the approved Podio workflow webhook", "Validate the staged outreach payload", "Fall back to first-party packages if automation is blocked"]
+    },
+    linear: {
+      name: "Linear Support",
+      title: "Linear Support",
+      action: "Review Linear setup",
+      steps: ["Add Linear API access and team routing", "File setup/support tickets from Admin", "Keep blocker tickets linked to integration status"]
+    },
+    web: {
+      name: "Web Search",
+      title: "Public Records",
+      action: "Review source status",
+      steps: ["Run Miami-Dade public-source fetch", "Capture source facts into Discovery", "Keep paid-source work approval-gated"]
+    },
+    leads: {
+      name: "Leads Engine Access",
+      title: "Leads Engine Access",
+      action: "Review access routing",
+      steps: ["Route company/domain access changes", "Keep admin add/remove approvals auditable", "Sync resolved companies into the operator surface"]
     }
   }[kind] ?? null;
   if (!meta) return "";
@@ -14414,7 +16055,21 @@ function integrationOnboardingCardHtml(kind) {
 }
 
 function handleIntegrationOnboarding(kind) {
-  const name = kind === "google" ? "Google" : kind === "resend" ? "Resend" : kind === "sms" ? "SMS Gateway" : "Podio";
+  const name = kind === "google"
+    ? "Google"
+    : kind === "resend"
+      ? "Resend"
+      : kind === "sms"
+        ? "SMS Gateway"
+        : kind === "activepieces"
+          ? "Activepieces"
+          : kind === "linear"
+            ? "Linear Support"
+            : kind === "web"
+              ? "Web Search"
+              : kind === "leads"
+                ? "Leads Engine Access"
+                : "Podio";
   const isGoogle = kind === "google";
   const connection = connectionByName(name);
   if (isGoogle && !state.session?.auth?.configured) {
@@ -14428,29 +16083,76 @@ function handleIntegrationOnboarding(kind) {
   renderSettingsView();
 }
 
+function integrationStatusRowsHtml() {
+  const names = ["Podio", "Google", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
+  const items = names.map((name) => {
+    const connection = connectionByName(name);
+    return {
+      title: name === "Google" ? "Google Workspace" : name,
+      connectionName: name,
+      connected: Boolean(connection?.ok && connection?.mode === "live"),
+      status: displayStatus(connection?.mode || "blocked"),
+      tone: connectionTone(connection)
+    };
+  });
+  return `
+    <div class="settings-status-list">
+      <div class="settings-section-head">
+        <div><p class="eyebrow">Readiness</p><h3>Connection status</h3></div>
+        <span class="pill review">Integrations</span>
+      </div>
+      <ul class="mini-list">
+        ${items.map((item) => `
+          <li>
+            <strong>${linearStatusIconHtml(item.connected ? "complete" : item.tone === "review" ? "needed" : "blocked", item.status)} ${escapeHtml(item.title)}</strong>
+            <span>${escapeHtml(item.status)} - ${escapeHtml(operatorConnectionMessage(connectionByName(item.connectionName), item.connectionName))}</span>
+          </li>
+        `).join("")}
+      </ul>
+    </div>
+  `;
+}
+
 function renderSettingsView() {
   const target = document.getElementById("settingsView");
   if (!target) return;
+  const tab = state.settingsTab === "preferences" ? "preferences" : "integrations";
   target.innerHTML = `
-    <div class="loop-grid">
-      <section class="loop-panel full">
-        <div class="loop-panel-head"><div><p class="eyebrow">Onboarding</p><h2 class="loop-title">Integration login and readback</h2></div><span class="pill review">Gated</span></div>
-        <div class="integration-onboarding">
-          ${integrationOnboardingCardHtml("podio")}
-          ${integrationOnboardingCardHtml("google")}
-          ${integrationOnboardingCardHtml("resend")}
-          ${integrationOnboardingCardHtml("sms")}
+    <div class="settings-center-shell">
+      <section class="loop-panel full settings-unified-card">
+        <div class="loop-panel-head">
+          <div><p class="eyebrow">Settings</p><h2 class="loop-title">${tab === "integrations" ? "Integrations" : "Discovery and review preferences"}</h2></div>
+          <div class="tab-strip" role="tablist" aria-label="Settings tabs">
+            <button type="button" data-settings-tab="integrations" aria-pressed="${tab === "integrations"}">Integrations</button>
+            <button type="button" data-settings-tab="preferences" aria-pressed="${tab === "preferences"}">Preferences</button>
+          </div>
         </div>
-      </section>
-      <section class="loop-panel full">
-        <div class="loop-panel-head"><div><p class="eyebrow">Settings</p><h2 class="loop-title">Discovery and review preferences</h2></div><span class="pill review">Local</span></div>
-        <div class="settings-grid">
-          <div class="setting-card"><label for="settingsSignalWeight"><strong>Source signal weight</strong><span>${escapeHtml(signalWeightLabel(state.shellSettings.signalWeight))}</span></label><input id="settingsSignalWeight" type="range" min="1" max="5" value="${escapeHtml(state.shellSettings.signalWeight)}"></div>
-          <div class="setting-card"><label for="settingsTaxThreshold"><strong>Tax pressure threshold</strong><span>Unpaid years before priority review.</span></label><select id="settingsTaxThreshold"><option value="1">1+ unpaid year</option><option value="2">2+ unpaid years</option><option value="3">3+ unpaid years</option></select></div>
-          <div class="setting-card"><label for="settingsReasonCodes"><strong>Reason-code set</strong><span>Operator-facing qualification reasons.</span></label><select id="settingsReasonCodes"><option value="probate-title-tax">Probate + title + tax</option><option value="property-pressure">Property pressure only</option><option value="heirship-first">Heirship first</option></select></div>
-          <div class="setting-card"><label class="toggle-line"><strong>Require deed proof</strong><input id="settingsDeedProofRequired" type="checkbox" ${state.shellSettings.deedProofRequired ? "checked" : ""}></label><span>OR book/page evidence stays required before promotion.</span></div>
-          <div class="setting-card"><label class="toggle-line"><strong>Manual paid-source approval</strong><input id="settingsPaidSourceApproval" type="checkbox" ${state.shellSettings.paidSourceApproval ? "checked" : ""}></label><span>IDI, Intelius, Ancestry, ForeWarn, VitalChek, and PI work stay gated.</span></div>
-        </div>
+        ${tab === "integrations" ? `
+          <div class="settings-section">
+            <p class="copy">Connector setup, approval, and readback status live here so Queue stays focused on export blockers.</p>
+            <div class="integration-onboarding settings-integrations-list">
+              ${integrationOnboardingCardHtml("podio")}
+              ${integrationOnboardingCardHtml("google")}
+              ${integrationOnboardingCardHtml("activepieces")}
+              ${integrationOnboardingCardHtml("linear")}
+              ${integrationOnboardingCardHtml("web")}
+              ${integrationOnboardingCardHtml("leads")}
+              ${integrationOnboardingCardHtml("resend")}
+              ${integrationOnboardingCardHtml("sms")}
+            </div>
+          </div>
+          ${integrationStatusRowsHtml()}
+        ` : `
+          <div class="settings-section">
+            <div class="settings-grid">
+              <div class="setting-card"><label for="settingsSignalWeight"><strong>Source signal weight</strong><span>${escapeHtml(signalWeightLabel(state.shellSettings.signalWeight))}</span></label><input id="settingsSignalWeight" type="range" min="1" max="5" value="${escapeHtml(state.shellSettings.signalWeight)}"></div>
+              <div class="setting-card"><label for="settingsTaxThreshold"><strong>Tax pressure threshold</strong><span>Unpaid years before priority review.</span></label><select id="settingsTaxThreshold"><option value="1">1+ unpaid year</option><option value="2">2+ unpaid years</option><option value="3">3+ unpaid years</option></select></div>
+              <div class="setting-card"><label for="settingsReasonCodes"><strong>Reason-code set</strong><span>Operator-facing qualification reasons.</span></label><select id="settingsReasonCodes"><option value="probate-title-tax">Probate + title + tax</option><option value="property-pressure">Property pressure only</option><option value="heirship-first">Heirship first</option></select></div>
+              <div class="setting-card"><label class="toggle-line"><strong>Require deed proof</strong><input id="settingsDeedProofRequired" type="checkbox" ${state.shellSettings.deedProofRequired ? "checked" : ""}></label><span>OR book/page evidence stays required before promotion.</span></div>
+              <div class="setting-card"><label class="toggle-line"><strong>Manual paid-source approval</strong><input id="settingsPaidSourceApproval" type="checkbox" ${state.shellSettings.paidSourceApproval ? "checked" : ""}></label><span>IDI, Intelius, Ancestry, ForeWarn, VitalChek, and PI work stay gated.</span></div>
+            </div>
+          </div>
+        `}
       </section>
     </div>
   `;
@@ -14459,6 +16161,12 @@ function renderSettingsView() {
   if (tax) tax.value = state.shellSettings.taxThreshold;
   if (reason) reason.value = state.shellSettings.reasonCodes;
   enhanceSelectMenus(target);
+  target.querySelectorAll("[data-settings-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.settingsTab = button.dataset.settingsTab === "preferences" ? "preferences" : "integrations";
+      renderSettingsView();
+    });
+  });
   target.querySelectorAll("[data-integration-onboarding]").forEach((button) => {
     button.addEventListener("click", () => handleIntegrationOnboarding(button.dataset.integrationOnboarding));
   });
@@ -14492,6 +16200,127 @@ function renderCurrentLoopView() {
   if (state.activeView === "queue") renderQueueView();
   if (state.activeView === "admin") renderAdminLoopView();
   if (state.activeView === "settings") renderSettingsView();
+}
+
+const walkthroughSteps = [
+  {
+    view: "dossiers",
+    title: "Document Prep",
+    copy: "Start here. Imported Podio or Google Workspace leads appear in the client list, and estate leads move here when Discovery or Closing Prep starts."
+  },
+  {
+    view: "find-estates",
+    title: "Pull a lead",
+    copy: "Use Estates to fetch a fresh public-record lead, confirm owner/address/folio evidence, then add the estate into Document Prep."
+  },
+  {
+    view: "dossiers",
+    title: "Run Discovery",
+    copy: "Open the file, run the Discovery workflow, import the approved IDI Core report, capture source facts, and promote reviewed contacts."
+  },
+  {
+    view: "dossiers",
+    title: "Prepare Closing Docs",
+    copy: "Switch to Closing Prep, fill the template packet from estate fields and reviewed notes, then export the review draft to Google Workspace."
+  },
+  {
+    view: "drips",
+    title: "Outreach controls",
+    copy: "Create approved SMS/email templates, manage cadence and stop rules, then sync a Podio-ready package or keep the fallback package in-app."
+  },
+  {
+    view: "queue",
+    title: "Queue",
+    copy: "Stage export packages after Discovery clears. Closing Prep and outreach remain visible as tracked blockers without blocking Discovery export."
+  },
+  {
+    view: "admin",
+    title: "Admin",
+    copy: "Review integration errors, file Linear support tickets, manage Leads engine access, and watch team activity."
+  },
+  {
+    view: "settings",
+    title: "Settings",
+    copy: "Connector readiness lives under Integrations; lead-quality preferences live under Preferences."
+  }
+];
+
+function positionWalkthrough() {
+  if (!state.walkthrough.open) return;
+  const step = walkthroughSteps[state.walkthrough.index] || walkthroughSteps[0];
+  const popover = document.querySelector(".walkthrough-popover");
+  const anchor = document.querySelector(`[data-shell-nav="${step.view}"]`);
+  if (!popover || !anchor) return;
+  const rect = anchor.getBoundingClientRect();
+  const popoverRect = popover.getBoundingClientRect();
+  const sidebarNarrow = rect.width <= 56;
+  const left = sidebarNarrow ? rect.right + 12 : Math.min(rect.right + 14, window.innerWidth - popoverRect.width - 14);
+  const top = Math.max(14, Math.min(window.innerHeight - popoverRect.height - 14, rect.top + rect.height / 2 - popoverRect.height / 2));
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
+}
+
+function renderWalkthrough() {
+  const mount = document.getElementById("walkthroughMount");
+  if (!mount) return;
+  if (!state.walkthrough.open) {
+    mount.innerHTML = "";
+    return;
+  }
+  const index = Math.max(0, Math.min(walkthroughSteps.length - 1, state.walkthrough.index));
+  state.walkthrough.index = index;
+  const step = walkthroughSteps[index];
+  mount.innerHTML = `
+    <section class="walkthrough-popover" role="dialog" aria-modal="false" aria-label="${escapeHtml(step.title)} walkthrough tip">
+      <div class="walkthrough-step-row">
+        <p class="eyebrow">Product demo</p>
+        <span class="walkthrough-step-count">${index + 1} / ${walkthroughSteps.length}</span>
+      </div>
+      <h3>${escapeHtml(step.title)}</h3>
+      <p>${escapeHtml(step.copy)}</p>
+      <div class="walkthrough-actions">
+        <button class="btn text-action" type="button" data-walkthrough-close>Skip</button>
+        <button class="btn primary solvys-liquid-glass" type="button" data-walkthrough-next>${index === walkthroughSteps.length - 1 ? "Done" : "Next"}</button>
+      </div>
+    </section>
+  `;
+  mount.querySelector("[data-walkthrough-close]")?.addEventListener("click", () => closeWalkthrough(true));
+  mount.querySelector("[data-walkthrough-next]")?.addEventListener("click", () => {
+    if (state.walkthrough.index >= walkthroughSteps.length - 1) {
+      closeWalkthrough(true);
+      return;
+    }
+    state.walkthrough.index += 1;
+    syncWalkthroughView();
+    renderWalkthrough();
+  });
+  requestAnimationFrame(positionWalkthrough);
+}
+
+function syncWalkthroughView() {
+  if (!state.walkthrough.open) return;
+  const index = Math.max(0, Math.min(walkthroughSteps.length - 1, state.walkthrough.index));
+  const step = walkthroughSteps[index];
+  if (step && state.activeView !== step.view) {
+    setActiveShellView(step.view, activeViewLabel(step.view));
+  }
+}
+
+function openWalkthrough(index = 0) {
+  if (walkthroughAutoTimer) {
+    window.clearTimeout(walkthroughAutoTimer);
+    walkthroughAutoTimer = null;
+  }
+  state.walkthrough.open = true;
+  state.walkthrough.index = Math.max(0, Math.min(walkthroughSteps.length - 1, Number(index) || 0));
+  syncWalkthroughView();
+  renderWalkthrough();
+}
+
+function closeWalkthrough(markSeen = false) {
+  state.walkthrough.open = false;
+  if (markSeen) storageSetItem(walkthroughStateKey, "true");
+  renderWalkthrough();
 }
 
 function shellCommandCopy(command) {
@@ -14617,16 +16446,14 @@ function syncSidebarState() {
 function setDetailRailOpen(open) {
   state.detailRailOpen = open;
   const app = document.querySelector(".app");
-  const toggle = document.getElementById("rightRailToggle");
   app?.classList.toggle("detail-rail-collapsed", !open);
-  if (!toggle) return;
-  const label = open ? "Collapse right rail" : "Expand right rail";
-  toggle.setAttribute("aria-label", label);
-  toggle.setAttribute("title", label);
-  toggle.setAttribute("aria-pressed", open ? "true" : "false");
 }
 
 function setActiveShellView(view = "dashboard", label = "") {
+  if (walkthroughAutoTimer && !state.walkthrough.open) {
+    window.clearTimeout(walkthroughAutoTimer);
+    walkthroughAutoTimer = null;
+  }
   const app = document.querySelector(".app");
   const nextView = productViews.includes(view) ? view : "dashboard";
   const detail = document.querySelector(".detail");
@@ -14654,27 +16481,8 @@ function setActiveShellView(view = "dashboard", label = "") {
     setDetailRailOpen(false);
     document.getElementById("topStatus").textContent = "Find Estates workspace selected. Open a lead, then begin Discovery from the rail.";
   }
-  const toggle = document.getElementById("rightRailToggle");
-  if (toggle) {
-    const toggleLabel = nextView === "find-estates" ? "Return to Dashboard" : nextView === "dossiers" ? "Toggle dossier rail" : "Open Estate Search";
-    toggle.setAttribute("aria-label", toggleLabel);
-    toggle.setAttribute("title", toggleLabel);
-    toggle.setAttribute("aria-pressed", nextView === "find-estates" ? "true" : "false");
-  }
   renderCurrentLoopView();
-}
-
-function toggleRightRail() {
-  if (state.activeView === "dossiers") {
-    state.railMode = "dossier";
-    state.railOpen = !state.railOpen;
-    renderRail();
-    setRailOpen(state.railOpen);
-    return;
-  }
-  if (state.railOpen) setRailOpen(false);
-  const target = state.activeView === "find-estates" ? "dashboard" : "find-estates";
-  document.querySelector(`[data-shell-nav="${target}"]`)?.click();
+  positionWalkthrough();
 }
 
 function syncRailContext(row) {
@@ -15321,20 +17129,23 @@ function renderRail() {
         <div>
           <p class="eyebrow">Review packet</p>
           <h2 class="rail-title">Fill these sections before handoff</h2>
-          <p class="copy">Use this rail as the shared workspace for the selected lead, report preview, and handoff prep.</p>
         </div>
         ${statusPill(row.tone, row.tone === "blocked" ? "Blocked" : row.tone === "ready" ? "Ready" : "Review")}
       </div>
       ${discoveryStripHtml(row, dossier)}
     </section>
   `;
-  content.innerHTML = titleCard + previewHtml + railTabHtml(row, dossier);
+  content.innerHTML = (state.railTab === "flow" ? titleCard : "") + previewHtml + railTabHtml(row, dossier);
   content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
   content.querySelectorAll("[data-rail-chip]").forEach((chip) => {
     chip.addEventListener("click", () => openRailPreview(chip.dataset.railChip, chip));
   });
   content.querySelectorAll("[data-fill-section]").forEach((button) => {
     button.addEventListener("click", () => fillSection(button.dataset.fillSection));
+  });
+  content.querySelector("[data-report-date-added]")?.addEventListener("change", (event) => {
+    state.reportDateAdded = event.target.value;
+    renderRail();
   });
   setRailOpen(state.railOpen);
 }
@@ -15423,115 +17234,90 @@ function railTimelineHtml(row, dossier) {
   `;
 }
 
+function reportPacketDateOptions(row, dossier) {
+  const values = [
+    dossier?.completedLeadReport?.generatedAt,
+    dossier?.generatedAt,
+    row?.data?.generatedAt,
+    row?.data?.seed?.dateAdded,
+    row?.importedAt,
+    state.data?.generatedAt
+  ].filter(Boolean);
+  const unique = [...new Set(values.map((value) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 10);
+  }))];
+  if (!unique.length) unique.push(new Date().toISOString().slice(0, 10));
+  if (!state.reportDateAdded || !unique.includes(state.reportDateAdded)) state.reportDateAdded = unique[0];
+  return unique;
+}
+
+function reportPacketPdfUrl(row, dossier, dateAdded) {
+  const params = new URLSearchParams({
+    dateAdded,
+    property: dossier?.property?.address?.value ?? row?.address ?? "Property needs review",
+    owner: dossier?.summary?.estateName ?? dossier?.property?.ownerName?.value ?? row?.owner ?? row?.title ?? "Estate needs review",
+    source: row?.sourceProvider ? crmProviderLabel(row.sourceProvider) : "HeirRight lead packet",
+    missing: String(dossier?.completedLeadReport?.missingData?.length ?? row?.missing?.length ?? 0)
+  });
+  return `/api/reports/pdf?${params.toString()}`;
+}
+
 function railDocsHtml(row, dossier) {
+  const options = reportPacketDateOptions(row, dossier);
+  const dateAdded = state.reportDateAdded;
   const report = dossier.completedLeadReport;
-  const qualification = qualificationDecision(dossier);
-  const review = qualificationReview();
-  const podio = dossier.crm?.payload?.podioReadiness;
-  const podioModel = dossier.crm?.payload?.appModel;
-  const exportMeta = state.exportRoute ? exportRouteMeta(state.exportRoute) : null;
+  const readiness = docPrepReadinessItems(row, dossier);
   const exportResults = state.exportResult?.routes ?? [];
-  const exportBlockers = state.exportResult?.blockers ?? [];
-  const familyNodes = report?.contactPlaceholders?.length ?? dossier.familyTree?.hypothesis?.value?.nodes?.length ?? 0;
-  const offerMath = report?.offerMath;
-  const reportHtml = report?.formats?.html ?? dossier.documentPacket?.formats?.html ?? "<p>Report unavailable.</p>";
-  const mappedFieldCount = Object.keys(podioModel?.fields ?? {}).length;
-  const liveBlockers = (podio?.blockers ?? []).slice(0, 4);
+  const exportBlockers = exportBlockerItems();
   return `
     <section class="glass-card rail-card">
-      <h3>Completed report packet</h3>
-      <p class="copy">This rendered report is the source of truth for Google Workspace, Podio, or both.</p>
-      <ul class="report-cover mini-list">
-        <li class="solvys-liquid-glass"><strong>Date added</strong><span>${escapeHtml(new Date(report?.generatedAt ?? dossier.generatedAt ?? Date.now()).toLocaleDateString())}</span></li>
-        <li class="solvys-liquid-glass"><strong>Property</strong><span>${escapeHtml(dossier.property?.address?.value ?? row.address ?? "Needs review")}</span></li>
-        <li class="solvys-liquid-glass"><strong>Owner / estate</strong><span>${escapeHtml(dossier.summary?.estateName ?? dossier.property?.ownerName?.value ?? row.owner ?? "Needs review")}</span></li>
-        <li class="solvys-liquid-glass"><strong>Heirs / contacts</strong><span>${escapeHtml(`${familyNodes} placeholders`)}</span></li>
-        <li class="solvys-liquid-glass"><strong>Offer status</strong><span>${escapeHtml(offerMath?.offerAmount?.note ?? "Draft until underwriting review")}</span></li>
-        <li class="solvys-liquid-glass"><strong>Missing data</strong><span>${escapeHtml(`${report?.missingData?.length ?? row.missing.length} open section${(report?.missingData?.length ?? row.missing.length) === 1 ? "" : "s"}`)}</span></li>
-      </ul>
-      <iframe class="doc-frame" data-renderer="streamdown" sandbox="" title="Rendered lead report" srcdoc="${escapeHtml(reportHtml)}"></iframe>
-    </section>
-    <section class="glass-card rail-card">
-      <h3>Qualification packet</h3>
-      <p class="copy">${escapeHtml(review?.operatorSummary ?? qualification?.nextAction ?? "Run the daily qualification review to create the operator packet.")}</p>
-      <ul class="mini-list">
-        <li><strong>Current lead</strong><span>${escapeHtml(`${qualificationLabel(qualification)} · ${qualificationScoreText(qualification)}`)}</span></li>
-        <li><strong>Batch status</strong><span>${escapeHtml(review?.summary ? `${review.summary.qualified} qualified, ${review.summary.review} review, ${review.summary.disqualified} disqualified` : "Packet not loaded")}</span></li>
-        <li><strong>Duplicates</strong><span>${escapeHtml(review?.summary?.duplicate ?? 0)} held out of counts</span></li>
-        <li><strong>Dead letters</strong><span>${escapeHtml(review?.summary?.deadLetter ?? 0)} need seed repair</span></li>
-        <li><strong>Evidence gates</strong><span>${review?.settings?.evidenceGatesCannotBeWeakened ? "Cannot be weakened by operator settings." : "Needs review before promotion."}</span></li>
-        <li><strong>Markdown packet</strong><span><a href="/qualification-review.md" target="_blank" rel="noreferrer">Open qualification-review.md</a></span></li>
-        <li><strong>Readback packet</strong><span><a href="/readback-evidence.md" target="_blank" rel="noreferrer">Open readback evidence</a></span></li>
-        <li><strong>30-Day evidence</strong><span><a href="/thirty-day-milestone-evidence.md" target="_blank" rel="noreferrer">Open milestone packet</a></span></li>
-        <li><strong>30-Day agenda</strong><span><a href="/thirty-day-review-script.md" target="_blank" rel="noreferrer">Open review agenda</a></span></li>
-      </ul>
-    </section>
-    <section class="glass-card rail-card">
-      <h3>Handoff readiness</h3>
-      <ul class="mini-list">
-        <li><strong>Selected route</strong><span>${escapeHtml(exportMeta?.label ?? "Choose a handoff route from the header.")}</span></li>
-        <li><strong>Podio status</strong><span>${escapeHtml(displayStatus(dossier.crm?.status, "Prep only"))}</span></li>
-        <li><strong>Missing setup</strong><span>${escapeHtml(operatorSetupList(podio?.missingConfig ?? []))}</span></li>
-        <li><strong>Readback checks</strong><span>${escapeHtml(podio?.readbackChecks?.length ?? 0)} required</span></li>
-        <li><strong>External use</strong><span>${report?.reviewGate?.externalUseBlocked ? "Blocked until review clears." : "Needs review before sending."}</span></li>
-      </ul>
-    </section>
-    <section class="glass-card rail-card">
-      <h3>Podio CRM handoff</h3>
-      <p class="copy">This is the visible CRM package for the demo: the app can stage the lead fields, review tasks, source note, and readback checklist without writing to Podio.</p>
-      <ul class="mini-list">
-        <li><strong>Workspace</strong><span>${escapeHtml(podioModel?.workspace ?? "Texas Equity Pros LLC")}</span></li>
-        <li><strong>App</strong><span>${escapeHtml(podioModel?.app ?? "Leads")}</span></li>
-        <li><strong>Pipeline</strong><span>${escapeHtml((podioModel?.pipelineStages ?? ["Marketing", "Acquisition", "Disposition"]).join(" / "))}</span></li>
-        <li><strong>Prepared fields</strong><span>${escapeHtml(mappedFieldCount)} lead fields mapped from the current packet</span></li>
-        <li><strong>Readiness check</strong><span>${escapeHtml(podio?.classification === "ready_for_controlled_validation" ? "Ready for approval and readback" : "Blocked until live access is approved")}</span></li>
-      </ul>
-    </section>
-    <section class="glass-card rail-card">
-      <h3>Podio readback checklist</h3>
-      <div>
-        ${(podio?.readbackChecks ?? []).map((check, index) => `
-          <article class="rail-item">
-            <span class="rail-item-index">${String(index + 1).padStart(2, "0")}</span>
-            <span>
-              <span class="rail-item-title">${escapeHtml(check)}</span>
-              <span class="rail-item-copy">Must be proven after an approved sample card is created.</span>
-            </span>
-            ${statusPill("review", "Proof")}
-          </article>
-        `).join("") || `<p class="copy">Readback checks will appear once the Podio packet is loaded.</p>`}
+      <div class="pdf-packet-toolbar">
+        <div>
+          <p class="eyebrow">Completed report packet</p>
+          <h2 class="rail-title">${escapeHtml(row?.leadName || row?.title || "Lead report")}</h2>
+        </div>
+        <label class="pdf-date-select">Date added
+          <select data-report-date-added aria-label="Select Date Added property">
+            ${options.map((date) => `<option value="${escapeHtml(date)}" ${date === dateAdded ? "selected" : ""}>${escapeHtml(new Date(`${date}T12:00:00`).toLocaleDateString())}</option>`).join("")}
+          </select>
+        </label>
       </div>
+      <iframe class="pdf-packet-frame" title="Completed report packet PDF" src="${escapeHtml(reportPacketPdfUrl(row, dossier, dateAdded))}"></iframe>
     </section>
-    ${liveBlockers.length ? `
-      <section class="glass-card rail-card">
-        <h3>Live Podio blockers</h3>
-        <ul class="mini-list">
-          ${liveBlockers.map((blocker) => `<li><strong>Needs setup</strong><span>${escapeHtml(operatorBlockerText(blocker))}</span></li>`).join("")}
-        </ul>
-      </section>
-    ` : ""}
-    ${exportResults.length ? `
-      <section class="glass-card rail-card">
-        <h3>Handoff result</h3>
-        <ul class="mini-list">
-          ${exportResults.map((result) => `
-            <li>
-              <strong>${escapeHtml(displayStatus(result.route))}</strong>
-              <span>${escapeHtml(operatorBlockerText(result.message ?? "Handoff result recorded."))}</span>
-              <span>${escapeHtml(handoffModeLabel(result.mode))} · readback ${result.readbackOk ? "passed" : "not proven"}</span>
-            </li>
-          `).join("")}
-        </ul>
-      </section>
-    ` : ""}
-    ${exportBlockers.length ? `
-      <section class="glass-card rail-card">
-        <h3>Handoff blockers</h3>
-        <ul class="mini-list">
-          ${exportBlockers.map((blocker) => `<li><strong>Needs setup</strong><span>${escapeHtml(operatorBlockerText(blocker))}</span></li>`).join("")}
-        </ul>
-      </section>
-    ` : ""}
+    <section class="glass-card rail-card">
+      <h3>Notes and blockers</h3>
+      <ul class="pdf-blocker-list">
+        ${readiness.map((item) => `
+          <li>
+            ${linearStatusIconHtml(item.state === "complete" ? "complete" : item.mandatory ? "blocked" : "pending", item.title)}
+            <span><strong>${escapeHtml(item.title)}</strong><span class="rail-item-copy">${escapeHtml(item.copy)}</span></span>
+            <span class="pill ${item.mandatory ? "blocked" : item.state === "complete" ? "ready" : "review"}">${escapeHtml(item.mandatory ? "Required" : item.state === "complete" ? "Ready" : "Tracked")}</span>
+          </li>
+        `).join("")}
+        ${(report?.reviewGate?.externalUseBlocked ? [report.reviewGate.reason || "External use remains blocked until review clears."] : []).map((blocker) => `
+          <li>
+            ${linearStatusIconHtml("blocked", "Review blocked")}
+            <span><strong>Report review gate</strong><span class="rail-item-copy">${escapeHtml(blocker)}</span></span>
+            <span class="pill blocked">Blocked</span>
+          </li>
+        `).join("")}
+        ${exportResults.map((result) => `
+          <li>
+            ${linearStatusIconHtml(result.readbackOk ? "complete" : "pending", result.route)}
+            <span><strong>${escapeHtml(displayStatus(result.route))}</strong><span class="rail-item-copy">${escapeHtml(operatorBlockerText(result.message ?? "Handoff result recorded."))}</span></span>
+            <span class="pill ${result.readbackOk ? "ready" : "review"}">${escapeHtml(handoffModeLabel(result.mode))}</span>
+          </li>
+        `).join("")}
+        ${exportBlockers.map((blocker) => `
+          <li>
+            ${linearStatusIconHtml("blocked", "Handoff blocker")}
+            <span><strong>Handoff blocker</strong><span class="rail-item-copy">${escapeHtml(blocker)}</span></span>
+            <span class="pill blocked">Blocked</span>
+          </li>
+        `).join("")}
+      </ul>
+    </section>
   `;
 }
 
@@ -15604,6 +17390,9 @@ function operatorConnectionMessage(connection, name) {
     if (name === "Resend") return "Resend fallback is not approved yet. Keep email drafts queued in Podio and use only controlled internal test recipients after approval.";
     if (name === "SMS Gateway") return "SMS delivery is not configured yet. Keep SMS templates in the app-owned queue until a carrier or Podio-native SMS path is approved.";
     if (name === "Web Search") return "Public-source validation needs a fresh checked lead packet before promotion.";
+    if (name === "Activepieces") return "Activepieces is not configured yet. Outreach will use the first-party fallback package and stay queued for Podio review.";
+    if (name === "Linear Support") return "Linear support routing is not configured yet. Admin tickets stay local until the Worker has API access and a team route.";
+    if (name === "Leads Engine Access") return "Leads engine access changes are captured in-app until support routing or the access webhook is configured.";
   }
   return raw;
 }
@@ -16438,7 +18227,7 @@ function wireEvents() {
     setRailOpen(false);
     if (state.activeView === "find-estates") setDetailRailOpen(true);
   });
-  document.getElementById("rightRailToggle").addEventListener("click", toggleRightRail);
+  document.getElementById("walkthroughReplay")?.addEventListener("click", () => openWalkthrough(0));
   document.getElementById("saveSearch").addEventListener("click", () => {
     document.getElementById("filterNote").textContent = "Search saved for this review session.";
   });
@@ -16458,6 +18247,7 @@ function wireEvents() {
       setExportMenuOpen(false);
       setCrmImportMenuOpen(false);
       setActivityOpen(false);
+      closeWalkthrough(false);
       if (state.crmImportModal.open) closeCrmImportModal();
       if (state.documentActionModal.open) closeDocumentActionModal();
     }
@@ -16471,6 +18261,7 @@ function wireEvents() {
     applyFilterWidth();
     state.railWidth = clampRailWidth(state.railWidth);
     setRailOpen(state.railOpen);
+    positionWalkthrough();
   });
   syncSidebarState();
   wireRailResize();
@@ -16557,9 +18348,21 @@ loadSavedState();
 applyNucleoIcons();
 wireEvents();
 setRailOpen(false);
-setActiveShellView("dashboard", "Dashboard");
+const initialViewParam = new URLSearchParams(window.location.search).get("view");
+const initialView = productViews.includes(initialViewParam) ? initialViewParam : "dossiers";
+document.querySelectorAll("[data-shell-nav]").forEach((item) => {
+  const isSelected = item.dataset.shellNav === initialView;
+  item.classList.toggle("is-active", isSelected);
+  item.classList.toggle("solvys-liquid-glass", isSelected);
+  item.classList.toggle("sidebar-selected-glass", isSelected);
+});
+setActiveShellView(initialView, activeViewLabel(initialView));
 loadSession();
 loadRun();
+walkthroughAutoTimer = window.setTimeout(() => {
+  walkthroughAutoTimer = null;
+  if (storageGetItem(walkthroughStateKey) !== "true") openWalkthrough(0);
+}, 700);
 </script>
 </body>
 </html>

@@ -3,6 +3,11 @@ const { createServer } = require("node:http");
 const { randomBytes, createHmac } = require("node:crypto");
 const { readFileSync, existsSync } = require("node:fs");
 const { join } = require("node:path");
+const reportPdfHandler = require("./api/reports/pdf.js");
+const activepiecesHandler = require("./api/outreach/activepieces.js");
+const supportLinearHandler = require("./api/support/linear.js");
+const adminAccessHandler = require("./api/admin/access.js");
+const { buildConnectionStatuses } = require("./api/connections/status.js");
 
 const port = Number(process.env.PORT || 4173);
 const root = join(__dirname, "dist");
@@ -241,7 +246,13 @@ function sessionBody(req) {
 }
 
 function podioMissingLocalConfig() {
-  const missing = ["PODIO_ACCESS_TOKEN", "PODIO_APP_ID"].filter((key) => !process.env[key]);
+  const hasBearer = Boolean(process.env.PODIO_ACCESS_TOKEN);
+  const hasRefresh = Boolean(process.env.PODIO_CLIENT_ID && process.env.PODIO_CLIENT_SECRET && process.env.PODIO_REFRESH_TOKEN);
+  const hasAppAuth = Boolean(process.env.PODIO_CLIENT_ID && process.env.PODIO_CLIENT_SECRET && process.env.PODIO_APP_TOKEN);
+  const missing = ["PODIO_APP_ID"].filter((key) => !process.env[key]);
+  if (!hasBearer && !hasRefresh && !hasAppAuth) {
+    missing.push("PODIO_ACCESS_TOKEN, PODIO_REFRESH_TOKEN, or PODIO_CLIENT_ID/PODIO_CLIENT_SECRET/PODIO_APP_TOKEN");
+  }
   if (!process.env.PODIO_FIELD_MAP_JSON && process.env.PODIO_APP_ID !== "24265877") {
     missing.push("PODIO_FIELD_MAP_JSON or PODIO_APP_ID=24265877");
   }
@@ -267,7 +278,7 @@ function resendMissingConfig() {
 }
 
 function smsMissingConfig() {
-  if (process.env.PODIO_NATIVE_SMS_APPROVED === "true" && process.env.PODIO_ACCESS_TOKEN) return [];
+  if (process.env.PODIO_NATIVE_SMS_APPROVED === "true" && (process.env.PODIO_ACCESS_TOKEN || process.env.PODIO_REFRESH_TOKEN || process.env.PODIO_APP_TOKEN)) return [];
   return ["SMS_CARRIER_GATEWAY", "SMS_GATEWAY_API_KEY", "SMS_LIVE_SEND_APPROVED"].filter((key) => {
     if (key === "SMS_LIVE_SEND_APPROVED") return process.env[key] !== "true";
     return !process.env[key];
@@ -278,6 +289,10 @@ function operatorAccessList(items) {
   return (items ?? []).map((item) => String(item || "")
     .replace(/PODIO_FIELD_MAP_JSON or PODIO_APP_ID=24265877/g, "Podio field map or verified Leads app")
     .replace(/PODIO_ACCESS_TOKEN/g, "Podio access")
+    .replace(/PODIO_REFRESH_TOKEN/g, "Podio refresh access")
+    .replace(/PODIO_CLIENT_ID/g, "Podio API client")
+    .replace(/PODIO_CLIENT_SECRET/g, "Podio API secret")
+    .replace(/PODIO_APP_TOKEN/g, "Podio app token")
     .replace(/PODIO_APP_ID/g, "Podio Leads app")
     .replace(/PODIO_LIVE_WRITE_APPROVED/g, "Podio controlled write approval")
     .replace(/PODIO_CSV_BACKUP_CONFIRMED/g, "Podio CSV backup confirmation")
@@ -296,71 +311,9 @@ function operatorAccessList(items) {
 }
 
 function localConnectionStatuses() {
-  const checkedAt = new Date().toISOString();
-  const missingPodio = podioMissingControlledTestConfig();
-  const podioApproved = process.env.PODIO_LIVE_WRITE_APPROVED === "true";
-  const podioBackupConfirmed = process.env.PODIO_CSV_BACKUP_CONFIRMED === "true";
-  const missingGoogle = googleMissingControlledTestConfig();
-  const googleApproved = process.env.GOOGLE_LIVE_WRITE_APPROVED === "true";
-  const missingResend = resendMissingConfig();
-  const missingSms = smsMissingConfig();
   const freshBatchExists = Boolean(firstExistingPath(freshLeadBatchOutput, distFreshLeadBatchOutput));
   const latestRunExists = Boolean(firstExistingPath(workerOutput, distWorkerOutput));
-  return [
-    {
-      name: "Podio",
-      ok: !missingPodio.length && podioApproved && podioBackupConfirmed,
-      mode: !missingPodio.length && podioApproved && podioBackupConfirmed ? "live" : "blocked",
-      message: !missingPodio.length
-        ? !podioApproved
-          ? "Podio handoff access is present; final sample-card approval still needs confirmation."
-          : !podioBackupConfirmed
-            ? "Podio handoff access is present; export a CSV backup before the controlled sample-card write."
-            : "Podio handoff access, backup confirmation, and approval are present."
-        : `Podio handoff setup is incomplete: ${operatorAccessList(missingPodio)}.`,
-      checkedAt,
-    },
-    {
-      name: "Google",
-      ok: !missingGoogle.length && googleApproved,
-      mode: !missingGoogle.length && googleApproved ? "live" : "blocked",
-      message: missingGoogle.length
-        ? `Google Workspace handoff setup is incomplete: ${operatorAccessList(missingGoogle)}.`
-        : googleApproved
-          ? "Google Workspace handoff access and controlled write approval are present."
-          : "Google Workspace handoff access is present; controlled Sheet/Doc write approval still needs confirmation.",
-      checkedAt,
-    },
-    {
-      name: "Resend",
-      ok: !missingResend.length,
-      mode: missingResend.length ? "blocked" : "live",
-      message: missingResend.length
-        ? `Resend fallback is incomplete: ${operatorAccessList(missingResend)}. Use Podio queue prep until this is approved.`
-        : "Resend fallback is configured for controlled internal email tests only.",
-      checkedAt,
-    },
-    {
-      name: "SMS Gateway",
-      ok: !missingSms.length,
-      mode: missingSms.length ? "blocked" : "live",
-      message: missingSms.length
-        ? `SMS delivery is incomplete: ${operatorAccessList(missingSms)}. Keep SMS in the app-owned approval queue.`
-        : "Approved SMS carrier or Podio-native SMS path is configured; templates still require approval.",
-      checkedAt,
-    },
-    {
-      name: "Web Search",
-      ok: freshBatchExists || latestRunExists,
-      mode: freshBatchExists ? "live" : latestRunExists ? "review" : "blocked",
-      message: freshBatchExists
-        ? "A live external public-source lead batch has been pulled and persisted."
-        : latestRunExists
-          ? "Public source checks are represented in the latest lead packet."
-        : "Public-source status needs a fresh lead packet before validation.",
-      checkedAt,
-    },
-  ];
+  return buildConnectionStatuses(process.env, { freshBatchExists, latestRunExists });
 }
 
 function workerApiBase() {
@@ -434,6 +387,49 @@ function ownerLastName(value = "") {
   return String(parts.at(-1) || "").toLowerCase();
 }
 
+function localSourceFactsFromCapture(body = {}) {
+  const capturedAt = new Date().toISOString();
+  const seed = body.seed || {};
+  const county = seed.county || body.county || "miami-dade";
+  const subject = {
+    ownerName: seed.ownerName || body.ownerName,
+    propertyAddress: seed.propertyAddress || body.propertyAddress || body.address,
+    parcelId: seed.parcelId || body.parcelId || body.folio,
+    caseNumber: seed.caseNumber || body.caseNumber,
+    estateName: seed.estateName || body.estateName,
+    county,
+  };
+  const facts = [];
+  const addFact = (source, factType, value, sourceUrl) => {
+    if (value === undefined || value === null || value === "") return;
+    facts.push({
+      id: `${body.runId || "local-source-capture"}:${source}:${factType}:${facts.length + 1}`,
+      runId: body.runId || "local-source-capture",
+      source,
+      rawId: `operator-source:${factType}:${facts.length + 1}`,
+      fetchedAt: capturedAt,
+      county,
+      subject,
+      factType,
+      value,
+      confidence: 0.85,
+      sourceUrl,
+      reviewFlags: ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
+    });
+  };
+  const taxReceipt = body.taxReceipt || {};
+  const deed = body.deed || {};
+  const obituary = body.obituary || {};
+  addFact("tax_collector", "tax_last_paid_by", taxReceipt.paidBy, taxReceipt.sourceUrl);
+  addFact("tax_collector", "tax_receipt_status", taxReceipt.status, taxReceipt.sourceUrl);
+  addFact("official_records", "or_book_page", deed.instrument, deed.sourceUrl);
+  addFact("official_records", "latest_deed", deed.status || deed.instrument, deed.sourceUrl);
+  addFact("official_records", "title_signal", deed.note, deed.sourceUrl);
+  addFact("probate_court", "obituary_link", obituary.status, obituary.sourceUrl);
+  addFact("probate_court", "obituary_snapshot", obituary.sourceUrl || obituary.fileName, obituary.sourceUrl);
+  return facts;
+}
+
 function localIdiLockKey(body = {}) {
   return [
     String(body.provider || "idi").toLowerCase(),
@@ -476,6 +472,8 @@ async function handleIdiAssetImport(req, res) {
     adminOverrideReason: body.adminOverrideReason || null,
     attachment: body.attachment || null,
     contactPreviewCount: String(body.importedText || "").split(/\n{2,}/).filter(Boolean).length,
+    paidRun: false,
+    message: "Approved IDI report metadata was imported for review. The production backend did not run IDI Core.",
   };
   localIdiRuns.set(lockKey, result);
   sendJson(res, 200, result, { "cache-control": "no-store" });
@@ -493,12 +491,17 @@ async function handleSourceCapture(req, res) {
     return;
   }
   const id = body.assetKey || body.id || `${body.leadId || "lead"}:${body.kind || "source"}:${Date.now()}`;
+  const sourceFacts = localSourceFactsFromCapture(body);
   const result = {
     ok: true,
     id,
     capturedAt: new Date().toISOString(),
     artifact: body,
-    reviewFlags: body.reviewFlags || [],
+    sourceFacts,
+    reviewFlags: sourceFacts.flatMap((item) => item.reviewFlags),
+    message: sourceFacts.length
+      ? "Source capture saved for Discovery review."
+      : "Source capture saved, but no structured source facts were detected.",
   };
   localSourceCaptures.set(id, result);
   sendJson(res, 200, result, { "cache-control": "no-store" });
@@ -715,6 +718,168 @@ async function handleFreshLeadBatch(req, res) {
   }
 }
 
+async function handleDeepHealth(req, res) {
+  const proxied = await proxyWorkerJson("/api/health/deep", { method: "GET" });
+  if (proxied) {
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+    res.end(proxied.body);
+    return;
+  }
+  sendJson(res, 200, {
+    ok: true,
+    backendTarget: "vercel-artifact-fallback",
+    service: "heirright-artifact",
+    message: "Cloudflare Worker backend is not configured for this frontend environment.",
+    routes: {
+      "/api/leads/fresh-batch": "local",
+      "/api/discovery/idi-asset-search/import": "local",
+      "/api/discovery/source-capture": "local",
+      "/api/discovery/contact-candidates/:id/review": "local",
+      "/api/closing-docs/export-google": "blocked_without_worker",
+      "/api/outreach/sync": "fallback_without_worker",
+    },
+    connections: localConnectionStatuses(),
+  }, { "cache-control": "no-store" });
+}
+
+async function handlePodioDiagnostics(req, res) {
+  const proxied = await proxyWorkerJson("/api/podio/diagnostics", { method: "GET" });
+  if (proxied) {
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+    res.end(proxied.body);
+    return;
+  }
+  sendJson(res, 200, {
+    ok: false,
+    status: "blocked",
+    blockers: ["Cloudflare Worker backend is required for Podio diagnostics."],
+    message: "Podio diagnostics are blocked until HEIRRIGHT_WORKER_URL is configured.",
+  }, { "cache-control": "no-store" });
+}
+
+async function handleClosingDocsGoogleExport(req, res) {
+  const body = req.method === "POST" ? await readJsonBody(req) : {};
+  const proxied = await proxyWorkerJson("/api/closing-docs/export-google", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (proxied) {
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+    res.end(proxied.body);
+    return;
+  }
+  sendJson(res, 200, {
+    ok: false,
+    status: "blocked",
+    blockers: ["Cloudflare Worker backend is required for Closing Docs Google export."],
+    message: "Closing Docs export is blocked until HEIRRIGHT_WORKER_URL is configured.",
+  }, { "cache-control": "no-store" });
+}
+
+async function createVercelLinearIssue(title, description) {
+  const apiKey = process.env.HEIRRIGHT_LINEAR_API_KEY || process.env.LINEAR_API_KEY;
+  const teamId = process.env.HEIRRIGHT_LINEAR_TEAM_ID || process.env.LINEAR_TEAM_ID;
+  if (!apiKey || !teamId) return null;
+  const input = {
+    teamId,
+    title,
+    description,
+    priority: 3,
+  };
+  const projectId = process.env.HEIRRIGHT_LINEAR_PROJECT_ID || process.env.LINEAR_PROJECT_ID;
+  const assigneeId = process.env.HEIRRIGHT_LINEAR_DEFAULT_ASSIGNEE_ID || process.env.LINEAR_DEFAULT_ASSIGNEE_ID;
+  const labelIds = String(process.env.HEIRRIGHT_LINEAR_LABEL_IDS || process.env.HEIRRIGHT_LINEAR_INCIDENT_LABEL_IDS || process.env.LINEAR_LABEL_IDS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (projectId) input.projectId = projectId;
+  if (assigneeId) input.assigneeId = assigneeId;
+  if (labelIds.length) input.labelIds = labelIds;
+  const createIssue = async (issueInput) => {
+    const response = await fetch("https://api.linear.app/graphql", {
+      method: "POST",
+      headers: {
+        authorization: apiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        query: "mutation CreateIssue($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id identifier url } } }",
+        variables: { input: issueInput },
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.errors?.length || !data.data?.issueCreate?.success) {
+      throw new Error(data.errors?.map((error) => error.message).join("; ") || `Linear API failed with ${response.status}`);
+    }
+    return data.data.issueCreate.issue;
+  };
+  try {
+    return await createIssue(input);
+  } catch (error) {
+    if (!input.labelIds?.length) throw error;
+    const retryInput = { ...input };
+    delete retryInput.labelIds;
+    return createIssue(retryInput);
+  }
+}
+
+async function handleOutreachSync(req, res) {
+  const body = req.method === "POST" ? await readJsonBody(req) : {};
+  const proxied = await proxyWorkerJson("/api/outreach/sync", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (proxied) {
+    let payload = null;
+    try {
+      payload = JSON.parse(proxied.body);
+    } catch {
+      payload = null;
+    }
+    if (payload?.ok && payload.status === "ready_for_podio_review" && !payload.linearIssue) {
+      const issue = await createVercelLinearIssue(
+        "[HeirRight outreach] Automation setup/readback needed",
+        [
+          "HeirRight outreach sync fell back to the first-party package.",
+          "",
+          `Package: ${payload.package?.packageId || "unknown"}`,
+          `Blockers: ${(payload.blockers || []).join("; ") || "None"}`,
+          "",
+          "No SMS, email, or live Podio outreach send was attempted.",
+        ].join("\n"),
+      ).catch(() => null);
+      if (issue) {
+        payload.linearIssue = issue;
+        res.writeHead(proxied.status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.end(`${JSON.stringify(payload, null, 2)}\n`);
+        return;
+      }
+    }
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+    res.end(proxied.body);
+    return;
+  }
+  sendJson(res, 200, {
+    ok: true,
+    status: "ready_for_podio_review",
+    fallback: "First-party Outreach package",
+    package: {
+      packageId: `outreach-${Date.now()}`,
+      source: "HeirRight Leads",
+      template: body.template || null,
+      campaign: body.campaign || null,
+      lead: body.lead || null,
+      guardrails: {
+        noDirectSend: true,
+        requiresReadbackProof: true,
+        podioReady: false,
+      },
+    },
+    blockers: ["Cloudflare Worker backend is not configured.", "Podio controlled write/readback is not approved in this environment."],
+    message: "Outreach was staged as a Podio-compatible review package. No outbound SMS or email was sent.",
+  }, { "cache-control": "no-store" });
+}
+
 async function handleLogin(req, res) {
   if (!oauthConfigured(req)) {
     sendHtml(res, 503, loginPage(req, "Google sign-in setup is incomplete. Add the approved access details before beta access opens."));
@@ -800,6 +965,16 @@ function handleRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/api/health/deep") {
+    handleDeepHealth(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/api/podio/diagnostics") {
+    handlePodioDiagnostics(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
   if (url.pathname === "/auth/session") {
     sendJson(res, 200, sessionBody(req));
     return;
@@ -868,6 +1043,31 @@ function handleRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/api/reports/pdf") {
+    reportPdfHandler(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/outreach/activepieces") {
+    activepiecesHandler(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/outreach/sync") {
+    handleOutreachSync(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/api/support/linear") {
+    supportLinearHandler(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/admin/access") {
+    adminAccessHandler(req, res);
+    return;
+  }
+
   if (url.pathname === "/connection-status.json") {
     sendJson(res, 200, localConnectionStatuses(), { "cache-control": "no-store" });
     return;
@@ -875,6 +1075,11 @@ function handleRequest(req, res) {
 
   if (url.pathname === "/api/exports") {
     handleLocalExport(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/api/closing-docs/export-google") {
+    handleClosingDocsGoogleExport(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
     return;
   }
 

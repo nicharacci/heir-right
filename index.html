@@ -30,6 +30,7 @@
     background:var(--bg-base);color:var(--text);min-height:100vh;
     overflow-x:hidden;
   }
+  button{font:inherit;border-radius:var(--radius-sm);}
   .sidebar,.status-bar,.heirs-table,.log-stream,.pipeline,.card-title,.card-badge,
   .check-tag,.source-toggle,.sms-meta,.crm-row .phase,.stat-label,.heir-status,
   .outreach-tag,.header-title,.header-badge,.run-btn,.input-group label,
@@ -410,13 +411,13 @@
     margin-top:12px;padding:9px 18px;
     background:linear-gradient(145deg,var(--gold),var(--gold-accent));
     color:#000;font-weight:700;font-size:12px;letter-spacing:0.2px;
-    border:none;border-radius:var(--radius-xs);cursor:pointer;
+    border:none;border-radius:var(--radius-sm);cursor:pointer;
     transition:all 0.25s ease;position:relative;overflow:hidden;
   }
   .cta-export::after{
     content:'';position:absolute;top:0;left:0;right:0;height:50%;
     background:linear-gradient(180deg,rgba(255,255,255,0.2),transparent);
-    border-radius:var(--radius-xs) var(--radius-xs) 0 0;pointer-events:none;
+    border-radius:var(--radius-sm) var(--radius-sm) 0 0;pointer-events:none;
   }
   .cta-export:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(199,159,74,0.35);}
   .cta-export:active{transform:translateY(0);}
