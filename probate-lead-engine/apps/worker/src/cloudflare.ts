@@ -555,6 +555,63 @@ async function linearSupportIssue(env: CloudflareEnv, title: string, description
   return data.data?.issueCreate?.issue ?? null;
 }
 
+function outreachSeed(body: Record<string, unknown>): IntakeSeed {
+  const explicitSeed = (body.seed && typeof body.seed === "object") ? body.seed as IntakeSeed : null;
+  if (explicitSeed) return explicitSeed;
+  const lead = (body.lead && typeof body.lead === "object") ? body.lead as Record<string, unknown> : {};
+  return {
+    estateName: stringValue(lead.estateName) || stringValue(lead.displayName) || undefined,
+    propertyAddress: stringValue(lead.propertyAddress) || stringValue(lead.address) || DEFAULT_ADDRESS,
+    ownerName: stringValue(lead.ownerName) || stringValue(lead.displayName) || DEFAULT_OWNER,
+    caseNumber: stringValue(lead.caseNumber) || undefined,
+    county: stringValue(lead.county) || "miami-dade",
+    parcelId: stringValue(lead.parcelId) || stringValue(lead.folio) || undefined,
+    source: "operator_cli",
+  };
+}
+
+async function outreachDossier(body: Record<string, unknown>, env: CloudflareEnv): Promise<RawDossier> {
+  const dossier = body.dossier && typeof body.dossier === "object" ? body.dossier as RawDossier : null;
+  if (dossier?.id && dossier.summary && dossier.property) return dossier;
+  const pipeline = await runDryPipeline(outreachSeed(body), {
+    env: env as Record<string, string | undefined>,
+  });
+  return pipeline.dossier;
+}
+
+function renderOutreachPackageMarkdown(payload: Record<string, unknown>): string {
+  const template = (payload.template && typeof payload.template === "object") ? payload.template as Record<string, unknown> : {};
+  const lead = (payload.lead && typeof payload.lead === "object") ? payload.lead as Record<string, unknown> : {};
+  const campaign = (payload.campaign && typeof payload.campaign === "object") ? payload.campaign as Record<string, unknown> : {};
+  return [
+    "# HeirRight Outreach Review Package",
+    "",
+    `Package: ${String(payload.packageId || "outreach-package")}`,
+    `Requested: ${String(payload.requestedAt || nowIso())}`,
+    `Actor: ${String(payload.actor || "office user")}`,
+    "",
+    "## Lead",
+    "",
+    `Name: ${String(lead.displayName || lead.estateName || "Selected lead")}`,
+    `Property: ${String(lead.propertyAddress || lead.address || DEFAULT_ADDRESS)}`,
+    "",
+    "## Campaign",
+    "",
+    `Name: ${String(campaign.name || "Outreach campaign")}`,
+    `Channel: ${String(template.channel || "review")}`,
+    "",
+    "## Approved Template",
+    "",
+    String(template.body || ""),
+    "",
+    "## Guardrails",
+    "",
+    "- HeirRight Leads did not send SMS or email.",
+    "- Podio sync creates a review package, source note, and operator task only.",
+    "- External outreach remains blocked until an operator approves the Podio readback.",
+  ].join("\n");
+}
+
 async function outreachSyncResponse(request: Request, env: CloudflareEnv): Promise<Response> {
   const body = request.method === "POST"
     ? await request.json().catch(() => ({})) as Record<string, unknown>
@@ -612,6 +669,50 @@ async function outreachSyncResponse(request: Request, env: CloudflareEnv): Promi
         message: "Activepieces accepted the Podio outreach workflow request. No direct SMS or email was sent by HeirRight Leads.",
       }, { headers: { "cache-control": "no-store" } });
     }
+  }
+  if (podioReady) {
+    const dossier = await outreachDossier(body, env);
+    const podioExport = await exportCompletedReport({
+      routes: ["podio"],
+      dossier,
+      dryRun: body.dryRun === true,
+      documentTitle: `Outreach review package - ${dossier.summary.displayName}`,
+      documentBody: renderOutreachPackageMarkdown(payload),
+    }, env as Record<string, string | undefined>);
+    const podioRoute = podioExport.routes.find((route) => route.route === "podio") || podioExport.routes[0];
+    if (podioExport.ok) {
+      return json({
+        ok: true,
+        status: podioRoute?.mode === "dry_run" ? "podio_ready_dry_run" : "podio_exported_for_review",
+        runId: packageId,
+        package: payload,
+        podio: podioRoute,
+        blockers: podioExport.blockers,
+        message: "Outreach was exported to Podio as a review package. No outbound SMS or email was sent by HeirRight Leads.",
+      }, { headers: { "cache-control": "no-store" } });
+    }
+    const linearIssue = await linearSupportIssue(
+      env,
+      "[HeirRight outreach] Podio export/readback failed",
+      [
+        "HeirRight outreach sync attempted the first-party Podio export fallback.",
+        "",
+        `Package: ${packageId}`,
+        `Export blockers: ${podioExport.blockers.join("; ") || "Unknown Podio export failure"}`,
+        "",
+        "No SMS, email, or live outreach send was attempted.",
+      ].join("\n"),
+    ).catch(() => null);
+    return json({
+      ok: true,
+      status: "ready_for_podio_review",
+      fallback: "First-party Outreach package",
+      package: payload,
+      podio: podioRoute,
+      blockers: podioExport.blockers.length ? podioExport.blockers : ["Podio export/readback failed."],
+      linearIssue,
+      message: "Outreach stayed staged because the Podio export/readback fallback did not complete.",
+    }, { headers: { "cache-control": "no-store" } });
   }
   const blockers = [
     ...(podioReady ? [] : ["Podio controlled write/readback is not approved yet."]),

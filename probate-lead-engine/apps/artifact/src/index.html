@@ -1033,7 +1033,7 @@
     .import-split-menu {
       width: 34px;
       padding: 0;
-      border-left: 1px solid color-mix(in srgb, var(--line-strong) 76%, transparent) !important;
+      border-left: 0 !important;
     }
 
     .import-split button:hover,
@@ -1478,6 +1478,8 @@
     }
 
     .filters {
+      grid-column: 1;
+      grid-row: 1;
       position: relative;
       min-width: 0;
       min-height: 0;
@@ -1850,6 +1852,8 @@
     }
 
     .workbench {
+      grid-column: 2;
+      grid-row: 1;
       position: relative;
       min-width: 0;
       min-height: 0;
@@ -2546,15 +2550,15 @@
     .docprep-client-meta {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px 20px;
       flex-wrap: wrap;
       padding-left: 34px;
     }
 
     .docprep-file-status-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(118px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(4, minmax(154px, 1fr));
+      gap: 10px;
       min-width: 0;
       padding-left: 34px;
     }
@@ -2562,10 +2566,11 @@
     .docprep-file-status {
       min-width: 0;
       display: grid;
-      grid-template-columns: 18px minmax(0, 1fr);
+      grid-template-columns: 26px minmax(0, 1fr);
       align-items: center;
-      gap: 7px;
-      padding: 8px 9px;
+      gap: 10px;
+      min-height: 46px;
+      padding: 9px 12px;
       border: 1px solid color-mix(in srgb, var(--line-strong) 58%, transparent);
       border-radius: 12px;
       background: color-mix(in srgb, var(--ios-fill) 70%, transparent);
@@ -2614,14 +2619,22 @@
     .docprep-flow-line {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      min-width: max-content;
       color: var(--text);
       font-size: 12px;
       font-weight: 780;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .docprep-flow-line strong {
+      white-space: nowrap;
     }
 
     .docprep-flow-meter {
-      width: 56px;
+      flex: 0 0 64px;
+      width: 64px;
       height: 5px;
       overflow: hidden;
       border-radius: 999px;
@@ -3352,13 +3365,24 @@
 
       .doc-flow-selector,
       .integration-onboarding,
-      .docprep-file-status-grid,
       .crm-import-grid {
         grid-template-columns: 1fr;
       }
 
       .settings-center-shell {
         width: 100%;
+      }
+    }
+
+    @media (max-width: 1380px) {
+      .docprep-file-status-grid {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+      }
+    }
+
+    @media (max-width: 860px) {
+      .docprep-file-status-grid {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -4753,6 +4777,61 @@
       line-height: 1.2;
     }
 
+    .settings-status-list {
+      gap: 12px;
+      padding: 16px 18px 14px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 54%, transparent);
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.016)),
+        color-mix(in srgb, var(--ios-fill) 78%, transparent);
+    }
+
+    .settings-status-list .settings-section-head {
+      align-items: center;
+      padding: 0 2px 2px;
+    }
+
+    .settings-status-list .mini-list {
+      gap: 0;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 46%, transparent);
+      border-radius: 14px;
+      background: color-mix(in srgb, rgba(255,255,255,.04) 72%, transparent);
+    }
+
+    .settings-status-list .mini-list li {
+      gap: 5px;
+      padding: 13px 16px;
+      border-top: 0;
+    }
+
+    .settings-status-list .mini-list li:first-child {
+      padding-top: 13px;
+    }
+
+    .settings-status-list .mini-list li + li::before {
+      left: 16px;
+      right: 16px;
+      top: 0;
+    }
+
+    .settings-status-list .mini-list strong {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+
+    .settings-status-list .mini-list span {
+      display: block;
+      padding-left: 34px;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+
     .admin-tall-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4823,6 +4902,23 @@
       margin: 0;
     }
 
+    .team-kpi-row strong {
+      font-size: 17px;
+      line-height: 1.18;
+    }
+
+    .team-kpi-row .team-kpi-count {
+      justify-self: end;
+      min-width: clamp(64px, 7vw, 104px);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: clamp(28px, 3.8vw, 44px);
+      font-weight: 820;
+      line-height: .95;
+      text-align: right;
+      white-space: nowrap;
+    }
+
     .admin-error-row + .admin-error-row::before,
     .admin-access-row + .admin-access-row::before,
     .team-kpi-row + .team-kpi-row::before {
@@ -4887,30 +4983,6 @@
     .admin-submit-status[data-state="fading"] {
       opacity: 0;
       transform: translateY(-4px);
-    }
-
-    .sparkline {
-      width: 86px;
-      height: 30px;
-      color: var(--accent);
-    }
-
-    .radial-kpi {
-      width: 44px;
-      height: 44px;
-      transform: rotate(-90deg);
-    }
-
-    .radial-kpi circle {
-      fill: none;
-      stroke-width: 4;
-      stroke-linecap: round;
-    }
-
-    .radial-kpi .track { stroke: rgba(235,235,245,.12); }
-    .radial-kpi .value {
-      stroke: var(--green);
-      stroke-dasharray: var(--dash, 0) 100;
     }
 
     .settings-grid {
@@ -5059,9 +5131,10 @@
       background-size: 14px 14px;
     }
 
-    body[data-theme="dark"] .setting-card select option {
+    body[data-theme="dark"] select option,
+    body[data-surface-system="fluid-functionalism"] select option {
       color: var(--text);
-      background: #1c1c1e;
+      background: #17181c;
     }
 
     .select-enhanced {
@@ -5140,11 +5213,15 @@
       overflow: auto;
       padding: 5px;
       border-radius: 10px;
-      --solvys-lg-tint-source: var(--page-2);
-      --solvys-lg-rim-source: var(--line-strong);
-      --solvys-lg-bg: color-mix(in srgb, var(--solvys-lg-tint) 52%, transparent);
-      background: var(--solvys-lg-bg);
-      border-color: var(--solvys-lg-border);
+      --solvys-lg-tint-source: var(--surface-4, #202124);
+      --solvys-lg-rim-source: rgba(142, 200, 255, .44);
+      --solvys-lg-bg: color-mix(in srgb, var(--surface-5, #15161a) 92%, rgba(10,132,255,.10));
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)),
+        var(--solvys-lg-bg);
+      border: 1px solid color-mix(in srgb, rgba(142, 200, 255, .42) 78%, var(--line-strong));
+      box-shadow: 0 18px 44px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.10);
     }
 
     .select-menu::after {
@@ -5170,27 +5247,27 @@
       justify-content: space-between;
       gap: 10px;
       color: var(--text);
-      background: transparent;
+      background: rgba(255,255,255,.018);
       border: 1px solid transparent;
       border-radius: 10px;
       padding: 7px 8px;
       text-align: left;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 720;
       transition: background .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease);
     }
 
     .select-option:hover,
     .select-option:focus-visible {
-      background: color-mix(in srgb, var(--ios-fill-strong) 84%, transparent);
-      border-color: color-mix(in srgb, var(--line-strong) 72%, transparent);
+      background: color-mix(in srgb, rgba(10,132,255,.22) 78%, rgba(255,255,255,.04));
+      border-color: color-mix(in srgb, rgba(142,200,255,.44) 74%, transparent);
       outline: 0;
     }
 
     .select-option[aria-selected="true"] {
-      color: var(--accent);
-      background: color-mix(in srgb, var(--accent-soft) 86%, transparent);
-      border-color: color-mix(in srgb, var(--focus-ring) 64%, transparent);
+      color: #d8eaff;
+      background: color-mix(in srgb, rgba(10,132,255,.34) 82%, rgba(255,255,255,.05));
+      border-color: color-mix(in srgb, var(--focus-ring) 72%, transparent);
     }
 
     .select-check {
@@ -5259,9 +5336,13 @@
     }
 
     body[data-theme="dark"] .select-menu {
-      --solvys-lg-bg: color-mix(in srgb, var(--solvys-lg-tint) 58%, transparent);
-      background: var(--solvys-lg-bg);
-      border-color: var(--solvys-lg-border);
+      --solvys-lg-tint-source: #1d2026;
+      --solvys-lg-rim-source: rgba(142, 200, 255, .42);
+      --solvys-lg-bg: color-mix(in srgb, #15171d 92%, rgba(10,132,255,.10));
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)),
+        var(--solvys-lg-bg);
+      border-color: color-mix(in srgb, rgba(142, 200, 255, .42) 78%, var(--line-strong));
     }
 
     .toggle-line {
@@ -8426,7 +8507,11 @@
       }
       .filter-reopen { display: none; }
       .filter-resizer { display: none; }
-      .workbench { overflow: visible; }
+      .workbench {
+        grid-column: 1;
+        grid-row: auto;
+        overflow: visible;
+      }
       .workbench-body { overflow: visible; }
       .app[data-active-view="admin"] .workbench-body { overflow: visible; }
       .app[data-active-view="admin"] .detail { display: grid; }
@@ -14503,6 +14588,7 @@ function renderDossiersView() {
       </div>
     </div>
   `;
+  enhanceSelectMenus(target);
   target.querySelector("[data-show-docprep-list]")?.addEventListener("click", () => {
     state.docPrepListOpen = true;
     state.discoveryOpen = false;
@@ -15701,24 +15787,6 @@ function adminStatusHtml(status) {
   return `<span class="admin-submit-status" data-state="${escapeHtml(stateName)}">${icon}<span>${escapeHtml(status.message)}</span></span>`;
 }
 
-function sparklineSvg(values = []) {
-  const points = values.length ? values : [3, 6, 4, 8, 7, 10];
-  const max = Math.max(...points, 1);
-  const min = Math.min(...points, 0);
-  const range = Math.max(1, max - min);
-  const path = points.map((value, index) => {
-    const x = points.length === 1 ? 0 : (index / (points.length - 1)) * 86;
-    const y = 28 - ((value - min) / range) * 24;
-    return `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
-  }).join(" ");
-  return `<svg class="sparkline" viewBox="0 0 86 30" aria-hidden="true"><path d="${escapeHtml(path)}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-}
-
-function radialKpiSvg(value = 0, label = "KPI") {
-  const bounded = Math.max(0, Math.min(100, Number(value) || 0));
-  return `<svg class="radial-kpi" viewBox="0 0 44 44" role="img" aria-label="${escapeHtml(label)} ${Math.round(bounded)} percent"><circle class="track" cx="22" cy="22" r="16"></circle><circle class="value" cx="22" cy="22" r="16" pathLength="100" style="--dash:${bounded.toFixed(0)}"></circle></svg>`;
-}
-
 function teamActivityRows() {
   const blockers = adminErrorItems().filter((item) => !item.ready).length;
   const docs = documentPrepStats(selectedRow(), dossierForRow(selectedRow()));
@@ -15726,28 +15794,20 @@ function teamActivityRows() {
   const activeTemplates = templates.filter((template) => ["Ready", "Approved", "Sync to Podio"].includes(template.status)).length;
   return [
     {
-      title: "Document Prep completion",
-      copy: `${docs.linked} of ${docs.total || 0} required files linked for the selected lead.`,
-      value: docs.total ? Math.round((docs.linked / docs.total) * 100) : 0,
-      trend: [12, 24, 38, 51, 64, docs.total ? Math.round((docs.linked / docs.total) * 100) : 0]
+      title: "Document Prep Completion",
+      counter: `${docs.linked}/${docs.total || 0}`,
     },
     {
-      title: "Outreach readiness",
-      copy: `${activeTemplates} active/export-ready templates, ${templates.length} total templates.`,
-      value: templates.length ? Math.round((activeTemplates / templates.length) * 100) : 0,
-      trend: [10, 18, 31, 46, 54, templates.length ? Math.round((activeTemplates / templates.length) * 100) : 0]
+      title: "Outreach Readiness",
+      counter: `${activeTemplates}/${templates.length}`,
     },
     {
-      title: "Integration blockers",
-      copy: `${blockers} setup or doc-prep blocker${blockers === 1 ? "" : "s"} currently visible.`,
-      value: Math.max(0, 100 - blockers * 14),
-      trend: [88, 80, 74, 70, 68, Math.max(0, 100 - blockers * 14)]
+      title: "Integration Blockers",
+      counter: blockers,
     },
     {
-      title: "Team activity",
-      copy: `${state.shellEvents.length} recent operator events and ${state.shellCommandCount} captured command${state.shellCommandCount === 1 ? "" : "s"}.`,
-      value: Math.min(100, Math.max(18, state.shellEvents.length * 10 + state.shellCommandCount * 8)),
-      trend: [18, 26, 32, 42, 54, Math.min(100, Math.max(18, state.shellEvents.length * 10 + state.shellCommandCount * 8))]
+      title: "Team Activity",
+      counter: state.shellEvents.length,
     }
   ];
 }
@@ -15919,13 +15979,13 @@ function renderAdminLoopView() {
           <div class="admin-error-list">
             ${activities.map((item) => `
               <article class="team-kpi-row">
-                <span><strong>${escapeHtml(item.title)}</strong><span class="copy">${escapeHtml(item.copy)}</span></span>
-                <span>${sparklineSvg(item.trend)}${radialKpiSvg(item.value, item.title)}</span>
+                <span><strong>${escapeHtml(item.title)}</strong></span>
+                <span class="team-kpi-count">${escapeHtml(item.counter)}</span>
               </article>
             `).join("")}
             ${recentEvents.map((event) => `
               <article class="team-kpi-row">
-                <span><strong>${escapeHtml(event.title)}</strong><span class="copy">${escapeHtml(event.copy)}</span></span>
+                <span><strong>${escapeHtml(event.title)}</strong></span>
                 <span class="tracker-date">${escapeHtml(eventTime(event.at))}</span>
               </article>
             `).join("")}
