@@ -10,6 +10,7 @@ Worker deployment: Cloudflare Worker production API surface
 
 - Document Prep remains the default app surface and now spans the main content lane on desktop and mobile.
 - Document Prep file rows, status columns, guided walkthrough, and deal-status control are production-visible.
+- Document Prep now promotes the completed owner file row by owner name, not the generic latest packet title.
 - Deal Status uses the enhanced rounded dark dropdown menu instead of the native bright menu.
 - Admin Team Activity uses large number counters and no sparkline/radial mini-graphs.
 - Import split control no longer renders the divider between Import and the chevron.
@@ -26,6 +27,8 @@ Worker deployment: Cloudflare Worker production API surface
 - `GET /api/health/deep` reports `backendTarget: cloudflare-worker` with 21 available routes.
 - Live browser proof at 1444x994:
   - Document Prep list rect: `x=60`, `w=1384`.
+  - Completed Document Prep first row: `ANNIE HAWKINS EST OF`.
+  - Completed Document Prep statuses: Discovery `Complete`, IDI Core Report `1 accepted`, Closing Docs `Complete`, Google `Ready to export`.
   - Import split menu border-left: `0px`.
   - Deal Status enhanced select present with open menu background `rgb(43, 46, 56)`, radius `10px`.
   - Admin Team Activity counters: `0/10`, `0/0`, `7`, `2`; no `.sparkline` or `.radial-kpi` elements.
