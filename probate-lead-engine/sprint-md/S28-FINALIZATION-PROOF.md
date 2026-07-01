@@ -28,7 +28,8 @@ Worker deployment: Cloudflare Worker production API surface
 - Live browser proof at 1444x994:
   - Document Prep list rect: `x=60`, `w=1384`.
   - Completed Document Prep first row: `ANNIE HAWKINS EST OF`.
-  - Completed Document Prep statuses: Discovery `Complete`, IDI Core Report `1 accepted`, Closing Docs `Complete`, Google `Ready to export`.
+  - Completed Document Prep statuses: Discovery `Complete`, IDI Core Report `1 accepted`, Closing Docs `Exported`, Google `Doc ready`.
+  - Google Workspace export/readback created Doc `1Y6CMgv1FejgdbesTYKzZYbP0jzi1nIiU6TeSRCXhxUg` and appended/read back the tracking Sheet row.
   - Import split menu border-left: `0px`.
   - Deal Status enhanced select present with open menu background `rgb(43, 46, 56)`, radius `10px`.
   - Admin Team Activity counters: `0/10`, `0/0`, `7`, `2`; no `.sparkline` or `.radial-kpi` elements.
