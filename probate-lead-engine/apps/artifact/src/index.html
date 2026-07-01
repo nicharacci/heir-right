@@ -1866,6 +1866,10 @@
       grid-template-columns: minmax(0, 1fr);
     }
 
+    .app[data-active-view]:not([data-active-view="find-estates"]) .workbench {
+      grid-column: 1;
+    }
+
     .app[data-active-view]:not([data-active-view="find-estates"]) .filters,
     .app[data-active-view]:not([data-active-view="find-estates"]) .filter-reopen {
       display: none;
