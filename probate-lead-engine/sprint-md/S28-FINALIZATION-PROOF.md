@@ -3,7 +3,7 @@
 Date: 2026-07-01
 Branch: `v1.1.1/heirright-2026-06-30-s28-production-loop`
 Production URL: `https://heirright-leads.vercel.app`
-Frontend deployment: `https://heirright-landing-demo-ob5o23jkz-solvys.vercel.app`
+Frontend deployment: `https://heirright-landing-demo-881d1lctr-solvys.vercel.app`
 Worker deployment: Cloudflare Worker production API surface
 
 ## Shipped
@@ -22,7 +22,7 @@ Worker deployment: Cloudflare Worker production API surface
 - `pnpm build` passed.
 - `pnpm --filter @ple/worker test` passed.
 - `git diff --check` passed.
-- Vercel production deployment `dpl_DRk9RWBQaEsemEoW6xg1XnxFR5im` is READY.
+- Vercel production deployment `dpl_AEgGtp9EMD1Cxs1KE23KvNdtTcqd` is READY.
 - `heirright-leads.vercel.app` is aliased to the latest deployment.
 - `GET /api/health/deep` reports `backendTarget: cloudflare-worker` with 21 available routes.
 - Live browser proof at 1444x994:
