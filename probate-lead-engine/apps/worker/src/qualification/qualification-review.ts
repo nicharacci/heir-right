@@ -13,6 +13,7 @@ import type {
   SourceCoverageProfile,
   SourceCoverageSummary,
 } from "@ple/types";
+import { formatCountyName } from "../display";
 import { nowIso, slug } from "../lib";
 
 const REQUIRED_COVERAGE_SCORE = 70;
@@ -323,7 +324,7 @@ function sampleRows(records: QualificationReviewRecord[]): string {
     "| --- | --- | --- | --- | --- |",
     ...records.map((record) => {
       const score = record.coverageScore === undefined ? "n/a" : `${record.coverageScore}/${record.requiredCoverageScore}`;
-      return `| ${tableCell(record.displayName)} | ${tableCell(record.county)} | ${tableCell(score)} | ${tableCell(record.reasonCodes.slice(0, 4).join(", "))} | ${tableCell(record.nextAction)} |`;
+      return `| ${tableCell(record.displayName)} | ${tableCell(formatCountyName(record.county))} | ${tableCell(score)} | ${tableCell(record.reasonCodes.slice(0, 4).join(", "))} | ${tableCell(record.nextAction)} |`;
     }),
   ].join("\n");
 }

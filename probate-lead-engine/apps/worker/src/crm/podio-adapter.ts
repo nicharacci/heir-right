@@ -1,4 +1,5 @@
 import type { CrmAdapter, RawDossier } from "@ple/types";
+import { formatCountyName } from "../display";
 import {
   PODIO_LIVE_WRITE_APPROVAL_KEY,
   podioMissingExportConfig,
@@ -115,7 +116,7 @@ export class PodioAdapter implements CrmAdapter<PodioDryRunPayload> {
           case_number: dossier.summary.caseNumber,
           property_address: dossier.property.address.value,
           owner_name: dossier.property.ownerName.value,
-          county: dossier.property.county.value ?? "miami-dade",
+          county: formatCountyName(dossier.property.county.value, "Miami-Dade"),
           parcel_id: dossier.property.parcelId.value,
           source_status: dossier.audit.reviewFlags.includes("SOURCE_BLOCKED") ? "blocked" : "source_checked",
           dossier_status: dossier.status,

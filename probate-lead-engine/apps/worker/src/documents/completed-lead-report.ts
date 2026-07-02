@@ -11,6 +11,7 @@ import type {
   ReviewFlag,
   SourceKey,
 } from "@ple/types";
+import { formatCountyName } from "../display";
 import { nowIso, slug } from "../lib";
 import { renderMarkdownWithStreamdown } from "../markdown/render-streamdown";
 import { buildOfferProfitMath } from "../reports/offer-profit-math";
@@ -61,9 +62,10 @@ function claimText(value: unknown, fallback = "Needs review"): string {
   if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, item]) => item !== null && item !== undefined && item !== "")
-      .map(([key, item]) => `${humanStatus(key)}: ${claimText(item, "")}`);
+      .map(([key, item]) => `${humanStatus(key)}: ${/county/i.test(key) ? formatCountyName(item, "") : claimText(item, "")}`);
     return entries.length ? entries.join("; ") : fallback;
   }
+  if (/^miami[-_\s]dade(?:\s+county)?(?:,\s*fl)?$/i.test(String(value))) return formatCountyName(value, fallback);
   return String(value);
 }
 
@@ -306,7 +308,7 @@ function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholderEntry[
           if (!address) return [];
           return [{
             address: displayAddress(address),
-            county: claimText(record.county, ""),
+            county: formatCountyName(record.county, ""),
             dates: claimText(record.dates, ""),
             sourceUrl: claimText(record.sourceUrl, ""),
           }];
@@ -417,7 +419,7 @@ function buildSummaries(dossier: RawDossier) {
       `Owner: ${claimText(dossier.property.ownerName.value)}`,
       `Estate: ${claimText(dossier.property.estateName.value)}`,
       `Case number: ${claimText(dossier.property.caseNumber.value)}`,
-      `County: ${claimText(dossier.property.county.value, "miami-dade")}`,
+      `County: ${formatCountyName(dossier.property.county.value, "Miami-Dade")}`,
       `Folio: ${claimText(dossier.property.parcelId.value)}`,
     ].join("\n"),
     taxSummary: [
@@ -550,7 +552,7 @@ function renderFamilyTreePacketHtml(input: {
     const name = escapeHtml(contact.name ?? `Possible heir ${index + 1}`);
     const age = contact.age ? `<p>(${contact.age})</p>` : "";
     const history = contact.addressHistory?.length
-      ? contact.addressHistory.map((item) => `<p><a href="${escapeHtml(item.sourceUrl || "#")}">${escapeHtml(displayAddress(item.address))}</a> ${item.county ? `(${escapeHtml(item.county)})` : ""}<br><span>${escapeHtml(item.dates || "Dates need review")}</span></p>`).join("")
+      ? contact.addressHistory.map((item) => `<p><a href="${escapeHtml(item.sourceUrl || "#")}">${escapeHtml(displayAddress(item.address))}</a> ${item.county ? `(${escapeHtml(formatCountyName(item.county, ""))})` : ""}<br><span>${escapeHtml(item.dates || "Dates need review")}</span></p>`).join("")
       : `<p><a href="#">${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "Address needs approved enrichment"))}</a></p>`;
     const phones = contact.phones.length ? contact.phones.map((phone) => `<p>${escapeHtml(phone)}</p>`).join("") : "<p>Needs approved enrichment</p>";
     const emails = contact.emails.length ? contact.emails.map((email) => `<p><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>`).join("") : "<p>Needs approved enrichment</p>";
@@ -743,7 +745,7 @@ function renderPodioGoogleSection(dossier: RawDossier, report: {
   const sheetRow = report.includeDealSection ? [
     dossier.summary.estateName ?? dossier.summary.displayName,
     claimText(dossier.property.address.value),
-    claimText(dossier.property.county.value),
+    formatCountyName(dossier.property.county.value),
     claimText(dossier.property.parcelId.value),
     humanStatus(report.reviewGate.reportStatus),
     humanStatus(report.leadQualityProfile.leadBucket),
@@ -753,7 +755,7 @@ function renderPodioGoogleSection(dossier: RawDossier, report: {
   ] : [
     dossier.summary.estateName ?? dossier.summary.displayName,
     claimText(dossier.property.address.value),
-    claimText(dossier.property.county.value),
+    formatCountyName(dossier.property.county.value),
     claimText(dossier.property.parcelId.value),
     humanStatus(report.reviewGate.reportStatus),
     humanStatus(report.leadQualityProfile.leadBucket),
@@ -779,7 +781,7 @@ function renderPodioGoogleSection(dossier: RawDossier, report: {
     `| Estate name | ${claimText(fields.estate_name ?? dossier.summary.estateName ?? dossier.summary.displayName)} |`,
     `| Property address | ${claimText(fields.property_address ?? dossier.property.address.value)} |`,
     `| Owner name | ${claimText(fields.owner_name ?? dossier.property.ownerName.value)} |`,
-    `| County | ${claimText(fields.county ?? dossier.property.county.value)} |`,
+    `| County | ${formatCountyName(fields.county ?? dossier.property.county.value)} |`,
     `| Folio | ${claimText(fields.folio ?? dossier.property.parcelId.value)} |`,
     `| Dossier status | ${humanStatus(String(fields.dossier_status ?? dossier.operatorQueue.state))} |`,
     `| Lead bucket | ${humanStatus(report.leadQualityProfile.leadBucket)} |`,
@@ -879,7 +881,7 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
     `| Owner DOB | ${claimText(dossier.marriageDeathIndicators.dateOfBirth.value)} |`,
     `| Owner DOD | ${claimText(dossier.marriageDeathIndicators.dateOfDeath.value)} |`,
     `| Obituary status | ${claimText(dossier.marriageDeathIndicators.obituaryLink.value, "Not found in the current public-source run; manual obituary search required.")} |`,
-    `| County | ${claimText(dossier.property.county.value)} |`,
+    `| County | ${formatCountyName(dossier.property.county.value)} |`,
     `| Folio / parcel | ${claimText(dossier.property.parcelId.value)} |`,
     `| Case / file | ${claimText(dossier.property.caseNumber.value, "Needs probate/court search")} |`,
     `| Lead bucket | ${humanStatus(leadQualityProfile.leadBucket)} |`,

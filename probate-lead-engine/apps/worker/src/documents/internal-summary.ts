@@ -1,4 +1,5 @@
 import type { DocumentPacket, RawDossier } from "@ple/types";
+import { formatCountyName } from "../display";
 import { nowIso, slug } from "../lib";
 import { renderMarkdownWithStreamdown } from "../markdown/render-streamdown";
 
@@ -31,7 +32,7 @@ export async function generateInternalSummary(dossier: RawDossier): Promise<Docu
     `Case number: ${dossier.summary.caseNumber ?? "Needs review"}`,
     `Address: ${dossier.property.address.value ?? "Needs review"}`,
     `Owner: ${dossier.property.ownerName.value ?? "Needs review"}`,
-    `County: ${dossier.property.county.value ?? "miami-dade"}`,
+    `County: ${formatCountyName(dossier.property.county.value, "Miami-Dade")}`,
     `Parcel/Folio: ${dossier.property.parcelId.value ?? "Needs review"}`,
     "",
     "## Public Source Findings",

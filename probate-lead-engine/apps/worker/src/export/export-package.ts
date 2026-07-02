@@ -1,4 +1,5 @@
 import type { ConnectionStatus, ExportRequest, ExportResult, ExportRoute, ExportRouteResult, RawDossier } from "@ple/types";
+import { formatCountyName } from "../display";
 import { nowIso, slug } from "../lib";
 import {
   PODIO_LIVE_WRITE_APPROVAL_KEY,
@@ -92,7 +93,7 @@ async function exportGoogleWebhook(dossier: RawDossier, env: RuntimeEnv, dryRun:
       displayName: dossier.summary.displayName,
       propertyAddress: dossier.property.address.value,
       folio: dossier.property.parcelId.value,
-      county: dossier.property.county.value,
+      county: formatCountyName(dossier.property.county.value),
       title: reportTitle(dossier, documentTitle),
       markdown: reportText(dossier, documentBody),
       generatedAt: nowIso(),
@@ -246,7 +247,7 @@ async function exportGoogle(dossier: RawDossier, env: RuntimeEnv, dryRun: boolea
     nowIso(),
     dossier.summary.displayName,
     dossier.property.address.value ?? "",
-    dossier.property.county.value ?? "",
+    formatCountyName(dossier.property.county.value, ""),
     dossier.completedLeadReport?.leadQualityProfile.leadBucket ?? "review_required",
     doc.id,
     folder.id,
@@ -336,7 +337,7 @@ function rawPodioValueByKey(dossier: RawDossier, env: RuntimeEnv, reportUrl?: st
     report_status: reportStatus,
     deal_status: "needs_to_be_contacted",
     property_address: dossier.property.address.value,
-    county: dossier.property.county.value,
+    county: formatCountyName(dossier.property.county.value),
     folio: dossier.property.parcelId.value,
     lead_bucket: leadBucket,
     next_action: dossier.summary.nextBestAction,

@@ -10311,6 +10311,23 @@ function displayStatus(value, fallback = "Needs review") {
   return raw.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function formatCountyName(value, fallback = "County needs review") {
+  const raw = cleanDisplayValue(value || fallback).trim();
+  if (!raw) return fallback;
+  if (/needs review|missing|blocked|unknown/i.test(raw)) {
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }
+  const normalized = raw
+    .replace(/_/g, " ")
+    .replace(/\s*-\s*/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+  return titleCasePhrase(normalized)
+    .replace(/\bMiami Dade\b/g, "Miami-Dade")
+    .replace(/\bCounty,\s*Fl\b/g, "County, FL")
+    .replace(/\bCounty\s+Fl\b/g, "County, FL");
+}
+
 function operatorPlainText(value) {
   return cleanDisplayValue(value)
     .replace(/\bmanual_or_browser_extraction_required\b/gi, "Needs source review")
@@ -10338,11 +10355,12 @@ function formatSourceFactValue(value, fallback = "Needs review") {
     const parts = Object.entries(value)
       .filter(([key]) => !skippedKeys.test(key))
       .filter(([, item]) => item !== null && item !== undefined && item !== "")
-      .map(([key, item]) => `${displayStatus(key)}: ${formatSourceFactValue(item, "")}`)
+      .map(([key, item]) => `${displayStatus(key)}: ${/county/i.test(key) ? formatCountyName(item, "") : formatSourceFactValue(item, "")}`)
       .filter((item) => !item.endsWith(": "));
     return parts.join("; ") || fallback;
   }
   const text = operatorPlainText(value);
+  if (/^miami[-_\s]dade(?:\s+county)?(?:,\s*fl)?$/i.test(text)) return formatCountyName(text, fallback);
   if (/^https?:\/\//i.test(text)) return "Source link recorded";
   return text;
 }
@@ -10610,6 +10628,7 @@ function minimalImportedDossier(imported) {
             <tr><th>Estate</th><td>${escapeHtml(imported.estateName)}</td></tr>
             <tr><th>Owner</th><td>${escapeHtml(imported.ownerName)}</td></tr>
             <tr><th>Property</th><td>${escapeHtml(imported.propertyAddress)}</td></tr>
+            <tr><th>County</th><td>${escapeHtml(formatCountyName(imported.county))}</td></tr>
             <tr><th>CRM source</th><td>${escapeHtml(provider)}${imported.sourceRecordId ? ` - ${escapeHtml(imported.sourceRecordId)}` : ""}</td></tr>
           </table>
         `)
@@ -10625,6 +10644,7 @@ function minimalImportedDossier(imported) {
             estate_name: imported.estateName,
             property_address: imported.propertyAddress,
             owner_name: imported.ownerName,
+            county: formatCountyName(imported.county),
             source_record_id: imported.sourceRecordId
           },
           pipelineStages: ["Imported", "Estate Discovery", "Closing Prep", "Review"]
@@ -11751,7 +11771,7 @@ function outreachVariableRegistry(row = selectedRow(), dossier = dossierForRow(r
   const report = dossier?.completedLeadReport ?? {};
   const offer = report?.offerMath ?? {};
   const owner = dossier?.owner?.name?.value || dossier?.ownerName || row?.title;
-  const county = dossier?.county || dossier?.property?.county?.value || "Miami-Dade";
+  const county = formatCountyName(dossier?.county || dossier?.property?.county?.value || row?.county || "Miami-Dade");
   const phase = currentDiscoveryPhase()?.label || "Discovery review";
   return [
     registryEntry("contact.first_name", "Contact first name", contact.firstName),
@@ -12313,7 +12333,7 @@ function closingVariableRegistry(row = selectedRow(), dossier = dossierForRow(ro
     closingRegistryEntry("deceased_name", "Deceased / owner name", deceasedName),
     closingRegistryEntry("deceased_dob_dod", "DOB / DOD", "", { fallback: "Needs vital, obituary, probate, or memorial source review" }),
     closingRegistryEntry("property_address", "Property address", row?.address || dossier?.property?.address?.value),
-    closingRegistryEntry("county", "County", row?.county || dossier?.property?.county?.value || "Miami-Dade County, FL"),
+    closingRegistryEntry("county", "County", formatCountyName(row?.county || dossier?.property?.county?.value || "Miami-Dade County, FL")),
     closingRegistryEntry("folio", "Folio / parcel", row?.parcel || dossier?.property?.parcelId?.value || row?.folio),
     closingRegistryEntry("seller_heirs", "Seller / heir signers", sellerNames, { fallback: "Needs accepted signer contacts from Contact Review" }),
     closingRegistryEntry("heir_relationships", "Heir relationships", contactRelationships, { fallback: "Needs family-tree relationship review" }),
@@ -13000,7 +13020,7 @@ function documentRequirementHtml(doc, row = selectedRow()) {
 function currentProcessFacts(row = selectedRow(), dossier = dossierForRow(row)) {
   const stats = documentPrepStats(row, dossier);
   return [
-    ["Source", row?.county || claimValue(dossier?.property?.county, "County needs review")],
+    ["Source", formatCountyName(row?.county || claimValue(dossier?.property?.county, "County needs review"))],
     ["Created", formatPacketDate(dossier?.generatedAt ?? state.data?.generatedAt ?? Date.now())],
     ["Deadline", row?.next || "Resolve review flags"],
     ["Progress", `${stats.linked} of ${stats.total} files`]
@@ -14057,7 +14077,7 @@ function podioFieldRows(row, dossier, report) {
     ["estate_name", fields.estate_name ?? dossier?.summary?.estateName ?? row?.owner],
     ["property_address", fields.property_address ?? row?.address],
     ["owner_name", fields.owner_name ?? row?.owner],
-    ["county", fields.county ?? row?.county],
+    ["county", formatCountyName(fields.county ?? row?.county)],
     ["parcel_id", fields.parcel_id ?? row?.parcel],
     ["dossier_status", fields.dossier_status ?? dossier?.operatorQueue?.state],
     ["lead_bucket", fields.lead_bucket ?? report?.leadQualityProfile?.leadBucket],
@@ -14071,7 +14091,7 @@ function googleSheetsRow(row, dossier, report) {
   return [
     dossier?.summary?.estateName ?? row?.owner ?? row?.leadName,
     row?.address ?? claimValue(dossier?.property?.address),
-    row?.county ?? claimValue(dossier?.property?.county),
+    formatCountyName(row?.county ?? claimValue(dossier?.property?.county)),
     row?.parcel ?? claimValue(dossier?.property?.parcelId),
     displayStatus(report?.reviewGate?.reportStatus, "Review"),
     displayStatus(report?.leadQualityProfile?.leadBucket, "Unbucketed"),
@@ -14105,7 +14125,7 @@ function completedLeadReportHtml(row, dossier) {
     <table>
       <tr><th>Owner / estate</th><td>${escapeHtml(row?.owner ?? claimValue(property.ownerName, "Needs review"))}</td></tr>
       <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
-      <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Needs review"))}</td></tr>
+      <tr><th>County</th><td>${escapeHtml(formatCountyName(row?.county ?? claimValue(property.county, "Needs review")))}</td></tr>
       <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? claimValue(property.parcelId, "Needs review"))}</td></tr>
       <tr><th>Case / file</th><td>${escapeHtml(row?.file ?? claimValue(property.caseNumber, "Needs review"))}</td></tr>
 	      <tr><th>Owner DOB / DOD</th><td>Needs review from vital, obituary, memorial, or probate source notes.</td></tr>
@@ -14194,7 +14214,7 @@ function discoveryDossierHtml(row, dossier) {
 	    <table>
 	      <tr><th>Owner / estate</th><td>${escapeHtml(row?.owner ?? claimValue(property.ownerName, "Needs review"))}</td></tr>
 	      <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
-	      <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Miami-Dade County, FL"))}</td></tr>
+	      <tr><th>County</th><td>${escapeHtml(formatCountyName(row?.county ?? claimValue(property.county, "Miami-Dade County, FL")))}</td></tr>
 	      <tr><th>Case / file</th><td>${escapeHtml(row?.file ?? claimValue(property.caseNumber, "Needs review"))}</td></tr>
 	      <tr><th>Current phase</th><td>${escapeHtml(currentDiscoveryPhase("discovery", row).label)}</td></tr>
 	    </table>
@@ -14251,7 +14271,7 @@ function deedTitleNotesHtml(row, dossier) {
       <tr><th>Owner / estate</th><td>${escapeHtml(row?.owner ?? claimValue(property.ownerName, "Needs review"))}</td></tr>
       <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
       <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? claimValue(property.parcelId, "Needs review"))}</td></tr>
-      <tr><th>County</th><td>${escapeHtml(row?.county ?? claimValue(property.county, "Miami-Dade County, FL"))}</td></tr>
+      <tr><th>County</th><td>${escapeHtml(formatCountyName(row?.county ?? claimValue(property.county, "Miami-Dade County, FL")))}</td></tr>
       <tr><th>OR / instrument</th><td>${escapeHtml(capture.deed?.instrument || "Needs review")}</td></tr>
       <tr><th>Deed attachment</th><td>${sourceArtifactLink("Official Records deed", capture.deed?.sourceUrl || capture.deed?.fileName)}</td></tr>
     </table>
@@ -17232,7 +17252,7 @@ function addressDisplayParts(address, fallback = "") {
   }
   return {
     street: text || "Address pending",
-    locality: cleanDisplayValue(fallback).trim()
+    locality: formatCountyName(fallback, "")
   };
 }
 
@@ -17455,7 +17475,7 @@ function renderDetail() {
   document.getElementById("nextActionCopy").textContent = "Use the report rail to review the section, then mark it ready when the source note is filled in.";
   document.getElementById("factGrid").innerHTML = [
     ["Owner", row.owner],
-    ["County", row.county],
+    ["County", formatCountyName(row.county)],
     ["Folio", row.parcel],
     ["Case", row.file],
     ["Qualification", qualificationLabel(qualification)],
