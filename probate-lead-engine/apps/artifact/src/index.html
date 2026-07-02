@@ -4910,6 +4910,11 @@
       font-size: 11px;
     }
 
+    #resultsBody.is-page-transition tr {
+      animation: resultsPageRowIn .28s var(--ease-out) both;
+      animation-delay: calc(var(--row-index, 0) * 34ms);
+    }
+
     .detail {
       position: absolute;
       top: 0;
@@ -8801,6 +8806,11 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    @keyframes resultsPageRowIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: .01ms !important;
@@ -9583,9 +9593,7 @@
                 </div>
               </div>
             </div>
-            <div class="pager summary-pager" aria-label="Pagination">
-              <button class="is-active" type="button" aria-label="Current page 1">1</button>
-            </div>
+            <div id="summaryPager" class="pager summary-pager" aria-label="Pagination" hidden></div>
           </div>
           <div id="summaryMetrics" class="summary-metrics" aria-label="Lead summary metrics"></div>
         </div>
@@ -9879,6 +9887,8 @@ const state = {
   exportResult: null,
   rows: [],
   filteredRows: [],
+  resultsPage: 1,
+  resultsPageSize: 10,
   selectedId: null,
   selectedIds: new Set(),
   queueIds: new Set(),
@@ -18389,34 +18399,86 @@ function wireColumnReorder(root, scope) {
   window.addEventListener("pointerup", clearDragState, { once: true });
 }
 
-function renderResults() {
-  const rows = state.filteredRows;
-  document.getElementById("resultsCount").innerHTML = `<strong>${rows.length}</strong> result${rows.length === 1 ? "" : "s"}`;
-  syncEstateArchiveToggle();
-  const header = document.getElementById("resultsHeaderRow");
-  if (header) header.innerHTML = tableHeaderHtml("results", rows);
-  const selectAllMount = document.getElementById("resultsSelectAllMount");
-  if (selectAllMount) selectAllMount.innerHTML = selectAllCheckboxHtml(rows, "results");
-  syncSelectionLabels();
-  const body = document.getElementById("resultsBody");
-  if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="${orderedColumns("results").length + 1}"><span class="primary-text">No estate files match these filters.</span><span class="secondary-text">Try showing all missing info or lowering minimum evidence.</span></td></tr>`;
-    wireColumnReorder(document, "results");
+function resultsPageSize() {
+  return Math.max(1, Number(state.resultsPageSize) || 10);
+}
+
+function resultTotalPages(rows = state.filteredRows) {
+  return Math.max(1, Math.ceil((rows?.length || 0) / resultsPageSize()));
+}
+
+function clampResultsPage(rows = state.filteredRows) {
+  const total = resultTotalPages(rows);
+  const next = Math.max(1, Math.min(Number(state.resultsPage) || 1, total));
+  state.resultsPage = next;
+  return next;
+}
+
+function pagedResultRows(rows = state.filteredRows) {
+  const page = clampResultsPage(rows);
+  const size = resultsPageSize();
+  return rows.slice((page - 1) * size, page * size);
+}
+
+function renderSummaryPager(rows = state.filteredRows) {
+  const pager = document.getElementById("summaryPager");
+  if (!pager) return;
+  const total = Math.ceil((rows?.length || 0) / resultsPageSize());
+  if (total <= 1) {
+    pager.hidden = true;
+    pager.innerHTML = "";
     return;
   }
-  body.innerHTML = rows.map((row) => {
+  const current = clampResultsPage(rows);
+  pager.hidden = false;
+  pager.innerHTML = Array.from({ length: total }, (_, index) => {
+    const page = index + 1;
+    const active = page === current;
+    return `<button class="${active ? "is-active" : ""}" type="button" data-results-page="${page}" aria-label="${active ? "Current page" : "Open page"} ${page}" ${active ? `aria-current="page"` : ""}>${page}</button>`;
+  }).join("");
+  pager.querySelectorAll("[data-results-page]").forEach((button) => {
+    button.addEventListener("click", () => setResultsPage(Number(button.dataset.resultsPage)));
+  });
+}
+
+function setResultsPage(page) {
+  state.resultsPage = Math.max(1, Number(page) || 1);
+  clampResultsPage();
+  renderSummaryPager();
+  renderResultsPage({ animate: true });
+}
+
+function renderResultsPage({ animate = false } = {}) {
+  const rows = state.filteredRows;
+  const visibleRows = pagedResultRows(rows);
+  const body = document.getElementById("resultsBody");
+  if (!body) return;
+  const selectAllMount = document.getElementById("resultsSelectAllMount");
+  if (selectAllMount) selectAllMount.innerHTML = selectAllCheckboxHtml(visibleRows, "results");
+  if (!rows.length) {
+    body.classList.remove("is-page-transition");
+    body.innerHTML = `<tr><td colspan="${orderedColumns("results").length + 1}"><span class="primary-text">No estate files match these filters.</span><span class="secondary-text">Try showing all missing info or lowering minimum evidence.</span></td></tr>`;
+    syncSelectionLabels();
+    wireBatchSelection(document, "[data-row-id]", "results");
+    return;
+  }
+  body.classList.toggle("is-page-transition", animate);
+  body.innerHTML = visibleRows.map((row, index) => {
     const checked = state.selectedIds.has(row.id);
     const classes = [
       row.id === state.selectedId ? "is-current" : "",
       checked ? "is-batch-selected" : ""
     ].filter(Boolean).join(" ");
-	    return `
-	      <tr data-row-id="${escapeHtml(row.id)}" class="${classes}">
-	        <td>${checkboxHtml(row.id, `Select ${row.leadName} for batch export`, checked, `data-row-select="${escapeHtml(row.id)}"`)}</td>
-	        ${orderedColumns("results").map((key) => resultCellHtml(key, row)).join("")}
-	      </tr>
-	    `;
-	  }).join("");
+    return `
+      <tr data-row-id="${escapeHtml(row.id)}" class="${classes}" style="--row-index: ${index}">
+        <td>${checkboxHtml(row.id, `Select ${row.leadName} for batch export`, checked, `data-row-select="${escapeHtml(row.id)}"`)}</td>
+        ${orderedColumns("results").map((key) => resultCellHtml(key, row)).join("")}
+      </tr>
+    `;
+  }).join("");
+  if (animate) {
+    window.setTimeout(() => body.classList.remove("is-page-transition"), 520);
+  }
 
   body.querySelectorAll("[data-row-id]").forEach((rowEl) => {
     rowEl.addEventListener("click", () => {
@@ -18444,9 +18506,21 @@ function renderResults() {
       updateImportedEstateLifecycle(button.dataset.estateId, button.dataset.estateLifecycle);
     });
   });
-	  wireBatchSelection(document, "[data-row-id]", "results");
-	  wireColumnReorder(document, "results");
-	  applyColumnVisibility();
+  wireBatchSelection(document, "[data-row-id]", "results");
+  applyColumnVisibility();
+  syncSelectionLabels();
+}
+
+function renderResults() {
+  const rows = state.filteredRows;
+  document.getElementById("resultsCount").innerHTML = `<strong>${rows.length}</strong> result${rows.length === 1 ? "" : "s"}`;
+  syncEstateArchiveToggle();
+  const header = document.getElementById("resultsHeaderRow");
+  if (header) header.innerHTML = tableHeaderHtml("results", rows);
+  clampResultsPage(rows);
+  renderSummaryPager(rows);
+  renderResultsPage();
+  wireColumnReorder(document, "results");
 	}
 
 function searchPopupMatches(query) {
