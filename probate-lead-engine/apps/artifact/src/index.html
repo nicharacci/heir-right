@@ -13579,6 +13579,19 @@ function todayLongLabel() {
   });
 }
 
+function processRunDateLabel(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function estateDiscoveryLastRunLabel(row = selectedRow()) {
+  const flowState = existingDocPrepFlowState(row, "discovery");
+  const runDate = processRunDateLabel(flowState?.updatedAt || flowState?.startedAt);
+  return runDate ? `Last ran ${runDate}` : "Not run yet";
+}
+
 function processProgressDots(done, total) {
   const safeTotal = Math.max(1, Math.min(14, Number(total) || 1));
   const safeDone = Math.max(0, Math.min(safeTotal, Number(done) || 0));
@@ -13751,7 +13764,7 @@ function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
       total: discoveryStats.total,
       tag: "",
       due: `${discoveryDone}/${docPrepPhases("discovery").length} source steps`,
-      status: discoveryStats.missing ? `${discoveryStats.linked}/${discoveryStats.total}` : "Ready to submit",
+      status: estateDiscoveryLastRunLabel(row),
       ready: discoveryStats.missing === 0 && discoveryDone >= docPrepPhases("discovery").length
     },
     {
