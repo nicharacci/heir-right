@@ -1471,6 +1471,7 @@
       display: grid;
       grid-template-columns: var(--filters-width, 320px) minmax(0, 1fr);
       overflow: hidden;
+      border-radius: 26px;
       transition: grid-template-columns .26s var(--ease-out);
     }
 
@@ -8635,7 +8636,7 @@
         width: auto;
         max-width: none;
       }
-      .content { grid-template-columns: 1fr; overflow: visible; }
+      .content { grid-template-columns: 1fr; overflow: visible; border-radius: 0; }
       .content.is-filter-collapsed { grid-template-columns: 1fr; }
       .filters { max-height: none; }
       .content.is-filter-collapsed .filters {
