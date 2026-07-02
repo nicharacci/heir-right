@@ -320,17 +320,27 @@ function workerApiBase() {
   return process.env.HEIRRIGHT_WORKER_URL || process.env.WORKER_API_URL || process.env.WORKER_BASE_URL || "";
 }
 
-async function proxyWorkerJson(pathname, options = {}) {
-  const base = workerApiBase().replace(/\/+$/, "");
-  if (!base) return null;
+function workerProxyHeaders(req, options = {}) {
   const headers = {
     "content-type": "application/json",
     ...(options.headers || {}),
   };
   if (process.env.HEIRRIGHT_API_TOKEN) headers.authorization = `Bearer ${process.env.HEIRRIGHT_API_TOKEN}`;
+  if (req?.headers?.cookie) headers.cookie = req.headers.cookie;
+  if (req) {
+    headers["x-heirright-public-origin"] = originFor(req);
+    headers["x-forwarded-host"] = req.headers["x-forwarded-host"] || req.headers.host || "";
+    headers["x-forwarded-proto"] = req.headers["x-forwarded-proto"] || (originFor(req).startsWith("https:") ? "https" : "http");
+  }
+  return headers;
+}
+
+async function proxyWorkerJson(pathname, options = {}) {
+  const base = workerApiBase().replace(/\/+$/, "");
+  if (!base) return null;
   const response = await fetch(`${base}${pathname}`, {
     ...options,
-    headers,
+    headers: workerProxyHeaders(options.req, options),
   });
   const text = await response.text();
   return {
@@ -338,6 +348,30 @@ async function proxyWorkerJson(pathname, options = {}) {
     body: text,
     contentType: response.headers.get("content-type") || "application/json; charset=utf-8",
   };
+}
+
+async function proxyWorkerHttp(req, res, pathname, options = {}) {
+  const base = workerApiBase().replace(/\/+$/, "");
+  if (!base) return false;
+  const response = await fetch(`${base}${pathname}`, {
+    method: options.method || req.method || "GET",
+    headers: workerProxyHeaders(req, options),
+    body: options.body,
+    redirect: "manual",
+  });
+  const headers = {
+    "content-type": response.headers.get("content-type") || "text/html; charset=utf-8",
+    "cache-control": response.headers.get("cache-control") || "no-store",
+  };
+  const location = response.headers.get("location");
+  if (location) headers.location = location;
+  const setCookies = typeof response.headers.getSetCookie === "function"
+    ? response.headers.getSetCookie()
+    : [response.headers.get("set-cookie")].filter(Boolean);
+  if (setCookies.length) headers["set-cookie"] = setCookies;
+  res.writeHead(response.status, headers);
+  res.end(await response.text());
+  return true;
 }
 
 function readJsonBody(req) {
@@ -441,6 +475,7 @@ function localIdiLockKey(body = {}) {
 async function handleIdiAssetImport(req, res) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
   const proxied = await proxyWorkerJson("/api/discovery/idi-asset-search/import", {
+    req,
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -482,6 +517,7 @@ async function handleIdiAssetImport(req, res) {
 async function handleSourceCapture(req, res) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
   const proxied = await proxyWorkerJson("/api/discovery/source-capture", {
+    req,
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -510,6 +546,7 @@ async function handleSourceCapture(req, res) {
 async function handleContactCandidateReview(req, res, candidateId) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
   const proxied = await proxyWorkerJson(`/api/discovery/contact-candidates/${encodeURIComponent(candidateId)}/review`, {
+    req,
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -634,6 +671,7 @@ async function localControlledPodioExport() {
 async function handleLocalExport(req, res) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
   const proxied = await proxyWorkerJson("/api/exports", {
+    req,
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -689,6 +727,7 @@ async function handleLocalExport(req, res) {
 async function handleFreshLeadBatch(req, res) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
   const proxied = await proxyWorkerJson("/api/leads/fresh-batch", {
+    req,
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -719,7 +758,7 @@ async function handleFreshLeadBatch(req, res) {
 }
 
 async function handleDeepHealth(req, res) {
-  const proxied = await proxyWorkerJson("/api/health/deep", { method: "GET" });
+  const proxied = await proxyWorkerJson("/api/health/deep", { req, method: "GET" });
   if (proxied) {
     res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
     res.end(proxied.body);
@@ -743,7 +782,7 @@ async function handleDeepHealth(req, res) {
 }
 
 async function handlePodioDiagnostics(req, res) {
-  const proxied = await proxyWorkerJson("/api/podio/diagnostics", { method: "GET" });
+  const proxied = await proxyWorkerJson("/api/podio/diagnostics", { req, method: "GET" });
   if (proxied) {
     res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
     res.end(proxied.body);
@@ -765,6 +804,7 @@ async function handleClosingDocsGoogleExport(req, res) {
     proxiedBody.dryRun = url.searchParams.get("dry-run") !== "false";
   }
   const proxied = await proxyWorkerJson("/api/closing-docs/export-google", {
+    req,
     method: "POST",
     body: JSON.stringify(proxiedBody),
   });
@@ -831,6 +871,7 @@ async function createVercelLinearIssue(title, description) {
 async function handleOutreachSync(req, res) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
   const proxied = await proxyWorkerJson("/api/outreach/sync", {
+    req,
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -980,6 +1021,17 @@ function handleRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/api/podio/oauth/start" || url.pathname === "/api/podio/oauth/callback") {
+    proxyWorkerHttp(req, res, `${url.pathname}${url.search}`)
+      .then((proxied) => {
+        if (!proxied) {
+          sendJson(res, 503, { ok: false, error: "worker_unavailable", message: "Podio connect is unavailable until the Worker URL is configured." });
+        }
+      })
+      .catch((error) => sendJson(res, 502, { ok: false, error: error.message }));
+    return;
+  }
+
   if (url.pathname === "/auth/session") {
     sendJson(res, 200, sessionBody(req));
     return;
@@ -1035,7 +1087,7 @@ function handleRequest(req, res) {
   }
 
   if (url.pathname === "/api/connections/status") {
-    proxyWorkerJson("/api/connections/status")
+    proxyWorkerJson("/api/connections/status", { req, method: "GET" })
       .then((proxied) => {
         if (proxied) {
           res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
@@ -1074,7 +1126,16 @@ function handleRequest(req, res) {
   }
 
   if (url.pathname === "/connection-status.json") {
-    sendJson(res, 200, localConnectionStatuses(), { "cache-control": "no-store" });
+    proxyWorkerJson("/connection-status.json", { req, method: "GET" })
+      .then((proxied) => {
+        if (proxied) {
+          res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+          res.end(proxied.body);
+          return;
+        }
+        sendJson(res, 200, localConnectionStatuses(), { "cache-control": "no-store" });
+      })
+      .catch((error) => sendJson(res, 502, { ok: false, error: error.message }));
     return;
   }
 
@@ -1132,7 +1193,7 @@ function handleRequest(req, res) {
   }
 
   if (url.pathname === "/daily-run.json") {
-    const proxied = proxyWorkerJson("/daily-run.json");
+    const proxied = proxyWorkerJson("/daily-run.json", { req, method: "GET" });
     proxied.then((response) => {
       if (response) {
         res.writeHead(response.status, { "content-type": response.contentType, "cache-control": "no-store" });
@@ -1155,7 +1216,7 @@ function handleRequest(req, res) {
       ? firstExistingPath(qualificationReviewMarkdownOutput, distQualificationReviewMarkdownOutput)
       : firstExistingPath(qualificationReviewJsonOutput, distQualificationReviewJsonOutput);
     const contentType = url.pathname.endsWith(".md") ? "text/markdown; charset=utf-8" : "application/json; charset=utf-8";
-    const proxied = proxyWorkerJson(url.pathname);
+    const proxied = proxyWorkerJson(url.pathname, { req, method: "GET" });
     proxied.then((response) => {
       if (response) {
         res.writeHead(response.status, { "content-type": response.contentType, "cache-control": "no-store" });
@@ -1177,7 +1238,7 @@ function handleRequest(req, res) {
       ? firstExistingPath(readbackEvidenceMarkdownOutput, distReadbackEvidenceMarkdownOutput)
       : firstExistingPath(readbackEvidenceJsonOutput, distReadbackEvidenceJsonOutput);
     const contentType = url.pathname.endsWith(".md") ? "text/markdown; charset=utf-8" : "application/json; charset=utf-8";
-    const proxied = proxyWorkerJson(url.pathname);
+    const proxied = proxyWorkerJson(url.pathname, { req, method: "GET" });
     proxied.then((response) => {
       if (response) {
         res.writeHead(response.status, { "content-type": response.contentType, "cache-control": "no-store" });

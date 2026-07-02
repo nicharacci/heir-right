@@ -1171,7 +1171,7 @@
     .import-split-main:hover,
     .import-split-main:focus-visible {
       outline: 0;
-      background: rgba(235,235,245,.10);
+      background: transparent;
     }
 
     .import-split-menu:hover,
@@ -1650,48 +1650,36 @@
     }
 
     .quick-actions .btn.quick.walkthrough-replay {
-      width: 36px;
-      min-width: 36px;
-      height: 30px;
-      padding: 0;
+      width: auto;
+      min-width: auto;
+      height: 36px;
+      padding: 0 10px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      color: #9ed3ff;
-      border: 1px solid rgba(142, 200, 255, .28);
-      border-radius: 999px;
-      background:
-        radial-gradient(circle at 36% 22%, rgba(255,255,255,.22), transparent 35%),
-        linear-gradient(180deg, rgba(55, 132, 216, .22), rgba(11, 19, 31, .08));
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.18),
-        inset 0 -1px 0 rgba(5, 35, 78, .28),
-        0 8px 20px rgba(10,132,255,.12);
-      backdrop-filter: saturate(180%) blur(18px);
-      -webkit-backdrop-filter: saturate(180%) blur(18px);
-      transition: transform .16s var(--ease), color .16s var(--ease), border-color .16s var(--ease), box-shadow .16s var(--ease), background .16s var(--ease);
+      color: var(--muted);
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transition: transform .16s var(--ease), color .16s var(--ease), background .16s var(--ease);
     }
 
     .quick-actions .btn.quick.walkthrough-replay:hover,
     .quick-actions .btn.quick.walkthrough-replay:focus-visible {
-      color: #d8efff;
-      border-color: rgba(142, 200, 255, .52);
-      background:
-        radial-gradient(circle at 34% 20%, rgba(255,255,255,.28), transparent 36%),
-        linear-gradient(180deg, rgba(73, 158, 250, .32), rgba(15, 35, 63, .14));
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.24),
-        inset 0 -1px 0 rgba(5, 35, 78, .25),
-        0 0 0 1px rgba(142,200,255,.11),
-        0 10px 24px rgba(10,132,255,.18);
+      color: var(--text);
+      background: rgba(255,255,255,.08);
+      box-shadow: none;
       transform: translateY(-1px);
       outline: 0;
     }
 
     .quick-actions .btn.quick.walkthrough-replay svg {
-      width: 18px;
-      height: 18px;
-      filter: drop-shadow(0 0 7px rgba(107, 174, 255, .22));
+      width: 16px;
+      height: 16px;
+      filter: none;
     }
 
     .export-menu {
@@ -2993,7 +2981,7 @@
 
     .docprep-file-status-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(154px, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 10px;
       min-width: 0;
       padding-left: 34px;
@@ -3395,6 +3383,15 @@
       color: var(--green);
       border-color: color-mix(in srgb, var(--green) 58%, transparent);
       background: var(--green-soft);
+    }
+
+    .linear-status-check-mark {
+      width: 11px;
+      height: 7px;
+      border-left: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: translateY(-1px) rotate(-45deg);
+      transform-origin: center;
     }
 
     .linear-status-icon[data-state="active"],
@@ -3900,7 +3897,7 @@
       }
     }
 
-    @media (max-width: 1380px) {
+    @media (max-width: 1180px) {
       .docprep-file-status-grid {
         grid-template-columns: repeat(2, minmax(180px, 1fr));
       }
@@ -9311,11 +9308,11 @@
         text-overflow: ellipsis;
       }
       .quick-actions .btn.quick.walkthrough-replay {
-        width: 36px;
-        min-width: 36px;
-        flex: 0 0 36px;
-        justify-self: end;
-        padding: 0;
+        width: 100%;
+        min-width: 0;
+        flex: 1 1 0;
+        justify-self: stretch;
+        padding-inline: 9px;
       }
       .quick-actions .btn.quick + .btn.quick::before {
         display: none;
@@ -9762,7 +9759,7 @@
             <span id="exportToggleLabel" class="export-toggle-label">Prep export</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div id="exportPopover" class="export-popover solvys-liquid-glass-strong t-dropdown" data-origin="top-right" role="menu" aria-label="Choose handoff route">
+          <div id="exportPopover" class="export-popover solvys-liquid-glass-strong t-dropdown" data-origin="top-right" role="menu" aria-label="Choose export route">
             <button class="export-option" type="button" role="menuitem" data-export-route="queue">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h8M8 14h5M17 14l2 2 3-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
               <span><strong>Add to Queue</strong><span>Stage selected leads for one batch export review.</span></span>
@@ -9773,7 +9770,7 @@
             </button>
             <button class="export-option" type="button" role="menuitem" data-export-route="podio">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
-              <span><strong>Podio</strong><span>Prepare the completed report and lead fields for CRM handoff.</span></span>
+              <span><strong>Podio</strong><span>Prepare the completed report and lead fields for CRM review.</span></span>
             </button>
             <button class="export-option" type="button" role="menuitem" data-export-route="podio-test">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 5.5h14v13H5v-13Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 13h5M16 16.5l2 2 3-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -9781,7 +9778,7 @@
             </button>
             <button class="export-option" type="button" role="menuitem" data-export-route="both">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M8 7h10v12H8V7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1M11 11h4M11 15h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
-              <span><strong>Google + Podio</strong><span>Prepare one completed report package for both handoff routes.</span></span>
+              <span><strong>Google + Podio</strong><span>Prepare one completed report package for both export routes.</span></span>
             </button>
           </div>
         </div>
@@ -9805,6 +9802,7 @@
               <circle cx="12" cy="12" r="1.18" fill="rgba(18,22,28,.82)"/>
               <path d="M18 4.7 18.5 3.4l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5Z" fill="currentColor"/>
             </svg>
+            Guide
           </button>
         </div>
       </div>
@@ -9906,7 +9904,7 @@
               <option value="heirs">Heirs or family tree</option>
               <option value="probate">Probate status</option>
               <option value="phones">Phone numbers</option>
-              <option value="podio">CRM handoff</option>
+              <option value="podio">CRM review</option>
             </select>
           </div>
           <label class="switch-row">
@@ -10022,7 +10020,7 @@
               </section>
               <section class="glass-card detail-card">
                 <h3 class="card-title">30-Day readiness blockers</h3>
-                <p class="copy">These explain why the demo cannot yet claim enough reviewed leads or a live CRM handoff.</p>
+                <p class="copy">These explain why the demo cannot yet claim enough reviewed leads or a live CRM review.</p>
                 <ul id="milestoneBlockers" class="mini-list"></ul>
               </section>
               <section class="glass-card detail-card">
@@ -10222,7 +10220,7 @@
         <span id="statusRun" class="footer-token">packet: [LOADING]</span>
         <span id="statusSelected" class="footer-token">selected: [NONE]</span>
         <span id="statusRail" class="footer-token">rail: [CLOSED]</span>
-        <span id="statusExport" class="footer-token">handoff: [PREP ONLY]</span>
+        <span id="statusExport" class="footer-token">export: [PREP ONLY]</span>
       </div>
       <div class="connection-statuses" aria-label="Connection status">
         <span id="podioStatus" class="connection-chip neutral"><span class="connection-dot" aria-hidden="true"></span>Podio · Unknown</span>
@@ -10325,7 +10323,7 @@ const state = {
     provider: "podio"
   },
   columnOrder: {
-    results: ["address", "lead", "score", "evidence", "next"],
+    results: ["address", "lead", "score", "evidence"],
     dossiers: ["address", "lead", "score", "evidence"]
   },
   dripSettings: {
@@ -10431,7 +10429,7 @@ const columnMap = {
 };
 
 const defaultColumnOrder = {
-  results: ["address", "lead", "score", "evidence", "next"],
+  results: ["address", "lead", "score", "evidence"],
   dossiers: ["address", "lead", "score", "evidence"]
 };
 
@@ -10445,7 +10443,6 @@ const tableColumnLabels = {
 
 function tableColumnLabel(scope, key) {
   if (scope === "results" && key === "evidence") return estateDateColumnMode(state.filteredRows.length ? state.filteredRows : state.rows) === "passing" ? "Date of Passing" : "Last Sale Date";
-  if (scope === "results" && key === "next") return "Queue";
   return tableColumnLabels[key] ?? displayStatus(key);
 }
 
@@ -10512,7 +10509,7 @@ const discoveryPhases = [
     label: "Dossier export",
     source: "Podio prep",
     summary: "Prepare the completed dossier packet, Podio fields, and Google export rows after source evidence and contacts are reviewed.",
-    steps: ["Review Discovery Dossier and completed report.", "Stage Podio fields and Google Sheets row.", "Hold live handoff until approval and readback are proven."],
+    steps: ["Review Discovery Dossier and completed report.", "Stage Podio fields and Google Sheets row.", "Hold live export until approval and readback are proven."],
     preferences: ["Prep only", "Batch export", "Require readback proof"]
   }
 ];
@@ -10560,7 +10557,7 @@ const closingDocPhases = [
     label: "Closing package",
     source: "Closing docs template",
     summary: "Prepare purchase agreement, seller packet, assignment or deed request, escrow notes, and final recording checklist as one review bundle.",
-    steps: ["Draft the closing packet from linked source facts.", "Stage Podio tasks and Google Sheets row.", "Hold live handoff until approval and readback are proven."],
+    steps: ["Draft the closing packet from linked source facts.", "Stage Podio tasks and Google Sheets row.", "Hold live export until approval and readback are proven."],
     preferences: ["Bundle docs together", "Stage CRM tasks", "Require readback proof"]
   }
 ];
@@ -10571,8 +10568,8 @@ const docPrepFlows = {
     label: "Estate Discovery",
     title: "Estate Discovery",
     shortTitle: "Estate Discovery",
-    cta: "Begin Estate Discovery",
-    tag: "Running the play",
+    cta: "Run Full Discovery",
+    tag: "",
     copy: "Run the source-backed estate play: owner, property, deed, taxes, probate, heirs, IDI, contacts, and lead report.",
     phases: discoveryPhases
   },
@@ -10581,7 +10578,7 @@ const docPrepFlows = {
     label: "Closing Prep",
     title: "Closing Prep",
     shortTitle: "Closing Prep",
-    cta: "Begin Closing Prep",
+    cta: "Run Closing Prep",
     tag: "Closing templates",
     copy: "Turn a reviewed estate into the closing-template packet without leaving the same estate file.",
     phases: closingDocPhases
@@ -11798,8 +11795,8 @@ function buildMissingSections(dossier) {
     },
     {
       id: "podio",
-      label: "Prepare CRM handoff",
-      short: "CRM handoff",
+      label: "Prepare CRM review",
+      short: "CRM review",
       type: "podio",
       source: "CRM prep",
       copy: "Prepare the Doc Prep package, missing setup list, approval steps, and readback checks.",
@@ -12394,7 +12391,7 @@ function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
     markdown: "The selected dossier packets are staged for batch export review. No live Podio card, Google Doc, Google Sheet row, email, or SMS was created.",
     updatedAt: Date.now()
   };
-  document.getElementById("statusExport").textContent = `handoff: [${count} QUEUED]`;
+  document.getElementById("statusExport").textContent = `export: [${count} QUEUED]`;
   document.getElementById("topStatus").textContent = `${count} lead${count === 1 ? "" : "s"} added to Queue for batch export review.`;
   addShellEvent("Leads added to Queue", `${count} dossier packet${count === 1 ? "" : "s"} staged for batch export review. Live writes remain locked.`, "review", true);
   renderCurrentLoopView();
@@ -12793,7 +12790,7 @@ function exportSuccessActivityTitle() {
 }
 
 function exportSuccessActivityCopy(destination = "your integrated CRM") {
-  const target = String(destination || "handoff queue").trim();
+  const target = String(destination || "export queue").trim();
   return `The Doc Prep package is prepared for ${target} review. No live Podio card, Google Doc, Google Sheet row, email, or SMS is created until approval and readback proof are complete.`;
 }
 
@@ -13181,13 +13178,13 @@ function renderShellPanels() {
   if (events) events.textContent = String(Math.max(state.shellEvents.length, defaultShellEvents().length));
   if (runtimeRunId) {
     runtimeRunId.textContent = state.data?.runId
-      ? "The latest lead packet was checked for missing property, tax, probate, heir, report, and CRM handoff items."
+    ? "The latest lead packet was checked for missing property, tax, probate, heir, report, and CRM review items."
       : "Waiting for the next lead packet.";
     runtimeRunId.title = state.data?.runId ? String(state.data.runId) : "";
   }
   if (linearSyncState) {
     linearSyncState.textContent = state.activityOpen
-      ? "The review trail is open so the team can see recent handoff and report activity."
+      ? "The review trail is open so the team can see recent export and report activity."
       : "Finish review-screen polish, then clear CRM access and readback proof.";
   }
   renderActivityDrawer();
@@ -13199,7 +13196,7 @@ function uniqueItems(items) {
 
 function operatorBlockerText(value) {
   return String(value || "")
-    .replace(/Podio export is blocked until .*field map.*configured\./i, "Podio handoff is blocked until CRM access, the Leads app, and field mapping are approved.")
+    .replace(/Podio export is blocked until .*field map.*configured\./i, "Podio review is blocked until CRM access, the Leads app, and field mapping are approved.")
     .replace(/Missing Podio export config: /i, "Podio setup still needed before an approved sample card and confirmation readback: ")
     .replace(/Missing Google Workspace config: /i, "Google setup still needed before Docs, Sheets, and confirmation readback: ")
     .replace(/Raw lead count/i, "Raw leads")
@@ -13228,7 +13225,7 @@ function operatorSetupLabel(value) {
   if (/PODIO_FIELD_MAP_JSON/i.test(text)) return "Podio field map";
   if (/PODIO_ACCESS_TOKEN/i.test(text)) return "Podio access";
   if (/PODIO_APP_ID/i.test(text)) return "Podio Leads app";
-  if (/GOOGLE|DRIVE|DOCS|SHEETS/i.test(text)) return "Google handoff destination";
+  if (/GOOGLE|DRIVE|DOCS|SHEETS/i.test(text)) return "Google export destination";
   if (/TOKEN|SECRET|CREDENTIAL/i.test(text)) return "Approved access";
   return displayStatus(text.replace(/[_=]/g, " "));
 }
@@ -13241,9 +13238,9 @@ function milestoneBlockerLabel(blocker) {
   if (/lead list|production county seed|raw lead/i.test(blocker)) return "Lead list size";
   if (/ready-lead|qualified|counted as ready|No lead is ready/i.test(blocker)) return "Ready-lead count";
   if (/county-record|property, tax, deed|source record/i.test(blocker)) return "County-record facts";
-  if (/CRM|Podio/i.test(blocker)) return "CRM handoff";
+  if (/CRM|Podio/i.test(blocker)) return "CRM review";
   if (/report section|completed lead/i.test(blocker)) return "Report completion";
-  if (/Google|Drive|Docs|Sheet/i.test(blocker)) return "Google handoff";
+  if (/Google|Drive|Docs|Sheet/i.test(blocker)) return "Google export";
   return "Review item";
 }
 
@@ -13263,7 +13260,7 @@ function milestoneBlockers(dossier) {
 
   const podio = dossier?.crm?.payload?.podioReadiness ?? {};
   if ((podio.missingConfig?.length ?? 0) || (podio.blockers?.length ?? 0)) {
-    blockers.push("CRM handoff is not live yet. We still need CRM access, one approved test record, and a readback check showing the CRM saved it correctly.");
+    blockers.push("CRM review is not live yet. We still need CRM access, one approved test record, and a readback check showing the CRM saved it correctly.");
   }
 
   const reportMissing = dossier?.completedLeadReport?.missingData?.length ?? buildMissingSections(dossier ?? {}).length;
@@ -13275,7 +13272,10 @@ function milestoneBlockers(dossier) {
     blockers.push(`${blockedSourceAreas} county-record checks still need property, tax, deed, probate, or heir facts from the source records.`);
   }
 
-  blockers.push("Google handoff is not live yet. Drive, Docs, and tracking Sheet destinations still need approval.");
+  const googleConnection = connectionByName("Google");
+  if (!(googleConnection?.ok && googleConnection?.mode === "live")) {
+    blockers.push("Google Workspace export still needs Drive, Docs, and tracking Sheet approval.");
+  }
   return uniqueItems(blockers).slice(0, 6);
 }
 
@@ -13565,8 +13565,8 @@ function dashboardMilestones() {
     },
     {
       icon: "flag",
-      title: "Dossier handoff blockers",
-      copy: `${missing} report section${missing === 1 ? "" : "s"}, ${openReviews} review task${openReviews === 1 ? "" : "s"}, ${queued} queued for handoff.`,
+      title: "Dossier export blockers",
+      copy: `${missing} report section${missing === 1 ? "" : "s"}, ${openReviews} review task${openReviews === 1 ? "" : "s"}, ${queued} queued for export.`,
       date: queued ? "Queued" : "Next"
     }
   ];
@@ -13913,7 +13913,7 @@ function dossierDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
     },
     {
       id: "crm-handoff",
-      title: "CRM Handoff",
+      title: "CRM Review",
       flowIds: ["discovery", "closing-docs"],
       phaseId: "dossier-export",
       flowPhaseIds: { discovery: "dossier-export", "closing-docs": "closing-package" },
@@ -13978,7 +13978,7 @@ function linearStatusIconHtml(stateName = "pending", label = "Needed") {
     return `<span class="linear-status-icon" data-state="${stateValue}" aria-label="${escapeHtml(label)}"><span class="linear-status-spinner" aria-hidden="true"></span></span>`;
   }
   if (stateValue === "complete") {
-    return `<span class="linear-status-icon" data-state="complete" aria-label="${escapeHtml(label)}">${nucleoIcon("check-circle", 15)}</span>`;
+    return `<span class="linear-status-icon" data-state="complete" aria-label="${escapeHtml(label)}"><span class="linear-status-check-mark" aria-hidden="true"></span></span>`;
   }
   if (stateValue === "blocked") {
     return `<span class="linear-status-icon" data-state="blocked" aria-label="${escapeHtml(label)}">${nucleoIcon("flag", 15)}</span>`;
@@ -14300,8 +14300,8 @@ function defaultIdiCoreImportForRow(row) {
   const owner = docPrepOwnerLabel(row);
   return {
     importedAt: "2026-07-01T20:21:23.000Z",
-    importedBy: "S28 product loop",
-    source: "operator_import",
+    importedBy: "HeirRight import",
+    source: "approved_import",
     attachment: {
       label: "IDI Core asset report",
       fileName: `IDI Core - ${owner}.pdf`,
@@ -14435,7 +14435,7 @@ function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
     },
     {
       id: "handoff-review",
-      title: "Handoff Review",
+      title: "Export Review",
       rowId: handoffRow?.id || "",
       estate: docPrepEstateLabel(handoffRow),
       done: readyDocs,
@@ -14453,7 +14453,7 @@ function attentionItems(row = selectedRow(), dossier = dossierForRow(row)) {
     return [
       {
         title: "Load the latest estate packet",
-        copy: "The dashboard will show source tasks, missing documents, and handoff prep after the lead packet loads.",
+        copy: "The dashboard will show source tasks, missing documents, and export prep after the lead packet loads.",
         action: "Open Estates",
         view: "find-estates",
         urgent: true
@@ -14485,7 +14485,7 @@ function attentionItems(row = selectedRow(), dossier = dossierForRow(row)) {
   }
   if (blockers.length) {
     items.push({
-      title: "Handoff remains prep only",
+      title: "Export remains prep only",
       copy: estateFileName,
       action: "View",
       view: "queue",
@@ -14590,7 +14590,7 @@ function documentRequirementHtml(doc, row = selectedRow()) {
             <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("eye", 15)}<span>Preview</span></button>
             <button type="button" role="menuitem" data-ui-menu-action="link-generated" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("batch-tray", 15)}<span>Link generated packet</span></button>
             <button type="button" role="menuitem" data-ui-menu-action="replace" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("packet-clock", 15)}<span>Save new version</span></button>
-            <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("flag", 15)}<span>Stage for handoff</span></button>
+            <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("flag", 15)}<span>Stage for export</span></button>
           </span>
         </span>
         <span class="document-action-status">${linearStatusIconHtml(statusState, statusLabel)}</span>
@@ -15129,7 +15129,7 @@ function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(r
     ["Title proof", assetPhaseComplete(row, "title-clearance") ? "Deed and tax evidence captured" : "Needs deed and tax evidence"],
     ["Seller contacts", acceptedContactCandidates(row).length ? `${acceptedContactCandidates(row).length} accepted` : "Needs accepted signer contacts"],
     ["Offer math", offer.offerAmount ? moneyClaimValue(offer.offerAmount) : "Needs underwriting review"],
-    ["Bundle state", state.queueIds.has(row?.id) ? "Queued for handoff prep" : "Not queued"]
+    ["Bundle state", state.queueIds.has(row?.id) ? "Queued for export prep" : "Not queued"]
   ];
   return `
     <section class="glass-card rail-card">
@@ -15141,7 +15141,7 @@ function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(r
     </section>
     <section class="glass-card rail-card">
       <h3>Closing template families</h3>
-      <p class="copy">The generated packet maps every reviewed template family to estate facts and keeps missing fields visible before handoff.</p>
+      <p class="copy">The generated packet maps every reviewed template family to estate facts and keeps missing fields visible before export.</p>
       <ul class="mini-list">
         ${templateSummaries.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.blockers ? `${item.blockers} blocker${item.blockers === 1 ? "" : "s"}` : item.status)}</span></li>`).join("")}
       </ul>
@@ -15461,7 +15461,7 @@ function queueReadinessItems() {
   if (!queued.length) {
     return [{
       title: "No leads queued",
-      copy: "Add selected Estate Search or Dossier leads to Queue before reviewing handoff stages."
+      copy: "Add selected Estate Search or Dossier leads to Queue before reviewing export stages."
     }];
   }
   return queued.flatMap((row) => docPrepReadinessItems(row, dossierForRow(row)).map((item) => ({
@@ -15649,7 +15649,7 @@ function packageContentsItems() {
     ["source-notes", "Source Notes Review", "Source coverage and open review steps."],
     ["source-links", "Source Links", "Clickable public-record source links."],
     ["missing-data", "Missing Data", "Remaining facts needed before external use."],
-    ["podio-fields", "Podio Lead Fields", "CRM handoff fields staged for review."],
+    ["podio-fields", "Podio Lead Fields", "CRM review fields staged for review."],
     ["google-sheets", "Google Sheets Row", "One-row spreadsheet export shape."],
     ["next-action", "Next Action", "The next review step."]
   ];
@@ -15813,7 +15813,7 @@ function discoveryDossierHtml(row, dossier) {
   const property = dossier?.property ?? {};
   const missing = row?.missing ?? buildMissingSections(dossier ?? {});
   return pageShellHtml("Discovery Dossier", row?.leadName ?? "Lead file", `
-    <p class="muted">Prepared from the current public-record lead packet. Review-only until source notes and handoff gates clear.</p>
+    <p class="muted">Prepared from the current public-record lead packet. Review-only until source notes and export gates clear.</p>
 	    <table>
 	      <tr><th>Owner / estate</th><td>${escapeHtml(row?.owner ?? claimValue(property.ownerName, "Needs review"))}</td></tr>
 	      <tr><th>Property</th><td>${escapeHtml(row?.address ?? claimValue(property.address, "Needs review"))}</td></tr>
@@ -15831,7 +15831,7 @@ function discoveryDossierHtml(row, dossier) {
 	    <h2>Open source notes</h2>
     <ul>${(missing.length ? missing : buildMissingSections(dossier ?? {})).map((item) => `<li><strong>${escapeHtml(item.short ?? item.label)}</strong> - ${escapeHtml(item.copy)}</li>`).join("") || "<li>All current dossier sections are marked ready in this view.</li>"}</ul>
     <h2>Document packet</h2>
-    <p>Ten documents are staged for team review: discovery dossier, completed lead report, source notes, deed and title notes, tax history packet, probate request, heir contact matrix, outreach drafts, drip schedule, and CRM handoff.</p>
+    <p>Ten documents are staged for team review: discovery dossier, completed lead report, source notes, deed and title notes, tax history packet, probate request, heir contact matrix, outreach drafts, drip schedule, and CRM review.</p>
   `);
 }
 
@@ -15972,7 +15972,7 @@ function dripScheduleHtml(row) {
 
 function crmHandoffHtml(row, dossier) {
   const podio = dossier?.crm?.payload?.podioReadiness ?? {};
-  return pageShellHtml("CRM Handoff", row?.leadName ?? "Lead file", `
+  return pageShellHtml("CRM Review", row?.leadName ?? "Lead file", `
     <p class="muted">Prepared for Podio batch export. No live Podio card is created until access is approved and confirmation readback exists.</p>
     <table>
       <tr><th>Route</th><td>Podio batch prep</td></tr>
@@ -16517,7 +16517,7 @@ function renderDossiersView() {
           ${Object.values(docPrepFlows).map((item) => `
             <button class="doc-flow-tab" type="button" role="tab" data-doc-flow="${escapeHtml(item.id)}" aria-pressed="${item.id === flow.id ? "true" : "false"}">
               <strong>${escapeHtml(item.title)}</strong>
-              <span>${escapeHtml(`${discoveryProgress(item.id, row)}% · ${item.tag}`)}</span>
+              <span>${escapeHtml(`${discoveryProgress(item.id, row)}%${item.tag ? ` · ${item.tag}` : ""}`)}</span>
             </button>
           `).join("")}
         </div>
@@ -17694,7 +17694,7 @@ function renderQueueView() {
   target.innerHTML = `
     <div class="queue-layout">
       <section class="loop-panel queue-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch handoff prep</h2></div><button class="btn primary solvys-liquid-glass" type="button" data-queue-stage ${items.length ? "" : "disabled"}>Stage batch</button></div>
+        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch export prep</h2></div><button class="btn primary solvys-liquid-glass" type="button" data-queue-stage ${items.length ? "" : "disabled"}>Stage batch</button></div>
         <p class="copy">Use this queue after Discovery review to stage documents, CRM fields, and spreadsheet rows as one batch. Nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
         <ul class="queue-list">
           ${items.map((item, index) => `<li class="queue-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Estate Search and select leads before staging a batch.</span></li>`}
@@ -17724,11 +17724,11 @@ function renderQueueView() {
     actionRows.forEach((row) => state.queueIds.add(row.id));
     const count = actionRows.length;
     state.railPreview = {
-      title: `${count} lead${count === 1 ? "" : "s"} staged for batch handoff`,
+      title: `${count} lead${count === 1 ? "" : "s"} staged for batch export`,
       markdown: "Dossier packets, Podio fields and tasks, Google Docs body, and Google Sheets row are staged for team review. No live write was attempted.",
       updatedAt: Date.now()
     };
-    document.getElementById("statusExport").textContent = `handoff: [${count} BATCH PREPARED]`;
+    document.getElementById("statusExport").textContent = `export: [${count} BATCH PREPARED]`;
     document.getElementById("topStatus").textContent = `${count} lead${count === 1 ? "" : "s"} staged for batch export review. Live writes remain locked.`;
     addShellEvent("Doc Prep batch prepared", `${count} dossier packet${count === 1 ? " is" : "s are"} ready for team review. Live Podio, Google Docs, Google Sheets, email, and SMS actions remain locked until approval and readback proof.`, "review", true);
     renderShellPanels();
@@ -18454,16 +18454,16 @@ function runShellCommand(command, source = null, freeform = "") {
     addShellEvent("Report rail opened", "The current lead report is open for team review.", "ready", false);
     openUtilityRail("report", source);
   } else if (action === "record-blocker") {
-    document.getElementById("statusExport").textContent = "handoff: [BLOCKED]";
-    document.getElementById("topStatus").textContent = "Flag recorded: CRM handoff remains gated until access and readback proof.";
-    addShellEvent("Flag recorded", freeform || "CRM access, handoff approval, and readback proof are still required.", "blocked");
+    document.getElementById("statusExport").textContent = "export: [BLOCKED]";
+    document.getElementById("topStatus").textContent = "Flag recorded: CRM review remains gated until access and readback proof.";
+    addShellEvent("Flag recorded", freeform || "CRM access, export approval, and readback proof are still required.", "blocked");
   } else if (action === "stage-export") {
     state.railPreview = {
       title: "Doc Prep prepared for review",
       markdown: "The Doc Prep package is prepared in review-only mode. No live Podio card, Google Doc, Google Sheet row, email, or SMS was created.",
       updatedAt: Date.now()
     };
-    document.getElementById("statusExport").textContent = "handoff: [PREPARED]";
+    document.getElementById("statusExport").textContent = "export: [PREPARED]";
     addShellEvent(exportSuccessActivityTitle(), exportSuccessActivityCopy("your integrated CRM"), "review", false);
     openReportRailForHandoff(source, "docs");
   } else if (action === "linear-sync") {
@@ -18916,7 +18916,7 @@ function renderDiscoveryWizard(row, dossier) {
         </section>
         <section class="glass-card rail-card">
           <h3>Review notes</h3>
-          <textarea class="discovery-notes" data-discovery-notes="${escapeHtml(phase.id)}" placeholder="Add source notes, blockers, or handoff context for this phase.">${escapeHtml(docPrepNoteValue(phase.id, row, flow.id))}</textarea>
+          <textarea class="discovery-notes" data-discovery-notes="${escapeHtml(phase.id)}" placeholder="Add source notes, blockers, or export context for this phase.">${escapeHtml(docPrepNoteValue(phase.id, row, flow.id))}</textarea>
         </section>
       </div>
       <div class="discovery-actions">
@@ -18972,7 +18972,7 @@ function conciseNextStep(value) {
     .replace(/^Add tax history$/i, "Tax history")
     .replace(/^Check probate status$/i, "Probate")
     .replace(/^Add phone numbers$/i, "Phone numbers")
-    .replace(/^Prepare CRM handoff$/i, "CRM handoff")
+    .replace(/^Prepare CRM handoff$/i, "CRM review")
     .replace(/^Connect skip trace$/i, "Import IDI")
     .replace(/^Run skip trace$/i, "Import IDI");
 }
@@ -19078,7 +19078,7 @@ function renderSummary() {
     <button class="summary-metrics-toggle" type="button" aria-expanded="${open ? "true" : "false"}" aria-controls="summaryMetricsList" data-summary-metrics-toggle>
       <span>
         <strong>Estate KPIs</strong>
-        <span>${escapeHtml(metrics[0].value)} files · ${escapeHtml(metrics[1].value)} evidence items</span>
+        <span>${escapeHtml(metrics[0].value)} files · low ${escapeHtml(metrics[1].value)} · high ${escapeHtml(metrics[2].value)}</span>
       </span>
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
@@ -19183,6 +19183,7 @@ function orderedColumns(scope) {
 function tableHeaderHtml(scope, rows = []) {
   const selectScope = scope === "dossiers" ? "dossiers" : "results";
   const sort = state.sortState?.[scope] || {};
+  const actionColumn = selectScope === "results" ? `<th data-column="next" class="row-action-head" aria-label="Queue actions"></th>` : "";
   return `
     <th style="width: 42px;">${selectScope === "results" ? `<span id="resultsSelectAllMount"></span>` : selectAllCheckboxHtml(rows, "dossiers")}</th>
     ${orderedColumns(scope).map((key) => {
@@ -19198,6 +19199,7 @@ function tableHeaderHtml(scope, rows = []) {
         </th>
       `;
     }).join("")}
+    ${actionColumn}
   `;
 }
 
@@ -19355,7 +19357,7 @@ function renderResultsPage({ animate = false } = {}) {
   if (selectAllMount) selectAllMount.innerHTML = selectAllCheckboxHtml(visibleRows, "results");
   if (!rows.length) {
     body.classList.remove("is-page-transition");
-    body.innerHTML = `<tr><td colspan="${orderedColumns("results").length + 1}"><span class="primary-text">No estate files match these filters.</span><span class="secondary-text">Try showing all missing info or lowering minimum evidence.</span></td></tr>`;
+    body.innerHTML = `<tr><td colspan="${orderedColumns("results").length + 2}"><span class="primary-text">No estate files match these filters.</span><span class="secondary-text">Try showing all missing info or lowering minimum evidence.</span></td></tr>`;
     syncSelectionLabels();
     wireBatchSelection(document, "[data-row-id]", "results");
     return;
@@ -19371,6 +19373,7 @@ function renderResultsPage({ animate = false } = {}) {
       <tr data-row-id="${escapeHtml(row.id)}" class="${classes}" style="--row-index: ${index}">
         <td>${checkboxHtml(row.id, `Select ${row.leadName} for batch export`, checked, `data-row-select="${escapeHtml(row.id)}"`)}</td>
         ${orderedColumns("results").map((key) => resultCellHtml(key, row)).join("")}
+        ${resultCellHtml("next", row)}
       </tr>
     `;
   }).join("");
@@ -19755,7 +19758,7 @@ function renderRail() {
       <div class="rail-title-row">
         <div>
           <p class="eyebrow">Review packet</p>
-          <h2 class="rail-title">Fill these sections before handoff</h2>
+          <h2 class="rail-title">Fill these sections before export</h2>
         </div>
         ${statusPill(row.tone, row.tone === "blocked" ? "Blocked" : row.tone === "ready" ? "Ready" : "Review")}
       </div>
@@ -19845,7 +19848,7 @@ function railTimelineHtml(row, dossier) {
     ["County records checked", `${row.evidence} evidence sections attached so far.`],
     ["Report gaps visible", `${row.missing.length} missing section${row.missing.length === 1 ? "" : "s"} still need review.`],
     ["Team review", decisionCopy(dossier).next],
-    ["Handoff prep", "Podio and Google Workspace stay prep-only until access and approval are clear."]
+    ["Export prep", "Podio and Google Workspace stay prep-only until access and approval are clear."]
   ];
   return `
     <section class="glass-card rail-card">
@@ -20017,8 +20020,8 @@ function operatorConnectionMessage(connection, name) {
   const raw = connection?.message ?? "";
   const hasSetupDetail = /[A-Z0-9]+_[A-Z0-9_]+|config|credential|missing|token|field map/i.test(raw);
   if (!raw || hasSetupDetail) {
-    if (name === "Podio") return "Podio is not connected yet. Keep CRM handoff prep-only until access, one approved sample card, and confirmation are complete.";
-    if (name === "Google") return "Google Workspace handoff is not connected yet. Keep Docs and Sheets prep-only until destination approval is complete.";
+    if (name === "Podio") return "Podio is not connected yet. Keep CRM review prep-only until access, one approved sample card, and confirmation are complete.";
+    if (name === "Google") return "Google Workspace export is not connected yet. Keep Docs and Sheets prep-only until destination approval is complete.";
     if (name === "Resend") return "Resend fallback is not approved yet. Keep email drafts queued in Podio and use only controlled internal test recipients after approval.";
     if (name === "SMS Gateway") return "SMS delivery is not configured yet. Keep SMS templates in the app-owned queue until a carrier or Podio-native SMS path is approved.";
     if (name === "Web Search") return "Public-source validation needs a fresh checked lead packet before promotion.";
@@ -20070,7 +20073,7 @@ function updateConnectionStatuses() {
   setConnectionChip(
     "googleStatus",
     "review",
-    "Google Workspace handoff is prep-only. No live Docs or Sheets write has run.",
+    "Google Workspace export is prep-only. No live Docs or Sheets write has run.",
     "Prep only"
   );
   const publicSourceOk = (state.data?.facts ?? []).some((fact) => {
@@ -20170,7 +20173,7 @@ async function loadRun() {
       seedSearchHistoryFromCurrentRows();
       const firstSeed = freshBatch.seeds?.[0] ?? {};
       const firstLead = firstSeed.ownerName || firstSeed.estateName || cleanDisplayValue(firstSeed.propertyAddress) || "live public-source lead";
-      const summary = freshBatch.operatorSummary || `Pulled ${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead(s).`;
+      const summary = clientFacingCopy(freshBatch.operatorSummary || `Pulled ${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead(s).`);
       document.getElementById("topStatus").textContent = `${summary} First lead: ${firstLead}.`;
       await hydrateServerBackedState();
       return;
@@ -20279,7 +20282,7 @@ async function pullFreshBatch(source = null) {
 
     const firstSeed = result.seeds?.[0] ?? {};
     const firstLead = firstSeed.ownerName || firstSeed.estateName || cleanDisplayValue(firstSeed.propertyAddress) || "live public-source lead";
-    const summary = result.operatorSummary || `Pulled ${result.acceptedSeedCount ?? 0} live lead(s).`;
+    const summary = clientFacingCopy(result.operatorSummary || `Pulled ${result.acceptedSeedCount ?? 0} live lead(s).`);
     document.getElementById("topStatus").textContent = `${summary} First lead: ${firstLead}.`;
     setFreshBatchStatus(`${result.acceptedSeedCount} live lead${result.acceptedSeedCount === 1 ? "" : "s"} pulled from Miami-Dade Property Appraiser.`, "ready");
     addShellEvent(
@@ -20305,19 +20308,19 @@ function exportRouteMeta(route) {
   const routes = {
     google: {
       label: "Google Workspace",
-      status: "handoff: [GOOGLE]",
-      title: "Prepare Google Workspace handoff",
+      status: "export: [GOOGLE]",
+      title: "Prepare Google Workspace export",
       copy: "Prepare the completed report for Google Docs or Sheets review. Use this when the team needs a clean document package before outreach; no live file is created from the demo surface."
     },
     podio: {
       label: "Podio",
-      status: "handoff: [PODIO]",
-      title: "Prepare Podio handoff",
-      copy: "Prepare the completed report and lead fields for Podio. Use this when the file is ready for CRM handoff review, before any production card is created."
+      status: "export: [PODIO]",
+      title: "Prepare Podio review",
+      copy: "Prepare the completed report and lead fields for Podio. Use this when the file is ready for CRM review, before any production card is created."
     },
     "podio-test": {
       label: "Podio readiness check",
-      status: "handoff: [PODIO CHECK]",
+      status: "export: [PODIO CHECK]",
       title: "Run Podio readiness check",
       copy: "Create one approved sample Lead card in Podio and confirm it comes back.",
       dryRun: false,
@@ -20325,9 +20328,9 @@ function exportRouteMeta(route) {
     },
     both: {
       label: "Google + Podio",
-      status: "handoff: [GOOGLE + PODIO]",
-      title: "Prepare Google + Podio handoff",
-      copy: "Prepare one completed report package for Google Workspace review and Podio handoff; live writes stay locked until approval and readback proof."
+      status: "export: [GOOGLE + PODIO]",
+      title: "Prepare Google + Podio export",
+      copy: "Prepare one completed report package for Google Workspace review and Podio review; live writes stay locked until approval and readback proof."
     }
   };
   return routes[route] ?? routes.both;
@@ -20652,8 +20655,8 @@ async function chooseExportRoute(route, source = null) {
   }
   const meta = exportRouteMeta(route);
   if (!state.dossier) {
-    document.getElementById("topStatus").textContent = "Load the latest lead packet before choosing a handoff route.";
-    document.getElementById("statusExport").textContent = "handoff: [WAITING]";
+    document.getElementById("topStatus").textContent = "Load the latest lead packet before choosing an export route.";
+    document.getElementById("statusExport").textContent = "export: [WAITING]";
     return;
   }
   state.exportRoute = route;
@@ -20678,7 +20681,7 @@ async function chooseExportRoute(route, source = null) {
     ? "Checking Podio with an approved sample Lead card..."
     : isBatch
       ? `Preparing ${checkedCount} selected leads for ${meta.label} batch export review...`
-      : `Preparing completed report handoff for ${meta.label}...`;
+      : `Preparing completed report export for ${meta.label}...`;
   try {
     const response = await fetch("/api/exports", {
       method: "POST",
@@ -20713,10 +20716,10 @@ async function chooseExportRoute(route, source = null) {
             updatedAt: Date.now()
           }
         : {
-            title: `${meta.label} handoff blocked`,
+            title: `${meta.label} export blocked`,
             markdown: blockers.length
               ? blockers.map(operatorBlockerText).join(" ")
-              : "Approval and readback proof are required before a live handoff.",
+              : "Approval and readback proof are required before a live export.",
             updatedAt: Date.now()
           };
     document.getElementById("topStatus").textContent = testDelivered
@@ -20724,10 +20727,10 @@ async function chooseExportRoute(route, source = null) {
       : result.ok
         ? isBatch
           ? `${checkedCount} selected leads prepared for ${meta.label} batch export review. Live writes and readback still need approval before any external record is created.`
-          : `${meta.label} handoff prepared for review. Live write and readback still need approval before any external record is created.`
+          : `${meta.label} export prepared for review. Live write and readback still need approval before any external record is created.`
         : blockers.length
-          ? `${meta.label} handoff has ${blockers.length} blocker${blockers.length === 1 ? "" : "s"}.`
-          : `${meta.label} handoff is blocked.`;
+          ? `${meta.label} export has ${blockers.length} blocker${blockers.length === 1 ? "" : "s"}.`
+          : `${meta.label} export is blocked.`;
     document.getElementById("statusExport").textContent = testDelivered
       ? `${meta.status} [DELIVERED]`
       : result.ok ? `${meta.status} [PREPARED]` : `${meta.status} [BLOCKED]`;
@@ -20739,7 +20742,7 @@ async function chooseExportRoute(route, source = null) {
       blockers: [message],
       routes: [],
     };
-    document.getElementById("topStatus").textContent = `Handoff blocked: ${message}`;
+    document.getElementById("topStatus").textContent = `Export blocked: ${message}`;
     document.getElementById("statusExport").textContent = `${meta.status} [BLOCKED]`;
   }
   renderShellPanels();
@@ -20765,7 +20768,7 @@ function openUtilityRail(kind, source = null) {
       markdown: "Review the report preview and fill missing sections before outreach.",
       updatedAt: Date.now()
     };
-    document.getElementById("statusExport").textContent = "handoff: [REPORT VIEW]";
+    document.getElementById("statusExport").textContent = "export: [REPORT VIEW]";
     openRailWithContinuity(origin, "docs");
     return;
   }

@@ -28,6 +28,10 @@ interface CloudflareEnv {
   PODIO_LOGIN_URL?: string;
   PODIO_WORKSPACE_NAME?: string;
   PODIO_APP_NAME?: string;
+  PODIO_OAUTH_REDIRECT_URI?: string;
+  PODIO_OAUTH_COOKIE_SECRET?: string;
+  PODIO_OAUTH_STATE_COOKIE?: string;
+  PODIO_OAUTH_REFRESH_COOKIE?: string;
   AUTH_REQUIRED?: string;
   AUTH_SESSION_SECRET?: string;
   AUTH_SESSION_COOKIE?: string;
@@ -57,6 +61,8 @@ interface CloudflareEnv {
 
 const DEFAULT_ADDRESS = "20611 NW 33rd Pl, Miami Gardens, FL 33056";
 const DEFAULT_OWNER = "Fresh public-source lead";
+const PODIO_OAUTH_STATE_TTL_SECONDS = 10 * 60;
+const PODIO_OAUTH_REFRESH_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 function json(data: unknown, init: ResponseInit = {}): Response {
   return new Response(`${JSON.stringify(data, null, 2)}\n`, {
@@ -87,6 +93,8 @@ function routeList(): string[] {
     "/api/outreach/sync",
     "/api/exports",
     "/api/podio/diagnostics",
+    "/api/podio/oauth/start",
+    "/api/podio/oauth/callback",
     "/api/connections/status",
     "/api/health/deep",
     "/readback-evidence.json",
@@ -111,9 +119,37 @@ function parseCookie(header: string | null): Record<string, string> {
   return cookies;
 }
 
+function responseCookie(request: Request, name: string, value: string, maxAgeSeconds: number): string {
+  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure}`;
+}
+
+function clearResponseCookie(request: Request, name: string): string {
+  return responseCookie(request, name, "", 0);
+}
+
 function base64UrlToBase64(value: string): string {
   const padded = value.replace(/-/g, "+").replace(/_/g, "/");
   return padded + "=".repeat((4 - (padded.length % 4)) % 4);
+}
+
+function utf8ToBytes(value: string): Uint8Array {
+  return new TextEncoder().encode(value);
+}
+
+function bytesToUtf8(value: Uint8Array): string {
+  return new TextDecoder().decode(value);
+}
+
+function byteArrayBuffer(value: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(value.byteLength);
+  copy.set(value);
+  return copy.buffer;
+}
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const binary = atob(base64UrlToBase64(value));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 function bytesToBase64Url(bytes: Uint8Array): string {
@@ -122,16 +158,93 @@ function bytesToBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
+async function sha256Bytes(value: string): Promise<Uint8Array> {
+  const digest = await crypto.subtle.digest("SHA-256", byteArrayBuffer(utf8ToBytes(value)));
+  return new Uint8Array(digest);
+}
+
 async function hmacBase64Url(payload: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(secret),
+    byteArrayBuffer(utf8ToBytes(secret)),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  const signature = await crypto.subtle.sign("HMAC", key, byteArrayBuffer(utf8ToBytes(payload)));
   return bytesToBase64Url(new Uint8Array(signature));
+}
+
+function podioStateCookieName(env: CloudflareEnv): string {
+  return env.PODIO_OAUTH_STATE_COOKIE || "hr_podio_state";
+}
+
+function podioRefreshCookieName(env: CloudflareEnv): string {
+  return env.PODIO_OAUTH_REFRESH_COOKIE || "hr_podio_refresh";
+}
+
+function podioCookieSecret(env: CloudflareEnv): string {
+  return env.PODIO_OAUTH_COOKIE_SECRET || env.AUTH_SESSION_SECRET || env.HEIRRIGHT_API_TOKEN || "";
+}
+
+function publicOriginFor(request: Request): string {
+  const explicitOrigin = request.headers.get("x-heirright-public-origin");
+  if (explicitOrigin) return explicitOrigin.replace(/\/+$/, "");
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  if (forwardedHost) {
+    const proto = request.headers.get("x-forwarded-proto") || "https";
+    return `${proto}://${forwardedHost}`;
+  }
+  return new URL(request.url).origin;
+}
+
+function podioRedirectUri(request: Request, env: CloudflareEnv): string {
+  return env.PODIO_OAUTH_REDIRECT_URI || `${publicOriginFor(request)}/api/podio/oauth/callback`;
+}
+
+async function encryptCookieValue(value: string, env: CloudflareEnv): Promise<string | null> {
+  const secret = podioCookieSecret(env);
+  if (!secret) return null;
+  const keyBytes = await sha256Bytes(secret);
+  const key = await crypto.subtle.importKey("raw", byteArrayBuffer(keyBytes), { name: "AES-GCM" }, false, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv: byteArrayBuffer(iv) }, key, byteArrayBuffer(utf8ToBytes(value)));
+  return `${bytesToBase64Url(iv)}.${bytesToBase64Url(new Uint8Array(cipher))}`;
+}
+
+async function decryptCookieValue(value: string | undefined, env: CloudflareEnv): Promise<string | null> {
+  if (!value || !value.includes(".")) return null;
+  const secret = podioCookieSecret(env);
+  if (!secret) return null;
+  const [ivRaw, cipherRaw] = value.split(".");
+  if (!ivRaw || !cipherRaw) return null;
+  try {
+    const keyBytes = await sha256Bytes(secret);
+    const key = await crypto.subtle.importKey("raw", byteArrayBuffer(keyBytes), { name: "AES-GCM" }, false, ["decrypt"]);
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: byteArrayBuffer(base64UrlToBytes(ivRaw)) },
+      key,
+      byteArrayBuffer(base64UrlToBytes(cipherRaw)),
+    );
+    return bytesToUtf8(new Uint8Array(plain));
+  } catch {
+    return null;
+  }
+}
+
+async function podioRuntimeEnv(request: Request, env: CloudflareEnv): Promise<CloudflareEnv> {
+  const refreshCookie = parseCookie(request.headers.get("cookie"))[podioRefreshCookieName(env)];
+  const refreshToken = await decryptCookieValue(refreshCookie, env);
+  return refreshToken ? { ...env, PODIO_REFRESH_TOKEN: refreshToken } : env;
+}
+
+function html(body: string, init: ResponseInit = {}): Response {
+  const headers = new Headers(init.headers);
+  if (!headers.has("content-type")) headers.set("content-type", "text/html; charset=utf-8");
+  return new Response(body, {
+    ...init,
+    headers,
+  });
 }
 
 function emailAllowed(email: string | undefined, env: CloudflareEnv): boolean {
@@ -742,8 +855,9 @@ async function outreachSyncResponse(request: Request, env: CloudflareEnv): Promi
   }, { headers: { "cache-control": "no-store" } });
 }
 
-async function deepHealthResponse(env: CloudflareEnv): Promise<Response> {
-  const statuses = await connectionStatuses(env as Record<string, string | undefined>);
+async function deepHealthResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  const runtimeEnv = await podioRuntimeEnv(request, env);
+  const statuses = await connectionStatuses(runtimeEnv as Record<string, string | undefined>);
   return json({
     ok: true,
     backendTarget: "cloudflare-worker",
@@ -751,6 +865,7 @@ async function deepHealthResponse(env: CloudflareEnv): Promise<Response> {
     deploymentKey: env.DEPLOYMENT_KEY || "heirright",
     routes: Object.fromEntries(routeList().map((route) => [route, "available"])),
     connections: statuses,
+    podioBrowserBackedRefresh: Boolean(runtimeEnv.PODIO_REFRESH_TOKEN && !env.PODIO_REFRESH_TOKEN),
   }, { headers: { "cache-control": "no-store" } });
 }
 
@@ -783,14 +898,15 @@ async function podioJson(path: string, env: CloudflareEnv): Promise<{ ok: boolea
   };
 }
 
-async function podioDiagnosticsResponse(env: CloudflareEnv): Promise<Response> {
-  const appId = env.PODIO_APP_ID || TEXAS_EQUITY_PROS_LEADS_APP_ID;
-  const spaceId = env.PODIO_SPACE_ID || TEXAS_EQUITY_PROS_LEADS_SPACE_ID;
-  const auth = await resolvePodioAccessToken(env as Record<string, string | undefined>);
+async function podioDiagnosticsResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  const runtimeEnv = await podioRuntimeEnv(request, env);
+  const appId = runtimeEnv.PODIO_APP_ID || TEXAS_EQUITY_PROS_LEADS_APP_ID;
+  const spaceId = runtimeEnv.PODIO_SPACE_ID || TEXAS_EQUITY_PROS_LEADS_SPACE_ID;
+  const auth = await resolvePodioAccessToken(runtimeEnv as Record<string, string | undefined>);
   const [userStatus, app, members] = await Promise.all([
-    podioJson("/user/status", env),
-    podioJson(`/app/${appId}`, env),
-    podioJson(`/space/${spaceId}/member/`, env),
+    podioJson("/user/status", runtimeEnv),
+    podioJson(`/app/${appId}`, runtimeEnv),
+    podioJson(`/space/${spaceId}/member/`, runtimeEnv),
   ]);
   const memberRows = Array.isArray(members.data) ? members.data as Array<Record<string, unknown>> : [];
   const appObject = app.data && typeof app.data === "object" ? app.data as Record<string, unknown> : {};
@@ -809,6 +925,7 @@ async function podioDiagnosticsResponse(env: CloudflareEnv): Promise<Response> {
     appId,
     spaceId,
     authMode: auth.mode,
+    browserBackedRefresh: Boolean(runtimeEnv.PODIO_REFRESH_TOKEN && !env.PODIO_REFRESH_TOKEN),
     authOk: podioAuthOk,
     authBlocker: podioAuthOk ? null : authBlocker,
     setupOptions: podioAuthOk ? [] : [
@@ -827,8 +944,140 @@ async function podioDiagnosticsResponse(env: CloudflareEnv): Promise<Response> {
       count: memberRows.length,
     },
     profileCandidates: candidates,
-    configuredLeadPointProfileId: env.PODIO_LEAD_POINT_PROFILE_ID || null,
+    configuredLeadPointProfileId: runtimeEnv.PODIO_LEAD_POINT_PROFILE_ID || null,
   }, { headers: { "cache-control": "no-store" } });
+}
+
+function podioSetupHtml(title: string, copy: string, status: "ok" | "blocked" = "ok"): string {
+  const color = status === "ok" ? "#36d278" : "#f4c542";
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <style>
+    :root { color-scheme: dark; --page:#111214; --panel:#1b1d21; --line:#32353c; --text:#f4f6fb; --muted:#b8beca; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--page); color:var(--text); font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif; }
+    main { width:min(520px, calc(100vw - 32px)); border:1px solid var(--line); border-radius:24px; padding:24px; background:rgba(27,29,33,.86); box-shadow:0 24px 80px rgba(0,0,0,.34); }
+    .dot { width:14px; height:14px; border-radius:999px; background:${color}; box-shadow:0 0 24px ${color}; }
+    h1 { margin:16px 0 10px; font-size:28px; letter-spacing:0; }
+    p { margin:0 0 18px; color:var(--muted); line-height:1.5; }
+    a { color:var(--text); text-decoration:none; display:inline-flex; min-height:42px; align-items:center; justify-content:center; border-radius:999px; padding:0 16px; background:rgba(72,145,255,.72); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="dot" aria-hidden="true"></div>
+    <h1>${title}</h1>
+    <p>${copy}</p>
+    <a href="/">Back to HeirRight Leads</a>
+  </main>
+</body>
+</html>`;
+}
+
+async function podioOAuthStartResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  if (!env.PODIO_CLIENT_ID) {
+    return html(podioSetupHtml(
+      "Podio Connect Is Missing API Details",
+      "Add the Podio API client to the Worker before reconnecting Podio.",
+      "blocked",
+    ), { status: 503 });
+  }
+  if (!podioCookieSecret(env)) {
+    return html(podioSetupHtml(
+      "Podio Connect Needs A Cookie Secret",
+      "Add the HeirRight session secret or Podio OAuth cookie secret before reconnecting Podio.",
+      "blocked",
+    ), { status: 503 });
+  }
+  const state = crypto.randomUUID();
+  const signedState = `${state}.${await hmacBase64Url(state, podioCookieSecret(env))}`;
+  const params = new URLSearchParams({
+    client_id: env.PODIO_CLIENT_ID,
+    redirect_uri: podioRedirectUri(request, env),
+    response_type: "code",
+    state,
+  });
+  return new Response(null, {
+    status: 302,
+    headers: {
+      "set-cookie": responseCookie(request, podioStateCookieName(env), signedState, PODIO_OAUTH_STATE_TTL_SECONDS),
+      location: `https://podio.com/oauth/authorize?${params.toString()}`,
+      "cache-control": "no-store",
+    },
+  });
+}
+
+async function podioOAuthCallbackResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const stateCookie = parseCookie(request.headers.get("cookie"))[podioStateCookieName(env)];
+  const [cookieState, cookieSignature] = String(stateCookie || "").split(".");
+  const expectedSignature = cookieState ? await hmacBase64Url(cookieState, podioCookieSecret(env)) : "";
+  if (!code || !state || !cookieState || state !== cookieState || cookieSignature !== expectedSignature) {
+    return html(podioSetupHtml(
+      "Podio Connect Expired",
+      "Start the Podio connection again from Settings so HeirRight can verify the approved CRM account.",
+      "blocked",
+    ), {
+      status: 400,
+      headers: { "set-cookie": clearResponseCookie(request, podioStateCookieName(env)) },
+    });
+  }
+  if (!env.PODIO_CLIENT_ID || !env.PODIO_CLIENT_SECRET) {
+    return html(podioSetupHtml(
+      "Podio API Details Are Incomplete",
+      "Add the Podio API client secret to the Worker before reconnecting Podio.",
+      "blocked",
+    ), { status: 503 });
+  }
+  const tokenResponse = await fetch("https://api.podio.com/oauth/token/v2", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded; charset=utf-8" },
+    body: new URLSearchParams({
+      code,
+      client_id: env.PODIO_CLIENT_ID,
+      client_secret: env.PODIO_CLIENT_SECRET,
+      redirect_uri: podioRedirectUri(request, env),
+      grant_type: "authorization_code",
+    }),
+  });
+  const token = await tokenResponse.json().catch(() => ({})) as {
+    access_token?: string;
+    refresh_token?: string;
+    error?: string;
+    error_description?: string;
+  };
+  if (!tokenResponse.ok || !token.refresh_token) {
+    return html(podioSetupHtml(
+      "Podio Did Not Finish Connecting",
+      "Podio did not return refresh access for this approved account. Try reconnecting, or use the Leads app token fallback.",
+      "blocked",
+    ), {
+      status: 502,
+      headers: { "set-cookie": clearResponseCookie(request, podioStateCookieName(env)) },
+    });
+  }
+  const refreshCookie = await encryptCookieValue(token.refresh_token, env);
+  if (!refreshCookie) {
+    return html(podioSetupHtml(
+      "Podio Refresh Could Not Be Saved",
+      "HeirRight could not protect the Podio refresh access in the browser session. Add the Podio app token fallback before exporting.",
+      "blocked",
+    ), { status: 503 });
+  }
+  const headers = new Headers({ "cache-control": "no-store" });
+  headers.append("set-cookie", clearResponseCookie(request, podioStateCookieName(env)));
+  headers.append("set-cookie", responseCookie(request, podioRefreshCookieName(env), refreshCookie, PODIO_OAUTH_REFRESH_TTL_SECONDS));
+  return html(podioSetupHtml(
+    "Podio Connected",
+    "HeirRight can now refresh Podio access from this approved browser session. Settings will show Podio live after the Leads app readback succeeds.",
+  ), {
+    headers,
+  });
 }
 
 async function readbackEvidenceResponse(url: URL, env: CloudflareEnv, markdown: boolean): Promise<Response> {
@@ -873,7 +1122,7 @@ export default {
     if (url.pathname === "/api/health/deep") {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
-      return deepHealthResponse(env);
+      return deepHealthResponse(request, env);
     }
 
     if ([
@@ -935,31 +1184,42 @@ export default {
     if (url.pathname === "/api/outreach/sync") {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
-      return outreachSyncResponse(request, env);
+      return outreachSyncResponse(request, await podioRuntimeEnv(request, env));
     }
 
     if (url.pathname === "/api/exports" || url.pathname === "/export-result.json") {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
-      return exportResponse(request, url, env);
+      return exportResponse(request, url, await podioRuntimeEnv(request, env));
     }
 
     if (url.pathname === "/api/podio/diagnostics") {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
-      return podioDiagnosticsResponse(env);
+      return podioDiagnosticsResponse(request, env);
+    }
+
+    if (url.pathname === "/api/podio/oauth/start") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return podioOAuthStartResponse(request, env);
+    }
+
+    if (url.pathname === "/api/podio/oauth/callback") {
+      return podioOAuthCallbackResponse(request, url, env);
     }
 
     if (url.pathname === "/readback-evidence.json" || url.pathname === "/readback-evidence.md") {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
-      return readbackEvidenceResponse(url, env, url.pathname.endsWith(".md"));
+      return readbackEvidenceResponse(url, await podioRuntimeEnv(request, env), url.pathname.endsWith(".md"));
     }
 
     if (url.pathname === "/api/connections/status" || url.pathname === "/connection-status.json") {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
-      return json(await connectionStatuses(env as Record<string, string | undefined>), { headers: { "cache-control": "no-store" } });
+      const runtimeEnv = await podioRuntimeEnv(request, env);
+      return json(await connectionStatuses(runtimeEnv as Record<string, string | undefined>), { headers: { "cache-control": "no-store" } });
     }
 
     return json({ ok: false, error: "Not found." }, { status: 404 });
