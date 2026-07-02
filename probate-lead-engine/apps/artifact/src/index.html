@@ -1164,6 +1164,7 @@
     .import-split-menu svg {
       position: relative;
       z-index: 1;
+      transform-origin: center;
       transition: color .18s var(--ease-out), filter .18s var(--ease-out), transform .18s var(--ease-out);
     }
 
@@ -1188,11 +1189,16 @@
     }
 
     .import-split-menu:hover svg,
-    .import-split-menu:focus-visible svg,
-    .import-menu[data-open="true"] .import-split-menu svg {
+    .import-split-menu:focus-visible svg {
       color: #9dccff;
       filter: drop-shadow(0 0 7px rgba(10,132,255,.58));
       transform: translateY(-.5px);
+    }
+
+    .import-menu[data-open="true"] .import-split-menu svg {
+      color: #9dccff;
+      filter: drop-shadow(0 0 7px rgba(10,132,255,.58));
+      transform: translateY(-.5px) rotate(180deg);
     }
 
     .import-popover {
