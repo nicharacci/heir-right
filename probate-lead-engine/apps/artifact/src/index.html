@@ -17402,7 +17402,7 @@ function adminAccessRowsHtml() {
   const domains = [...new Set(state.adminAccessDomains)];
   return domains.map((domain) => `
     <li class="admin-access-row">
-      <span><strong>${escapeHtml(domain)}</strong><span class="copy">Leads engine access allowed for this company domain.</span></span>
+      <span><strong>${escapeHtml(domain)}</strong><span class="copy">App access is allowed for this business email domain.</span></span>
       <button class="plain-action" type="button" data-admin-remove-access="${escapeHtml(domain)}">Remove</button>
     </li>
   `).join("");
@@ -17540,16 +17540,15 @@ function renderAdminLoopView() {
         </div>
       </section>
       <section class="loop-panel is-tall">
-        <div class="loop-panel-head"><div><p class="eyebrow">Automation</p><h2 class="loop-title">Scheduled work prep</h2></div><span class="pill review">Review-only</span></div>
+        <div class="loop-panel-head"><div><h2 class="loop-title">Members</h2></div></div>
         <div class="admin-access-layout">
           <div>
-            <p class="copy">Scheduled checks prepare dossier source notes, drip drafts, and Leads engine access. No live outreach or CRM card is created without approval.</p>
-            <ul class="admin-error-list" aria-label="Leads engine access">
+            <p class="copy">Use this list to add business email domains that are allowed to access the app.</p>
+            <ul class="admin-error-list" aria-label="Members">
               ${adminAccessRowsHtml()}
             </ul>
           </div>
           <form class="admin-access-form" data-admin-access-form>
-            <p class="eyebrow">Leads engine access</p>
             <div class="admin-inline-form">
               <input name="accessValue" type="text" placeholder="company.com or user@company.com" autocomplete="off">
               <select name="accessAction"><option value="add">Add</option><option value="remove">Remove</option></select>
