@@ -5287,6 +5287,7 @@
       opacity: 0;
       pointer-events: none;
       transform: translateX(4px);
+      animation: none;
       transition:
         opacity .08s var(--ease),
         transform .08s var(--ease),
@@ -5295,17 +5296,29 @@
       transition-delay: 0s;
     }
 
+    @keyframes select-option-edit-reveal {
+      0%, 99% {
+        opacity: 0;
+        transform: translateX(4px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
     .select-option:hover .select-option-edit {
       opacity: 1;
       pointer-events: auto;
       transform: translateX(0);
-      transition-delay: 3s, 3s, 0s, 0s;
+      animation: select-option-edit-reveal 3s steps(1, end) both;
     }
 
     .select-option:focus-within .select-option-edit {
       opacity: 1;
       pointer-events: auto;
       transform: translateX(0);
+      animation: none;
       transition-delay: 0s;
     }
 
@@ -5326,6 +5339,7 @@
       opacity: 1;
       pointer-events: auto;
       transform: translateX(0);
+      animation: none;
       transition-delay: 0s;
     }
 
