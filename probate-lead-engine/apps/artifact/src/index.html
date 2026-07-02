@@ -1141,16 +1141,58 @@
     }
 
     .import-split-menu {
+      position: relative;
       width: 34px;
       padding: 0;
       border-left: 0 !important;
     }
 
-    .import-split button:hover,
-    .import-split button:focus-visible,
-    .import-menu[data-open="true"] .import-split button {
+    .import-split-menu::before {
+      content: "";
+      position: absolute;
+      inset: 7px;
+      border-radius: 999px;
+      opacity: 0;
+      background: rgba(10,132,255,.16);
+      box-shadow:
+        0 0 0 1px rgba(121,190,255,.34),
+        0 0 13px rgba(10,132,255,.48);
+      transform: scale(.82);
+      transition: opacity .18s var(--ease-out), transform .18s var(--ease-out);
+    }
+
+    .import-split-menu svg {
+      position: relative;
+      z-index: 1;
+      transition: color .18s var(--ease-out), filter .18s var(--ease-out), transform .18s var(--ease-out);
+    }
+
+    .import-split-main:hover,
+    .import-split-main:focus-visible {
       outline: 0;
       background: rgba(235,235,245,.10);
+    }
+
+    .import-split-menu:hover,
+    .import-split-menu:focus-visible,
+    .import-menu[data-open="true"] .import-split-menu {
+      outline: 0;
+      background: transparent;
+    }
+
+    .import-split-menu:hover::before,
+    .import-split-menu:focus-visible::before,
+    .import-menu[data-open="true"] .import-split-menu::before {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .import-split-menu:hover svg,
+    .import-split-menu:focus-visible svg,
+    .import-menu[data-open="true"] .import-split-menu svg {
+      color: #9dccff;
+      filter: drop-shadow(0 0 7px rgba(10,132,255,.58));
+      transform: translateY(-.5px);
     }
 
     .import-popover {
