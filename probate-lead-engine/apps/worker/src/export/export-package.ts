@@ -23,6 +23,10 @@ import {
 type RuntimeEnv = Record<string, string | undefined>;
 export const GOOGLE_LIVE_WRITE_APPROVAL_KEY = "GOOGLE_LIVE_WRITE_APPROVED";
 
+type GoogleWorkspaceExportOptions = Pick<ExportRequest,
+  "workspaceDestination" | "workspaceDestinationEmail" | "shareWithEmails" | "requestedByEmail"
+>;
+
 function missing(keys: string[], env: RuntimeEnv): string[] {
   return keys.filter((key) => !env[key]);
 }
@@ -47,7 +51,26 @@ function reportText(dossier: RawDossier, overrideBody?: string): string {
   );
 }
 
-async function exportGoogleWebhook(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean, documentTitle?: string, documentBody?: string): Promise<ExportRouteResult | null> {
+function uniqueEmails(values: Array<string | undefined>): string[] {
+  const seen = new Set<string>();
+  return values
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter((value) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value))
+    .filter((value) => {
+      if (seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    });
+}
+
+async function exportGoogleWebhook(
+  dossier: RawDossier,
+  env: RuntimeEnv,
+  dryRun: boolean,
+  documentTitle?: string,
+  documentBody?: string,
+  options: GoogleWorkspaceExportOptions = {},
+): Promise<ExportRouteResult | null> {
   if (!env.GOOGLE_WORKSPACE_WEBHOOK_URL) return null;
   if (!env.GOOGLE_WORKSPACE_WEBHOOK_SECRET) {
     return routeResult({
@@ -80,6 +103,16 @@ async function exportGoogleWebhook(dossier: RawDossier, env: RuntimeEnv, dryRun:
       message: "Google live export is blocked by the explicit write-approval guard.",
     });
   }
+  const workspaceDestination = options.workspaceDestination
+    || env.GOOGLE_WORKSPACE_DESTINATION
+    || "airwrite";
+  const workspaceDestinationEmail = options.workspaceDestinationEmail
+    || env.GOOGLE_WORKSPACE_DESTINATION_EMAIL
+    || env.AIRWRITE_WORKSPACE_EMAIL;
+  const shareWithEmails = uniqueEmails([
+    ...(options.shareWithEmails ?? []),
+    options.requestedByEmail,
+  ]);
   const response = await fetch(env.GOOGLE_WORKSPACE_WEBHOOK_URL, {
     method: "POST",
     headers: {
@@ -96,6 +129,16 @@ async function exportGoogleWebhook(dossier: RawDossier, env: RuntimeEnv, dryRun:
       county: formatCountyName(dossier.property.county.value),
       title: reportTitle(dossier, documentTitle),
       markdown: reportText(dossier, documentBody),
+      workspaceDestination,
+      workspaceDestinationEmail,
+      shareWithEmails,
+      shareWith: shareWithEmails,
+      shareWithEmail: shareWithEmails[0],
+      viewerEmails: shareWithEmails,
+      viewers: shareWithEmails,
+      collaboratorEmails: shareWithEmails,
+      accessEmails: shareWithEmails,
+      requestedByEmail: options.requestedByEmail,
       generatedAt: nowIso(),
     }),
   });
@@ -107,6 +150,9 @@ async function exportGoogleWebhook(dossier: RawDossier, env: RuntimeEnv, dryRun:
     folderUrl?: string;
     sheetId?: string;
     updatedRange?: string;
+    workspaceDestination?: string;
+    workspaceDestinationEmail?: string;
+    sharedWithEmails?: string[];
     readbackOk?: boolean;
     blockers?: string[];
     message?: string;
@@ -122,6 +168,8 @@ async function exportGoogleWebhook(dossier: RawDossier, env: RuntimeEnv, dryRun:
     mode: "live",
     externalId: data.docId || data.updatedRange,
     url: data.docUrl || data.folderUrl,
+    workspaceDestination: data.workspaceDestination || data.workspaceDestinationEmail || workspaceDestination,
+    sharedWithEmails: Array.isArray(data.sharedWithEmails) ? data.sharedWithEmails : shareWithEmails,
     readbackOk: Boolean(data.readbackOk),
     blockers,
     message: data.message || (blockers.length
@@ -141,8 +189,15 @@ async function googleFetch(path: string, token: string, init: RequestInit): Prom
   });
 }
 
-async function exportGoogle(dossier: RawDossier, env: RuntimeEnv, dryRun: boolean, documentTitle?: string, documentBody?: string): Promise<ExportRouteResult> {
-  const webhook = await exportGoogleWebhook(dossier, env, dryRun, documentTitle, documentBody);
+async function exportGoogle(
+  dossier: RawDossier,
+  env: RuntimeEnv,
+  dryRun: boolean,
+  documentTitle?: string,
+  documentBody?: string,
+  options: GoogleWorkspaceExportOptions = {},
+): Promise<ExportRouteResult> {
+  const webhook = await exportGoogleWebhook(dossier, env, dryRun, documentTitle, documentBody, options);
   if (webhook) return webhook;
 
   const required = ["GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_TRACKING_SHEET_ID"];
@@ -727,7 +782,7 @@ export async function exportCompletedReport(request: ExportRequest, env: Runtime
   let googleReportUrl: string | undefined;
   for (const route of routes) {
     if (route === "google") {
-      const google = await exportGoogle(request.dossier, env, request.dryRun ?? true, request.documentTitle, request.documentBody);
+      const google = await exportGoogle(request.dossier, env, request.dryRun ?? true, request.documentTitle, request.documentBody, request);
       if (google.url) googleReportUrl = google.url;
       results.push(google);
       continue;

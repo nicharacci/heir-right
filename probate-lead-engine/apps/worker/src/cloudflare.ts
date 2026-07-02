@@ -86,6 +86,7 @@ function routeList(): string[] {
     "/qualification-review.json",
     "/qualification-review.md",
     "/api/leads/fresh-batch",
+    "/api/leads/public-source-pull",
     "/api/discovery/idi-asset-search/import",
     "/api/discovery/source-capture",
     "/api/discovery/contact-candidates/:id/review",
@@ -623,7 +624,16 @@ function buildClosingDocsPacket(dossier: RawDossier, notes = ""): { title: strin
 
 async function closingDocsGoogleExportResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
   const body = request.method === "POST"
-    ? await request.json().catch(() => ({})) as { seed?: IntakeSeed; dossier?: RawDossier; dryRun?: boolean; notes?: string }
+    ? await request.json().catch(() => ({})) as {
+      seed?: IntakeSeed;
+      dossier?: RawDossier;
+      dryRun?: boolean;
+      notes?: string;
+      workspaceDestination?: string;
+      workspaceDestinationEmail?: string;
+      shareWithEmails?: string[];
+      requestedByEmail?: string;
+    }
     : {};
   const pipeline = body.dossier
     ? null
@@ -639,6 +649,10 @@ async function closingDocsGoogleExportResponse(request: Request, url: URL, env: 
     dryRun: body.dryRun ?? url.searchParams.get("dry-run") !== "false",
     documentTitle: packet.title,
     documentBody: packet.markdown,
+    workspaceDestination: body.workspaceDestination,
+    workspaceDestinationEmail: body.workspaceDestinationEmail,
+    shareWithEmails: Array.isArray(body.shareWithEmails) ? body.shareWithEmails : [],
+    requestedByEmail: body.requestedByEmail,
   }, env as Record<string, string | undefined>);
   return json({
     ok: exportResult.ok && packet.blockers.length === 0,
@@ -1150,7 +1164,7 @@ export default {
       return qualificationReviewResponse(env, url.pathname.endsWith(".md"));
     }
 
-    if (url.pathname === "/api/leads/fresh-batch" || url.pathname === "/fresh-lead-batch.json") {
+    if (url.pathname === "/api/leads/fresh-batch" || url.pathname === "/api/leads/public-source-pull" || url.pathname === "/fresh-lead-batch.json") {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return freshLeadBatchResponse(request, url, env);

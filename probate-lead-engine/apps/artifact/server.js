@@ -724,17 +724,19 @@ async function handleLocalExport(req, res) {
   }));
 }
 
-async function handleFreshLeadBatch(req, res) {
+async function handleFreshLeadBatch(req, res, options = {}) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
-  const proxied = await proxyWorkerJson("/api/leads/fresh-batch", {
-    req,
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-  if (proxied) {
-    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
-    res.end(proxied.body);
-    return;
+  if (!options.localOnly) {
+    const proxied = await proxyWorkerJson("/api/leads/fresh-batch", {
+      req,
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    if (proxied) {
+      res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+      res.end(proxied.body);
+      return;
+    }
   }
 
   try {
@@ -771,6 +773,7 @@ async function handleDeepHealth(req, res) {
     message: "Cloudflare Worker backend is not configured for this frontend environment.",
     routes: {
       "/api/leads/fresh-batch": "local",
+      "/api/leads/public-source-pull": "local",
       "/api/discovery/idi-asset-search/import": "local",
       "/api/discovery/source-capture": "local",
       "/api/discovery/contact-candidates/:id/review": "local",
@@ -1149,8 +1152,8 @@ function handleRequest(req, res) {
     return;
   }
 
-  if (url.pathname === "/api/leads/fresh-batch") {
-    handleFreshLeadBatch(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+  if (url.pathname === "/api/leads/fresh-batch" || url.pathname === "/api/leads/public-source-pull") {
+    handleFreshLeadBatch(req, res, { localOnly: url.pathname === "/api/leads/public-source-pull" }).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
     return;
   }
 

@@ -464,6 +464,10 @@ export interface ExportRequest {
   controlledTest?: boolean;
   documentTitle?: string;
   documentBody?: string;
+  workspaceDestination?: string;
+  workspaceDestinationEmail?: string;
+  shareWithEmails?: string[];
+  requestedByEmail?: string;
 }
 
 export interface ExportRouteResult {
@@ -472,6 +476,8 @@ export interface ExportRouteResult {
   mode: "live" | "dry_run" | "blocked";
   externalId?: string;
   url?: string;
+  workspaceDestination?: string;
+  sharedWithEmails?: string[];
   readbackOk: boolean;
   blockers: string[];
   message: string;

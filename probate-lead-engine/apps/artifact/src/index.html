@@ -12398,6 +12398,35 @@ function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
   if (source) source.blur?.();
 }
 
+function queueRowFromButton(button, event = null) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.heirRightQueueHandled = true;
+  }
+  const rowId = button?.getAttribute?.("data-add-row-to-queue") || button?.dataset?.addRowToQueue;
+  const row = rowById(rowId);
+  if (!row) {
+    nudgeDeniedAction(
+      button,
+      "Queue blocked",
+      "That estate is no longer available in the current results.",
+      { pill: true, source: "selected-lead-controls" }
+    );
+    return false;
+  }
+  state.selectedId = row.id;
+  addRowsToQueue([row], button);
+  return true;
+}
+
+document.addEventListener("click", (event) => {
+  if (event.heirRightQueueHandled) return;
+  const button = event.target.closest?.("[data-add-row-to-queue]");
+  if (!button || !document.body.contains(button)) return;
+  queueRowFromButton(button, event);
+});
+
 function wireBatchSelection(root, rowSelector, scope = "results") {
   root.querySelectorAll("[data-row-select]").forEach((input) => {
     input.addEventListener("click", (event) => event.stopPropagation());
@@ -14050,6 +14079,19 @@ function docPrepRunControlsHtml(row = selectedRow(), flowId = state.activeDocPre
   `;
 }
 
+function closingGoogleExportControlHtml(row = selectedRow()) {
+  const exportState = closingExportForRow(row);
+  const googleRoute = exportState?.result?.export?.routes?.find?.((item) => item.route === "google");
+  const googleUrl = googleRoute?.url || "";
+  const exportReady = discoveryProgress("closing-docs", row) >= 100;
+  return `
+    <div class="docprep-run-actions">
+      <button class="docprep-main-run-button" type="button" data-export-closing-google ${exportReady ? "" : "disabled"}>Export to Google Workspace</button>
+      ${googleUrl ? `<a class="text-link" href="${escapeHtml(googleUrl)}" target="_blank" rel="noopener" data-google-doc-link>Open Google Doc</a>` : ""}
+    </div>
+  `;
+}
+
 function renderDocPrepRunSurfaces() {
   renderCurrentLoopView();
   renderRail();
@@ -15117,6 +15159,10 @@ function assetDiscoveryChecklistHtml(row = selectedRow()) {
 function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(row)) {
   const report = dossier?.completedLeadReport ?? {};
   const offer = report.offerMath ?? {};
+  const exportState = closingExportForRow(row);
+  const googleRoute = exportState?.result?.export?.routes?.find?.((item) => item.route === "google");
+  const googleUrl = googleRoute?.url || "";
+  const exportReady = discoveryProgress("closing-docs", row) >= 100;
   const templateSummaries = closingTemplateFamilies.map((template) => ({
     title: template.title,
     status: closingTemplateStatus(template, row, dossier),
@@ -15136,6 +15182,11 @@ function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(r
       <ul class="mini-list">
         ${rows.map(([label, value]) => `<li><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></li>`).join("")}
       </ul>
+      <div class="discovery-actions">
+        <span class="copy">${escapeHtml(googleUrl ? "Google Workspace Doc is linked with readback proof." : exportReady ? "Closing Prep is ready for live Google Workspace export." : "Run Closing Prep before live Google Workspace export.")}</span>
+        <button class="btn primary solvys-liquid-glass" type="button" data-export-closing-google ${exportReady ? "" : "disabled"}>Export to Google Workspace</button>
+      </div>
+      ${googleUrl ? `<a class="text-link" href="${escapeHtml(googleUrl)}" target="_blank" rel="noopener" data-google-doc-link>Open Google Doc</a>` : ""}
     </section>
     <section class="glass-card rail-card">
       <h3>Closing template families</h3>
@@ -16162,6 +16213,11 @@ async function exportClosingDocsToGoogle() {
   }
   const dossier = dossierForRow(row);
   const notes = state.discoveryNotes?.[assetDiscoveryKey(row)] || "";
+  const activeUserEmail = String(state.session?.user?.email || "").trim().toLowerCase();
+  const shareWithEmails = Array.from(new Set([
+    ...outreachAllowedApprovers,
+    activeUserEmail
+  ].filter((email) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))));
   document.getElementById("topStatus").textContent = "Preparing Closing Prep packet for Google Workspace...";
   addShellEvent("Closing Prep export started", `${docPrepEstateLabel(row)} is being checked for Google Workspace export.`, "review", false);
   let result = null;
@@ -16177,6 +16233,9 @@ async function exportClosingDocsToGoogle() {
         source: "operator_ui"
       },
       notes,
+      workspaceDestination: "airwrite",
+      shareWithEmails,
+      requestedByEmail: activeUserEmail || "sam@heirright.com",
       dryRun: false
     });
   } catch (error) {
@@ -16341,7 +16400,7 @@ function docPrepClientSubtitle(row) {
 function docPrepClientRowHtml(row) {
   const checked = state.selectedIds.has(row.id);
   const status = dealStatusMeta(dealStatusForRow(row));
-  const flowId = status.flowId === "closing-docs" ? "closing-docs" : state.activeDocPrepFlow;
+  const flowId = status.flowId;
   const selected = row.id === state.selectedId;
   const estateLabel = docPrepEstateLabel(row);
   const ownerLabel = docPrepOwnerLabel(row);
@@ -16447,17 +16506,21 @@ function renderDossiersListView(target) {
   target.querySelectorAll("[data-open-docprep-add]").forEach((button) => {
     button.addEventListener("click", () => openDocPrepAddModal(button.dataset.openDocprepAdd));
   });
-  target.querySelectorAll("[data-open-docprep-row]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      if (event.target.closest?.("input, label, button") && event.currentTarget === event.target.closest?.("article")) return;
-      openDocPrepRow(button.dataset.openDocprepRow, button.dataset.openDocprepFlow);
-    });
-    button.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        openDocPrepRow(button.dataset.openDocprepRow, button.dataset.openDocprepFlow);
-      }
-    });
+  const clientList = target.querySelector(".docprep-client-list");
+  clientList?.addEventListener("click", (event) => {
+    const trigger = event.target.closest?.("[data-open-docprep-row]");
+    if (!trigger || !clientList.contains(trigger)) return;
+    if (!trigger.matches?.("button") && event.target.closest?.("input, label")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openDocPrepRow(trigger.dataset.openDocprepRow, trigger.dataset.openDocprepFlow);
+  });
+  clientList?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const trigger = event.target.closest?.("[data-open-docprep-row]");
+    if (!trigger || !clientList.contains(trigger) || event.target.closest?.("input, label")) return;
+    event.preventDefault();
+    openDocPrepRow(trigger.dataset.openDocprepRow, trigger.dataset.openDocprepFlow);
   });
   wireDocPrepAddModal(target);
   wireBatchSelection(target, "[data-dossier-row]", "dossiers");
@@ -16535,6 +16598,7 @@ function renderDossiersView() {
                 <span>${escapeHtml(`${stats.linked}/${stats.total} documents`)}</span>
               </div>
               ${docPrepRunControlsHtml(row, flow.id)}
+              ${flow.id === "closing-docs" ? closingGoogleExportControlHtml(row) : ""}
             </div>
           </div>
           <div class="document-list">
@@ -16601,6 +16665,9 @@ function renderDossiersView() {
   });
   target.querySelectorAll("[data-docprep-rerun-review]").forEach((button) => {
     button.addEventListener("click", (event) => openDocPrepRerunReview(button.dataset.docprepRerunReview || state.activeDocPrepFlow, event.currentTarget));
+  });
+  target.querySelectorAll("[data-export-closing-google]").forEach((button) => {
+    button.addEventListener("click", exportClosingDocsToGoogle);
   });
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
     addRowsToQueue(rowsForBatchAction());
@@ -16726,6 +16793,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   content.querySelectorAll("[data-docprep-rerun-review]").forEach((button) => {
     button.addEventListener("click", (event) => openDocPrepRerunReview(button.dataset.docprepRerunReview || state.activeDocPrepFlow, event.currentTarget));
   });
+  content.querySelector("[data-export-closing-google]")?.addEventListener("click", exportClosingDocsToGoogle);
   wireAssetDiscoveryControls(content, row);
   content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
     input.addEventListener("change", (event) => {
@@ -18581,9 +18649,7 @@ function setActiveShellView(view = "dashboard", label = "") {
     document.getElementById("topStatus").textContent = `${label || activeViewLabel(nextView)} workspace selected.`;
   } else {
     state.railMode = "report";
-    if (previousRailMode === "dossier") {
-      setRailOpen(false);
-    }
+    setRailOpen(false);
     setDetailRailOpen(false);
     document.getElementById("topStatus").textContent = "Find Estates workspace selected. Open a lead, then begin Discovery from the rail.";
   }
@@ -19390,15 +19456,10 @@ function renderResultsPage({ animate = false } = {}) {
       setRailOpen(true, rowEl);
     });
   });
-  body.querySelectorAll("[data-add-row-to-queue]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const row = rowById(button.dataset.addRowToQueue);
-      if (!row) return;
-      state.selectedId = row.id;
-      addRowsToQueue([row], button);
-      renderResults();
-    });
+  body.addEventListener("click", (event) => {
+    const button = event.target.closest?.("[data-add-row-to-queue]");
+    if (!button || !body.contains(button) || event.heirRightQueueHandled) return;
+    if (queueRowFromButton(button, event)) renderResults();
   });
   body.querySelectorAll("[data-estate-lifecycle]").forEach((button) => {
     button.addEventListener("click", (event) => {
@@ -20249,19 +20310,16 @@ function setFreshBatchBusy(isBusy) {
 
 async function pullFreshBatch(source = null) {
   const filters = currentFreshLeadFilters();
+  const payload = {
+    source: "miami_dade_property_appraiser",
+    startedBy: "operator_ui",
+    filters
+  };
   setFreshBatchBusy(true);
   clearFreshBatchStatus();
   document.getElementById("topStatus").textContent = "Pulling a live external lead batch...";
   try {
-    const response = await fetch("/api/leads/fresh-batch", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        source: "miami_dade_property_appraiser",
-        startedBy: "operator_ui",
-        filters
-      }),
-    });
+    const response = await postFreshLeadBatch(payload);
     const result = await response.json().catch(() => null);
     if (!response.ok || !result) {
       throw new Error(result?.blockers?.[0] || result?.message || result?.error || `Fresh lead pull failed with HTTP ${response.status}.`);
@@ -20290,7 +20348,7 @@ async function pullFreshBatch(source = null) {
       false
     );
     await loadConnectionStatuses();
-    if (source) openRailWithContinuity(source, "flow");
+    setRailOpen(false);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     setFreshBatchStatus(message, "blocked");
@@ -20300,6 +20358,20 @@ async function pullFreshBatch(source = null) {
     setFreshBatchBusy(false);
     renderShellPanels();
   }
+}
+
+async function postFreshLeadBatch(payload) {
+  const options = {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  };
+  const primary = await fetch("/api/leads/public-source-pull", options);
+  if (primary.ok || ![404, 405].includes(primary.status)) return primary;
+  return fetch("/api/leads/fresh-batch", {
+    ...options,
+    body: JSON.stringify(payload),
+  });
 }
 
 function exportRouteMeta(route) {
@@ -20936,10 +21008,21 @@ function wireEvents() {
     const isOpen = document.getElementById("exportMenu").dataset.open === "true";
     setExportMenuOpen(!isOpen);
   });
-  document.querySelectorAll("[data-export-route]").forEach((button) => {
-    button.addEventListener("click", () => chooseExportRoute(button.dataset.exportRoute, button));
+  document.getElementById("exportMenu").addEventListener("click", (event) => {
+    const button = event.target.closest?.("[data-export-route]");
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    chooseExportRoute(button.dataset.exportRoute, button);
   });
   document.addEventListener("click", (event) => {
+    const docPrepTrigger = event.target.closest?.("[data-open-docprep-row]");
+    if (docPrepTrigger && document.getElementById("dossiersView")?.contains(docPrepTrigger)) {
+      if (!docPrepTrigger.matches?.("button") && event.target.closest?.("input, label")) return;
+      event.preventDefault();
+      openDocPrepRow(docPrepTrigger.dataset.openDocprepRow, docPrepTrigger.dataset.openDocprepFlow);
+      return;
+    }
     const reportTrigger = event.target.closest?.('[data-rail-action="report"]');
     if (reportTrigger) {
       event.preventDefault();
