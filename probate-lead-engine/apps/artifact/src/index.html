@@ -2646,6 +2646,19 @@
       line-height: 1.2;
     }
 
+    .process-folder-estate {
+      display: block;
+      min-width: 0;
+      max-width: min(100%, calc(100% - 92px));
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+      font-weight: 760;
+    }
+
     .process-progress-dots {
       display: flex;
       align-items: center;
@@ -13643,6 +13656,64 @@ function documentPrepStats(row = selectedRow(), dossier = dossierForRow(row), fl
   };
 }
 
+function processActivityTime(value) {
+  const numeric = typeof value === "number" ? value : Date.parse(value || "");
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function docPrepDocumentActivityAt(row, flowId) {
+  if (!row) return 0;
+  return docsForFlow(row, dossierForRow(row), flowId).reduce((latest, doc) => {
+    const record = documentFileRecord(doc.id, row);
+    return Math.max(latest, processActivityTime(record?.linkedAt || record?.updatedAt));
+  }, 0);
+}
+
+function docPrepFlowActivityAt(row, flowId) {
+  const flowState = existingDocPrepFlowState(row, flowId);
+  return Math.max(
+    processActivityTime(flowState?.updatedAt),
+    processActivityTime(flowState?.startedAt),
+    docPrepDocumentActivityAt(row, flowId)
+  );
+}
+
+function handoffReviewActivityAt(row) {
+  const exportState = row ? state.closingExportState?.[assetDiscoveryKey(row)] : null;
+  return Math.max(
+    processActivityTime(exportState?.updatedAt),
+    docPrepFlowActivityAt(row, "closing-docs"),
+    state.queueIds.has(row?.id) ? 1 : 0
+  );
+}
+
+function activeProcessActivityAt(row, processId) {
+  if (processId === "estate-discovery") return docPrepFlowActivityAt(row, "discovery");
+  if (processId === "closing-docs") return docPrepFlowActivityAt(row, "closing-docs");
+  if (processId === "handoff-review") return handoffReviewActivityAt(row);
+  return 0;
+}
+
+function lastActiveProcessRow(processId, fallbackRow = selectedRow()) {
+  const ranked = state.rows
+    .map((row) => ({ row, at: activeProcessActivityAt(row, processId) }))
+    .filter((item) => item.at > 0)
+    .sort((a, b) => b.at - a.at);
+  return ranked[0]?.row || fallbackRow || null;
+}
+
+function dashboardActiveProcessEstateLabel(fallbackRow = selectedRow()) {
+  const ranked = ["estate-discovery", "closing-docs", "handoff-review"]
+    .map((processId) => {
+      const row = lastActiveProcessRow(processId, fallbackRow);
+      return { row, at: activeProcessActivityAt(row, processId) };
+    })
+    .filter((item) => item.row && item.at > 0)
+    .sort((a, b) => b.at - a.at);
+  const row = ranked[0]?.row || fallbackRow;
+  return row ? `Last active: ${docPrepEstateLabel(row)}` : "Load a lead packet to start";
+}
+
 function completedDocPrepProofRow() {
   const latestRunId = state.freshBatch?.latestRun?.runId;
   const freshRows = state.rows.filter((row) => row.sourceKind === "fresh-batch" && hasSpecificOwnerName(row.owner));
@@ -13748,28 +13819,38 @@ function ensureCompletedDocPrepProofFile() {
 }
 
 function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
-  const docs = dossierDocuments(row, dossier);
-  const discoveryStats = documentPrepStats(row, dossier, "discovery");
-  const closingStats = documentPrepStats(row, dossier, "closing-docs");
-  const discoveryDone = docPrepPhases("discovery").filter((phase) => phaseIsComplete(phase.id, row, "discovery")).length;
-  const closingTemplateReady = closingTemplateFamilies.filter((template) => closingTemplateBlockers(template, row, dossier).length === 0).length;
-  const reviewTasks = taskCount(dossier ?? {});
-  const closingDocs = docs.filter((doc) => documentFlowMatches(doc, "closing-docs"));
+  const discoveryRow = lastActiveProcessRow("estate-discovery", row);
+  const closingRow = lastActiveProcessRow("closing-docs", row);
+  const handoffRow = lastActiveProcessRow("handoff-review", row);
+  const discoveryDossier = dossierForRow(discoveryRow);
+  const closingDossier = dossierForRow(closingRow);
+  const handoffDossier = dossierForRow(handoffRow);
+  const docs = dossierDocuments(handoffRow, handoffDossier);
+  const discoveryStats = documentPrepStats(discoveryRow, discoveryDossier, "discovery");
+  const closingStats = documentPrepStats(closingRow, closingDossier, "closing-docs");
+  const discoveryDone = docPrepPhases("discovery").filter((phase) => phaseIsComplete(phase.id, discoveryRow, "discovery")).length;
+  const closingTemplateReady = closingTemplateFamilies.filter((template) => closingTemplateBlockers(template, closingRow, closingDossier).length === 0).length;
+  const reviewTasks = taskCount(handoffDossier ?? {});
+  const closingDocs = dossierDocuments(closingRow, closingDossier).filter((doc) => documentFlowMatches(doc, "closing-docs"));
   const readyDocs = docs.filter((doc) => !/blocked|locked|open/i.test(doc.status || "")).length;
   return [
     {
       id: "estate-discovery",
       title: "Estate Discovery",
+      rowId: discoveryRow?.id || "",
+      estate: docPrepEstateLabel(discoveryRow),
       done: discoveryStats.linked,
       total: discoveryStats.total,
       tag: "",
       due: `${discoveryDone}/${docPrepPhases("discovery").length} source steps`,
-      status: estateDiscoveryLastRunLabel(row),
+      status: estateDiscoveryLastRunLabel(discoveryRow),
       ready: discoveryStats.missing === 0 && discoveryDone >= docPrepPhases("discovery").length
     },
     {
       id: "closing-docs",
       title: "Closing Prep",
+      rowId: closingRow?.id || "",
+      estate: docPrepEstateLabel(closingRow),
       done: closingTemplateReady,
       total: closingTemplateFamilies.length,
       tag: docPrepFlow("closing-docs").tag,
@@ -13780,6 +13861,8 @@ function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
     {
       id: "handoff-review",
       title: "Handoff Review",
+      rowId: handoffRow?.id || "",
+      estate: docPrepEstateLabel(handoffRow),
       done: readyDocs,
       total: docs.length,
       tag: "Podio and Google prep",
@@ -13857,13 +13940,14 @@ function dashboardActivityRows(row = selectedRow()) {
 
 function processCardHtml(process) {
   return `
-    <button class="process-folder-card" type="button" data-process-card="${escapeHtml(process.id)}">
+    <button class="process-folder-card" type="button" data-process-card="${escapeHtml(process.id)}" data-process-row="${escapeHtml(process.rowId || "")}">
       <span class="folder-doc-stack" aria-hidden="true"><span></span><span></span><span></span></span>
       <span class="process-folder-body">
         <span class="process-folder-title">
           <strong>${escapeHtml(process.title)}</strong>
           <span class="attention-dot" aria-hidden="true"></span>
         </span>
+        <span class="process-folder-estate">${escapeHtml(process.estate || "Estate file")}</span>
         ${processProgressDots(process.done, process.total)}
         <span class="process-folder-meta">
           <span>${escapeHtml(process.status)}</span>
@@ -15314,6 +15398,7 @@ function renderDashboardView() {
   const processes = processSummaries(row, dossier);
   const activities = dashboardActivityRows(row);
   const stats = documentPrepStats(row, dossier);
+  const activeProcessEstate = dashboardActiveProcessEstateLabel(row);
   target.innerHTML = `
     <div class="arsip-dashboard" aria-label="HeirRight dashboard">
       <div class="arsip-topline">
@@ -15345,7 +15430,7 @@ function renderDashboardView() {
         <div class="arsip-section-head">
           <div class="arsip-section-title">
             <h3>Active processes</h3>
-            <span>${row ? escapeHtml(row.leadName || row.title) : "Load a lead packet to start"}</span>
+            <span>${escapeHtml(activeProcessEstate)}</span>
           </div>
         </div>
         <div class="process-card-grid">
@@ -15389,8 +15474,12 @@ function renderDashboardView() {
   });
   target.querySelectorAll("[data-process-card]").forEach((button) => {
     button.addEventListener("click", () => {
+      const rowId = button.dataset.processRow;
+      if (rowId && rowById(rowId)) state.selectedId = rowId;
+      state.docPrepListOpen = false;
       if (button.dataset.processCard === "estate-discovery") setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
       if (button.dataset.processCard === "closing-docs") setActiveDocPrepFlow("closing-docs", { persist: true, rerender: false });
+      updateFooterLeadContext(selectedRow());
       document.querySelector('[data-shell-nav="dossiers"]')?.click();
     });
   });
@@ -15586,7 +15675,16 @@ function docPrepFileStatusItems(row = selectedRow()) {
 }
 
 function docPrepEstateLabel(row) {
-  return row?.title || row?.leadName || "Current estate";
+  if (!row) return "Current estate";
+  const dossier = dossierForRow(row);
+  return estateFileDisplayLabel(
+    row.leadName,
+    dossier?.summary?.estateName,
+    dossier?.property?.estateName?.value,
+    row.data?.seed?.estateName,
+    row.owner,
+    row.title
+  );
 }
 
 function docPrepOwnerLabel(row) {
@@ -15792,7 +15890,7 @@ function renderDossiersView() {
         <section class="document-panel" aria-label="Dossier source files">
           <div class="document-panel-head">
             <div>
-              <h3>${escapeHtml(row?.title || row?.leadName || "Current estate")}</h3>
+              <h3>${escapeHtml(docPrepEstateLabel(row))}</h3>
               <div class="document-progress-row">
                 ${processProgressDots(stats.linked, stats.total)}
                 <span>${escapeHtml(`${stats.linked}/${stats.total} documents`)}</span>
