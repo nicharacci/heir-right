@@ -10919,6 +10919,14 @@ function averageEstateScore(rows = state.rows) {
   return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
 }
 
+function highestEstateScore(rows = state.rows) {
+  const scores = rows
+    .filter((row) => row && row.kind !== "File")
+    .map((row) => Number(rowDisplayScore(row)))
+    .filter(Number.isFinite);
+  return scores.length ? Math.max(...scores) : 0;
+}
+
 function rowDisplayClassification(row) {
   if (!row) return "Review";
   if (acceptedContactCandidates(row).length) return "Contact verified";
@@ -18139,13 +18147,12 @@ function addressDisplayParts(address, fallback = "") {
 function renderSummary() {
   const facts = state.data?.facts?.length ?? 0;
   const reportsAvailable = idiReportsAvailableCount();
+  const highestScore = highestEstateScore();
   const averageScore = averageEstateScore();
-  const review = qualificationReview();
-  const qualified = review?.summary?.qualified ?? state.dailyRun?.qualifiedLeadCount ?? 0;
   const metrics = [
     { label: "Estate files", value: state.rows.length || 0 },
     { label: "Evidence items", value: facts },
-    { label: "Qualified", value: qualified },
+    { label: "Highest Score", value: highestScore },
     { label: "Reports Available", value: reportsAvailable },
     { label: "Average Score", value: averageScore }
   ];
