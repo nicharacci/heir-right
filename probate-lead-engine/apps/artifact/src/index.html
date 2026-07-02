@@ -720,9 +720,12 @@
     body[data-theme="dark"] .field input:not([type="checkbox"]),
     body[data-theme="dark"] .filter-note,
     body[data-theme="dark"] .shell-info-popover,
+    body[data-theme="dark"] .search-popup,
+    body[data-theme="dark"] .table-filters-popover,
     body[data-theme="dark"] .shell-composer,
     body[data-theme="dark"] .command-form,
     body[data-theme="dark"] .agent-drawer,
+    body[data-theme="dark"] .history-rail,
     body[data-theme="dark"] .activity-event,
     body[data-theme="dark"] .setting-card,
     body[data-theme="dark"] .runtime-card,
@@ -927,6 +930,113 @@
       background: color-mix(in srgb, var(--solvys-lg-dark-plate) 38%, transparent);
       border-color: color-mix(in srgb, var(--solvys-lg-rim) 42%, transparent);
       box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+    }
+
+    .search-popup {
+      position: absolute;
+      left: 16px;
+      top: calc(100% - 6px);
+      z-index: 260;
+      width: min(500px, calc(100vw - 32px));
+      display: grid;
+      gap: 4px;
+      padding: 8px;
+      border-radius: 14px;
+      border: 1px solid rgba(235,235,245,.16);
+      color: var(--text);
+      opacity: 0;
+      transform: translateY(-4px) scale(.985);
+      pointer-events: none;
+      transition: opacity .18s var(--ease), transform .18s var(--ease);
+    }
+
+    .search-popup[data-open="true"] {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .search-popup[hidden] { display: none; }
+
+    .search-popup-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 4px 5px 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .search-result-card {
+      width: 100%;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 9px;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .search-result-card:hover,
+    .search-result-card:focus-visible {
+      outline: 0;
+      background: rgba(235,235,245,.08);
+    }
+
+    .search-result-copy {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .search-result-copy strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+
+    .search-result-copy span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .search-result-action,
+    .history-card-action {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(142,200,255,.34);
+      border-radius: 999px;
+      padding: 0 11px;
+      color: #f5faff;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.055)),
+        linear-gradient(180deg, rgba(76,166,255,.62), rgba(10,132,255,.46));
+      backdrop-filter: blur(14px) saturate(1.18);
+      -webkit-backdrop-filter: blur(14px) saturate(1.18);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 10px 24px rgba(10,132,255,.16);
+      font-size: 12px;
+      font-weight: 800;
     }
 
     .kbd {
@@ -1264,6 +1374,134 @@
     .quick-actions .btn.quick:hover,
     .composer-actions .btn.quick:hover {
       background: rgba(255,255,255,.38);
+    }
+
+    .table-filters-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .table-filters-toggle {
+      min-height: 30px;
+      padding: 5px 9px;
+      color: var(--muted);
+      border: 1px solid rgba(235,235,245,.12);
+      background: rgba(255,255,255,.035);
+    }
+
+    .table-filters-toggle:hover,
+    .table-filters-toggle:focus-visible,
+    .table-filters-toggle[aria-expanded="true"] {
+      color: var(--text);
+      background: rgba(235,235,245,.08);
+      outline: 0;
+    }
+
+    .table-filters-popover {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 9px);
+      z-index: 230;
+      width: min(360px, calc(100vw - 32px));
+      max-height: min(620px, calc(100vh - 180px));
+      overflow: auto;
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid rgba(235,235,245,.16);
+      border-radius: 14px;
+      color: var(--text);
+      box-shadow: 0 22px 60px rgba(0,0,0,.28);
+      transform-origin: top right;
+      animation: railFade .18s var(--ease-out);
+    }
+
+    .table-filters-popover[hidden] { display: none; }
+
+    .filter-popover-head {
+      display: grid;
+      gap: 3px;
+    }
+
+    .filter-popover-head strong {
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .filter-popover-head span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .filter-popover-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .filter-popover-field,
+    .filter-popover-switch,
+    .filter-popover-columns {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .filter-popover-field select,
+    .filter-popover-field input {
+      width: 100%;
+      min-height: 36px;
+      min-width: 0;
+      border: 1px solid rgba(235,235,245,.14);
+      border-radius: 11px;
+      background: rgba(17,17,19,.72);
+      color: var(--text);
+      padding: 8px 10px;
+      font: inherit;
+      font-weight: 720;
+      outline: 0;
+    }
+
+    .filter-popover-switch,
+    .filter-popover-columns {
+      grid-column: 1 / -1;
+    }
+
+    .filter-popover-switch {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      padding: 9px 0;
+      border-top: 1px solid transparent;
+      border-bottom: 1px solid transparent;
+      background:
+        linear-gradient(90deg, transparent, var(--divider-line), transparent) top / 100% 1px no-repeat,
+        linear-gradient(90deg, transparent, var(--divider-line), transparent) bottom / 100% 1px no-repeat;
+    }
+
+    .filter-popover-columns {
+      padding-top: 2px;
+    }
+
+    .filter-popover-column-list {
+      display: grid;
+      gap: 5px;
+    }
+
+    .filter-popover-column-list label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 760;
     }
 
     .workbench-title-row {
@@ -4343,7 +4581,32 @@
 	      display: inline-flex;
 	      align-items: center;
 	      gap: 6px;
+	      min-height: 22px;
 	    }
+
+    .column-sort-indicator {
+      display: inline-grid;
+      place-items: center;
+      width: 13px;
+      height: 13px;
+      border-radius: 999px;
+      color: var(--soft);
+      opacity: .72;
+      transform: translateY(-.5px);
+    }
+
+    th[data-column-drag]:hover .column-sort-indicator,
+    th[data-column-drag]:focus-visible .column-sort-indicator,
+    th[data-column-drag][aria-sort]:not([aria-sort="none"]) .column-sort-indicator {
+      color: var(--text);
+      opacity: 1;
+    }
+
+    th[data-column-drag]:focus-visible {
+      outline: 1px solid rgba(142,200,255,.44);
+      outline-offset: -3px;
+      border-radius: 8px;
+    }
 
     th:first-child { border-radius: 0 0 0 10px; }
     th:last-child { border-radius: 0 0 10px 0; }
@@ -4505,6 +4768,7 @@
       font-weight: 720;
       font-size: 12px;
       text-align: left;
+      cursor: pointer;
     }
 
     .next-link:hover {
@@ -4520,6 +4784,20 @@
       flex-wrap: wrap;
       min-width: 0;
       width: 100%;
+    }
+
+    #resultsBody .estate-next-stack .next-link {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(5px) scale(.96);
+      transition: opacity .16s var(--ease), transform .18s var(--ease-out), background .18s var(--ease), border-color .18s var(--ease);
+    }
+
+    #resultsBody tr:hover .estate-next-stack .next-link,
+    #resultsBody tr:focus-within .estate-next-stack .next-link {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0) scale(1);
     }
 
     .estate-actions {
@@ -6394,6 +6672,136 @@
       transform: translate3d(0, 0, 0) scale(1);
     }
 
+    .history-rail {
+      position: fixed;
+      right: 16px;
+      top: 74px;
+      bottom: 74px;
+      z-index: 74;
+      width: min(392px, calc(100vw - 32px));
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      border: 1px solid rgba(235,235,245,.16);
+      border-radius: 16px;
+      color: var(--text);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate3d(18px, 0, 0) scale(.985);
+      transition: opacity .2s var(--ease), transform .24s var(--ease-out);
+    }
+
+    .history-rail[data-open="true"] {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+
+    .history-rail-head {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      padding: 14px 14px 12px;
+      position: relative;
+    }
+
+    .history-rail-head::after {
+      content: "";
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 0;
+      height: 1px;
+      background: var(--divider-line);
+      pointer-events: none;
+    }
+
+    .history-rail-body {
+      min-height: 0;
+      overflow: auto;
+      padding: 8px 12px 14px;
+      display: grid;
+      align-content: start;
+      gap: 0;
+    }
+
+    .history-card {
+      position: relative;
+      width: 100%;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 8px;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .history-card + .history-card::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: 0;
+      height: 1px;
+      background: var(--divider-line);
+      pointer-events: none;
+    }
+
+    .history-card-copy {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .history-card-copy strong {
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .history-card-copy span,
+    .history-card-copy small {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .history-card-copy small {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .history-card-action {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(7px) scale(.96);
+      transition: opacity .16s var(--ease), transform .18s var(--ease-out);
+    }
+
+    .history-card:hover .history-card-action,
+    .history-card:focus-within .history-card-action {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0) scale(1);
+    }
+
+    .history-empty {
+      padding: 18px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
     .drawer-head {
       min-width: 0;
       display: grid;
@@ -6731,6 +7139,9 @@
     .admin-metric,
     .preference-card,
     .agent-drawer,
+    .history-rail,
+    .search-popup,
+    .table-filters-popover,
     .export-popover,
     .shell-info-popover,
     .select-menu,
@@ -6744,6 +7155,9 @@
     body[data-theme] .runtime-card,
     body[data-theme] .admin-metric,
     body[data-theme] .agent-drawer,
+    body[data-theme] .history-rail,
+    body[data-theme] .search-popup,
+    body[data-theme] .table-filters-popover,
     body[data-theme] .export-popover,
     body[data-theme] .shell-info-popover,
     body[data-theme] .select-menu,
@@ -8549,6 +8963,21 @@
         width: 100%;
         justify-content: flex-start;
       }
+      .search-popup,
+      .table-filters-popover,
+      .history-rail {
+        left: 12px;
+        right: 12px;
+        width: auto;
+        max-width: none;
+      }
+      .history-rail {
+        top: 126px;
+        bottom: 88px;
+      }
+      .filter-popover-grid {
+        grid-template-columns: 1fr;
+      }
       .shell-composer { grid-template-columns: 1fr; }
       .composer-actions { justify-content: flex-start; }
       .settings-grid,
@@ -8917,6 +9346,7 @@
         <input id="globalSearch" type="search" placeholder="Search by estate, address, case, folio, or missing info" aria-label="Search leads">
         <span class="kbd">/</span>
       </label>
+      <div id="searchPopup" class="search-popup solvys-liquid-glass-strong" role="dialog" aria-label="Search results" hidden></div>
       <div id="topStatus" class="top-status">Load the latest lead packet to begin.</div>
       <div class="top-actions">
         <div id="crmImportMenu" class="import-menu" data-open="false">
@@ -8978,9 +9408,9 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h7l4 4v14H7V3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h4M9 13h6M9 17h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             Report
           </button>
-          <button id="saveSearch" class="btn quick" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 4h12v16l-6-3-6 3V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-            Save search
+          <button id="historyToggle" class="btn quick" type="button" aria-controls="historyRail" aria-expanded="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5l3 2M5 6.5A8.5 8.5 0 1 1 3.8 15M3.8 15H8m-4.2 0v-4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            History
           </button>
           <button id="agentDrawerToggle" class="btn quick" type="button" aria-controls="agentDrawer" aria-expanded="false">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 7h10M7 12h7M7 17h4M5 3h14a2 2 0 0 1 2 2v14l-4-3H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -9109,8 +9539,8 @@
             <span class="field-title">Column visibility</span>
             <label class="check-row"><span>Property address</span><input type="checkbox" data-column-toggle="address" checked></label>
             <label class="check-row"><span>Score</span><input type="checkbox" data-column-toggle="score" checked></label>
-            <label class="check-row"><span>Classification</span><input type="checkbox" data-column-toggle="evidence" checked></label>
-            <label class="check-row"><span>Next step</span><input type="checkbox" data-column-toggle="next" checked></label>
+            <label class="check-row"><span>Last Sale Date</span><input type="checkbox" data-column-toggle="evidence" checked></label>
+            <label class="check-row"><span>Queue action</span><input type="checkbox" data-column-toggle="next" checked></label>
           </div>
           <div class="filter-note" id="filterNote">The list updates as filters change. Clicking an estate or file opens the report rail on the right.</div>
         </div>
@@ -9167,6 +9597,13 @@
               <span class="results-toolbar-actions">
                 <button id="estateArchiveToggle" class="btn text-action" type="button" aria-pressed="false">Archive</button>
                 <span id="selectionState">0 selected</span>
+                <span class="table-filters-wrap">
+                  <button id="tableFiltersToggle" class="btn quick table-filters-toggle solvys-liquid-glass" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="tableFiltersPopover">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+                    Filters
+                  </button>
+                  <div id="tableFiltersPopover" class="table-filters-popover solvys-liquid-glass-strong" role="dialog" aria-label="Estate list filters" hidden></div>
+                </span>
               </span>
             </div>
             <div class="table-wrap">
@@ -9386,6 +9823,19 @@
       <div id="activityList" class="drawer-body"></div>
     </aside>
 
+    <aside id="historyRail" class="history-rail solvys-liquid-glass-strong" data-open="false" aria-label="Search history" aria-hidden="true">
+      <div class="history-rail-head">
+        <div>
+          <p class="eyebrow">Search History</p>
+          <h2 class="drawer-title">Prospect lists</h2>
+        </div>
+        <button id="closeHistoryRail" class="btn icon-only" type="button" aria-label="Close search history" title="Close search history">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="historyRailBody" class="history-rail-body"></div>
+    </aside>
+
     <footer class="statusbar" aria-label="System status">
       <div class="footer-left">
         <div class="footer-breadcrumb" aria-label="Lead breadcrumb">
@@ -9456,6 +9906,15 @@ const state = {
   selectedDossierDocId: "discovery-dossier",
   activeDocPrepFlow: "discovery",
   docPrepListOpen: true,
+  searchPopupOpen: false,
+  historyRailOpen: false,
+  filterPopoverOpen: false,
+  searchHistory: [],
+  historyProspectIds: null,
+  sortState: {
+    results: { key: "score", direction: "desc" },
+    dossiers: { key: "", direction: "" }
+  },
   docPrepAddModal: {
     open: false,
     flowId: "discovery"
@@ -9562,6 +10021,7 @@ const contactReviewStateKey = "heirright:contact-review-state";
 const documentFilesStateKey = "heirright:document-files-state";
 const closingExportStateKey = "heirright:closing-export-state";
 const columnOrderStateKey = "heirright:column-order-state";
+const searchHistoryStateKey = "heirright:search-history-state";
 const dripSettingsKey = "heirright:drip-settings";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
 const walkthroughStateKey = "heirright:guided-walkthrough-seen";
@@ -9602,6 +10062,12 @@ const tableColumnLabels = {
   evidence: "Classification",
   next: "Next step"
 };
+
+function tableColumnLabel(scope, key) {
+  if (scope === "results" && key === "evidence") return estateDateColumnMode(state.filteredRows.length ? state.filteredRows : state.rows) === "passing" ? "Date of Passing" : "Last Sale Date";
+  if (scope === "results" && key === "next") return "Queue";
+  return tableColumnLabels[key] ?? displayStatus(key);
+}
 
 const productViews = ["dashboard", "find-estates", "dossiers", "drips", "queue", "admin", "settings"];
 
@@ -10147,6 +10613,104 @@ function persistColumnOrder() {
   storageSetItem(columnOrderStateKey, JSON.stringify(state.columnOrder));
 }
 
+function normalizeSearchHistoryItem(item = {}) {
+  const prospects = Array.isArray(item.prospects) ? item.prospects : [];
+  const normalizedProspects = prospects
+    .map((prospect) => {
+      if (typeof prospect === "string") return { id: prospect, label: prospect, address: "" };
+      if (!prospect || typeof prospect !== "object") return null;
+      return {
+        id: String(prospect.id || "").trim(),
+        label: String(prospect.label || prospect.name || prospect.id || "Prospect").trim().slice(0, 140),
+        address: String(prospect.address || "").trim().slice(0, 180)
+      };
+    })
+    .filter((prospect) => prospect?.id);
+  return {
+    id: String(item.id || `history-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`),
+    createdAt: item.createdAt || isoNow(),
+    label: String(item.label || "Fresh lead search").trim().slice(0, 140),
+    query: String(item.query || "").trim().slice(0, 140),
+    county: String(item.county || "").trim().slice(0, 80),
+    prospects: normalizedProspects.slice(0, 100),
+    filters: item.filters && typeof item.filters === "object" && !Array.isArray(item.filters) ? item.filters : {}
+  };
+}
+
+function loadSearchHistory() {
+  const stored = restoreObjectFromStorage(searchHistoryStateKey, { items: [] });
+  const items = Array.isArray(stored) ? stored : stored.items;
+  state.searchHistory = Array.isArray(items) ? items.map(normalizeSearchHistoryItem).filter((item) => item.prospects.length) : [];
+}
+
+function persistSearchHistory() {
+  const seen = new Set();
+  const items = state.searchHistory
+    .map(normalizeSearchHistoryItem)
+    .filter((item) => {
+      const key = `${item.query}:${item.createdAt}:${item.prospects.map((prospect) => prospect.id).join("|")}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return item.prospects.length;
+    })
+    .slice(0, 20);
+  state.searchHistory = items;
+  storageSetItem(searchHistoryStateKey, JSON.stringify({ items }));
+}
+
+function searchHistoryRowEntry(row) {
+  const parts = addressDisplayParts(row.address, row.county);
+  return {
+    id: row.id,
+    label: row.leadName || row.title || "Estate prospect",
+    address: `${parts.street}${parts.locality ? `, ${parts.locality}` : ""}`
+  };
+}
+
+function recordSearchHistory(batch = state.freshBatch, filters = currentFreshLeadFilters()) {
+  const rows = batch ? buildFreshBatchRows(batch) : state.rows.filter((row) => row.sourceKind === "fresh-batch");
+  const prospects = rows.filter((row) => !row.isArchived).map(searchHistoryRowEntry);
+  if (!prospects.length) return;
+  const query = cleanDisplayValue(filters.query || document.getElementById("globalSearch")?.value || document.getElementById("sourceQuery")?.value || "Fresh lead search");
+  const item = normalizeSearchHistoryItem({
+    id: `history-${Date.now().toString(36)}`,
+    createdAt: isoNow(),
+    label: query || "Fresh lead search",
+    query,
+    county: filters.county || "miami-dade",
+    filters,
+    prospects
+  });
+  state.searchHistory = [item, ...state.searchHistory.filter((entry) => entry.id !== item.id)];
+  persistSearchHistory();
+}
+
+function seedSearchHistoryFromCurrentRows() {
+  if (state.searchHistory.length || !state.rows.length) return;
+  const prospects = state.rows.filter((row) => row.sourceKind === "fresh-batch" && !row.isArchived).map(searchHistoryRowEntry);
+  if (!prospects.length) return;
+  state.searchHistory = [normalizeSearchHistoryItem({
+    id: "history-current-public-batch",
+    createdAt: state.freshBatch?.generatedAt || state.freshBatch?.latestRun?.generatedAt || isoNow(),
+    label: "Current public-source batch",
+    query: "EST OF",
+    county: prospects[0]?.address?.split(",").slice(-2).join(",").trim() || "Miami-Dade",
+    filters: currentFreshLeadFilters(),
+    prospects
+  })];
+  persistSearchHistory();
+}
+
+function rowInDocPrepQueue(rowId) {
+  const row = rowById(rowId);
+  if (!row) return false;
+  return Object.keys(docPrepFlows).some((flowId) => docPrepFlowHasWork(row, flowId));
+}
+
+function availableHistoryProspects(item) {
+  return normalizeSearchHistoryItem(item).prospects.filter((prospect) => !rowInDocPrepQueue(prospect.id));
+}
+
 function applyServerBackedStateValue(key, value) {
   let parsed;
   try {
@@ -10351,6 +10915,73 @@ function rowDisplayClassification(row) {
   if (acceptedContactCandidates(row).length) return "Contact verified";
   if (idiImportForRow(row)) return "Review contacts";
   return rowClassification(row);
+}
+
+function rowSourceFacts(row = selectedRow()) {
+  const sources = [
+    row?.data?.seed?.confirmedSourceFacts,
+    row?.data?.facts,
+    row?.dossier?.audit?.facts,
+    row?.dossier?.sourceFacts,
+    row?.dossier?.publicRecordFacts
+  ];
+  return sources.flatMap((items) => Array.isArray(items) ? items : []).filter((item) => item && typeof item === "object");
+}
+
+function sourceFactType(fact = {}) {
+  return cleanDisplayValue(fact.factType ?? fact.type ?? fact.kind ?? fact.key ?? fact.name ?? "");
+}
+
+function sourceFactValue(fact = {}) {
+  return cleanDisplayValue(
+    fact.value ??
+    fact.displayValue ??
+    fact.rawValue ??
+    fact.label ??
+    fact.summary ??
+    fact.note ??
+    ""
+  );
+}
+
+function rowSourceFactValue(row, patterns = []) {
+  const matchers = patterns.map((pattern) => pattern instanceof RegExp ? pattern : new RegExp(String(pattern), "i"));
+  const found = rowSourceFacts(row).find((fact) => {
+    const type = sourceFactType(fact);
+    return matchers.some((pattern) => pattern.test(type));
+  });
+  return found ? sourceFactValue(found) : "";
+}
+
+function rowDateOfPassingValue(row) {
+  return rowSourceFactValue(row, [/date[_\s-]*(of[_\s-]*)?(passing|death)/i, /\bdecedent[_\s-]*date\b/i, /\bdod\b/i]);
+}
+
+function rowLastSaleDateValue(row) {
+  return rowSourceFactValue(row, [/last[_\s-]*sale[_\s-]*date/i, /sale[_\s-]*date/i, /deed[_\s-]*date/i, /instrument[_\s-]*date/i]);
+}
+
+function parseEvidenceDate(value) {
+  const text = cleanDisplayValue(value);
+  if (!text || /needs|missing|unknown|review/i.test(text)) return 0;
+  const parsed = Date.parse(text);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatEvidenceDate(value) {
+  const text = cleanDisplayValue(value);
+  const parsed = parseEvidenceDate(text);
+  if (!parsed) return text || "Needs deed review";
+  return new Date(parsed).toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" });
+}
+
+function estateDateColumnMode(rows = state.filteredRows) {
+  return rows.some((row) => rowDateOfPassingValue(row)) ? "passing" : "sale";
+}
+
+function rowEstateDateValue(row, mode = estateDateColumnMode()) {
+  const sourceValue = mode === "passing" ? rowDateOfPassingValue(row) : rowLastSaleDateValue(row);
+  return formatEvidenceDate(sourceValue || rowLastSaleDateValue(row) || rowDateOfPassingValue(row));
 }
 
 function rowNextAction(row) {
@@ -10748,7 +11379,7 @@ function freshBatchRowFromRun(run, index) {
   const owner = claimValue(dossier.property?.ownerName, run.seed?.ownerName ?? "Owner needs review");
   const sourceEstate = claimValue(dossier.property?.estateName, dossier.summary?.displayName ?? `Live lead ${index + 1}`);
   const estate = estateFileDisplayLabel(sourceEstate, owner, dossier.summary?.displayName);
-  const leadName = estateFileDisplayLabel(owner, sourceEstate, dossier.summary?.displayName);
+  const leadName = estate;
   const caseNumber = claimValue(dossier.property?.caseNumber, dossier.summary?.caseNumber ?? "Internal report");
   const county = claimValue(dossier.property?.county, run.seed?.county ?? "miami-dade");
   const parcel = claimValue(dossier.property?.parcelId, run.seed?.parcelId ?? "Folio needs review");
@@ -11015,7 +11646,7 @@ function buildRows(data, dossier) {
   const owner = claimValue(dossier.property?.ownerName, data.seed?.ownerName ?? "Owner needs review");
   const sourceEstate = claimValue(dossier.property?.estateName, dossier.summary?.displayName ?? "Current estate");
   const estate = estateFileDisplayLabel(sourceEstate, owner, dossier.summary?.displayName);
-  const leadName = estateFileDisplayLabel(owner, sourceEstate, dossier.summary?.displayName);
+  const leadName = estate;
   const caseNumber = claimValue(dossier.property?.caseNumber, dossier.summary?.caseNumber ?? "Case needs review");
   const county = claimValue(dossier.property?.county, data.seed?.county ?? "miami-dade");
   const parcel = claimValue(dossier.property?.parcelId, "Folio needs review");
@@ -11155,7 +11786,7 @@ function selectAllCheckboxHtml(rows, scope = "results") {
 
 function checkedLeadSummary() {
   const count = checkedRows().length;
-  return `${count} selected`;
+  return `${count} Selected`;
 }
 
 function visibleRowsForListControls() {
@@ -11181,7 +11812,7 @@ function syncFloatingListControls() {
   const visibleCount = visibleRows.length;
   const countLabel = document.getElementById("floatingListCount");
   const scopeLabel = document.getElementById("floatingListScope");
-  if (countLabel) countLabel.textContent = `${count} selected`;
+  if (countLabel) countLabel.textContent = `${count} Selected`;
   if (scopeLabel) {
     scopeLabel.textContent = state.activeView === "dossiers"
       ? "Dossier list"
@@ -11496,6 +12127,7 @@ function loadSavedState() {
   loadDealStatuses();
   loadCrmImports();
   loadAssetDiscoveryState();
+  loadSearchHistory();
   loadShellSettings();
   loadDripSettings();
   loadOutreachWorkspace();
@@ -17527,6 +18159,7 @@ function rowMatchesFilters(row) {
   const evidence = Number(document.getElementById("evidenceFilter").value);
   const missing = document.getElementById("missingFilter").value;
   const priorityOnly = document.getElementById("priorityOnly").checked;
+  if (state.historyProspectIds && !state.historyProspectIds.has(row.id)) return false;
   if (query && !row.search.toLowerCase().includes(query)) return false;
   if (county !== "all" && !String(row.county).toLowerCase().includes(county)) return false;
   if (leadType !== "all" && row.leadType !== leadType && !row.search.toLowerCase().includes(leadType)) return false;
@@ -17537,8 +18170,53 @@ function rowMatchesFilters(row) {
   return true;
 }
 
+function rowSortValue(row, key) {
+  if (!row) return "";
+  if (key === "score") return Number(rowDisplayScore(row) || row.score || 0);
+  if (key === "address") {
+    const parts = addressDisplayParts(row.address, row.county);
+    return `${parts.locality} ${parts.street}`.toLowerCase();
+  }
+  if (key === "lead") return String(row.leadName || row.title || "").toLowerCase();
+  if (key === "evidence") return parseEvidenceDate(rowEstateDateValue(row));
+  if (key === "next") return "add to queue";
+  return String(row[key] ?? "").toLowerCase();
+}
+
+function sortedRowsForScope(rows = [], scope = "results") {
+  const sort = state.sortState?.[scope] || {};
+  if (!sort.key || !sort.direction) return rows;
+  const direction = sort.direction === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const aValue = rowSortValue(a, sort.key);
+    const bValue = rowSortValue(b, sort.key);
+    if (typeof aValue === "number" || typeof bValue === "number") {
+      return ((Number(aValue) || 0) - (Number(bValue) || 0)) * direction;
+    }
+    return String(aValue).localeCompare(String(bValue), undefined, { numeric: true, sensitivity: "base" }) * direction;
+  });
+}
+
+function nextSortDirection(scope, key) {
+  const current = state.sortState?.[scope] || {};
+  if (current.key !== key) return key === "score" || key === "evidence" ? "desc" : "asc";
+  if (current.direction === "asc") return "desc";
+  if (current.direction === "desc") return "";
+  return key === "score" || key === "evidence" ? "desc" : "asc";
+}
+
+function sortColumn(scope, key) {
+  const direction = nextSortDirection(scope, key);
+  state.sortState[scope] = { key: direction ? key : "", direction };
+  if (scope === "dossiers") renderDossiersView();
+  else applyFilters();
+  const label = tableColumnLabel(scope, key);
+  const copy = direction ? `${label} sorted ${direction === "asc" ? "ascending" : "descending"}.` : `${label} sorting cleared.`;
+  addShellEvent("Column sort updated", copy, "review", false);
+}
+
 function applyFilters() {
-  state.filteredRows = state.rows.filter(rowMatchesFilters);
+  state.filteredRows = sortedRowsForScope(state.rows.filter(rowMatchesFilters), "results");
   if (!state.filteredRows.some((row) => row.id === state.selectedId)) {
     state.selectedId = state.filteredRows[0]?.id ?? state.rows[0]?.id ?? null;
   }
@@ -17546,6 +18224,9 @@ function applyFilters() {
   renderDetail();
   renderRail();
   renderCurrentLoopView();
+  renderSearchPopup();
+  renderHistoryRail();
+  renderTableFiltersPopover();
 }
 
 function orderedColumns(scope) {
@@ -17555,13 +18236,22 @@ function orderedColumns(scope) {
 
 function tableHeaderHtml(scope, rows = []) {
   const selectScope = scope === "dossiers" ? "dossiers" : "results";
+  const sort = state.sortState?.[scope] || {};
   return `
     <th style="width: 42px;">${selectScope === "results" ? `<span id="resultsSelectAllMount"></span>` : selectAllCheckboxHtml(rows, "dossiers")}</th>
-    ${orderedColumns(scope).map((key) => `
-      <th data-column="${escapeHtml(key)}" data-column-drag="${escapeHtml(key)}" draggable="true" title="Drag to reorder columns">
-        <span class="column-drag-label">${escapeHtml(tableColumnLabels[key] ?? displayStatus(key))}</span>
-      </th>
-    `).join("")}
+    ${orderedColumns(scope).map((key) => {
+      const active = sort.key === key && sort.direction;
+      const sortLabel = active ? (sort.direction === "asc" ? "ascending" : "descending") : "none";
+      const iconPath = active && sort.direction === "asc" ? "m7 14 5-5 5 5" : "m7 10 5 5 5-5";
+      return `
+        <th data-column="${escapeHtml(key)}" data-column-drag="${escapeHtml(key)}" draggable="true" tabindex="0" aria-sort="${sortLabel}" title="Click to sort. Drag to reorder columns.">
+          <span class="column-drag-label">
+            ${escapeHtml(tableColumnLabel(scope, key))}
+            <span class="column-sort-indicator" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="${iconPath}" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </span>
+        </th>
+      `;
+    }).join("")}
   `;
 }
 
@@ -17587,10 +18277,9 @@ function resultCellHtml(key, row) {
     return `<td data-column="lead"><span class="primary-text">${escapeHtml(row.leadName)}</span></td>`;
   }
   if (key === "score") return `<td data-column="score">${scoreHtml(row)}</td>`;
-  if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowDisplayClassification(row))}</span></td>`;
+  if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowEstateDateValue(row))}</span></td>`;
   if (key === "next") {
-    const next = rowNextAction(row);
-    return `<td data-column="next"><span class="estate-next-stack"><button class="next-link solvys-liquid-glass" type="button" title="${escapeHtml(next)}" data-open-next="${escapeHtml(row.id)}">${escapeHtml(conciseNextStep(next))}</button>${importedEstateLifecycleHtml(row)}</span></td>`;
+    return `<td data-column="next"><span class="estate-next-stack"><button class="next-link solvys-liquid-glass" type="button" title="Add ${escapeHtml(row.leadName || row.title)} to Queue" data-add-row-to-queue="${escapeHtml(row.id)}">Add to queue</button>${importedEstateLifecycleHtml(row)}</span></td>`;
   }
   return "";
 }
@@ -17608,16 +18297,24 @@ function dossierCellHtml(key, row) {
 
 function wireColumnReorder(root, scope) {
   let dragged = null;
+  let draggedAt = 0;
+  const clearDragState = () => {
+    root.querySelectorAll("[data-column-drag].is-dragging, [data-column-drag].is-drop-target").forEach((item) => {
+      item.classList.remove("is-dragging", "is-drop-target");
+    });
+    dragged = null;
+  };
   root.querySelectorAll("[data-column-drag]").forEach((header) => {
     header.addEventListener("dragstart", (event) => {
       dragged = header.dataset.columnDrag;
+      draggedAt = Date.now();
       event.dataTransfer?.setData("text/plain", dragged);
       event.dataTransfer?.setDragImage?.(header, 10, 10);
       header.classList.add("is-dragging");
     });
     header.addEventListener("dragend", () => {
-      header.classList.remove("is-dragging");
-      dragged = null;
+      draggedAt = Date.now();
+      clearDragState();
     });
     header.addEventListener("dragover", (event) => {
       if (!dragged || dragged === header.dataset.columnDrag) return;
@@ -17638,9 +18335,20 @@ function wireColumnReorder(root, scope) {
       persistColumnOrder();
       if (scope === "dossiers") renderDossiersView();
       else renderResults();
-      addShellEvent("Columns reordered", `${tableColumnLabels[sourceKey]} moved before ${tableColumnLabels[targetKey]}.`, "review", false);
+      addShellEvent("Columns reordered", `${tableColumnLabel(scope, sourceKey)} moved before ${tableColumnLabel(scope, targetKey)}.`, "review", false);
+    });
+    header.addEventListener("click", (event) => {
+      if (Date.now() - draggedAt < 180) return;
+      event.preventDefault();
+      sortColumn(scope, header.dataset.columnDrag);
+    });
+    header.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      sortColumn(scope, header.dataset.columnDrag);
     });
   });
+  window.addEventListener("pointerup", clearDragState, { once: true });
 }
 
 function renderResults() {
@@ -17681,15 +18389,14 @@ function renderResults() {
       setRailOpen(true, rowEl);
     });
   });
-  body.querySelectorAll("[data-open-next]").forEach((button) => {
+  body.querySelectorAll("[data-add-row-to-queue]").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
-      state.selectedId = button.dataset.openNext;
-      const row = selectedRow();
-      state.railOpen = true;
-      setDetailRailOpen(false);
-      renderAll();
-      openRailPreview(row?.missing[0]?.id ?? "tax", button);
+      const row = rowById(button.dataset.addRowToQueue);
+      if (!row) return;
+      state.selectedId = row.id;
+      addRowsToQueue([row], button);
+      renderResults();
     });
   });
   body.querySelectorAll("[data-estate-lifecycle]").forEach((button) => {
@@ -17703,6 +18410,260 @@ function renderResults() {
 	  wireColumnReorder(document, "results");
 	  applyColumnVisibility();
 	}
+
+function searchPopupMatches(query) {
+  const normalized = String(query || "").trim().toLowerCase();
+  if (!normalized) return [];
+  return state.rows
+    .filter((row) => !row.isArchived && row.search.toLowerCase().includes(normalized))
+    .slice(0, 7);
+}
+
+function renderSearchPopup() {
+  const popup = document.getElementById("searchPopup");
+  const input = document.getElementById("globalSearch");
+  if (!popup || !input) return;
+  const query = input.value.trim();
+  const shouldOpen = state.searchPopupOpen && query.length > 0;
+  popup.hidden = !shouldOpen;
+  popup.dataset.open = shouldOpen ? "true" : "false";
+  if (!shouldOpen) {
+    popup.innerHTML = "";
+    return;
+  }
+  const rows = searchPopupMatches(query);
+  popup.innerHTML = `
+    <div class="search-popup-title">
+      <span>Matching estates</span>
+      <span>${rows.length} shown</span>
+    </div>
+    ${rows.length ? rows.map((row) => {
+      const parts = addressDisplayParts(row.address, row.county);
+      return `
+        <div class="search-result-card" role="button" tabindex="0" data-search-open="${escapeHtml(row.id)}">
+          <span class="search-result-copy">
+            <strong>${escapeHtml(row.leadName || row.title)}</strong>
+            <span>${escapeHtml(parts.street)} · ${escapeHtml(parts.locality)}</span>
+          </span>
+          <button class="search-result-action" type="button" data-search-queue="${escapeHtml(row.id)}">Add to queue</button>
+        </div>
+      `;
+    }).join("") : `<div class="history-empty">No estate files match this search yet.</div>`}
+  `;
+  popup.querySelectorAll("[data-search-open]").forEach((card) => {
+    const openRow = () => {
+      const row = rowById(card.dataset.searchOpen);
+      if (!row) return;
+      state.selectedId = row.id;
+      document.querySelector('[data-shell-nav="find-estates"]')?.click();
+      renderAll();
+      renderSearchPopup();
+    };
+    card.addEventListener("click", (event) => {
+      if (event.target.closest("[data-search-queue]")) return;
+      openRow();
+    });
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openRow();
+    });
+  });
+  popup.querySelectorAll("[data-search-queue]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const row = rowById(button.dataset.searchQueue);
+      if (row) addRowsToQueue([row], button);
+      renderSearchPopup();
+    });
+  });
+}
+
+function setSearchPopupOpen(open) {
+  state.searchPopupOpen = Boolean(open);
+  renderSearchPopup();
+}
+
+function selectOptionsMarkup(sourceId, currentValue = "") {
+  const select = document.getElementById(sourceId);
+  if (!select) return "";
+  return [...select.options].map((option) => `
+    <option value="${escapeHtml(option.value)}" ${option.value === currentValue ? "selected" : ""}>${escapeHtml(option.textContent.trim())}</option>
+  `).join("");
+}
+
+function renderTableFiltersPopover() {
+  const popover = document.getElementById("tableFiltersPopover");
+  const toggle = document.getElementById("tableFiltersToggle");
+  if (!popover || !toggle) return;
+  const open = Boolean(state.filterPopoverOpen);
+  popover.hidden = !open;
+  toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  if (!open) {
+    popover.innerHTML = "";
+    return;
+  }
+  const proxyValue = (id) => document.getElementById(id)?.value || "";
+  const proxyChecked = (id) => Boolean(document.getElementById(id)?.checked);
+  const visible = (key) => [...document.querySelectorAll(`[data-column-toggle="${key}"]`)].every((toggleItem) => toggleItem.checked);
+  popover.innerHTML = `
+    <div class="filter-popover-head">
+      <strong>List filters</strong>
+      <span>Filter the current estate list, then click a column header to sort or drag it to reorder.</span>
+    </div>
+    <div class="filter-popover-grid">
+      <label class="filter-popover-field">County
+        <select data-filter-proxy="countyFilter">${selectOptionsMarkup("countyFilter", proxyValue("countyFilter"))}</select>
+      </label>
+      <label class="filter-popover-field">Lead type
+        <select data-filter-proxy="leadTypeFilter">${selectOptionsMarkup("leadTypeFilter", proxyValue("leadTypeFilter"))}</select>
+      </label>
+      <label class="filter-popover-field">Source search
+        <select data-filter-proxy="sourceModeFilter">${selectOptionsMarkup("sourceModeFilter", proxyValue("sourceModeFilter"))}</select>
+      </label>
+      <label class="filter-popover-field">Source filter
+        <input type="search" data-filter-proxy="sourceQuery" value="${escapeHtml(proxyValue("sourceQuery"))}">
+      </label>
+      <label class="filter-popover-field">Batch size
+        <select data-filter-proxy="sourceLimit">${selectOptionsMarkup("sourceLimit", proxyValue("sourceLimit"))}</select>
+      </label>
+      <label class="filter-popover-field">Property status
+        <select data-filter-proxy="statusFilter">${selectOptionsMarkup("statusFilter", proxyValue("statusFilter"))}</select>
+      </label>
+      <label class="filter-popover-field">Minimum evidence
+        <select data-filter-proxy="evidenceFilter">${selectOptionsMarkup("evidenceFilter", proxyValue("evidenceFilter"))}</select>
+      </label>
+      <label class="filter-popover-field">Missing info
+        <select data-filter-proxy="missingFilter">${selectOptionsMarkup("missingFilter", proxyValue("missingFilter"))}</select>
+      </label>
+      <label class="filter-popover-switch">
+        <span>Show only high-priority leads</span>
+        <input type="checkbox" data-filter-proxy="priorityOnly" ${proxyChecked("priorityOnly") ? "checked" : ""}>
+      </label>
+      <div class="filter-popover-columns">
+        <span>Columns</span>
+        <div class="filter-popover-column-list">
+          ${orderedColumns("results").map((key) => `
+            <label><span>${escapeHtml(tableColumnLabel("results", key))}</span><input type="checkbox" data-column-toggle="${escapeHtml(key)}" ${visible(key) ? "checked" : ""}></label>
+          `).join("")}
+        </div>
+      </div>
+    </div>
+    <button class="btn quick table-filters-toggle" type="button" data-reset-table-filters>Clear filters</button>
+  `;
+  popover.querySelectorAll("[data-filter-proxy]").forEach((control) => {
+    const applyProxy = () => {
+      const target = document.getElementById(control.dataset.filterProxy);
+      if (!target) return;
+      if (target.type === "checkbox") target.checked = control.checked;
+      else target.value = control.value;
+      state.historyProspectIds = null;
+      if (target.id === "sourceModeFilter") target.dispatchEvent(new Event("change", { bubbles: true }));
+      applyFilters();
+      renderTableFiltersPopover();
+    };
+    if (control.matches('input[type="search"], input[type="text"]')) {
+      control.addEventListener("change", applyProxy);
+    } else {
+      control.addEventListener("input", applyProxy);
+      control.addEventListener("change", applyProxy);
+    }
+  });
+  popover.querySelectorAll("[data-column-toggle]").forEach((toggle) => {
+    toggle.addEventListener("change", () => {
+      document.querySelectorAll(`[data-column-toggle="${toggle.dataset.columnToggle}"]`).forEach((other) => {
+        other.checked = toggle.checked;
+      });
+      applyColumnVisibility();
+    });
+  });
+  popover.querySelector("[data-reset-table-filters]")?.addEventListener("click", () => {
+    document.getElementById("globalSearch").value = "";
+    document.getElementById("countyFilter").value = "miami-dade";
+    document.getElementById("leadTypeFilter").value = "all";
+    document.getElementById("statusFilter").value = "all";
+    document.getElementById("evidenceFilter").value = "0";
+    document.getElementById("missingFilter").value = "all";
+    document.getElementById("priorityOnly").checked = false;
+    state.historyProspectIds = null;
+    applyFilters();
+    renderTableFiltersPopover();
+  });
+}
+
+function setFilterPopoverOpen(open) {
+  state.filterPopoverOpen = Boolean(open);
+  renderTableFiltersPopover();
+}
+
+function historyDateLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return "Unscheduled search";
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function historyProspectSample(prospects = []) {
+  return prospects.slice(0, 3).map((prospect) => prospect.label).join(", ");
+}
+
+function renderHistoryRail() {
+  const rail = document.getElementById("historyRail");
+  const toggle = document.getElementById("historyToggle");
+  const body = document.getElementById("historyRailBody");
+  if (!rail || !body) return;
+  const open = Boolean(state.historyRailOpen);
+  rail.dataset.open = open ? "true" : "false";
+  rail.setAttribute("aria-hidden", open ? "false" : "true");
+  toggle?.setAttribute("aria-expanded", open ? "true" : "false");
+  if (!open) return;
+  const items = state.searchHistory
+    .map(normalizeSearchHistoryItem)
+    .map((item) => ({ item, prospects: availableHistoryProspects(item) }))
+    .filter(({ prospects }) => prospects.length);
+  body.innerHTML = items.length ? items.map(({ item, prospects }) => `
+    <section class="history-card" data-history-open="${escapeHtml(item.id)}">
+      <span class="history-card-copy">
+        <strong>${escapeHtml(historyDateLabel(item.createdAt))}</strong>
+        <span>${prospects.length} Prospect${prospects.length === 1 ? "" : "s"}</span>
+        <small>${escapeHtml(historyProspectSample(prospects) || item.query || "Prospects pending review")}</small>
+      </span>
+      <button class="history-card-action solvys-liquid-glass" type="button" data-history-open-button="${escapeHtml(item.id)}">Open</button>
+    </section>
+  `).join("") : `<div class="history-empty">No past searches remain outside Doc Prep. New public-source pulls will appear here until a prospect is worked.</div>`;
+  body.querySelectorAll("[data-history-open]").forEach((card) => {
+    const openItem = () => openHistoryItem(card.dataset.historyOpen);
+    card.addEventListener("click", (event) => {
+      if (event.target.closest("[data-history-open-button]")) return;
+      openItem();
+    });
+  });
+  body.querySelectorAll("[data-history-open-button]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openHistoryItem(button.dataset.historyOpenButton);
+    });
+  });
+}
+
+function setHistoryRailOpen(open) {
+  state.historyRailOpen = Boolean(open);
+  if (state.historyRailOpen) state.activityOpen = false;
+  renderHistoryRail();
+  setActivityOpen(state.activityOpen);
+}
+
+function openHistoryItem(itemId) {
+  const item = state.searchHistory.map(normalizeSearchHistoryItem).find((entry) => entry.id === itemId);
+  if (!item) return;
+  const prospects = availableHistoryProspects(item);
+  state.historyProspectIds = new Set(prospects.map((prospect) => prospect.id));
+  const firstRow = prospects.map((prospect) => rowById(prospect.id)).find(Boolean);
+  if (firstRow) state.selectedId = firstRow.id;
+  document.querySelector('[data-shell-nav="find-estates"]')?.click();
+  setHistoryRailOpen(false);
+  applyFilters();
+  document.getElementById("topStatus").textContent = `${prospects.length} prospect${prospects.length === 1 ? "" : "s"} opened from Search History.`;
+}
 
 function renderDetail() {
   const row = selectedRow();
@@ -18188,6 +19149,7 @@ async function loadRun() {
       state.dailyRun = freshBatch.dailyRun ?? await loadDailyRun();
       state.qualificationReview = state.dailyRun?.qualificationReview ?? await loadQualificationReview();
       renderLoadedState(freshBatch.latestRun, freshBatch.latestRun.dossier);
+      seedSearchHistoryFromCurrentRows();
       const firstSeed = freshBatch.seeds?.[0] ?? {};
       const firstLead = firstSeed.ownerName || firstSeed.estateName || cleanDisplayValue(firstSeed.propertyAddress) || "live public-source lead";
       const summary = freshBatch.operatorSummary || `Pulled ${freshBatch.acceptedSeedCount ?? freshBatch.leadRuns.length} live lead(s).`;
@@ -18293,7 +19255,9 @@ async function pullFreshBatch(source = null) {
     state.dailyRun = result.dailyRun;
     state.qualificationReview = result.dailyRun?.qualificationReview ?? null;
     state.selectedId = null;
+    state.historyProspectIds = null;
     renderLoadedState(result.latestRun, result.latestRun.dossier);
+    recordSearchHistory(result, filters);
 
     const firstSeed = result.seeds?.[0] ?? {};
     const firstLead = firstSeed.ownerName || firstSeed.estateName || cleanDisplayValue(firstSeed.propertyAddress) || "live public-source lead";
@@ -18885,8 +19849,23 @@ function wireEvents() {
   });
   document.getElementById("footerBack").addEventListener("click", () => window.history.back());
   document.getElementById("footerForward").addEventListener("click", () => window.history.forward());
-  document.getElementById("agentDrawerToggle").addEventListener("click", () => setActivityOpen(!state.activityOpen));
+  document.getElementById("agentDrawerToggle").addEventListener("click", () => {
+    setHistoryRailOpen(false);
+    setActivityOpen(!state.activityOpen);
+  });
   document.getElementById("closeAgentDrawer").addEventListener("click", () => setActivityOpen(false));
+  document.getElementById("historyToggle")?.addEventListener("click", () => setHistoryRailOpen(!state.historyRailOpen));
+  document.getElementById("closeHistoryRail")?.addEventListener("click", () => setHistoryRailOpen(false));
+  document.getElementById("tableFiltersToggle")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setFilterPopoverOpen(!state.filterPopoverOpen);
+  });
+  document.getElementById("globalSearch")?.addEventListener("focus", () => setSearchPopupOpen(Boolean(document.getElementById("globalSearch")?.value.trim())));
+  document.getElementById("globalSearch")?.addEventListener("input", () => {
+    state.historyProspectIds = null;
+    state.searchPopupOpen = true;
+    applyFilters();
+  });
   document.getElementById("railContextCopy").addEventListener("click", (event) => {
     if (event.target.id === "railRenameInput") return;
     if (state.railMode === "dossier") return;
@@ -18980,21 +19959,36 @@ function wireEvents() {
     if (!document.getElementById("crmImportMenu")?.contains(event.target)) {
       setCrmImportMenuOpen(false);
     }
+    if (!document.getElementById("tableFiltersPopover")?.contains(event.target) && !document.getElementById("tableFiltersToggle")?.contains(event.target)) {
+      setFilterPopoverOpen(false);
+    }
+    if (!document.getElementById("searchPopup")?.contains(event.target) && !document.querySelector(".search-control")?.contains(event.target)) {
+      setSearchPopupOpen(false);
+    }
   });
   document.getElementById("closeRail").addEventListener("click", () => {
     setRailOpen(false);
     if (state.activeView === "find-estates") setDetailRailOpen(true);
   });
   document.getElementById("walkthroughReplay")?.addEventListener("click", () => openWalkthrough(0));
-  document.getElementById("saveSearch").addEventListener("click", () => {
-    document.getElementById("filterNote").textContent = "Search saved for this review session.";
-  });
-  ["globalSearch", "countyFilter", "leadTypeFilter", "statusFilter", "evidenceFilter", "missingFilter", "priorityOnly"].forEach((id) => {
-    document.getElementById(id).addEventListener("input", applyFilters);
-    document.getElementById(id).addEventListener("change", applyFilters);
+  ["countyFilter", "leadTypeFilter", "statusFilter", "evidenceFilter", "missingFilter", "priorityOnly"].forEach((id) => {
+    document.getElementById(id).addEventListener("input", () => {
+      state.historyProspectIds = null;
+      applyFilters();
+    });
+    document.getElementById(id).addEventListener("change", () => {
+      state.historyProspectIds = null;
+      applyFilters();
+    });
   });
   document.querySelectorAll("[data-column-toggle]").forEach((toggle) => {
-    toggle.addEventListener("change", applyColumnVisibility);
+    toggle.addEventListener("change", () => {
+      document.querySelectorAll(`[data-column-toggle="${toggle.dataset.columnToggle}"]`).forEach((other) => {
+        other.checked = toggle.checked;
+      });
+      applyColumnVisibility();
+      renderTableFiltersPopover();
+    });
   });
   document.querySelectorAll("[data-rail-tab]").forEach((button) => {
     button.addEventListener("click", () => setRailTab(button.dataset.railTab));
@@ -19004,6 +19998,9 @@ function wireEvents() {
       closeAllEnhancedSelects();
       setExportMenuOpen(false);
       setCrmImportMenuOpen(false);
+      setFilterPopoverOpen(false);
+      setSearchPopupOpen(false);
+      setHistoryRailOpen(false);
       setActivityOpen(false);
       closeWalkthrough(false);
       if (state.crmImportModal.open) closeCrmImportModal();
