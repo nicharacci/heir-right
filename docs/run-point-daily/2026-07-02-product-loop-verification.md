@@ -54,8 +54,8 @@ Goal: verify the user-facing HeirRight loop from fresh public-record source thro
 - Remaining blocker:
   - Google Workspace webhook creates the document and reports readback to the app, but the created Google Docs are not shared with the current Chrome account `sam@heirright.com`.
   - Chrome opens the returned app-generated document URLs to Google Drive `Access Denied`.
-  - The app now sends `workspaceDestination: "airwrite"` plus `shareWithEmails`, `shareWith`, `shareWithEmail`, `viewerEmails`, `viewers`, `collaboratorEmails`, and `accessEmails`, but the current webhook ignores those sharing fields.
-  - Completion requires updating the Google Workspace webhook / Apps Script to share created docs with the intended viewer account or running the test in the actual AirWrite Google account.
+  - Corrected target: this Google Workspace handoff is for HeirRight, not AirWrite. The app should send `workspaceDestination: "heirright"` plus `workspaceDestinationEmail`, `shareWithEmails`, `shareWith`, `shareWithEmail`, `viewerEmails`, `viewers`, `collaboratorEmails`, and `accessEmails`.
+  - Completion requires updating the Google Workspace webhook / Apps Script to share created docs with the intended HeirRight viewer account, or using direct Google credentials that can apply Drive permissions from the app.
 
 ## Final Verification Commands
 
@@ -66,3 +66,35 @@ Goal: verify the user-facing HeirRight loop from fresh public-record source thro
 - `pnpm exec vercel deploy --prod --scope solvys`
 - `curl https://heirright-landing-demo.vercel.app/api/health/deep`
 - `curl https://heirright-landing-demo.vercel.app/api/closing-docs/export-google?dry-run=true`
+
+## HeirRight Target Correction
+
+- User correction: Google Workspace export is for HeirRight, not AirWrite.
+- Updated the app export request to send `workspaceDestination: "heirright"` and `workspaceDestinationEmail` from the signed-in HeirRight user, with `sam@heirright.com` and `joshua@heirright.com` in the requested share list.
+- Updated the Worker Google export path so the direct Google API path grants Drive permissions to the requested HeirRight reviewers, while the webhook path accepts HeirRight Doc URL + readback proof when the webhook does not echo share fields. If the webhook does echo share fields and omits a requested reviewer, the route still blocks.
+- Fixed a user-facing Closing Prep crash caused by the Google access label using `googleReady` without defining it in the rail panel.
+- Added validation coverage for direct Drive permission grants, HeirRight webhook payload targeting, webhook readback acceptance, and partial-share blocking.
+
+## 2026-07-02 Follow-up Production Proof
+
+- Worker redeployed with route-capable entrypoint:
+  - First route repair version: `82d3ba88-cc52-412d-b10b-1fe83bb4796e`
+  - HeirRight readback behavior version: `f89762c6-f5e9-4805-b4cd-b8e3d4edb2d5`
+- Frontend redeployed:
+  - `dpl_HBFfQvLv1jaPAtFndb4orjPsvoaK`
+  - `https://heirright-landing-demo-9ml8no3km-solvys.vercel.app`
+  - Alias: `https://heirright-landing-demo.vercel.app`
+- Direct route proof after Worker redeploy:
+  - `GET https://heirright-probate-lead-engine.sam-e7a.workers.dev/health` lists `/api/closing-docs/export-google`.
+  - `GET https://heirright-landing-demo.vercel.app/api/closing-docs/export-google?dry-run=true` returns the Google dry-run export packet through the Vercel proxy.
+  - `GET https://heirright-landing-demo.vercel.app/api/health/deep` reports `/api/closing-docs/export-google` as available and Google as live.
+- Fresh UI source proof after correction:
+  - Estates tab pulled owner search `EST OF Z` from Miami-Dade Property Appraiser.
+  - Fresh leads included `Estate of Efrain Diaz Pedro Diaz Jr Roberto Diaz Iris Diaz Mahilal`, `Estate of Eliazard Croissy`, and `Estate of Ernesto Martinez Garcia Katherine Ivette Aquino Nunez`.
+  - `Estate of Eliazard Croissy` was added to the Queue from the Estates tab.
+  - `Estate of Eliazard Croissy` ran Estate Discovery to `100%` and Closing Prep to `100%` from the Document Prep UI.
+  - App-only Google export created: `https://docs.google.com/open?id=1B_vkL8vFkGF8flNvH0JW5qJgp_0yz0SLhVk6g5eIMGc`
+  - Chrome opened that app-created document successfully as: `Closing Prep Packet - Estate of Eliazard Croissy - 525 NW 58 ST, Miami, FL 33127-0000 - Google Docs`.
+- Current build smoke after reconnect:
+  - Dashboard tab rendered active process cards and recent activity.
+  - Queue tab rendered the batch export prep surface and empty-queue state when no persisted queue rows were present.

@@ -370,6 +370,128 @@ async function main(): Promise<void> {
   if (!dryReadbackMarkdown.includes("HeirRight Google + Podio Readback Evidence")) failures.push("S19 readback markdown heading missing.");
   if (!dryReadbackMarkdown.includes("No live record")) failures.push("S19 readback markdown should show no live record for dry prep.");
 
+  const originalFetch = globalThis.fetch;
+  const googlePermissionRequests: Array<{ fileId: string; email: string }> = [];
+  try {
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
+      if (url === "https://www.googleapis.com/drive/v3/files") {
+        return Response.json({ id: "validation-folder", webViewLink: "https://drive.google.com/drive/folders/validation-folder" });
+      }
+      if (url.startsWith("https://www.googleapis.com/drive/v3/files?")) {
+        return Response.json({ id: "validation-doc", webViewLink: "https://docs.google.com/document/d/validation-doc/edit" });
+      }
+      if (url === "https://docs.googleapis.com/v1/documents/validation-doc:batchUpdate") {
+        return Response.json({ replies: [] });
+      }
+      if (url.includes("/permissions?")) {
+        const match = url.match(/\/files\/([^/]+)\/permissions/);
+        googlePermissionRequests.push({ fileId: match?.[1] ?? "", email: String(body.emailAddress || "") });
+        return Response.json({ id: `${match?.[1] ?? "file"}-${body.emailAddress}` });
+      }
+      if (url.includes("/values/Lead%20Reports!A%3AG:append")) {
+        return Response.json({ updates: { updatedRange: "Lead Reports!A1:G1" } });
+      }
+      if (url.includes("/values/Lead%20Reports!A1%3AG1")) {
+        return Response.json({ values: [[nowIso(), result.dossier.summary.displayName, "validation-doc"]] });
+      }
+      if (url === "https://www.googleapis.com/drive/v3/files/validation-doc?fields=id,webViewLink") {
+        return Response.json({ id: "validation-doc", webViewLink: "https://docs.google.com/document/d/validation-doc/edit" });
+      }
+      return Response.json({ error: "unexpected_google_validation_fetch", url }, { status: 500 });
+    };
+    const liveGoogleShareExport = await exportCompletedReport({
+      routes: ["google"],
+      dossier: result.dossier,
+      dryRun: false,
+      workspaceDestination: "heirright",
+      workspaceDestinationEmail: "sam@heirright.com",
+      shareWithEmails: ["joshua@heirright.com"],
+      requestedByEmail: "sam@heirright.com",
+    }, {
+      GOOGLE_WORKSPACE_ACCESS_TOKEN: "validation-google-token",
+      GOOGLE_TRACKING_SHEET_ID: "validation-sheet",
+      GOOGLE_LIVE_WRITE_APPROVED: "true",
+    });
+    const liveGoogleRoute = liveGoogleShareExport.routes.find((route) => route.route === "google");
+    if (!liveGoogleShareExport.ok) failures.push(`S19 live Google share export should pass with mocked Drive permissions: ${liveGoogleShareExport.blockers.join("; ")}`);
+    if (liveGoogleRoute?.workspaceDestination !== "heirright") failures.push("S19 live Google export should target HeirRight workspace.");
+    for (const email of ["sam@heirright.com", "joshua@heirright.com"] as const) {
+      if (!liveGoogleRoute?.sharedWithEmails?.includes(email)) failures.push(`S19 live Google export missing sharedWithEmails ${email}.`);
+      for (const fileId of ["validation-folder", "validation-doc"] as const) {
+        if (!googlePermissionRequests.some((request) => request.fileId === fileId && request.email === email)) {
+          failures.push(`S19 live Google export did not grant ${email} access to ${fileId}.`);
+        }
+      }
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const webhookBodies: Array<Record<string, unknown>> = [];
+  try {
+    globalThis.fetch = async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
+      webhookBodies.push(body);
+      return Response.json({
+        ok: true,
+        docId: "validation-webhook-doc",
+        docUrl: "https://docs.google.com/open?id=validation-webhook-doc",
+        readbackOk: true,
+      });
+    };
+    const webhookExport = await exportCompletedReport({
+      routes: ["google"],
+      dossier: result.dossier,
+      dryRun: false,
+      workspaceDestination: "heirright",
+      workspaceDestinationEmail: "sam@heirright.com",
+      shareWithEmails: ["joshua@heirright.com"],
+      requestedByEmail: "sam@heirright.com",
+    }, {
+      GOOGLE_WORKSPACE_WEBHOOK_URL: "https://workspace.example.test/export",
+      GOOGLE_WORKSPACE_WEBHOOK_SECRET: "validation-secret",
+      GOOGLE_LIVE_WRITE_APPROVED: "true",
+    });
+    if (!webhookExport.ok) failures.push(`S19 webhook Google export should pass when HeirRight readback returns a Doc URL: ${webhookExport.blockers.join("; ")}`);
+    if (webhookBodies[0]?.workspaceDestination !== "heirright") failures.push("S19 webhook payload should target HeirRight workspace.");
+    if (!Array.isArray(webhookBodies[0]?.shareWithEmails) || !(webhookBodies[0]?.shareWithEmails as string[]).includes("sam@heirright.com")) {
+      failures.push("S19 webhook payload should include HeirRight reviewer emails.");
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  try {
+    globalThis.fetch = async (): Promise<Response> => Response.json({
+      ok: true,
+      docId: "validation-webhook-doc",
+      docUrl: "https://docs.google.com/open?id=validation-webhook-doc",
+      readbackOk: true,
+      sharedWithEmails: ["sam@heirright.com"],
+    });
+    const partialShareWebhookExport = await exportCompletedReport({
+      routes: ["google"],
+      dossier: result.dossier,
+      dryRun: false,
+      workspaceDestination: "heirright",
+      workspaceDestinationEmail: "sam@heirright.com",
+      shareWithEmails: ["joshua@heirright.com"],
+      requestedByEmail: "sam@heirright.com",
+    }, {
+      GOOGLE_WORKSPACE_WEBHOOK_URL: "https://workspace.example.test/export",
+      GOOGLE_WORKSPACE_WEBHOOK_SECRET: "validation-secret",
+      GOOGLE_LIVE_WRITE_APPROVED: "true",
+    });
+    if (partialShareWebhookExport.ok) failures.push("S19 webhook Google export should block when explicit sharedWithEmails omits a requested HeirRight reviewer.");
+    if (!partialShareWebhookExport.blockers.some((blocker) => blocker.includes("did not confirm Drive access"))) {
+      failures.push("S19 partial webhook sharing response missing Drive access confirmation blocker.");
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const podioPresetDryExport = await exportCompletedReport({
     routes: ["podio"],
     dossier: result.dossier,

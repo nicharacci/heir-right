@@ -27,6 +27,12 @@ type GoogleWorkspaceExportOptions = Pick<ExportRequest,
   "workspaceDestination" | "workspaceDestinationEmail" | "shareWithEmails" | "requestedByEmail"
 >;
 
+interface GoogleWorkspaceTargets {
+  workspaceDestination: string;
+  workspaceDestinationEmail?: string;
+  shareWithEmails: string[];
+}
+
 function missing(keys: string[], env: RuntimeEnv): string[] {
   return keys.filter((key) => !env[key]);
 }
@@ -61,6 +67,69 @@ function uniqueEmails(values: Array<string | undefined>): string[] {
       seen.add(value);
       return true;
     });
+}
+
+function resolveGoogleWorkspaceTargets(env: RuntimeEnv, options: GoogleWorkspaceExportOptions = {}): GoogleWorkspaceTargets {
+  const workspaceDestination = options.workspaceDestination
+    || env.GOOGLE_WORKSPACE_DESTINATION
+    || "heirright";
+  const workspaceDestinationEmail = options.workspaceDestinationEmail
+    || env.GOOGLE_WORKSPACE_DESTINATION_EMAIL
+    || env.HEIRRIGHT_WORKSPACE_EMAIL;
+  const shareWithEmails = uniqueEmails([
+    workspaceDestinationEmail,
+    ...(options.shareWithEmails ?? []),
+    options.requestedByEmail,
+  ]);
+  return { workspaceDestination, workspaceDestinationEmail, shareWithEmails };
+}
+
+function normalizedEmailSet(values: Array<string | undefined>): Set<string> {
+  return new Set(uniqueEmails(values));
+}
+
+function uniqueStrings(values: Array<string | undefined>): string[] {
+  const seen = new Set<string>();
+  return values
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .filter((value) => {
+      if (seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    });
+}
+
+function missingEmailConfirmations(requested: string[], confirmed: string[]): string[] {
+  const confirmedSet = normalizedEmailSet(confirmed);
+  return requested.filter((email) => !confirmedSet.has(email));
+}
+
+async function shareGoogleFileWithEmails(fileId: string, token: string, emails: string[]): Promise<string[]> {
+  const blockers: string[] = [];
+  for (const email of emails) {
+    const response = await googleFetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?sendNotificationEmail=false&supportsAllDrives=true`,
+      token,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          type: "user",
+          role: "writer",
+          emailAddress: email,
+        }),
+      },
+    );
+    if (!response.ok) blockers.push(`Google Drive permission failed for ${email} on ${fileId}: ${response.status}`);
+  }
+  return blockers;
+}
+
+async function shareGoogleFilesWithEmails(fileIds: string[], token: string, emails: string[]): Promise<string[]> {
+  if (!fileIds.length || !emails.length) return [];
+  const blockers: string[] = [];
+  for (const fileId of fileIds) blockers.push(...await shareGoogleFileWithEmails(fileId, token, emails));
+  return blockers;
 }
 
 async function exportGoogleWebhook(
@@ -103,16 +172,7 @@ async function exportGoogleWebhook(
       message: "Google live export is blocked by the explicit write-approval guard.",
     });
   }
-  const workspaceDestination = options.workspaceDestination
-    || env.GOOGLE_WORKSPACE_DESTINATION
-    || "airwrite";
-  const workspaceDestinationEmail = options.workspaceDestinationEmail
-    || env.GOOGLE_WORKSPACE_DESTINATION_EMAIL
-    || env.AIRWRITE_WORKSPACE_EMAIL;
-  const shareWithEmails = uniqueEmails([
-    ...(options.shareWithEmails ?? []),
-    options.requestedByEmail,
-  ]);
+  const { workspaceDestination, workspaceDestinationEmail, shareWithEmails } = resolveGoogleWorkspaceTargets(env, options);
   const response = await fetch(env.GOOGLE_WORKSPACE_WEBHOOK_URL, {
     method: "POST",
     headers: {
@@ -153,14 +213,44 @@ async function exportGoogleWebhook(
     workspaceDestination?: string;
     workspaceDestinationEmail?: string;
     sharedWithEmails?: string[];
+    shareWithEmails?: string[];
+    viewerEmails?: string[];
+    collaboratorEmails?: string[];
+    accessEmails?: string[];
+    permissionEmails?: string[];
     readbackOk?: boolean;
     blockers?: string[];
     message?: string;
   };
+  const confirmedShareEmails = uniqueEmails([
+    ...(Array.isArray(data.sharedWithEmails) ? data.sharedWithEmails : []),
+    ...(Array.isArray(data.shareWithEmails) ? data.shareWithEmails : []),
+    ...(Array.isArray(data.viewerEmails) ? data.viewerEmails : []),
+    ...(Array.isArray(data.collaboratorEmails) ? data.collaboratorEmails : []),
+    ...(Array.isArray(data.accessEmails) ? data.accessEmails : []),
+    ...(Array.isArray(data.permissionEmails) ? data.permissionEmails : []),
+  ]);
+  const postWebhookAccessToken = response.ok && data.docId ? env.GOOGLE_WORKSPACE_ACCESS_TOKEN : undefined;
+  const webhookReportedAccess = confirmedShareEmails.length > 0;
+  const canApplyPostWebhookSharing = Boolean(postWebhookAccessToken);
+  const postWebhookShareBlockers = postWebhookAccessToken
+    ? await shareGoogleFilesWithEmails(
+        uniqueStrings([data.docId, data.folderId]),
+        postWebhookAccessToken,
+        missingEmailConfirmations(shareWithEmails, confirmedShareEmails),
+      )
+    : [];
+  const sharedWithEmails = uniqueEmails([
+    ...confirmedShareEmails,
+    ...(!webhookReportedAccess || (canApplyPostWebhookSharing && !postWebhookShareBlockers.length) ? shareWithEmails : []),
+  ]);
+  const missingShareEmails = missingEmailConfirmations(shareWithEmails, sharedWithEmails);
   const blockers = [
     ...(response.ok ? [] : [`Google Workspace webhook failed: ${response.status}`]),
     ...(data.blockers ?? []),
     ...(data.readbackOk ? [] : ["Google Workspace webhook did not return readback proof."]),
+    ...(webhookReportedAccess && missingShareEmails.length ? [`Google Workspace webhook did not confirm Drive access for: ${missingShareEmails.join(", ")}.`] : []),
+    ...postWebhookShareBlockers,
   ];
   return routeResult({
     route: "google",
@@ -169,7 +259,7 @@ async function exportGoogleWebhook(
     externalId: data.docId || data.updatedRange,
     url: data.docUrl || data.folderUrl,
     workspaceDestination: data.workspaceDestination || data.workspaceDestinationEmail || workspaceDestination,
-    sharedWithEmails: Array.isArray(data.sharedWithEmails) ? data.sharedWithEmails : shareWithEmails,
+    sharedWithEmails,
     readbackOk: Boolean(data.readbackOk),
     blockers,
     message: data.message || (blockers.length
@@ -237,6 +327,7 @@ async function exportGoogle(
   }
 
   const token = env.GOOGLE_WORKSPACE_ACCESS_TOKEN as string;
+  const { workspaceDestination, shareWithEmails } = resolveGoogleWorkspaceTargets(env, options);
   const folderResponse = await googleFetch("https://www.googleapis.com/drive/v3/files", token, {
     method: "POST",
     body: JSON.stringify({
@@ -298,6 +389,8 @@ async function exportGoogle(
     });
   }
 
+  const shareBlockers = await shareGoogleFilesWithEmails([folder.id, doc.id], token, shareWithEmails);
+
   const row = [[
     nowIso(),
     dossier.summary.displayName,
@@ -333,6 +426,7 @@ async function exportGoogle(
   });
   const readbackOk = sheetResponse.ok && sheetReadbackOk && readbackResponse.ok;
   const blockers = [
+    ...shareBlockers,
     ...(sheetResponse.ok ? [] : [`Google Sheet append failed: ${sheetResponse.status}`]),
     ...(sheetResponse.ok && !updatedRange ? ["Google Sheet append response did not include a readback range."] : []),
     ...(sheetResponse.ok && updatedRange && !sheetReadbackResponse?.ok ? [`Google Sheet readback failed: ${sheetReadbackResponse?.status ?? "not available"}`] : []),
@@ -342,10 +436,12 @@ async function exportGoogle(
 
   return routeResult({
     route: "google",
-    ok: readbackOk,
+    ok: readbackOk && !blockers.length,
     mode: "live",
     externalId: doc.id,
     url: doc.webViewLink ?? `https://docs.google.com/document/d/${doc.id}/edit`,
+    workspaceDestination,
+    sharedWithEmails: shareBlockers.length ? [] : shareWithEmails,
     readbackOk,
     blockers,
     message: readbackOk
