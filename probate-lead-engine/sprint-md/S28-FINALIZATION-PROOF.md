@@ -12,6 +12,7 @@ Worker deployment: Cloudflare Worker production API surface
 - Document Prep file rows, status columns, guided walkthrough, and deal-status control are production-visible.
 - Document Prep now promotes the completed owner file row by owner name, not the generic latest packet title.
 - Deal Status uses the enhanced rounded dark dropdown menu instead of the native bright menu.
+- Deal Status options can be renamed from the dropdown after a delayed hover pencil appears.
 - Admin Team Activity uses large number counters and no sparkline/radial mini-graphs.
 - Import split control no longer renders the divider between Import and the chevron.
 - Outreach sync uses Activepieces only when configured and otherwise stages a first-party Podio-compatible review package with a Linear setup ticket.

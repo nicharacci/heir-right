@@ -5261,6 +5261,87 @@
       transition: background .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease);
     }
 
+    .select-option[aria-disabled="true"] {
+      opacity: .5;
+      pointer-events: none;
+    }
+
+    .select-option-label {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .select-option-edit {
+      width: 25px;
+      height: 25px;
+      flex: 0 0 25px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(235,235,245,.12);
+      border-radius: 999px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(4px);
+      transition:
+        opacity .16s var(--ease),
+        transform .16s var(--ease),
+        color .16s var(--ease),
+        background .16s var(--ease);
+      transition-delay: 0s;
+    }
+
+    .select-option:hover .select-option-edit {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+      transition-delay: 3s, 3s, 0s, 0s;
+    }
+
+    .select-option:focus-within .select-option-edit {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+      transition-delay: 0s;
+    }
+
+    .select-option-edit:hover,
+    .select-option-edit:focus-visible {
+      color: var(--text);
+      background: rgba(10,132,255,.22);
+      border-color: color-mix(in srgb, var(--focus-ring) 64%, transparent);
+      outline: 0;
+    }
+
+    .select-option.is-editing {
+      cursor: default;
+      padding: 5px;
+    }
+
+    .select-option.is-editing .select-option-edit {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+      transition-delay: 0s;
+    }
+
+    .select-option-edit-input {
+      width: 100%;
+      min-width: 0;
+      min-height: 30px;
+      color: var(--text);
+      background: rgba(12,13,16,.78);
+      border: 1px solid color-mix(in srgb, var(--focus-ring) 52%, rgba(235,235,245,.14));
+      border-radius: 9px;
+      padding: 6px 8px;
+      font: inherit;
+      outline: 0;
+    }
+
     .select-option:hover,
     .select-option:focus-visible {
       background: color-mix(in srgb, rgba(10,132,255,.22) 78%, rgba(255,255,255,.04));
@@ -9152,6 +9233,7 @@ const state = {
     flowId: "discovery"
   },
   dealStatuses: {},
+  dealStatusLabels: {},
   docPrepPhaseIndex: {
     discovery: 0,
     "closing-docs": 0
@@ -9244,6 +9326,7 @@ const discoveryStateKey = "heirright:discovery-workflow-state";
 const docPrepEstateStateKey = "heirright:docprep-estate-state";
 const adminAccessDomainsKey = "heirright:admin-access-domains";
 const dealStatusStateKey = "heirright:deal-status-state";
+const dealStatusLabelStateKey = "heirright:deal-status-labels";
 const crmImportStateKey = "heirright:crm-imported-estates";
 const sourceCaptureStateKey = "heirright:source-capture-state";
 const idiImportStateKey = "heirright:idi-asset-imports";
@@ -9259,6 +9342,7 @@ const serverBackedStateKeys = new Set([
   crmImportStateKey,
   docPrepEstateStateKey,
   dealStatusStateKey,
+  dealStatusLabelStateKey,
   discoveryStateKey,
   sourceCaptureStateKey,
   idiImportStateKey,
@@ -9779,12 +9863,31 @@ function normalizeDealStatusState(value = {}) {
     .filter(([key, status]) => key && valid.has(status)));
 }
 
+function normalizeDealStatusLabels(value = {}) {
+  const valid = new Set(dealStatusOptions.map((item) => item.id));
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return Object.fromEntries(Object.entries(source)
+    .map(([status, label]) => [
+      String(status || "").trim(),
+      String(label || "").replace(/\s+/g, " ").trim().slice(0, 34)
+    ])
+    .filter(([status, label]) => valid.has(status) && label));
+}
+
 function loadDealStatuses() {
   state.dealStatuses = normalizeDealStatusState(restoreObjectFromStorage(dealStatusStateKey, {}));
 }
 
+function loadDealStatusLabels() {
+  state.dealStatusLabels = normalizeDealStatusLabels(restoreObjectFromStorage(dealStatusLabelStateKey, {}));
+}
+
 function persistDealStatuses() {
   storageSetItem(dealStatusStateKey, JSON.stringify(normalizeDealStatusState(state.dealStatuses)));
+}
+
+function persistDealStatusLabels() {
+  storageSetItem(dealStatusLabelStateKey, JSON.stringify(normalizeDealStatusLabels(state.dealStatusLabels)));
 }
 
 function persistCrmImports(reason = "") {
@@ -9837,6 +9940,10 @@ function applyServerBackedStateValue(key, value) {
   }
   if (key === dealStatusStateKey) {
     state.dealStatuses = normalizeDealStatusState(parsed);
+    return true;
+  }
+  if (key === dealStatusLabelStateKey) {
+    state.dealStatusLabels = normalizeDealStatusLabels(parsed);
     return true;
   }
   if (key === sourceCaptureStateKey) {
@@ -11088,6 +11195,7 @@ function loadSavedState() {
   }
   loadDiscoveryState();
   loadDocPrepEstateState();
+  loadDealStatusLabels();
   loadDealStatuses();
   loadCrmImports();
   loadAssetDiscoveryState();
@@ -11850,6 +11958,7 @@ function nucleoIcon(name = "check-circle", size = 19, extraClass = "") {
     "packet-clock": '<path d="M5.5 4.5h8.2l4.8 4.8v10.2h-13V4.5Z"/><path d="M13.5 4.8v4.7h4.7"/><circle cx="11" cy="14.5" r="3.1"/><path d="M11 12.8v1.9l1.3.8"/>',
     "magnifier-route": '<path d="m20.5 20.5-4.2-4.2"/><circle cx="10.4" cy="10.4" r="6"/><path d="M7.4 8.3h.01M13.5 12.7h.01M7.5 8.4c3.2.1 5.6.8 5.6 2.4 0 1.8-3.4 1.5-4.8 3.1"/>',
     eye: '<path d="M2.8 12s3.4-6 9.2-6 9.2 6 9.2 6-3.4 6-9.2 6-9.2-6-9.2-6Z"/><circle cx="12" cy="12" r="2.7"/>',
+    pencil: '<path d="M4.8 16.8 4 20l3.2-.8L18.6 7.8a2.2 2.2 0 0 0-3.1-3.1L4.8 16.8Z"/><path d="m14.2 6 3.8 3.8"/><path d="M9.2 20h10.1"/>',
     flag: '<path d="M6.2 20V5.2"/><path d="M6.2 5.2h9.8l-1.4 3.1L16 11.4H6.2"/><path d="M6.2 15.3h6.5"/>',
     trash: '<path d="M5.2 7h13.6"/><path d="M9.2 7V4.9h5.6V7"/><path d="M7.3 7.1 8 19.2h8l.7-12.1"/><path d="M10.2 10.3v5.7M13.8 10.3v5.7"/>',
     "check-circle": '<circle cx="12" cy="12" r="8.4"/><path d="m8.4 12.2 2.4 2.4 4.9-5.2"/>'
@@ -11893,8 +12002,21 @@ function docPrepPhases(flowId = state.activeDocPrepFlow) {
   return docPrepFlow(flowId).phases;
 }
 
-function dealStatusMeta(statusId = "pre-discovery") {
+function dealStatusBaseMeta(statusId = "pre-discovery") {
   return dealStatusOptions.find((item) => item.id === statusId) ?? dealStatusOptions[0];
+}
+
+function dealStatusLabel(statusId = "pre-discovery") {
+  const status = dealStatusBaseMeta(statusId);
+  return state.dealStatusLabels?.[status.id] || status.label;
+}
+
+function dealStatusMeta(statusId = "pre-discovery") {
+  const status = dealStatusBaseMeta(statusId);
+  return {
+    ...status,
+    label: dealStatusLabel(status.id)
+  };
 }
 
 function dealStatusForRow(row = selectedRow()) {
@@ -11905,8 +12027,19 @@ function dealStatusForRow(row = selectedRow()) {
 
 function dealStatusOptionsHtml(selectedStatus = "pre-discovery") {
   return dealStatusOptions.map((status) => `
-    <option value="${escapeHtml(status.id)}" ${status.id === selectedStatus ? "selected" : ""}>${escapeHtml(status.label)}</option>
+    <option value="${escapeHtml(status.id)}" ${status.id === selectedStatus ? "selected" : ""}>${escapeHtml(dealStatusLabel(status.id))}</option>
   `).join("");
+}
+
+function renameDealStatusLabel(statusId = "pre-discovery", label = "") {
+  const base = dealStatusBaseMeta(statusId);
+  const nextLabel = String(label || "").replace(/\s+/g, " ").trim().slice(0, 34);
+  if (!nextLabel || nextLabel === base.label) delete state.dealStatusLabels[base.id];
+  else state.dealStatusLabels[base.id] = nextLabel;
+  persistDealStatusLabels();
+  const displayLabel = dealStatusLabel(base.id);
+  document.getElementById("topStatus").textContent = `${base.label} now displays as ${displayLabel}.`;
+  addShellEvent("Deal status renamed", `${base.label} now displays as ${displayLabel}. The workflow route is unchanged.`, "review", false);
 }
 
 function setDealStatusForRow(row = selectedRow(), statusId = "pre-discovery", { rerender = true } = {}) {
@@ -14662,7 +14795,7 @@ function renderDossiersView() {
         </div>
         <label class="docprep-status-control">
           <span>Deal status</span>
-          <select data-deal-status aria-label="Deal status for ${escapeHtml(docPrepEstateLabel(row) || "current estate")}">
+          <select data-deal-status data-renamable="deal-status" aria-label="Deal status for ${escapeHtml(docPrepEstateLabel(row) || "current estate")}">
             ${dealStatusOptionsHtml(dealStatus.id)}
           </select>
         </label>
@@ -17960,6 +18093,11 @@ function syncEnhancedSelect(select) {
   if (button) button.title = selectDisplayLabel(select);
   wrapper.querySelectorAll(".select-option").forEach((optionButton) => {
     const selected = optionButton.dataset.value === select.value;
+    const option = [...select.options].find((item) => item.value === optionButton.dataset.value);
+    const optionLabelElement = optionButton.querySelector(".select-option-label");
+    if (option && optionLabelElement && !optionButton.classList.contains("is-editing")) {
+      optionLabelElement.textContent = optionLabel(option);
+    }
     optionButton.setAttribute("aria-selected", selected ? "true" : "false");
     optionButton.tabIndex = selected ? 0 : -1;
   });
@@ -18018,8 +18156,73 @@ function chooseEnhancedSelectOption(select, value) {
   select.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+function dealStatusSelectRenamable(select) {
+  return select?.dataset?.renamable === "deal-status";
+}
+
+function syncDealStatusSelectLabels(select) {
+  if (!dealStatusSelectRenamable(select)) return;
+  [...select.options].forEach((option) => {
+    option.textContent = dealStatusLabel(option.value);
+  });
+}
+
+function beginEnhancedSelectOptionRename(select, optionValue, optionRow) {
+  if (!dealStatusSelectRenamable(select)) return;
+  const base = dealStatusBaseMeta(optionValue);
+  optionRow.classList.add("is-editing");
+  optionRow.innerHTML = "";
+  const input = document.createElement("input");
+  input.className = "select-option-edit-input";
+  input.type = "text";
+  input.value = dealStatusLabel(base.id);
+  input.maxLength = 34;
+  input.setAttribute("aria-label", `Rename ${base.label}`);
+  const save = document.createElement("button");
+  save.type = "button";
+  save.className = "select-option-edit";
+  save.title = "Save status name";
+  save.setAttribute("aria-label", "Save status name");
+  save.innerHTML = nucleoIcon("check-circle", 13);
+  optionRow.appendChild(input);
+  optionRow.appendChild(save);
+  let finished = false;
+  const finish = (saveChange = true) => {
+    if (finished) return;
+    finished = true;
+    if (saveChange) renameDealStatusLabel(base.id, input.value);
+    renderCurrentLoopView();
+    renderRail();
+  };
+  input.addEventListener("click", (event) => event.stopPropagation());
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      finish(true);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      finish(false);
+    }
+  });
+  input.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      if (!optionRow.contains(document.activeElement)) finish(true);
+    }, 0);
+  });
+  save.addEventListener("mousedown", (event) => event.preventDefault());
+  save.addEventListener("click", (event) => {
+    event.stopPropagation();
+    finish(true);
+  });
+  window.setTimeout(() => {
+    input.focus({ preventScroll: true });
+    input.select();
+  }, 0);
+}
+
 function enhanceSelect(select) {
   if (!select || select.classList.contains("select-native") || select.closest(".select-enhanced")) return;
+  syncDealStatusSelectLabels(select);
   const wrapper = document.createElement("div");
   wrapper.className = "select-enhanced";
   const button = document.createElement("button");
@@ -18036,18 +18239,49 @@ function enhanceSelect(select) {
   menu.hidden = true;
   menu.setAttribute("role", "listbox");
   [...select.options].forEach((option) => {
-    const optionButton = document.createElement("button");
-    optionButton.type = "button";
+    const optionButton = document.createElement("div");
     optionButton.className = "select-option";
     optionButton.dataset.value = option.value;
     optionButton.setAttribute("role", "option");
-    optionButton.disabled = option.disabled;
-    optionButton.innerHTML = `<span>${escapeHtml(optionLabel(option))}</span><span class="select-check" aria-hidden="true">✓</span>`;
+    if (option.disabled) optionButton.setAttribute("aria-disabled", "true");
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "select-option-label";
+    labelSpan.textContent = optionLabel(option);
+    optionButton.appendChild(labelSpan);
+    if (dealStatusSelectRenamable(select)) {
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "select-option-edit";
+      editButton.title = `Rename ${optionLabel(option)}`;
+      editButton.setAttribute("aria-label", `Rename ${optionLabel(option)}`);
+      editButton.innerHTML = nucleoIcon("pencil", 13);
+      editButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        beginEnhancedSelectOptionRename(select, option.value, optionButton);
+      });
+      optionButton.appendChild(editButton);
+    }
+    const check = document.createElement("span");
+    check.className = "select-check";
+    check.setAttribute("aria-hidden", "true");
+    check.textContent = "✓";
+    optionButton.appendChild(check);
     optionButton.addEventListener("click", (event) => {
       event.stopPropagation();
+      if (option.disabled || optionButton.classList.contains("is-editing")) return;
       chooseEnhancedSelectOption(select, option.value);
       closeEnhancedSelect(wrapper);
       button.focus({ preventScroll: true });
+    });
+    optionButton.addEventListener("keydown", (event) => {
+      if (option.disabled || optionButton.classList.contains("is-editing")) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        chooseEnhancedSelectOption(select, option.value);
+        closeEnhancedSelect(wrapper);
+        button.focus({ preventScroll: true });
+      }
     });
     menu.appendChild(optionButton);
   });
@@ -18073,7 +18307,7 @@ function enhanceSelect(select) {
     }
   });
   menu.addEventListener("keydown", (event) => {
-    const options = [...menu.querySelectorAll(".select-option:not(:disabled)")];
+    const options = [...menu.querySelectorAll('.select-option:not([aria-disabled="true"])')];
     const index = options.indexOf(document.activeElement);
     if (event.key === "Escape") {
       event.preventDefault();
