@@ -17518,7 +17518,7 @@ function renderAdminLoopView() {
   target.innerHTML = `
     <div class="admin-tall-grid">
       <section class="loop-panel is-tall">
-        <div class="loop-panel-head"><div><p class="eyebrow">Admin</p><h2 class="loop-title">Error log</h2></div><span class="pill ${errors.some((item) => !item.ready) ? "blocked" : "ready"}">${errors.filter((item) => !item.ready).length} open</span></div>
+        <div class="loop-panel-head"><div><h2 class="loop-title">Error log</h2></div><span class="pill ${errors.some((item) => !item.ready) ? "blocked" : "ready"}">${errors.filter((item) => !item.ready).length} open</span></div>
         <div class="admin-log-layout">
           <ul class="admin-error-list">
             ${errors.map((item) => `
