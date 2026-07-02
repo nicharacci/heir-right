@@ -1363,9 +1363,49 @@
       line-height: 1.35;
     }
 
-    .walkthrough-replay {
-      width: 34px;
+    .quick-actions .btn.quick.walkthrough-replay {
+      width: 36px;
+      min-width: 36px;
+      height: 30px;
       padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ed3ff;
+      border: 1px solid rgba(142, 200, 255, .28);
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 36% 22%, rgba(255,255,255,.22), transparent 35%),
+        linear-gradient(180deg, rgba(55, 132, 216, .22), rgba(11, 19, 31, .08));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.18),
+        inset 0 -1px 0 rgba(5, 35, 78, .28),
+        0 8px 20px rgba(10,132,255,.12);
+      backdrop-filter: saturate(180%) blur(18px);
+      -webkit-backdrop-filter: saturate(180%) blur(18px);
+      transition: transform .16s var(--ease), color .16s var(--ease), border-color .16s var(--ease), box-shadow .16s var(--ease), background .16s var(--ease);
+    }
+
+    .quick-actions .btn.quick.walkthrough-replay:hover,
+    .quick-actions .btn.quick.walkthrough-replay:focus-visible {
+      color: #d8efff;
+      border-color: rgba(142, 200, 255, .52);
+      background:
+        radial-gradient(circle at 34% 20%, rgba(255,255,255,.28), transparent 36%),
+        linear-gradient(180deg, rgba(73, 158, 250, .32), rgba(15, 35, 63, .14));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.24),
+        inset 0 -1px 0 rgba(5, 35, 78, .25),
+        0 0 0 1px rgba(142,200,255,.11),
+        0 10px 24px rgba(10,132,255,.18);
+      transform: translateY(-1px);
+      outline: 0;
+    }
+
+    .quick-actions .btn.quick.walkthrough-replay svg {
+      width: 18px;
+      height: 18px;
+      filter: drop-shadow(0 0 7px rgba(107, 174, 255, .22));
     }
 
     .export-menu {
@@ -8476,6 +8516,13 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .quick-actions .btn.quick.walkthrough-replay {
+        width: 36px;
+        min-width: 36px;
+        flex: 0 0 36px;
+        justify-self: end;
+        padding: 0;
+      }
       .quick-actions .btn.quick + .btn.quick::before {
         display: none;
       }
@@ -8944,7 +8991,12 @@
             Load latest
           </button>
           <button id="walkthroughReplay" class="btn quick walkthrough-replay" type="button" aria-label="Open guided walkthrough" title="Guided walkthrough">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v.01M12 18v-6M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="7.15" stroke="currentColor" stroke-width="1.55"/>
+              <path d="m14.9 8.4-2.2 5.1-5.1 2.2 2.2-5.1 5.1-2.2Z" fill="currentColor"/>
+              <circle cx="12" cy="12" r="1.18" fill="rgba(18,22,28,.82)"/>
+              <path d="M18 4.7 18.5 3.4l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5Z" fill="currentColor"/>
+            </svg>
           </button>
         </div>
       </div>
