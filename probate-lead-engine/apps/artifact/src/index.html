@@ -3120,6 +3120,13 @@
       font-size: 12px;
     }
 
+    .docprep-run-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
     .docprep-main-run-button {
       min-height: 26px;
       border: 0;
@@ -3142,6 +3149,45 @@
 
     .docprep-main-run-button.is-running {
       color: var(--red);
+    }
+
+    .docprep-main-run-button.is-complete,
+    .docprep-main-run-button:disabled {
+      color: var(--muted);
+      cursor: default;
+      opacity: .72;
+      filter: none;
+    }
+
+    .docprep-main-run-button.is-complete:hover,
+    .docprep-main-run-button.is-complete:focus-visible,
+    .docprep-main-run-button:disabled:hover,
+    .docprep-main-run-button:disabled:focus-visible {
+      filter: none;
+    }
+
+    .docprep-rerun-button {
+      min-height: 30px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 56%, transparent);
+      border-radius: 999px;
+      padding: 5px 12px;
+      color: var(--text);
+      background: color-mix(in srgb, var(--surface-strong) 58%, transparent);
+      -webkit-backdrop-filter: blur(14px) saturate(1.16);
+      backdrop-filter: blur(14px) saturate(1.16);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 10px 22px rgba(0,0,0,.15);
+      font-size: 12px;
+      font-weight: 820;
+      cursor: pointer;
+      transition: transform .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease);
+    }
+
+    .docprep-rerun-button:hover,
+    .docprep-rerun-button:focus-visible {
+      transform: translateY(-1px);
+      background: color-mix(in srgb, var(--surface-strong) 74%, transparent);
+      border-color: color-mix(in srgb, var(--line-strong) 74%, transparent);
+      outline: 0;
     }
 
     .document-filter-tabs {
@@ -10094,6 +10140,7 @@ const state = {
   },
   docPrepEstateState: {},
   discoveryOpen: false,
+  docPrepManualFix: null,
   discoveryPhaseIndex: 0,
   discoveryCompleted: new Set(),
   discoveryNotes: {},
@@ -13762,8 +13809,37 @@ function docPrepMainRunActive(row = selectedRow(), flowId = "discovery") {
   return docPrepRunState(row, flowId) === "running";
 }
 
+function docPrepFlowIsComplete(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  if (!row) return false;
+  const phases = docPrepPhases(flowId);
+  const phaseComplete = phases.length > 0 && phases.every((phase) => phaseIsComplete(phase.id, row, flowId));
+  const stats = documentPrepStats(row, dossierForRow(row), flowId);
+  const documentsComplete = stats.total > 0 && stats.missing === 0;
+  return phaseComplete && documentsComplete;
+}
+
 function docPrepMainRunLabel(row = selectedRow(), flowId = "discovery") {
-  return docPrepMainRunActive(row, flowId) ? "Stop Discovery" : "Run Full Discovery";
+  const flow = docPrepFlow(flowId);
+  if (docPrepMainRunActive(row, flow.id)) return flow.id === "discovery" ? "Stop Discovery" : `Stop ${flow.shortTitle}`;
+  if (docPrepFlowIsComplete(row, flow.id)) return "Complete";
+  return flow.id === "discovery" ? "Run Full Discovery" : `Run ${flow.shortTitle}`;
+}
+
+function docPrepRunControlsHtml(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  const flow = docPrepFlow(flowId);
+  const running = docPrepMainRunActive(row, flow.id);
+  const complete = docPrepFlowIsComplete(row, flow.id);
+  return `
+    <div class="docprep-run-actions">
+      ${complete ? `<button class="docprep-rerun-button" type="button" data-docprep-rerun-review="${escapeHtml(flow.id)}">Run again</button>` : ""}
+      <button
+        class="docprep-main-run-button ${running ? "is-running" : ""} ${complete ? "is-complete" : ""}"
+        type="button"
+        data-docprep-main-run="${escapeHtml(flow.id)}"
+        ${complete ? "disabled aria-disabled=\"true\"" : ""}
+      >${escapeHtml(docPrepMainRunLabel(row, flow.id))}</button>
+    </div>
+  `;
 }
 
 function renderDocPrepRunSurfaces() {
@@ -13773,34 +13849,35 @@ function renderDocPrepRunSurfaces() {
 
 function stopFullDiscoveryRun(row = selectedRow(), flowId = "discovery", { silent = false } = {}) {
   if (!row) return;
+  const flow = docPrepFlow(flowId);
   const key = docPrepRunKey(row, flowId);
   const timer = docPrepRunTimers.get(key);
   if (timer) window.clearTimeout(timer);
   docPrepRunTimers.delete(key);
   setDocPrepRunState(row, flowId, "");
   if (!silent) {
-    document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} Discovery run stopped.`;
-    addShellEvent("Discovery stopped", `${docPrepEstateLabel(row)} Discovery run was stopped before the next phase completed.`, "review", false);
+    document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} ${flow.shortTitle} run stopped.`;
+    addShellEvent(`${flow.shortTitle} stopped`, `${docPrepEstateLabel(row)} ${flow.shortTitle} was stopped before the next phase completed.`, "review", false);
   }
   renderDocPrepRunSurfaces();
 }
 
 function finishFullDiscoveryRun(row = selectedRow(), flowId = "discovery") {
   if (!row) return;
+  const flow = docPrepFlow(flowId);
   const key = docPrepRunKey(row, flowId);
   docPrepRunTimers.delete(key);
   setDocPrepRunState(row, flowId, "");
   const finalIndex = Math.max(0, docPrepPhases(flowId).length - 1);
   setDocPrepPhaseIndex(row, flowId, finalIndex, { persist: false });
   persistDiscoveryState();
-  document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} Discovery run complete.`;
-  addShellEvent("Discovery complete", `${docPrepEstateLabel(row)} completed the full Discovery run. Supporting phases are ready to review.`, "ready", false);
+  document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} ${flow.shortTitle} run complete.`;
+  addShellEvent(`${flow.shortTitle} complete`, `${docPrepEstateLabel(row)} completed the ${flow.shortTitle} run. Supporting phases are ready to review.`, "ready", false);
   renderDocPrepRunSurfaces();
 }
 
-function scheduleNextFullDiscoveryPhase(row = selectedRow(), phaseIndex = 0) {
+function scheduleNextFullDiscoveryPhase(row = selectedRow(), flowId = state.activeDocPrepFlow, phaseIndex = 0) {
   if (!row) return;
-  const flowId = "discovery";
   const key = docPrepRunKey(row, flowId);
   const phases = docPrepPhases(flowId);
   const phase = phases[phaseIndex];
@@ -13816,34 +13893,40 @@ function scheduleNextFullDiscoveryPhase(row = selectedRow(), phaseIndex = 0) {
     docPrepRunTimers.delete(key);
     if (!docPrepMainRunActive(row, flowId)) return;
     markDocPrepPhaseComplete(row, flowId, phase.id);
-    addShellEvent(`${phase.label} complete`, `${phase.summary} Discovery continued automatically.`, "ready", false);
-    scheduleNextFullDiscoveryPhase(row, phaseIndex + 1);
+    addShellEvent(`${phase.label} complete`, `${phase.summary} ${docPrepFlow(flowId).shortTitle} continued automatically.`, "ready", false);
+    scheduleNextFullDiscoveryPhase(row, flowId, phaseIndex + 1);
   }, 680);
   docPrepRunTimers.set(key, timer);
 }
 
-function runFullDiscovery(row = selectedRow(), source = null) {
+function runFullDiscovery(row = selectedRow(), source = null, flowId = state.activeDocPrepFlow) {
   if (!row) return;
-  const flowId = "discovery";
+  const flow = docPrepFlow(flowId);
   state.discoveryOpen = false;
+  state.docPrepManualFix = null;
   state.railMode = "dossier";
   ensureDocPrepStarted(row, flowId, { persist: false });
   setActiveDocPrepFlow(flowId, { persist: false, rerender: false });
   setDocPrepRunState(row, flowId, "running");
-  addShellEvent("Discovery started", `${docPrepEstateLabel(row)} is running each Discovery phase in order. Use Stop Discovery to pause before the next phase completes.`, "review", false);
+  addShellEvent(`${flow.shortTitle} started`, `${docPrepEstateLabel(row)} is running each ${flow.shortTitle} phase in order. Use ${flow.id === "discovery" ? "Stop Discovery" : `Stop ${flow.shortTitle}`} to pause before the next phase completes.`, "review", false);
   const firstIndex = docPrepPhases(flowId).findIndex((phase) => !docPrepPhaseMarkedComplete(row, flowId, phase.id));
-  scheduleNextFullDiscoveryPhase(row, firstIndex < 0 ? 0 : firstIndex);
+  scheduleNextFullDiscoveryPhase(row, flowId, firstIndex < 0 ? 0 : firstIndex);
   setRailOpen(state.railOpen, source);
 }
 
-function toggleFullDiscoveryRun(source = null) {
+function toggleFullDiscoveryRun(source = null, flowId = state.activeDocPrepFlow) {
   const row = selectedRow();
   if (!row) return;
-  if (docPrepMainRunActive(row, "discovery")) {
-    stopFullDiscoveryRun(row, "discovery");
+  const flow = docPrepFlow(flowId);
+  if (docPrepMainRunActive(row, flow.id)) {
+    stopFullDiscoveryRun(row, flow.id);
     return;
   }
-  runFullDiscovery(row, source);
+  if (docPrepFlowIsComplete(row, flow.id)) {
+    openDocPrepRerunReview(flow.id, source);
+    return;
+  }
+  runFullDiscovery(row, source, flow.id);
 }
 
 function dossierChecklistHtml(docs, { compact = false } = {}) {
@@ -16234,7 +16317,7 @@ function renderDossiersView() {
                 ${processProgressDots(stats.linked, stats.total)}
                 <span>${escapeHtml(`${stats.linked}/${stats.total} documents`)}</span>
               </div>
-              <button class="docprep-main-run-button ${docPrepMainRunActive(row, "discovery") ? "is-running" : ""}" type="button" data-begin-discovery>${escapeHtml(docPrepMainRunLabel(row, "discovery"))}</button>
+              ${docPrepRunControlsHtml(row, flow.id)}
             </div>
           </div>
           <div class="document-list">
@@ -16296,7 +16379,12 @@ function renderDossiersView() {
       addShellEvent(`${docPrepFlow().label} template selected`, `${docPrepFlow().title} is now the active DocPrep workflow for the selected estate.`, "review", false);
     });
   });
-  target.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget));
+  target.querySelectorAll("[data-docprep-main-run]").forEach((button) => {
+    button.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget, button.dataset.docprepMainRun || state.activeDocPrepFlow));
+  });
+  target.querySelectorAll("[data-docprep-rerun-review]").forEach((button) => {
+    button.addEventListener("click", (event) => openDocPrepRerunReview(button.dataset.docprepRerunReview || state.activeDocPrepFlow, event.currentTarget));
+  });
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
     addRowsToQueue(rowsForBatchAction());
   });
@@ -16335,6 +16423,12 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   if (!row || !dossier) {
     content.innerHTML = `<section class="glass-card rail-title-card"><h2 class="rail-title">Dossier rail</h2><p class="copy">Load the latest lead packet, then choose a dossier to review the documents.</p></section>`;
     setRailOpen(state.railOpen);
+    return;
+  }
+  if (state.docPrepManualFix?.rowKey === docPrepEstateKey(row) && state.docPrepManualFix?.flowId === flow.id) {
+    content.innerHTML = renderDocPrepRerunReview(row);
+    wireDocPrepRerunReview(content);
+    setRailOpen(true);
     return;
   }
   if (state.discoveryOpen) {
@@ -16409,7 +16503,12 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
     `;
   }
   content.innerHTML = (state.railTab === "flow" ? titleCard : "") + bodyHtml;
-  content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget));
+  content.querySelectorAll("[data-docprep-main-run]").forEach((button) => {
+    button.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget, button.dataset.docprepMainRun || state.activeDocPrepFlow));
+  });
+  content.querySelectorAll("[data-docprep-rerun-review]").forEach((button) => {
+    button.addEventListener("click", (event) => openDocPrepRerunReview(button.dataset.docprepRerunReview || state.activeDocPrepFlow, event.currentTarget));
+  });
   wireAssetDiscoveryControls(content, row);
   content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
     input.addEventListener("change", (event) => {
@@ -18349,16 +18448,102 @@ function openRailPreview(sectionId, source = null) {
   updateFooterLeadContext(row);
 }
 
+function docPrepRerunNoteKey(flowId = state.activeDocPrepFlow) {
+  return `manual-rerun:${docPrepFlow(flowId).id}`;
+}
+
+function openDocPrepRerunReview(flowId = state.activeDocPrepFlow, source = null) {
+  const row = selectedRow();
+  if (!row) return;
+  const flow = docPrepFlow(flowId);
+  state.discoveryOpen = false;
+  state.docPrepManualFix = {
+    rowKey: docPrepEstateKey(row),
+    flowId: flow.id,
+    openedAt: Date.now()
+  };
+  setActiveDocPrepFlow(flow.id, { persist: true, rerender: false });
+  state.railMode = "dossier";
+  state.railTab = "flow";
+  renderRail();
+  setRailOpen(true, source);
+  document.getElementById("topStatus").textContent = `${flow.shortTitle} is complete. Add what needs to be fixed before running it again.`;
+  addShellEvent(`${flow.shortTitle} rerun requested`, `${docPrepEstateLabel(row)} needs a manual review note before the completed Doc Prep is run again.`, "review", false);
+}
+
+function renderDocPrepRerunReview(row = selectedRow()) {
+  const flow = docPrepFlow(state.docPrepManualFix?.flowId || state.activeDocPrepFlow);
+  const note = docPrepNoteValue(docPrepRerunNoteKey(flow.id), row, flow.id);
+  return `
+    <section class="discovery-wizard" aria-label="${escapeHtml(flow.shortTitle)} rerun review">
+      <div class="discovery-head">
+        <div>
+          <p class="eyebrow">${escapeHtml(flow.shortTitle)} review</p>
+          <h2 class="rail-title">What needs to be fixed?</h2>
+          <p class="copy">This file is already complete. Tell the team what changed or what looks wrong, and the estate file will be fixed by hand before another run.</p>
+        </div>
+        <span class="pill review">Manual review</span>
+      </div>
+      <section class="glass-card rail-card">
+        <h3>Describe the fix</h3>
+        <textarea class="discovery-notes" data-docprep-rerun-note="${escapeHtml(flow.id)}" placeholder="Example: update seller name, replace title note, correct address line, or regenerate the closing packet after source review.">${escapeHtml(note)}</textarea>
+      </section>
+      <section class="glass-card rail-card">
+        <h3>What happens next</h3>
+        <div>
+          <article class="rail-item">
+            <span class="rail-item-index">01</span>
+            <span><span class="rail-item-title">Manual fix</span><span class="rail-item-copy">The team reviews the note and updates the estate file by hand.</span></span>
+          </article>
+          <article class="rail-item">
+            <span class="rail-item-index">02</span>
+            <span><span class="rail-item-title">Run again</span><span class="rail-item-copy">After the correction is saved, the completed package can be rerun from the corrected file.</span></span>
+          </article>
+        </div>
+      </section>
+      <div class="discovery-actions">
+        <button class="btn" type="button" data-docprep-rerun-close>Close</button>
+        <div>
+          <button class="btn primary solvys-liquid-glass" type="button" data-docprep-rerun-save="${escapeHtml(flow.id)}">Save review note</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function wireDocPrepRerunReview(content) {
+  content.querySelector("[data-docprep-rerun-note]")?.addEventListener("input", (event) => {
+    const flowId = event.target.dataset.docprepRerunNote || state.activeDocPrepFlow;
+    setDocPrepNote(docPrepRerunNoteKey(flowId), event.target.value, selectedRow(), flowId);
+  });
+  content.querySelector("[data-docprep-rerun-save]")?.addEventListener("click", (event) => {
+    const row = selectedRow();
+    const flowId = event.currentTarget.dataset.docprepRerunSave || state.activeDocPrepFlow;
+    const flow = docPrepFlow(flowId);
+    const note = docPrepNoteValue(docPrepRerunNoteKey(flow.id), row, flow.id).trim();
+    document.getElementById("topStatus").textContent = note
+      ? `${flow.shortTitle} manual fix note saved.`
+      : `${flow.shortTitle} manual fix opened. Add a note before rerunning.`;
+    addShellEvent(`${flow.shortTitle} manual fix saved`, note || "Manual fix review opened for the completed Doc Prep package.", "review", false);
+    renderRail();
+  });
+  content.querySelector("[data-docprep-rerun-close]")?.addEventListener("click", () => {
+    state.docPrepManualFix = null;
+    renderRail();
+    setRailOpen(false);
+  });
+}
+
 function discoveryStripHtml(row, dossier) {
   const flow = docPrepFlow();
   const pct = discoveryProgress(flow.id, row);
   const phase = currentDiscoveryPhase(flow.id, row);
   return `
-    <div class="discovery-strip" aria-label="${escapeHtml(flow.label)} completion">
-      <div class="discovery-fuse" style="--fuse-progress: ${pct}%" aria-label="${escapeHtml(flow.label)} ${pct}% complete"></div>
-      <div class="discovery-phase-meter"><strong>${pct}%</strong><span>${escapeHtml(phase.label)}</span></div>
-      <button class="docprep-main-run-button ${docPrepMainRunActive(row, "discovery") ? "is-running" : ""}" type="button" data-begin-discovery>${escapeHtml(docPrepMainRunLabel(row, "discovery"))}</button>
-    </div>
+      <div class="discovery-strip" aria-label="${escapeHtml(flow.label)} completion">
+        <div class="discovery-fuse" style="--fuse-progress: ${pct}%" aria-label="${escapeHtml(flow.label)} ${pct}% complete"></div>
+        <div class="discovery-phase-meter"><strong>${pct}%</strong><span>${escapeHtml(phase.label)}</span></div>
+      ${docPrepRunControlsHtml(row, flow.id)}
+      </div>
   `;
 }
 
@@ -19316,7 +19501,12 @@ function renderRail() {
     </section>
   `;
   content.innerHTML = (state.railTab === "flow" ? titleCard : "") + previewHtml + railTabHtml(row, dossier);
-  content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget));
+  content.querySelectorAll("[data-docprep-main-run]").forEach((button) => {
+    button.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget, button.dataset.docprepMainRun || state.activeDocPrepFlow));
+  });
+  content.querySelectorAll("[data-docprep-rerun-review]").forEach((button) => {
+    button.addEventListener("click", (event) => openDocPrepRerunReview(button.dataset.docprepRerunReview || state.activeDocPrepFlow, event.currentTarget));
+  });
   content.querySelectorAll("[data-rail-chip]").forEach((chip) => {
     chip.addEventListener("click", () => openRailPreview(chip.dataset.railChip, chip));
   });
