@@ -9327,7 +9327,7 @@
     <nav class="nav-list" aria-label="HeirRight sections">
       <button class="nav-item" type="button" title="Dashboard" data-shell-nav="dashboard" data-hover-label="Dashboard" data-hover-description="Task tracker, activity, and drips"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 5h7v6H4V5Zm9 0h7v4h-7V5ZM4 13h7v6H4v-6Zm9-2h7v8h-7v-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Dashboard</span></button>
       <button class="nav-item" type="button" title="Estates" data-shell-nav="find-estates" data-hover-label="Estates" data-hover-description="Lead intake and source status"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Estates</span></button>
-      <button class="nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" title="Document Prep" data-shell-nav="dossiers" data-hover-label="Document Prep" data-hover-description="Source files and dossier documents"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Document Prep</span></button>
+      <button class="nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" title="Document Prep" data-shell-nav="dossiers" data-hover-label="Document Prep" data-hover-description="Supporting documents and dossier packets"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2.5h5.5A2.5 2.5 0 0 1 20 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><span class="nav-label">Document Prep</span></button>
       <button class="nav-item" type="button" title="Outreach" data-shell-nav="drips" data-hover-label="Outreach" data-hover-description="Email and SMS template prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 7h14M7 7v12m10-12v12M6 19h12M8 4h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10 11h4m-4 4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><span class="nav-label">Outreach</span></button>
       <button class="nav-item" type="button" title="Queue" data-shell-nav="queue" data-hover-label="Queue" data-hover-description="Batch export prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10h8M8 14h5M17 14l2 2 3-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Queue</span></button>
       <button class="nav-item" type="button" title="Admin" data-shell-nav="admin" data-hover-label="Admin" data-hover-description="Team review and controls"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM4 20a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 11.5a3 3 0 1 0-1-5.84M17 20h3a4.5 4.5 0 0 0-5.3-4.43" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Admin</span></button>
@@ -11243,9 +11243,15 @@ function operatorPlainText(value) {
 
 function clientFacingCopy(value) {
   return String(value || "")
-    .replace(/\bOperator shell loaded\b/gi, "Workspace opened")
-    .replace(/\bOperator review required\b/gi, "Team review required")
-    .replace(/\bOperator review\b/gi, "Team review")
+    .replace(new RegExp("\\b" + "Handoff" + " Package\\b", "g"), "Doc Prep")
+    .replace(new RegExp("\\b" + "handoff" + " package\\b", "gi"), "Doc Prep")
+    .replace(new RegExp("\\b" + "Source" + " Files\\b", "g"), "Supporting Documents")
+    .replace(new RegExp("\\b" + "source" + " files\\b", "gi"), "supporting documents")
+    .replace(new RegExp("\\b" + "Source" + " File\\b", "g"), "Supporting Document")
+    .replace(new RegExp("\\b" + "source" + " file\\b", "gi"), "supporting document")
+    .replace(new RegExp("\\b" + "Operator" + " shell loaded\\b", "gi"), "Workspace opened")
+    .replace(new RegExp("\\b" + "Operator" + " review required\\b", "gi"), "Team review required")
+    .replace(new RegExp("\\b" + "Operator" + " review\\b", "gi"), "Team review")
     .replace(/\boperator review\b/gi, "team review")
     .replace(/\bOperator approval\b/gi, "Approval")
     .replace(/\boperator approval\b/gi, "approval")
@@ -11269,6 +11275,14 @@ function clientFacingEvent(event = {}) {
     title: clientFacingCopy(event.title),
     copy: clientFacingCopy(event.copy)
   };
+}
+
+function currentUserDisplayName() {
+  const name = cleanDisplayValue(state.session?.user?.name || state.session?.name || "");
+  if (name && !/needs review|unknown/i.test(name)) return name;
+  const email = cleanDisplayValue(state.session?.user?.email || state.session?.email || "");
+  if (email && email.includes("@")) return titleCasePhrase(email.split("@")[0].replace(/[._-]+/g, " "));
+  return "User";
 }
 
 function formatSourceFactValue(value, fallback = "Needs review") {
@@ -11431,7 +11445,7 @@ function buildMissingSections(dossier) {
       short: "CRM handoff",
       type: "podio",
       source: "CRM prep",
-      copy: "Prepare the CRM handoff package, missing setup list, approval steps, and readback checks.",
+      copy: "Prepare the Doc Prep package, missing setup list, approval steps, and readback checks.",
       tasks: (dossier.crm?.payload?.podioReadiness?.blockers ?? []).map((blocker) => ({ title: "Podio access", nextAction: blocker }))
     }
   ];
@@ -12405,29 +12419,16 @@ function persistDiscoveryState() {
 }
 
 function defaultShellEvents() {
-  return [
-    {
-      title: "Workspace opened",
-      copy: "HeirRight navigation, review settings, activity, and handoff controls are active.",
-      tone: "ready",
-      at: Date.now() - (((24 + 2) * 60 + 1) * 60 * 1000)
-    },
-    {
-      title: exportSuccessActivityTitle(),
-      copy: exportSuccessActivityCopy("Podio"),
-      tone: "review",
-      at: Date.now() - ((2 * 60 + 17) * 60 * 1000)
-    }
-  ];
+  return [];
 }
 
 function exportSuccessActivityTitle() {
-  return "Handoff Package Prepared";
+  return "Doc Prep Prepared";
 }
 
 function exportSuccessActivityCopy(destination = "your integrated CRM") {
   const target = String(destination || "handoff queue").trim();
-  return `The completed report package is prepared for ${target} review. No live Podio card, Google Doc, Google Sheet row, email, or SMS is created until approval and readback proof are complete.`;
+  return `The Doc Prep package is prepared for ${target} review. No live Podio card, Google Doc, Google Sheet row, email, or SMS is created until approval and readback proof are complete.`;
 }
 
 function signalWeightLabel(value) {
@@ -13872,7 +13873,7 @@ function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
       done: discoveryStats.linked,
       total: discoveryStats.total,
       tag: "",
-      due: `${discoveryDone}/${docPrepPhases("discovery").length} source steps`,
+      due: `${discoveryDone}/${docPrepPhases("discovery").length} Discovery steps`,
       status: estateDiscoveryLastRunLabel(discoveryRow),
       ready: discoveryStats.missing === 0 && discoveryDone >= docPrepPhases("discovery").length
     },
@@ -13884,7 +13885,7 @@ function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
       done: closingTemplateReady,
       total: closingTemplateFamilies.length,
       tag: docPrepFlow("closing-docs").tag,
-      due: `${Math.max(0, closingDocs.length - closingStats.missing)}/${closingDocs.length} packet docs`,
+      due: `${Math.max(0, closingDocs.length - closingStats.missing)}/${closingDocs.length} packet documents`,
       status: closingTemplateReady >= closingTemplateFamilies.length ? "Ready to bundle" : `${closingTemplateReady}/${closingTemplateFamilies.length}`,
       ready: closingTemplateReady >= closingTemplateFamilies.length
     },
@@ -13896,7 +13897,7 @@ function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
       done: readyDocs,
       total: docs.length,
       tag: "Podio and Google prep",
-      due: reviewTasks ? `${reviewTasks} reviews` : "No open reviews",
+      due: reviewTasks ? `${reviewTasks} review items` : "No open review items",
       status: queuedRows().length ? "Queued" : "Prep only",
       ready: queuedRows().length > 0
     }
@@ -13931,7 +13932,7 @@ function attentionItems(row = selectedRow(), dossier = dossierForRow(row)) {
   if (stats.missing) {
     items.push({
       title: `${stats.missing} dossier document${stats.missing === 1 ? "" : "s"} still missing`,
-      copy: "Add source files, link generated packet sections, or mark the review gate before bundling.",
+      copy: "Add supporting documents, link generated packet sections, or mark the review gate before bundling.",
       action: "Open",
       view: "dossiers",
       urgent: false
@@ -13951,21 +13952,41 @@ function attentionItems(row = selectedRow(), dossier = dossierForRow(row)) {
 
 function dashboardActivityRows(row = selectedRow()) {
   const fileCount = selectedDocumentFileCount(row);
-  const defaults = [
-    {
-      title: row ? `${row.leadName || row.title} opened` : "Estate workspace opened",
-      copy: row?.address || "Load latest lead packet",
-      tone: "route",
-      at: Date.now() - (36 * 60 * 1000)
-    },
-    {
-      title: `${fileCount} source file${fileCount === 1 ? "" : "s"} linked`,
-      copy: "Estate Discovery and Closing Prep update the packet wherever the file is reused.",
-      tone: fileCount ? "check" : "clock",
-      at: Date.now() - (3 * 60 * 60 * 1000)
-    }
-  ];
-  return [...state.shellEvents.slice(0, 4), ...defaults].map(clientFacingEvent).slice(0, 6);
+  const events = state.shellEvents
+    .map((event) => {
+      const next = clientFacingEvent(event);
+      const userLabel = currentUserDisplayName();
+      if (/\bopened$/i.test(next.title) && !next.title.toLowerCase().startsWith(userLabel.toLowerCase())) {
+        next.title = `${userLabel} opened ${next.title.replace(/\s+opened$/i, "").trim() || "a file"}`;
+      }
+      return next;
+    })
+    .filter((event) => {
+      const title = String(event.title || "").trim();
+      const copy = String(event.copy || "").trim();
+      return !(
+        /^Workspace opened$/i.test(title) ||
+        / selected$/i.test(title) ||
+        /^Doc Prep Prepared$/i.test(title) ||
+        /^\d+\s+supporting documents?\s+linked$/i.test(title) ||
+        /navigation, review settings/i.test(copy) ||
+        /opens the public-record lead list/i.test(copy) ||
+        /workspace selected/i.test(copy)
+      );
+    });
+  const documentEvent = fileCount > 0 ? [{
+    title: `${fileCount} Supporting Document${fileCount === 1 ? "" : "s"} linked`,
+    copy: "Estate Discovery and Closing Prep use these documents throughout Doc Prep.",
+    tone: "check",
+    at: docPrepDocumentActivityAt(row, "discovery") || docPrepDocumentActivityAt(row, "closing-docs") || Date.now()
+  }] : [];
+  return [...events, ...documentEvent].slice(0, 6);
+}
+
+function recordLeadOpened(row, context = "Estate file") {
+  if (!row) return;
+  const target = row.leadName || row.title || "estate file";
+  addShellEvent(`${currentUserDisplayName()} opened ${target}`, row.address || context, "route", false);
 }
 
 function processCardHtml(process) {
@@ -13982,7 +14003,6 @@ function processCardHtml(process) {
         <span class="process-folder-meta">
           <span>${escapeHtml(process.status)}</span>
           ${process.tag ? `<span class="process-tag ${process.ready ? "ready" : ""}">${escapeHtml(process.tag)}</span>` : ""}
-          <span>${escapeHtml(process.due)}</span>
         </span>
       </span>
     </button>
@@ -14070,13 +14090,13 @@ function renderDocumentActionModal() {
           <div>
             <p class="eyebrow">File control</p>
             <h2 id="documentModalTitle" class="rail-title">${escapeHtml(doc?.title ?? "Dossier document")}</h2>
-            <p class="copy">${escapeHtml(doc?.copy ?? "Add the source file used for this dossier section.")}</p>
+            <p class="copy">${escapeHtml(doc?.copy ?? "Add the supporting document used for this dossier section.")}</p>
           </div>
           <button class="btn icon-only" type="button" data-close-document-modal aria-label="Close file control">${nucleoIcon("check-circle", 16)}</button>
         </div>
         <div class="document-modal-body">
           <div class="file-control-box">
-            <strong>${record ? "Current file" : "Choose source file"}</strong>
+            <strong>${record ? "Current file" : "Choose Supporting Document"}</strong>
             <span class="copy">${escapeHtml(record ? documentFileLabel(record) : "Select a PDF, image, scan, or office file from this Mac. The app records the file name and review status for this packet.")}</span>
             <input id="documentFileInput" type="file" aria-label="Choose file for ${escapeHtml(doc?.title ?? "document")}">
           </div>
@@ -14140,7 +14160,7 @@ function startDocumentAutomation(docId, action = "add") {
     renderRail();
     setRailOpen(true);
     openDocumentActionModal(doc.id, action === "replace" ? "replace" : "add");
-    addShellEvent("Human review needed", `${doc.title} needs a source file, filter, or approval note before it can be marked complete.`, "blocked", false);
+    addShellEvent("Human review needed", `${doc.title} needs a supporting document, filter, or approval note before it can be marked complete.`, "blocked", false);
     return;
   }
   setDocumentAutomationState(doc.id, "processing", row);
@@ -14830,7 +14850,7 @@ function docPrepReadinessItems(row = selectedRow(), dossier = dossierForRow(row)
   if (discoveryStats.missing > 0) {
     items.push({
       title: "Discovery packet documents missing",
-      copy: `${discoveryStats.missing} Discovery document${discoveryStats.missing === 1 ? "" : "s"} still need a linked source file or generated packet section.`,
+      copy: `${discoveryStats.missing} Discovery document${discoveryStats.missing === 1 ? "" : "s"} still need a linked Supporting Document or generated packet section.`,
       mandatory: true,
       state: "blocked"
     });
@@ -15638,6 +15658,7 @@ function openDocPrepRow(rowId, flowId = state.activeDocPrepFlow) {
   state.docPrepListOpen = false;
   setActiveDocPrepFlow(flowId, { persist: true, rerender: false });
   ensureDocPrepStarted(row, flowId);
+  recordLeadOpened(row, "Document Prep");
   renderDossiersView();
   renderRail();
   updateFooterLeadContext(row);
@@ -15917,7 +15938,7 @@ function renderDossiersView() {
         </div>
       </div>
       <div class="document-prep-shell">
-        <section class="document-panel" aria-label="Dossier source files">
+        <section class="document-panel" aria-label="Dossier Supporting Documents">
           <div class="document-panel-head">
             <div>
               <h3>${escapeHtml(docPrepEstateLabel(row))}</h3>
@@ -16082,7 +16103,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
           <div>
             <p class="eyebrow">Docs</p>
             <h2 class="rail-title">${escapeHtml(flow.shortTitle)} checklist</h2>
-            <p class="copy">Checks turn green only after the active DocPrep stage is complete or a linked source file exists.</p>
+            <p class="copy">Checks turn green only after the active DocPrep stage is complete or a linked Supporting Document exists.</p>
           </div>
           <button class="btn" type="button" data-popout-doc="${escapeHtml(selectedDoc?.id ?? "discovery-dossier")}">Pop out</button>
         </div>
@@ -17102,7 +17123,7 @@ function renderQueueView() {
     };
     document.getElementById("statusExport").textContent = `handoff: [${count} BATCH PREPARED]`;
     document.getElementById("topStatus").textContent = `${count} lead${count === 1 ? "" : "s"} staged for batch export review. Live writes remain locked.`;
-    addShellEvent("Batch handoff package prepared", `${count} dossier packet${count === 1 ? " is" : "s are"} ready for team review. Live Podio, Google Docs, Google Sheets, email, and SMS actions remain locked until approval and readback proof.`, "review", true);
+    addShellEvent("Doc Prep batch prepared", `${count} dossier packet${count === 1 ? " is" : "s are"} ready for team review. Live Podio, Google Docs, Google Sheets, email, and SMS actions remain locked until approval and readback proof.`, "review", true);
     renderShellPanels();
     renderQueueView();
   });
@@ -17790,8 +17811,8 @@ function runShellCommand(command, source = null, freeform = "") {
     addShellEvent("Flag recorded", freeform || "CRM access, handoff approval, and readback proof are still required.", "blocked");
   } else if (action === "stage-export") {
     state.railPreview = {
-      title: "Handoff package prepared for review",
-      markdown: "The handoff package is prepared in review-only mode. No live Podio card, Google Doc, Google Sheet row, email, or SMS was created.",
+      title: "Doc Prep prepared for review",
+      markdown: "The Doc Prep package is prepared in review-only mode. No live Podio card, Google Doc, Google Sheet row, email, or SMS was created.",
       updatedAt: Date.now()
     };
     document.getElementById("statusExport").textContent = "handoff: [PREPARED]";
@@ -17906,7 +17927,7 @@ function setActiveShellView(view = "dashboard", label = "") {
     state.railOpen = false;
     setRailOpen(false);
     setDetailRailOpen(false);
-    document.getElementById("topStatus").textContent = "Document Prep workspace selected. Source files and packet controls are ready.";
+    document.getElementById("topStatus").textContent = "Document Prep workspace selected. Supporting Documents and packet controls are ready.";
   } else if (nextView !== "find-estates") {
     state.railMode = "report";
     setRailOpen(false);
@@ -18622,8 +18643,10 @@ function renderResultsPage({ animate = false } = {}) {
   }
 
   body.querySelectorAll("[data-row-id]").forEach((rowEl) => {
-    rowEl.addEventListener("click", () => {
+    rowEl.addEventListener("click", (event) => {
+      if (event.target.closest("input, label, button, a, select, textarea")) return;
       state.selectedId = rowEl.dataset.rowId;
+      recordLeadOpened(rowById(state.selectedId));
       state.railOpen = true;
       setDetailRailOpen(false);
       renderAll();
@@ -18708,6 +18731,7 @@ function renderSearchPopup() {
       const row = rowById(card.dataset.searchOpen);
       if (!row) return;
       state.selectedId = row.id;
+      recordLeadOpened(row, "Search result");
       document.querySelector('[data-shell-nav="find-estates"]')?.click();
       renderAll();
       renderSearchPopup();
@@ -19172,14 +19196,14 @@ function railDocsHtml(row, dossier) {
         ${exportResults.map((result) => `
           <li>
             ${linearStatusIconHtml(result.readbackOk ? "complete" : "pending", result.route)}
-            <span><strong>${escapeHtml(displayStatus(result.route))}</strong><span class="rail-item-copy">${escapeHtml(operatorBlockerText(result.message ?? "Handoff result recorded."))}</span></span>
+            <span><strong>${escapeHtml(displayStatus(result.route))}</strong><span class="rail-item-copy">${escapeHtml(operatorBlockerText(result.message ?? "Doc Prep result recorded."))}</span></span>
             <span class="pill ${result.readbackOk ? "ready" : "review"}">${escapeHtml(handoffModeLabel(result.mode))}</span>
           </li>
         `).join("")}
         ${exportBlockers.map((blocker) => `
           <li>
-            ${linearStatusIconHtml("blocked", "Handoff blocker")}
-            <span><strong>Handoff blocker</strong><span class="rail-item-copy">${escapeHtml(blocker)}</span></span>
+            ${linearStatusIconHtml("blocked", "Doc Prep blocker")}
+            <span><strong>Doc Prep blocker</strong><span class="rail-item-copy">${escapeHtml(blocker)}</span></span>
             <span class="pill blocked">Blocked</span>
           </li>
         `).join("")}
@@ -19299,7 +19323,7 @@ function updateConnectionStatuses() {
   setConnectionChip(
     "podioStatus",
     podioBlocked ? "blocked" : "review",
-    podioBlocked ? "Podio is not connected. Handoff package is prep-only." : "Podio package is prepared for an approved sample-card check.",
+    podioBlocked ? "Podio is not connected. Doc Prep is prep-only." : "Podio package is prepared for an approved sample-card check.",
     podioBlocked ? "Prep blocked" : "Prep ready"
   );
   setConnectionChip(
@@ -19898,8 +19922,8 @@ async function chooseExportRoute(route, source = null) {
   const checkedCount = checkedRows().length;
   const isBatch = checkedCount > 0 && !isControlledTest;
   const batchCopy = isBatch
-    ? ` Preparing a ${checkedCount}-lead batch handoff package now. No live CRM card, Google Doc, Google Sheet row, email, or SMS will be created from this demo surface.`
-    : " Preparing a review-only handoff package now. No live CRM card will be created from this demo surface.";
+    ? ` Preparing a ${checkedCount}-lead Doc Prep batch now. No live CRM card, Google Doc, Google Sheet row, email, or SMS will be created from this demo surface.`
+    : " Preparing a review-only Doc Prep package now. No live CRM card will be created from this demo surface.";
   state.railPreview = {
     title: isBatch ? `${meta.title} Batch` : meta.title,
     markdown: isControlledTest
@@ -20037,24 +20061,6 @@ function wireEvents() {
       });
       const label = button.textContent.trim();
       setActiveShellView(button.dataset.shellNav, label);
-      addShellEvent(
-        `${label} selected`,
-        button.dataset.shellNav === "find-estates"
-          ? "Estate Search opens the public-record lead list and Discovery report rail."
-          : button.dataset.shellNav === "dossiers"
-          ? "Dossiers opens finished document packets without the report rail."
-          : button.dataset.shellNav === "drips"
-          ? "Outreach opens review-only email and SMS template preparation."
-          : button.dataset.shellNav === "queue"
-          ? "Queue opens batch export prep for reviewed dossiers."
-          : button.dataset.shellNav === "settings"
-          ? "Lead-quality controls are open. Review-only guardrails remain active."
-          : button.dataset.shellNav === "admin"
-          ? "Admin opens workspace readiness, scheduled work prep, and review controls."
-          : "Dashboard opens task tracker, activity, and scheduled outreach.",
-        "review",
-        false
-      );
     });
   });
   document.querySelectorAll("[data-open-crm-import]").forEach((button) => {
