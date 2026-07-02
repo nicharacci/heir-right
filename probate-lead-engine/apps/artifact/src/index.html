@@ -6797,21 +6797,56 @@
       border: 1px solid rgba(235,235,245,.20);
       border-radius: 999px;
       color: var(--text);
+      --floating-pill-x: -50%;
       opacity: 0;
       pointer-events: none;
-      transform: translate3d(-50%, 14px, 0) scale(.985);
-      transition: opacity .18s var(--ease), transform .22s var(--ease-out);
+      visibility: hidden;
+      transform: translate3d(var(--floating-pill-x), 14px, 0) scale(.985);
+      transition:
+        opacity .22s var(--ease),
+        transform .24s var(--ease-out),
+        visibility 0s linear .24s;
     }
 
     .floating-list-controls[data-open="false"] {
-      display: none;
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
     }
 
     .floating-list-controls[data-open="true"] {
       display: flex;
       opacity: 1;
       pointer-events: auto;
-      transform: translate3d(-50%, 0, 0) scale(1);
+      visibility: visible;
+      transform: translate3d(var(--floating-pill-x), 0, 0) scale(1);
+      transition:
+        opacity .18s var(--ease),
+        transform .24s var(--ease-out),
+        visibility 0s;
+    }
+
+    .floating-list-controls[data-denied="true"] {
+      animation: floating-control-denied .32s var(--ease-out);
+    }
+
+    .btn[data-denied="true"],
+    .floating-list-button[data-denied="true"] {
+      animation: action-control-denied .32s var(--ease-out);
+    }
+
+    @keyframes floating-control-denied {
+      0%, 100% { transform: translate3d(var(--floating-pill-x), 0, 0) scale(1); }
+      24% { transform: translate3d(calc(var(--floating-pill-x) - 7px), 0, 0) scale(1.006); }
+      50% { transform: translate3d(calc(var(--floating-pill-x) + 6px), 0, 0) scale(1.002); }
+      74% { transform: translate3d(calc(var(--floating-pill-x) - 3px), 0, 0) scale(1); }
+    }
+
+    @keyframes action-control-denied {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      24% { transform: translate3d(-5px, 0, 0); }
+      50% { transform: translate3d(5px, 0, 0); }
+      74% { transform: translate3d(-2px, 0, 0); }
     }
 
     .floating-list-summary {
@@ -9292,13 +9327,14 @@
         bottom: 88px;
         width: auto;
         max-width: none;
+        --floating-pill-x: 0px;
         flex-wrap: wrap;
         justify-content: flex-start;
         border-radius: 22px;
-        transform: translate3d(0, 14px, 0) scale(.985);
+        transform: translate3d(var(--floating-pill-x), 14px, 0) scale(.985);
       }
       .floating-list-controls[data-open="true"] {
-        transform: translate3d(0, 0, 0) scale(1);
+        transform: translate3d(var(--floating-pill-x), 0, 0) scale(1);
       }
       .floating-list-summary {
         width: 100%;
@@ -10239,6 +10275,7 @@ const state = {
   activityOpen: false,
   shellCommandCount: 0,
   shellEvents: [],
+  actionErrorLog: [],
   railRenaming: false,
   dashboardActivityTab: "activities",
   selectedDossierDocId: "discovery-dossier",
@@ -12230,14 +12267,14 @@ function syncFloatingListControls() {
         ? `${visibleCount} visible in Estate Search`
         : "Lead list";
   }
-  controls.dataset.open = count > 0 ? "true" : "false";
+  const showFloatingControls = count > 0 && state.activeView === "find-estates";
+  controls.dataset.open = showFloatingControls ? "true" : "false";
+  controls.setAttribute("aria-hidden", showFloatingControls ? "false" : "true");
   controls.querySelectorAll("[data-list-control]").forEach((button) => {
     const action = button.dataset.listControl;
     const needsSelection = ["queue", "podio", "both", "archive", "delete", "clear"].includes(action);
     const needsVisible = action === "select-visible";
-    const needsImportedEstate = ["archive", "delete"].includes(action);
-    const hasImportedSelection = selected.some((row) => row.sourceKind === "crm-import");
-    button.disabled = (needsSelection && count === 0) || (needsVisible && visibleCount === 0) || (needsImportedEstate && !hasImportedSelection);
+    button.disabled = (needsSelection && count === 0) || (needsVisible && visibleCount === 0);
   });
 }
 
@@ -12292,8 +12329,12 @@ function selectVisibleLeadsFromControls(source = null) {
 function runSelectedEstateLifecycle(action, source = null) {
   const rows = checkedRows().filter((row) => row.sourceKind === "crm-import");
   if (!rows.length) {
-    document.getElementById("topStatus").textContent = "Select imported estates before using Archive or Delete.";
-    source?.blur?.();
+    nudgeDeniedAction(
+      source,
+      action === "delete" ? "Delete blocked" : "Archive blocked",
+      "Archive and delete are available only for imported estate records.",
+      { pill: true, source: "selected-lead-controls" }
+    );
     return;
   }
   if (action === "delete") {
@@ -12338,7 +12379,12 @@ function runFloatingListControl(action, source = null) {
 function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
   const validRows = rows.filter(Boolean);
   if (!validRows.length) {
-    document.getElementById("topStatus").textContent = "Select at least one lead before adding to the batch queue.";
+    nudgeDeniedAction(
+      source,
+      "Queue blocked",
+      "Select an estate before adding it to the batch queue.",
+      { pill: true, source: "selected-lead-controls" }
+    );
     return;
   }
   validRows.forEach((row) => state.queueIds.add(row.id));
@@ -13257,6 +13303,43 @@ function addShellEvent(title, copy, tone = "review", openDrawer = true) {
   ].slice(0, 10);
   renderShellPanels();
   if (openDrawer) setActivityOpen(true);
+}
+
+function recordActionError(title, copy, source = "ui-action") {
+  const item = {
+    id: `${source}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title: clientFacingCopy(title),
+    copy: clientFacingCopy(copy),
+    severity: "blocked",
+    ready: false,
+    at: Date.now(),
+    payload: {
+      source,
+      category: "ui-action",
+      message: copy,
+      view: state.activeView
+    }
+  };
+  state.actionErrorLog = [item, ...state.actionErrorLog].slice(0, 8);
+  addShellEvent(item.title, item.copy, "blocked", false);
+  if (state.activeView === "admin") renderAdminLoopView();
+  return item;
+}
+
+function nudgeDeniedAction(target, title, copy, options = {}) {
+  const control = options.pill
+    ? document.getElementById("floatingListControls")
+    : target?.closest?.("#floatingListControls") || target || document.getElementById("floatingListControls");
+  if (control) {
+    control.dataset.denied = "false";
+    void control.offsetWidth;
+    control.dataset.denied = "true";
+    window.setTimeout(() => {
+      if (control.dataset.denied === "true") control.dataset.denied = "false";
+    }, 360);
+  }
+  recordActionError(title, copy, options.source || "denied-action");
+  target?.blur?.();
 }
 
 function activeViewLabel(view = state.activeView) {
@@ -14380,11 +14463,12 @@ function attentionItems(row = selectedRow(), dossier = dossierForRow(row)) {
   const stats = documentPrepStats(row, dossier);
   const missing = row.missing ?? buildMissingSections(dossier);
   const blockers = milestoneBlockers(dossier);
+  const estateFileName = docPrepEstateLabel(row);
   const items = [];
   if (missing.length) {
     items.push({
       title: `${missing[0].short || missing[0].label} needs attention`,
-      copy: `${missing.length} source-backed section${missing.length === 1 ? "" : "s"} affect ${row.leadName || row.title}.`,
+      copy: estateFileName,
       action: "Review",
       view: "find-estates",
       urgent: true
@@ -14393,7 +14477,7 @@ function attentionItems(row = selectedRow(), dossier = dossierForRow(row)) {
   if (stats.missing) {
     items.push({
       title: `${stats.missing} dossier document${stats.missing === 1 ? "" : "s"} still missing`,
-      copy: "Add supporting documents, link generated packet sections, or mark the review gate before bundling.",
+      copy: estateFileName,
       action: "Open",
       view: "dossiers",
       urgent: false
@@ -14402,7 +14486,7 @@ function attentionItems(row = selectedRow(), dossier = dossierForRow(row)) {
   if (blockers.length) {
     items.push({
       title: "Handoff remains prep only",
-      copy: operatorBlockerText(blockers[0]),
+      copy: estateFileName,
       action: "View",
       view: "queue",
       urgent: false
@@ -17629,7 +17713,12 @@ function renderQueueView() {
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
     const actionRows = queuedRows().length ? queuedRows() : checkedRows();
     if (!actionRows.length) {
-      document.getElementById("topStatus").textContent = "Select leads before staging a batch export package.";
+      nudgeDeniedAction(
+        target.querySelector("[data-queue-stage]"),
+        "Batch stage blocked",
+        "Select or queue an estate before staging a batch export package.",
+        { source: "queue-stage" }
+      );
       return;
     }
     actionRows.forEach((row) => state.queueIds.add(row.id));
@@ -17649,6 +17738,24 @@ function renderQueueView() {
 
 function adminErrorItems() {
   const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "Activepieces", "Linear Support", "Leads Engine Access"];
+  const actionItems = state.actionErrorLog.map((item) => ({ ...item, ready: false }));
+  const loggedActionTitles = new Set(actionItems.map((item) => item.title));
+  const blockedEventItems = state.shellEvents
+    .filter((event) => event.tone === "blocked" && !loggedActionTitles.has(event.title))
+    .slice(0, 4)
+    .map((event, index) => ({
+      id: `blocked-event-${index}-${Number(event.at || 0)}`,
+      title: event.title,
+      copy: event.copy,
+      severity: "blocked",
+      ready: false,
+      payload: {
+        source: "admin-error-log",
+        category: "blocked-action",
+        message: event.copy,
+        at: event.at
+      }
+    }));
   const connectionItems = connectionNames.map((name) => {
     const connection = connectionByName(name);
     const ok = Boolean(connection?.ok && connection?.mode === "live");
@@ -17683,7 +17790,7 @@ function adminErrorItems() {
       item
     }
   })) : [];
-  const fallback = !connectionItems.length && !docItems.length ? [{
+  const fallback = !actionItems.length && !blockedEventItems.length && !connectionItems.length && !docItems.length ? [{
     id: "no-errors",
     title: "No open setup errors",
     copy: "Current workspace blockers are clear. New integration or document-prep issues will appear here.",
@@ -17691,7 +17798,7 @@ function adminErrorItems() {
     ready: true,
     payload: {}
   }] : [];
-  return [...connectionItems, ...docItems, ...fallback].slice(0, 12);
+  return [...actionItems, ...blockedEventItems, ...connectionItems, ...docItems, ...fallback].slice(0, 12);
 }
 
 function adminStatusHtml(status) {
@@ -18483,6 +18590,7 @@ function setActiveShellView(view = "dashboard", label = "") {
     document.getElementById("topStatus").textContent = "Find Estates workspace selected. Open a lead, then begin Discovery from the rail.";
   }
   renderCurrentLoopView();
+  syncBatchExportControls();
   playShellViewTransition(nextView);
   positionWalkthrough();
 }
