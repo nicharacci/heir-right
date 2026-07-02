@@ -10910,6 +10910,15 @@ function rowDisplayScore(row) {
   return Math.min(100, Number(row.score || 0) + accepted * 8);
 }
 
+function averageEstateScore(rows = state.rows) {
+  const scores = rows
+    .filter((row) => row && row.kind !== "File")
+    .map((row) => Number(rowDisplayScore(row)))
+    .filter(Number.isFinite);
+  if (!scores.length) return 0;
+  return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+}
+
 function rowDisplayClassification(row) {
   if (!row) return "Review";
   if (acceptedContactCandidates(row).length) return "Contact verified";
@@ -18129,8 +18138,8 @@ function addressDisplayParts(address, fallback = "") {
 
 function renderSummary() {
   const facts = state.data?.facts?.length ?? 0;
-  const openTasks = taskCount(state.dossier);
   const reportsAvailable = idiReportsAvailableCount();
+  const averageScore = averageEstateScore();
   const review = qualificationReview();
   const qualified = review?.summary?.qualified ?? state.dailyRun?.qualifiedLeadCount ?? 0;
   const metrics = [
@@ -18138,7 +18147,7 @@ function renderSummary() {
     { label: "Evidence items", value: facts },
     { label: "Qualified", value: qualified },
     { label: "Reports Available", value: reportsAvailable },
-    { label: "Open reviews", value: openTasks }
+    { label: "Average Score", value: averageScore }
   ];
   const target = document.getElementById("summaryMetrics");
   if (!target) return;
