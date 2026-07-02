@@ -9483,10 +9483,6 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 7h10M7 12h7M7 17h4M5 3h14a2 2 0 0 1 2 2v14l-4-3H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Activity
           </button>
-          <button id="refresh" class="btn quick" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M18.5 9A7 7 0 0 0 6.2 6.7L4 11m16 2-2.2 4.3A7 7 0 0 1 5.5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Load latest
-          </button>
           <button id="walkthroughReplay" class="btn quick walkthrough-replay" type="button" aria-label="Open guided walkthrough" title="Guided walkthrough">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle cx="12" cy="12" r="7.15" stroke="currentColor" stroke-width="1.55"/>
@@ -20262,7 +20258,7 @@ function wireEvents() {
       openCrmImportModal({ mode: "batch", provider });
     });
   });
-  document.getElementById("refresh").addEventListener("click", loadRun);
+  document.getElementById("refresh")?.addEventListener("click", loadRun);
   document.getElementById("freshBatch").addEventListener("click", (event) => pullFreshBatch(event.currentTarget));
   document.getElementById("sourceQuery").addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
