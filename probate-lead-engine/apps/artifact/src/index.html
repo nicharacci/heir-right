@@ -2160,6 +2160,38 @@
       display: none;
     }
 
+    .content.t-page-slide {
+      --t-page-slide-dur: 220ms;
+      --t-page-fade-dur: 220ms;
+      --t-page-slide-distance: 8px;
+      --t-page-blur: 3px;
+      --t-page-slide-ease: cubic-bezier(.22, 1, .36, 1);
+      --t-page-fade-ease: cubic-bezier(.22, 1, .36, 1);
+    }
+
+    .content.t-page-slide[data-view-transition="find-estates"] > .filters,
+    .content.t-page-slide[data-view-transition="find-estates"] > .workbench {
+      animation: tPageSlideEstatesIn var(--t-page-slide-dur) var(--t-page-slide-ease) both;
+      will-change: opacity, transform, filter;
+    }
+
+    .content.t-page-slide[data-view-transition="find-estates"] > .workbench {
+      animation-delay: 35ms;
+    }
+
+    @keyframes tPageSlideEstatesIn {
+      from {
+        opacity: 0;
+        transform: translateX(calc(var(--t-page-slide-distance) * -1));
+        filter: blur(var(--t-page-blur));
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+        filter: blur(0);
+      }
+    }
+
     .app[data-active-view="find-estates"] [data-view-panel="find-estates"] {
       display: grid;
     }
@@ -9649,7 +9681,7 @@
       </div>
     </header>
 
-    <section class="content">
+    <section class="content t-page-slide" data-view-transition="idle">
       <aside id="leadFilters" class="filters" aria-label="Add estates and lead filters">
         <div id="filterResizer" class="filter-resizer" role="separator" aria-orientation="vertical" aria-label="Resize filters" title="Resize filters"></div>
         <div class="pane-head">
@@ -10241,6 +10273,7 @@ const dripSettingsKey = "heirright:drip-settings";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
 const walkthroughStateKey = "heirright:guided-walkthrough-seen";
 let walkthroughAutoTimer = null;
+let shellViewTransitionTimer = null;
 const documentAutomationTimers = new Map();
 const docPrepRunTimers = new Map();
 const serverBackedStateKeys = new Set([
@@ -18050,6 +18083,24 @@ function renderCurrentLoopView() {
   if (state.activeView === "settings") renderSettingsView();
 }
 
+function playShellViewTransition(view) {
+  const content = document.querySelector(".content.t-page-slide");
+  if (!content) return;
+  window.clearTimeout(shellViewTransitionTimer);
+  if (view !== "find-estates" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    content.dataset.viewTransition = "idle";
+    return;
+  }
+  content.dataset.viewTransition = "idle";
+  void content.offsetWidth;
+  content.dataset.viewTransition = "find-estates";
+  shellViewTransitionTimer = window.setTimeout(() => {
+    if (content.dataset.viewTransition === "find-estates") {
+      content.dataset.viewTransition = "idle";
+    }
+  }, 280);
+}
+
 const walkthroughSteps = [
   {
     view: "dossiers",
@@ -18330,6 +18381,7 @@ function setActiveShellView(view = "dashboard", label = "") {
     document.getElementById("topStatus").textContent = "Find Estates workspace selected. Open a lead, then begin Discovery from the rail.";
   }
   renderCurrentLoopView();
+  playShellViewTransition(nextView);
   positionWalkthrough();
 }
 
