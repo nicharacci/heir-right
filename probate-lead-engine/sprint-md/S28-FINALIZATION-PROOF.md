@@ -52,3 +52,12 @@ Worker deployment: Cloudflare Worker production API surface
 - Activepieces: blocked, fallback active.
 - Resend: blocked.
 - SMS Gateway: blocked.
+
+## 2026-07-02 Addendum
+
+- Queue action column annotation is live in production. The Estates table now ends with an unlabeled, non-movable row-action column; the spreadsheet-style columns remain Property address, Estate file, Score, and Last Sale Date.
+- Production DOM proof on `https://heirright-leads.vercel.app/?proof=queue-action-column` shows the final header cell as `text: ""`, `data-column: "next"`, `hasDrag: false`, and `aria: "Row actions"`.
+- Vercel deploy `dpl_Efs97XHsshyBsXajkeTMTyykUWDv` shipped the queue action-column source change, and deploy `dpl_5kePRUdJfzW13J9Z1BRaAJPjDCWE` shipped the Podio OAuth route wrappers.
+- `GET /api/podio/oauth/start` now returns a production `302` to Podio OAuth with the `hr_podio_state` cookie and callback URL. This fixes the missing Vercel wrapper route.
+- `POST /api/outreach/sync` production smoke staged a first-party Podio-compatible review package, did not send SMS/email, and filed Linear issue `HEI-110` for the Activepieces/Podio setup blocker.
+- `GET /api/health/deep` still reports Google Workspace, Linear Support, and Leads Engine Access as live. Podio remains blocked until the HeirRight Podio account completes OAuth refresh or a Leads app token is installed.
