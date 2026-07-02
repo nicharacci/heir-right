@@ -3090,6 +3090,13 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,.44), 0 12px 30px rgba(0,0,0,.10);
     }
 
+    .document-panel-title {
+      min-width: 0;
+      display: grid;
+      justify-items: start;
+      gap: 8px;
+    }
+
     .document-progress-row {
       display: flex;
       align-items: center;
@@ -3097,6 +3104,30 @@
       color: var(--muted);
       font-family: var(--mono);
       font-size: 12px;
+    }
+
+    .docprep-main-run-button {
+      min-height: 26px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      box-shadow: none;
+      color: var(--accent);
+      padding: 0;
+      font-size: 13px;
+      font-weight: 850;
+      cursor: pointer;
+      transition: color .34s var(--ease), filter .28s var(--ease), opacity .22s var(--ease);
+    }
+
+    .docprep-main-run-button:hover,
+    .docprep-main-run-button:focus-visible {
+      filter: drop-shadow(0 0 8px color-mix(in srgb, currentColor 32%, transparent));
+      outline: 0;
+    }
+
+    .docprep-main-run-button.is-running {
+      color: var(--red);
     }
 
     .document-filter-tabs {
@@ -3228,6 +3259,14 @@
       border-style: solid;
       color: var(--green);
       background: var(--green-soft);
+    }
+
+    .document-run-button.is-running {
+      color: #fff;
+      border-color: color-mix(in srgb, var(--red) 48%, transparent);
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--red) 76%, rgba(255,255,255,.20)), color-mix(in srgb, var(--red) 82%, rgba(0,0,0,.16)));
+      box-shadow: 0 10px 24px color-mix(in srgb, var(--red) 28%, transparent);
     }
 
     .document-copy {
@@ -10006,6 +10045,7 @@ const state = {
   outreachSideTab: "variables",
   settingsTab: "integrations",
   documentAutomationStates: {},
+  docPrepRunStates: {},
   reportDateAdded: "",
   walkthrough: {
     open: false,
@@ -10054,6 +10094,8 @@ const dripSettingsKey = "heirright:drip-settings";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
 const walkthroughStateKey = "heirright:guided-walkthrough-seen";
 let walkthroughAutoTimer = null;
+const documentAutomationTimers = new Map();
+const docPrepRunTimers = new Map();
 const serverBackedStateKeys = new Set([
   crmImportStateKey,
   docPrepEstateStateKey,
@@ -13543,8 +13585,9 @@ function dossierDocWorkflowState(doc, index = 0) {
   const phaseIndex = phases.findIndex((phase) => phase.id === phaseId);
   const phase = phases[phaseIndex] ?? phases[0];
   const row = selectedRow();
-  const complete = phaseIsComplete(phase.id, row, flowId);
-  const active = !complete && phase.id === currentDiscoveryPhase(flowId, row).id;
+  const running = docPrepMainRunActive(row, flowId) && phase.id === currentDiscoveryPhase(flowId, row).id;
+  const complete = !running && phaseIsComplete(phase.id, row, flowId);
+  const active = running || (!complete && phase.id === currentDiscoveryPhase(flowId, row).id);
   const blocked = /blocked|locked/i.test(doc.status || "") && !complete;
   return {
     phase,
@@ -13598,6 +13641,109 @@ function setDocumentAutomationState(docId, stateName, row = selectedRow()) {
   const key = documentAutomationKey(docId, row);
   if (stateName) state.documentAutomationStates[key] = stateName;
   else delete state.documentAutomationStates[key];
+}
+
+function docPrepRunKey(row = selectedRow(), flowId = "discovery") {
+  const flowKey = docPrepFlows[flowId] ? flowId : "discovery";
+  return `${docPrepEstateKey(row)}:${flowKey}:run`;
+}
+
+function docPrepRunState(row = selectedRow(), flowId = "discovery") {
+  return state.docPrepRunStates[docPrepRunKey(row, flowId)] || "";
+}
+
+function setDocPrepRunState(row = selectedRow(), flowId = "discovery", value = "") {
+  const key = docPrepRunKey(row, flowId);
+  if (value) state.docPrepRunStates[key] = value;
+  else delete state.docPrepRunStates[key];
+}
+
+function docPrepMainRunActive(row = selectedRow(), flowId = "discovery") {
+  return docPrepRunState(row, flowId) === "running";
+}
+
+function docPrepMainRunLabel(row = selectedRow(), flowId = "discovery") {
+  return docPrepMainRunActive(row, flowId) ? "Stop Discovery" : "Run Full Discovery";
+}
+
+function renderDocPrepRunSurfaces() {
+  renderCurrentLoopView();
+  renderRail();
+}
+
+function stopFullDiscoveryRun(row = selectedRow(), flowId = "discovery", { silent = false } = {}) {
+  if (!row) return;
+  const key = docPrepRunKey(row, flowId);
+  const timer = docPrepRunTimers.get(key);
+  if (timer) window.clearTimeout(timer);
+  docPrepRunTimers.delete(key);
+  setDocPrepRunState(row, flowId, "");
+  if (!silent) {
+    document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} Discovery run stopped.`;
+    addShellEvent("Discovery stopped", `${docPrepEstateLabel(row)} Discovery run was stopped before the next phase completed.`, "review", false);
+  }
+  renderDocPrepRunSurfaces();
+}
+
+function finishFullDiscoveryRun(row = selectedRow(), flowId = "discovery") {
+  if (!row) return;
+  const key = docPrepRunKey(row, flowId);
+  docPrepRunTimers.delete(key);
+  setDocPrepRunState(row, flowId, "");
+  const finalIndex = Math.max(0, docPrepPhases(flowId).length - 1);
+  setDocPrepPhaseIndex(row, flowId, finalIndex, { persist: false });
+  persistDiscoveryState();
+  document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} Discovery run complete.`;
+  addShellEvent("Discovery complete", `${docPrepEstateLabel(row)} completed the full Discovery run. Supporting phases are ready to review.`, "ready", false);
+  renderDocPrepRunSurfaces();
+}
+
+function scheduleNextFullDiscoveryPhase(row = selectedRow(), phaseIndex = 0) {
+  if (!row) return;
+  const flowId = "discovery";
+  const key = docPrepRunKey(row, flowId);
+  const phases = docPrepPhases(flowId);
+  const phase = phases[phaseIndex];
+  if (!phase) {
+    finishFullDiscoveryRun(row, flowId);
+    return;
+  }
+  setDocPrepPhaseIndex(row, flowId, phaseIndex, { persist: false });
+  persistDiscoveryState();
+  document.getElementById("topStatus").textContent = `${phase.label} running for ${docPrepEstateLabel(row)}.`;
+  renderDocPrepRunSurfaces();
+  const timer = window.setTimeout(() => {
+    docPrepRunTimers.delete(key);
+    if (!docPrepMainRunActive(row, flowId)) return;
+    markDocPrepPhaseComplete(row, flowId, phase.id);
+    addShellEvent(`${phase.label} complete`, `${phase.summary} Discovery continued automatically.`, "ready", false);
+    scheduleNextFullDiscoveryPhase(row, phaseIndex + 1);
+  }, 680);
+  docPrepRunTimers.set(key, timer);
+}
+
+function runFullDiscovery(row = selectedRow(), source = null) {
+  if (!row) return;
+  const flowId = "discovery";
+  state.discoveryOpen = false;
+  state.railMode = "dossier";
+  ensureDocPrepStarted(row, flowId, { persist: false });
+  setActiveDocPrepFlow(flowId, { persist: false, rerender: false });
+  setDocPrepRunState(row, flowId, "running");
+  addShellEvent("Discovery started", `${docPrepEstateLabel(row)} is running each Discovery phase in order. Use Stop Discovery to pause before the next phase completes.`, "review", false);
+  const firstIndex = docPrepPhases(flowId).findIndex((phase) => !docPrepPhaseMarkedComplete(row, flowId, phase.id));
+  scheduleNextFullDiscoveryPhase(row, firstIndex < 0 ? 0 : firstIndex);
+  setRailOpen(state.railOpen, source);
+}
+
+function toggleFullDiscoveryRun(source = null) {
+  const row = selectedRow();
+  if (!row) return;
+  if (docPrepMainRunActive(row, "discovery")) {
+    stopFullDiscoveryRun(row, "discovery");
+    return;
+  }
+  runFullDiscovery(row, source);
 }
 
 function dossierChecklistHtml(docs, { compact = false } = {}) {
@@ -14017,11 +14163,11 @@ function processCardHtml(process) {
 function documentRequirementStatus(doc, row = selectedRow()) {
   const record = documentFileRecord(doc.id, row);
   const workflow = dossierDocWorkflowState(doc);
-  if (record) return { linked: true, label: documentFileLabel(record), action: "Update" };
+  if (record) return { linked: true, label: documentFileLabel(record), action: "Run" };
   return {
     linked: false,
     label: workflow.state === "complete" ? "Generated packet section is ready to link." : doc.copy,
-    action: "Add"
+    action: "Run"
   };
 }
 
@@ -14029,11 +14175,13 @@ function documentRequirementHtml(doc, row = selectedRow()) {
   const file = documentRequirementStatus(doc, row);
   const workflow = dossierDocWorkflowState(doc);
   const automation = documentAutomationState(doc.id, row);
-  const statusState = automation || (file.linked ? "complete" : workflow.state === "blocked" ? "blocked" : workflow.state === "active" ? "active" : "pending");
-  const statusLabel = automation === "processing" ? "Processing" : file.linked ? "Complete" : workflow.label;
+  const running = automation === "processing";
+  const actionLabel = running ? "Stop" : "Run";
+  const statusState = automation || (workflow.state === "active" ? "active" : file.linked ? "complete" : workflow.state === "blocked" ? "blocked" : "pending");
+  const statusLabel = automation === "processing" ? "Processing" : workflow.state === "active" ? "Working" : file.linked ? "Complete" : workflow.label;
   return `
     <article class="document-requirement ${file.linked ? "is-linked" : ""}" data-document-row="${escapeHtml(doc.id)}">
-      <button class="file-drop-icon" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}" aria-label="${escapeHtml(file.action)} ${escapeHtml(doc.title)}">${linearStatusIconHtml(statusState, statusLabel)}</button>
+      <button class="file-drop-icon" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}" aria-label="${escapeHtml(actionLabel)} ${escapeHtml(doc.title)}">${linearStatusIconHtml(statusState, statusLabel)}</button>
       <span class="document-copy">
         <strong>${escapeHtml(doc.title)}</strong>
         <span>${escapeHtml(file.label)}</span>
@@ -14041,7 +14189,7 @@ function documentRequirementHtml(doc, row = selectedRow()) {
       <span class="document-actions">
         <span class="document-type-pill">${escapeHtml(doc.type)}</span>
         <button class="btn icon-only document-icon-button" type="button" data-document-action="preview" data-document-id="${escapeHtml(doc.id)}" aria-label="Preview ${escapeHtml(doc.title)}" title="Preview">${nucleoIcon("eye", 16)}</button>
-        <button class="btn primary solvys-liquid-glass" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}">${escapeHtml(file.action)}</button>
+        <button class="btn primary solvys-liquid-glass document-run-button ${running ? "is-running" : ""}" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}">${escapeHtml(actionLabel)}</button>
             <span class="headless-menu-wrap" data-ui-menu>
               <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Document actions for ${escapeHtml(doc.title)}">${nucleoIcon("sliders", 16)}</button>
           <span class="headless-menu t-dropdown" data-origin="top-right" role="menu" hidden>
@@ -14154,10 +14302,27 @@ function documentNeedsHumanInput(docId, action = "add") {
   return Boolean(workflow?.state === "blocked" || /blocked|locked/i.test(doc?.status || ""));
 }
 
+function stopDocumentAutomation(docId, row = selectedRow()) {
+  const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === docId) ?? selectedDossierDocument(row);
+  const key = documentAutomationKey(docId, row);
+  const timer = documentAutomationTimers.get(key);
+  if (timer) window.clearTimeout(timer);
+  documentAutomationTimers.delete(key);
+  setDocumentAutomationState(docId, "", row);
+  document.getElementById("topStatus").textContent = `${doc?.title || "Document"} run stopped.`;
+  addShellEvent("Document run stopped", `${doc?.title || "Document"} was stopped before the linked packet was updated.`, "review", false);
+  renderCurrentLoopView();
+  renderRail();
+}
+
 function startDocumentAutomation(docId, action = "add") {
   const row = selectedRow();
   const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === docId) ?? selectedDossierDocument(row);
   if (!doc) return;
+  if (documentAutomationState(doc.id, row) === "processing") {
+    stopDocumentAutomation(doc.id, row);
+    return;
+  }
   if (documentNeedsHumanInput(docId, action)) {
     state.selectedDossierDocId = doc.id;
     state.railMode = "dossier";
@@ -14171,10 +14336,14 @@ function startDocumentAutomation(docId, action = "add") {
   setDocumentAutomationState(doc.id, "processing", row);
   renderCurrentLoopView();
   renderRail();
-  window.setTimeout(() => {
+  const key = documentAutomationKey(doc.id, row);
+  const timer = window.setTimeout(() => {
+    documentAutomationTimers.delete(key);
+    if (documentAutomationState(doc.id, row) !== "processing") return;
     saveDocumentFile(doc.id, null, "generated");
     addShellEvent("Automated document step complete", `${doc.title} was linked from the generated packet for the selected estate.`, "ready", false);
   }, 760);
+  documentAutomationTimers.set(key, timer);
 }
 
 function wireDocumentActionModal(mount) {
@@ -15945,14 +16114,14 @@ function renderDossiersView() {
       <div class="document-prep-shell">
         <section class="document-panel" aria-label="Dossier Supporting Documents">
           <div class="document-panel-head">
-            <div>
+            <div class="document-panel-title">
               <h3>${escapeHtml(docPrepEstateLabel(row))}</h3>
               <div class="document-progress-row">
                 ${processProgressDots(stats.linked, stats.total)}
                 <span>${escapeHtml(`${stats.linked}/${stats.total} documents`)}</span>
               </div>
+              <button class="docprep-main-run-button ${docPrepMainRunActive(row, "discovery") ? "is-running" : ""}" type="button" data-begin-discovery>${escapeHtml(docPrepMainRunLabel(row, "discovery"))}</button>
             </div>
-            <button class="btn primary solvys-liquid-glass" type="button" data-begin-discovery>${escapeHtml(flow.cta)}</button>
           </div>
           <div class="document-list">
             ${docs.map((doc) => documentRequirementHtml(doc, row)).join("")}
@@ -16013,7 +16182,7 @@ function renderDossiersView() {
       addShellEvent(`${docPrepFlow().label} template selected`, `${docPrepFlow().title} is now the active DocPrep workflow for the selected estate.`, "review", false);
     });
   });
-  target.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
+  target.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget));
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
     if (state.activeDocPrepFlow === "closing-docs") {
       exportClosingDocsToGoogle();
@@ -16130,7 +16299,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
     `;
   }
   content.innerHTML = (state.railTab === "flow" ? titleCard : "") + bodyHtml;
-  content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
+  content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget));
   wireAssetDiscoveryControls(content, row);
   content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
     input.addEventListener("change", (event) => {
@@ -18073,7 +18242,7 @@ function discoveryStripHtml(row, dossier) {
     <div class="discovery-strip" aria-label="${escapeHtml(flow.label)} completion">
       <div class="discovery-fuse" style="--fuse-progress: ${pct}%" aria-label="${escapeHtml(flow.label)} ${pct}% complete"></div>
       <div class="discovery-phase-meter"><strong>${pct}%</strong><span>${escapeHtml(phase.label)}</span></div>
-      <button class="btn primary solvys-liquid-glass" type="button" data-begin-discovery>${escapeHtml(flow.cta)}</button>
+      <button class="docprep-main-run-button ${docPrepMainRunActive(row, "discovery") ? "is-running" : ""}" type="button" data-begin-discovery>${escapeHtml(docPrepMainRunLabel(row, "discovery"))}</button>
     </div>
   `;
 }
@@ -19032,7 +19201,7 @@ function renderRail() {
     </section>
   `;
   content.innerHTML = (state.railTab === "flow" ? titleCard : "") + previewHtml + railTabHtml(row, dossier);
-  content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => beginDiscoveryWizard(event.currentTarget));
+  content.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget));
   content.querySelectorAll("[data-rail-chip]").forEach((chip) => {
     chip.addEventListener("click", () => openRailPreview(chip.dataset.railChip, chip));
   });
