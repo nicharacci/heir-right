@@ -6595,7 +6595,7 @@
       z-index: 20;
       min-width: 0;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr);
       gap: 10px;
       align-items: center;
       padding: 8px 12px;
@@ -9954,15 +9954,11 @@
     <section class="shell-composer" aria-label="HeirRight command composer">
       <form id="commandForm" class="command-form">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-        <input id="commandInput" type="text" autocomplete="off" placeholder="Review a lead, open a report, record a flag, or export">
+        <input id="commandInput" type="text" autocomplete="off" placeholder="Review a lead, open a report, or add a note">
         <button class="btn primary solvys-liquid-glass" type="submit" aria-label="Run command" title="Run command">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5m0 0-6 6m6-6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </form>
-      <div class="composer-actions" aria-label="Common commands">
-        <button class="btn quick" type="button" data-shell-command="record-blocker">Flag</button>
-        <button class="btn quick" type="button" data-shell-command="stage-export">Export</button>
-      </div>
     </section>
 
     <aside id="agentDrawer" class="agent-drawer" data-open="false" aria-label="Agent activity">
