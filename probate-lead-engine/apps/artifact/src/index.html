@@ -6230,13 +6230,24 @@
 
     .floating-list-button.is-preferred {
       color: #f5f5f7;
-      background: rgba(10,132,255,.68);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 12px 28px rgba(10,132,255,.18);
+      border: 1px solid rgba(142,200,255,.32);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,.08) 42%, rgba(255,255,255,.025) 100%),
+        linear-gradient(180deg, rgba(76,166,255,.62), rgba(10,132,255,.50) 56%, rgba(0,92,210,.46));
+      -webkit-backdrop-filter: blur(14px) saturate(1.22);
+      backdrop-filter: blur(14px) saturate(1.22);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.26),
+        inset 0 -1px 0 rgba(0,44,92,.24),
+        0 12px 28px rgba(10,132,255,.18);
     }
 
     .floating-list-button.is-preferred:hover,
     .floating-list-button.is-preferred:focus-visible {
-      background: rgba(10,132,255,.78);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,.11) 42%, rgba(255,255,255,.035) 100%),
+        linear-gradient(180deg, rgba(91,176,255,.70), rgba(10,132,255,.58) 56%, rgba(0,92,210,.50));
+      border-color: rgba(142,200,255,.48);
     }
 
     .floating-list-button:disabled {
@@ -6821,14 +6832,42 @@
     body[data-theme] .btn.primary,
     .source-pull-button,
     .command-form .btn.primary {
-      --solvys-lg-tint-source: rgba(10, 132, 255, .60);
+      --solvys-lg-tint-source: rgba(10, 132, 255, .50);
       --solvys-lg-rim-source: rgba(142, 200, 255, .54);
+      --solvys-lg-bg:
+        linear-gradient(180deg, rgba(255,255,255,.24) 0%, rgba(255,255,255,.09) 42%, rgba(255,255,255,.025) 100%),
+        linear-gradient(180deg, rgba(76,166,255,.66), rgba(10,132,255,.52) 56%, rgba(0,92,210,.47));
+      --solvys-lg-border: rgba(142,200,255,.38);
+      --solvys-lg-shadow:
+        inset 0 1px 0 rgba(255,255,255,.28),
+        inset 0 18px 18px rgba(255,255,255,.055),
+        inset 0 -1px 0 rgba(0,44,92,.26),
+        0 14px 28px rgba(10,132,255,.17);
       color: #fff;
+      background: var(--solvys-lg-bg);
+      border-color: var(--solvys-lg-border);
+      -webkit-backdrop-filter: blur(16px) saturate(1.24);
+      backdrop-filter: blur(16px) saturate(1.24);
+      box-shadow: var(--solvys-lg-shadow);
+    }
+
+    .btn.primary:hover,
+    .btn.primary:focus-visible,
+    body[data-theme] .btn.primary:hover,
+    body[data-theme] .btn.primary:focus-visible,
+    .source-pull-button:hover,
+    .source-pull-button:focus-visible,
+    .command-form .btn.primary:hover,
+    .command-form .btn.primary:focus-visible {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.035)),
-        color-mix(in srgb, #0a84ff 78%, transparent);
-      border-color: rgba(142,200,255,.34);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+        linear-gradient(180deg, rgba(255,255,255,.30) 0%, rgba(255,255,255,.12) 42%, rgba(255,255,255,.035) 100%),
+        linear-gradient(180deg, rgba(91,176,255,.72), rgba(10,132,255,.60) 56%, rgba(0,92,210,.52));
+      border-color: rgba(142,200,255,.52);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.34),
+        inset 0 18px 18px rgba(255,255,255,.075),
+        inset 0 -1px 0 rgba(0,44,92,.24),
+        0 16px 32px rgba(10,132,255,.21);
     }
 
     .quick-actions,
