@@ -759,9 +759,14 @@ async function handlePodioDiagnostics(req, res) {
 
 async function handleClosingDocsGoogleExport(req, res) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
+  const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  const proxiedBody = { ...body };
+  if (proxiedBody.dryRun === undefined && url.searchParams.has("dry-run")) {
+    proxiedBody.dryRun = url.searchParams.get("dry-run") !== "false";
+  }
   const proxied = await proxyWorkerJson("/api/closing-docs/export-google", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(proxiedBody),
   });
   if (proxied) {
     res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
