@@ -7015,6 +7015,11 @@
       vector-effect: non-scaling-stroke;
     }
 
+    .nucleo-icon[data-nucleo-icon="check-circle"] .nucleo-check-mark {
+      transform: translate(.12px, -.28px);
+      transform-origin: 12px 12px;
+    }
+
     html,
     body,
     .workspace,
@@ -12967,7 +12972,7 @@ function nucleoIcon(name = "check-circle", size = 19, extraClass = "") {
     pencil: '<path d="M4.8 16.8 4 20l3.2-.8L18.6 7.8a2.2 2.2 0 0 0-3.1-3.1L4.8 16.8Z"/><path d="m14.2 6 3.8 3.8"/><path d="M9.2 20h10.1"/>',
     flag: '<path d="M6.2 20V5.2"/><path d="M6.2 5.2h9.8l-1.4 3.1L16 11.4H6.2"/><path d="M6.2 15.3h6.5"/>',
     trash: '<path d="M5.2 7h13.6"/><path d="M9.2 7V4.9h5.6V7"/><path d="M7.3 7.1 8 19.2h8l.7-12.1"/><path d="M10.2 10.3v5.7M13.8 10.3v5.7"/>',
-    "check-circle": '<circle cx="12" cy="12" r="8.4"/><path d="m8.4 12.2 2.4 2.4 4.9-5.2"/>'
+    "check-circle": '<circle cx="12" cy="12" r="8.4"/><path class="nucleo-check-mark" d="m8.75 12.1 2.35 2.25 4.45-4.65"/>'
   };
   const className = ["nucleo-icon", extraClass].filter(Boolean).join(" ");
   return `<svg class="${className}" data-nucleo-icon="${escapeHtml(name)}" style="--nucleo-size:${Number(size) || 19}px" viewBox="0 0 24 24" fill="none" aria-hidden="true">${paths[name] ?? paths["check-circle"]}</svg>`;
