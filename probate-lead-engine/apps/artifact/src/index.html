@@ -2424,6 +2424,11 @@
       animation: loopViewIn .36s var(--ease-out);
     }
 
+    #dashboardView {
+      box-sizing: border-box;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 72%, #3f4046);
+    }
+
     @keyframes loopViewIn {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
