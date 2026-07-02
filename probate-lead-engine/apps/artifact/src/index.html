@@ -2983,11 +2983,12 @@
     }
 
     .docprep-client-meta {
-      display: flex;
+      width: calc(100% - 34px);
+      display: grid;
+      grid-template-columns: minmax(116px, .72fr) repeat(2, minmax(190px, 1fr));
       align-items: center;
-      gap: 10px 20px;
-      flex-wrap: wrap;
-      padding-left: 34px;
+      gap: 8px clamp(16px, 4vw, 72px);
+      margin-left: 34px;
     }
 
     .docprep-file-status-grid {
@@ -3052,10 +3053,11 @@
     }
 
     .docprep-flow-line {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 8px;
-      min-width: max-content;
+      min-width: 0;
+      width: 100%;
       color: var(--text);
       font-size: 12px;
       font-weight: 780;
@@ -3068,8 +3070,10 @@
     }
 
     .docprep-flow-meter {
-      flex: 0 0 64px;
-      width: 64px;
+      flex: 1 1 64px;
+      width: auto;
+      min-width: 54px;
+      max-width: 104px;
       height: 5px;
       overflow: hidden;
       border-radius: 999px;
@@ -9460,7 +9464,8 @@
       .docprep-client-meta {
         display: grid;
         grid-template-columns: 1fr;
-        padding-left: 34px;
+        width: calc(100% - 34px);
+        margin-left: 34px;
         gap: 7px;
       }
       .docprep-flow-line {
