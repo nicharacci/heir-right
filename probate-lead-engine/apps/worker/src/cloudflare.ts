@@ -639,7 +639,8 @@ async function outreachSyncResponse(request: Request, env: CloudflareEnv): Promi
     }, { headers: { "cache-control": "no-store" } });
   }
   const podioStatuses = await connectionStatuses(env as Record<string, string | undefined>);
-  const podioReady = podioStatuses.find((item) => item.name === "Podio")?.ok === true;
+  const podioStatus = podioStatuses.find((item) => item.name === "Podio");
+  const podioReady = podioStatus?.ok === true;
   const packageId = receiptId("outreach");
   const payload = {
     packageId,
@@ -715,7 +716,7 @@ async function outreachSyncResponse(request: Request, env: CloudflareEnv): Promi
     }, { headers: { "cache-control": "no-store" } });
   }
   const blockers = [
-    ...(podioReady ? [] : ["Podio controlled write/readback is not approved yet."]),
+    ...(podioReady ? [] : [podioStatus?.message || "Podio controlled write/readback is not ready yet."]),
     ...(webhookUrl ? [] : ["Activepieces webhook is not configured."]),
   ];
   const linearIssue = await linearSupportIssue(
