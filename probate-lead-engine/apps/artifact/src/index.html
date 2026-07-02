@@ -2381,6 +2381,20 @@
       gap: 6px;
     }
 
+    .docprep-address-stack {
+      display: grid;
+      gap: 2px;
+      margin: 0;
+      max-width: 420px;
+      color: var(--muted);
+      line-height: 1.32;
+    }
+
+    .docprep-address-stack span {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
     .docprep-breadcrumb-row {
       display: inline-flex;
       align-items: center;
@@ -15998,6 +16012,19 @@ function docPrepEstateLabel(row) {
   );
 }
 
+function docPrepAddressLines(row) {
+  if (!row) return ["Load a lead packet from Estates to start document prep."];
+  const address = row.address || claimValue(dossierForRow(row)?.property?.address, "Address needs review");
+  const parts = cleanDisplayValue(address).split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 3) return [parts[0], parts[1], parts.slice(2).join(", ")];
+  if (parts.length === 2) return [parts[0], parts[1]];
+  return [parts[0] || "Address needs review"];
+}
+
+function docPrepAddressLinesHtml(row) {
+  return docPrepAddressLines(row).map((line) => `<span>${escapeHtml(line)}</span>`).join("");
+}
+
 function docPrepOwnerLabel(row) {
   const dossier = dossierForRow(row);
   const owner = claimValue(dossier?.property?.ownerName, row?.owner || row?.data?.seed?.ownerName || row?.leadName || row?.title || "Owner needs review");
@@ -16165,6 +16192,7 @@ function renderDossiersView() {
   const facts = currentProcessFacts(row, dossier);
   const missingDocs = docs.filter((doc) => !documentFileRecord(doc.id, row));
   const dealStatus = dealStatusMeta(dealStatusForRow(row));
+  const estateTitle = row ? docPrepEstateLabel(row) : "Current estate";
   target.innerHTML = `
     <div class="document-prep">
       <div class="document-prep-topline">
@@ -16172,10 +16200,10 @@ function renderDossiersView() {
           <div class="docprep-breadcrumb-row">
             <button class="docprep-breadcrumb" type="button" data-show-docprep-list>All clients</button>
             <span>/</span>
-            <strong>${escapeHtml(docPrepEstateLabel(row))}</strong>
+            <strong>${escapeHtml(estateTitle)}</strong>
           </div>
-          <h2>Document Prep</h2>
-          <p class="copy">${escapeHtml(row ? `${docPrepEstateLabel(row)} · ${row.address || "Address needs review"}` : "Load a lead packet from Estates to start document prep.")}</p>
+          <h2>${escapeHtml(estateTitle)}</h2>
+          <p class="copy docprep-address-stack">${docPrepAddressLinesHtml(row)}</p>
         </div>
         <label class="docprep-status-control">
           <span>Deal status</span>
