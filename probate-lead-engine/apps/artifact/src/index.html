@@ -10910,20 +10910,26 @@ function rowDisplayScore(row) {
   return Math.min(100, Number(row.score || 0) + accepted * 8);
 }
 
-function averageEstateScore(rows = state.rows) {
-  const scores = rows
+function estateScoreValues(rows = state.rows) {
+  return rows
     .filter((row) => row && row.kind !== "File")
     .map((row) => Number(rowDisplayScore(row)))
     .filter(Number.isFinite);
+}
+
+function lowestEstateScore(rows = state.rows) {
+  const scores = estateScoreValues(rows);
+  return scores.length ? Math.min(...scores) : 0;
+}
+
+function averageEstateScore(rows = state.rows) {
+  const scores = estateScoreValues(rows);
   if (!scores.length) return 0;
   return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
 }
 
 function highestEstateScore(rows = state.rows) {
-  const scores = rows
-    .filter((row) => row && row.kind !== "File")
-    .map((row) => Number(rowDisplayScore(row)))
-    .filter(Number.isFinite);
+  const scores = estateScoreValues(rows);
   return scores.length ? Math.max(...scores) : 0;
 }
 
@@ -18145,13 +18151,13 @@ function addressDisplayParts(address, fallback = "") {
 }
 
 function renderSummary() {
-  const facts = state.data?.facts?.length ?? 0;
   const reportsAvailable = idiReportsAvailableCount();
+  const lowestScore = lowestEstateScore();
   const highestScore = highestEstateScore();
   const averageScore = averageEstateScore();
   const metrics = [
     { label: "Estate files", value: state.rows.length || 0 },
-    { label: "Evidence items", value: facts },
+    { label: "Lowest Score", value: lowestScore },
     { label: "Highest Score", value: highestScore },
     { label: "Reports Available", value: reportsAvailable },
     { label: "Average Score", value: averageScore }
