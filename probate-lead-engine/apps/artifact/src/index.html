@@ -18092,6 +18092,22 @@ function contactEnrichmentGate(dossier = {}) {
   return null;
 }
 
+function idiReportAvailableForRow(row = selectedRow()) {
+  if (!row || row.kind === "File") return false;
+  const dossier = dossierForRow(row) ?? {};
+  const flags = dossierReviewFlags(dossier);
+  if (idiImportForRow(row)) return true;
+  if (acceptedContactCandidates(row).length) return true;
+  if (dossierHasVerifiedContactData(dossier)) return true;
+  if (flags.includes("IDI_ASSET_SEARCH_REVIEW_REQUIRED") || flags.includes("CONTACT_REVIEW_REQUIRED") || flags.includes("CONTACT_ACCEPTANCE_REQUIRED")) return true;
+  const nextText = `${row.next || ""} ${rowNextAction(row)} ${row.classification || ""}`;
+  return /\b(import idi|idi needed|idi asset search|review contacts|contact verified)\b/i.test(nextText);
+}
+
+function idiReportsAvailableCount(rows = state.rows) {
+  return rows.filter((row) => idiReportAvailableForRow(row)).length;
+}
+
 function rowClassification(row) {
   return row.classification || evidenceClassification(row.evidence);
 }
@@ -18114,14 +18130,14 @@ function addressDisplayParts(address, fallback = "") {
 function renderSummary() {
   const facts = state.data?.facts?.length ?? 0;
   const openTasks = taskCount(state.dossier);
-  const missing = buildMissingSections(state.dossier ?? {}).length;
+  const reportsAvailable = idiReportsAvailableCount();
   const review = qualificationReview();
   const qualified = review?.summary?.qualified ?? state.dailyRun?.qualifiedLeadCount ?? 0;
   const metrics = [
     { label: "Estate files", value: state.rows.length || 0 },
     { label: "Evidence items", value: facts },
     { label: "Qualified", value: qualified },
-    { label: "Missing sections", value: missing },
+    { label: "Reports Available", value: reportsAvailable },
     { label: "Open reviews", value: openTasks }
   ];
   const target = document.getElementById("summaryMetrics");
