@@ -5186,44 +5186,118 @@
       padding: 0 2px 2px;
     }
 
-    .settings-status-list .mini-list {
+    .settings-status-list .settings-connection-list {
       gap: 0;
       overflow: hidden;
       border: 1px solid color-mix(in srgb, var(--line-strong) 46%, transparent);
       border-radius: 14px;
       background: color-mix(in srgb, rgba(255,255,255,.04) 72%, transparent);
+      display: grid;
+      margin: 0;
+      padding: 0;
+      list-style: none;
     }
 
-    .settings-status-list .mini-list li {
-      gap: 5px;
+    .settings-connection-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
       padding: 13px 16px;
-      border-top: 0;
     }
 
-    .settings-status-list .mini-list li:first-child {
+    .settings-connection-row:first-child {
       padding-top: 13px;
     }
 
-    .settings-status-list .mini-list li + li::before {
+    .settings-connection-row + .settings-connection-row::before {
+      content: "";
+      position: absolute;
       left: 16px;
       right: 16px;
       top: 0;
+      height: 1px;
+      background: var(--divider-line);
     }
 
-    .settings-status-list .mini-list strong {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
+    .settings-connection-icon {
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      display: inline-grid;
+      place-items: center;
+      justify-self: center;
+      align-self: start;
+      margin-top: 1px;
+      border-radius: 50%;
+      border: 1px solid color-mix(in srgb, var(--soft) 48%, transparent);
+      color: var(--muted);
+      background: color-mix(in srgb, var(--surface-3) 72%, transparent);
+      box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--panel) 74%, transparent);
+      flex: 0 0 18px;
+    }
+
+    .settings-connection-icon::after {
+      content: "";
+      display: block;
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: .82;
+    }
+
+    .settings-connection-icon[data-state="complete"] {
+      color: var(--green);
+      border-color: color-mix(in srgb, var(--green) 62%, transparent);
+      background: var(--green-soft);
+    }
+
+    .settings-connection-icon[data-state="complete"]::after {
+      width: 8px;
+      height: 5px;
+      border-radius: 0;
+      border-left: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      background: transparent;
+      transform: translateY(-1px) rotate(-45deg);
+      opacity: 1;
+    }
+
+    .settings-connection-icon[data-state="review"] {
+      color: var(--yellow);
+      border-color: color-mix(in srgb, var(--yellow) 58%, transparent);
+      background: var(--yellow-soft);
+    }
+
+    .settings-connection-icon[data-state="blocked"] {
+      color: var(--red);
+      border-color: color-mix(in srgb, var(--red) 54%, transparent);
+      background: var(--red-soft);
+    }
+
+    .settings-connection-body {
       min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .settings-connection-body strong {
+      min-width: 0;
+      color: var(--text);
       font-size: 13px;
       line-height: 1.2;
+      overflow-wrap: anywhere;
     }
 
-    .settings-status-list .mini-list span {
+    .settings-connection-body span {
       display: block;
-      padding-left: 34px;
       color: var(--muted);
       overflow-wrap: anywhere;
+      font-size: 12px;
+      line-height: 1.35;
     }
 
     .admin-tall-grid {
@@ -17732,12 +17806,15 @@ function integrationStatusRowsHtml() {
   const names = ["Podio", "Google", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
   const items = names.map((name) => {
     const connection = connectionByName(name);
+    const connected = Boolean(connection?.ok && connection?.mode === "live");
+    const tone = connectionTone(connection);
     return {
       title: name === "Google" ? "Google Workspace" : name,
       connectionName: name,
-      connected: Boolean(connection?.ok && connection?.mode === "live"),
+      connected,
       status: displayStatus(connection?.mode || "blocked"),
-      tone: connectionTone(connection)
+      tone,
+      state: connected ? "complete" : tone === "review" ? "review" : "blocked"
     };
   });
   return `
@@ -17746,11 +17823,14 @@ function integrationStatusRowsHtml() {
         <div><p class="eyebrow">Readiness</p><h3>Connection status</h3></div>
         <span class="pill review">Integrations</span>
       </div>
-      <ul class="mini-list">
+      <ul class="settings-connection-list">
         ${items.map((item) => `
-          <li>
-            <strong>${linearStatusIconHtml(item.connected ? "complete" : item.tone === "review" ? "needed" : "blocked", item.status)} ${escapeHtml(item.title)}</strong>
-            <span>${escapeHtml(item.status)} - ${escapeHtml(operatorConnectionMessage(connectionByName(item.connectionName), item.connectionName))}</span>
+          <li class="settings-connection-row" data-state="${escapeHtml(item.state)}">
+            <span class="settings-connection-icon" data-state="${escapeHtml(item.state)}" aria-label="${escapeHtml(item.status)}"></span>
+            <span class="settings-connection-body">
+              <strong>${escapeHtml(item.title)}</strong>
+              <span>${escapeHtml(item.status)} - ${escapeHtml(operatorConnectionMessage(connectionByName(item.connectionName), item.connectionName))}</span>
+            </span>
           </li>
         `).join("")}
       </ul>
