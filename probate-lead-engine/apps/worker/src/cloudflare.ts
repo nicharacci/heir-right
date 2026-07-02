@@ -1,7 +1,7 @@
 import type { FactType, FreshLeadBatchRequest, FreshLeadSearchMode, IntakeSeed, RawDossier, SourceFact } from "@ple/types";
 import { runDailyProduction } from "./daily/run-daily";
 import { buildControlledPodioTestSeed } from "./export/controlled-test-lead";
-import { connectionStatuses, exportCompletedReport, resolvePodioAccessToken } from "./export/export-package";
+import { connectionStatuses, exportCompletedReport, podioReadbackBlockerMessage, resolvePodioAccessToken } from "./export/export-package";
 import { TEXAS_EQUITY_PROS_LEADS_APP_ID, TEXAS_EQUITY_PROS_LEADS_SPACE_ID } from "./export/podio-config";
 import { runDryPipeline } from "./index";
 import { fact, intakeSubject, nowIso, seedIdentity, slug } from "./lib";
@@ -799,15 +799,21 @@ async function podioDiagnosticsResponse(env: CloudflareEnv): Promise<Response> {
     ...memberRows.map((item) => podioProfileCandidate(item, "space_member")),
   ].filter((item): item is Record<string, unknown> => Boolean(item));
   const podioAuthOk = Boolean(auth.token && userStatus.ok && app.ok && members.ok);
+  const authBlocker = auth.blocker || podioReadbackBlockerMessage(
+    app.status || userStatus.status || members.status,
+    app.data || userStatus.data || members.data,
+  );
   return json({
     ok: true,
     appId,
     spaceId,
     authMode: auth.mode,
     authOk: podioAuthOk,
-    authBlocker: podioAuthOk
-      ? null
-      : auth.blocker || `Podio API readback failed: user=${userStatus.status}, app=${app.status}, members=${members.status}`,
+    authBlocker: podioAuthOk ? null : authBlocker,
+    setupOptions: podioAuthOk ? [] : [
+      "Reconnect Podio once with the approved HeirRight account so the Worker can use refresh-token auth.",
+      "Fallback: add the Podio Leads app token so the Worker can request fresh app-scoped access without relying on a stale bearer token.",
+    ],
     userStatus: { ok: userStatus.ok, status: userStatus.status },
     app: {
       ok: app.ok,

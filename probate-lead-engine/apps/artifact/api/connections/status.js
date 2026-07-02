@@ -40,6 +40,16 @@ function podioAuthConfigured(env) {
   );
 }
 
+function podioAutoRefreshConfigured(env) {
+  const clientId = podioClientId(env);
+  const clientSecret = podioClientSecret(env);
+  return Boolean(
+    clientId
+      && clientSecret
+      && (podioRefreshToken(env) || (podioAppId(env) && podioAppToken(env)))
+  );
+}
+
 function podioMissingConfig(env) {
   const missingKeys = podioAppId(env) ? [] : ["PODIO_APP_ID"];
   if (!podioAuthConfigured(env)) {
@@ -125,6 +135,7 @@ function buildConnectionStatuses(env = process.env, options = {}) {
   const missingPodio = podioMissingConfig(env);
   const podioApproved = env.PODIO_LIVE_WRITE_APPROVED === "true";
   const podioBackupConfirmed = env.PODIO_CSV_BACKUP_CONFIRMED === "true";
+  const podioHasRefreshPath = podioAutoRefreshConfigured(env);
   const missingGoogle = googleMissingConfig(env);
   const googleApproved = env.GOOGLE_LIVE_WRITE_APPROVED === "true";
   const missingResend = resendMissingConfig(env);
@@ -138,10 +149,12 @@ function buildConnectionStatuses(env = process.env, options = {}) {
   return [
     {
       name: "Podio",
-      ok: !missingPodio.length && podioApproved && podioBackupConfirmed,
-      mode: !missingPodio.length && podioApproved && podioBackupConfirmed ? "live" : "blocked",
+      ok: !missingPodio.length && podioApproved && podioBackupConfirmed && podioHasRefreshPath,
+      mode: !missingPodio.length && podioApproved && podioBackupConfirmed && podioHasRefreshPath ? "live" : "blocked",
       message: !missingPodio.length
-        ? !podioApproved
+        ? !podioHasRefreshPath
+          ? "Podio access needs reconnect. Reconnect with the approved HeirRight account, or add the Podio Leads app token fallback before export/readback."
+          : !podioApproved
           ? "Podio handoff access is present; final sample-card approval still needs confirmation."
           : !podioBackupConfirmed
             ? "Podio handoff access is present; export a CSV backup before the controlled sample-card write."

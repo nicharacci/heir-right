@@ -449,6 +449,25 @@ export async function resolvePodioAccessToken(env: RuntimeEnv): Promise<{ token?
   };
 }
 
+export function podioReadbackBlockerMessage(status: number, body: unknown): string {
+  const raw = typeof body === "string" ? body : JSON.stringify(body ?? "");
+  const normalized = raw.toLowerCase();
+  if (status === 401 || normalized.includes("expired_token") || normalized.includes("unauthorized")) {
+    return [
+      "Podio access has expired.",
+      "Reconnect Podio with the approved HeirRight account, or add the Leads app token as the fallback.",
+      "Outreach stays staged for Podio review until the Leads app readback succeeds.",
+    ].join(" ");
+  }
+  if (status === 403) {
+    return "Podio access is connected, but this account cannot read the Leads app. Grant access to the Texas Equity Pros Leads app, then run readback again.";
+  }
+  if (status === 404) {
+    return "Podio access is connected, but the configured Leads app was not found. Confirm the Podio workspace and Leads app before exporting.";
+  }
+  return "Podio access is configured, but the Leads app readback did not complete. Keep outreach staged until the app readback succeeds.";
+}
+
 async function podioAuthHeaders(env: RuntimeEnv): Promise<{ headers?: Record<string, string>; mode: "bearer" | "app_auth" | "refresh" | "missing"; blocker?: string }> {
   const resolved = await resolvePodioAccessToken(env);
   if (!resolved.token) return { mode: resolved.mode, blocker: resolved.blocker };
@@ -760,7 +779,7 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
       message: missingPodio.length
         ? `Podio export/readback config is missing: ${missingPodio.join(", ")}.`
         : !podioReadback.ok
-          ? `Podio access is configured but the Leads app readback failed: ${podioReadback.status}. ${String(podioReadback.body || "").slice(0, 160)}`
+          ? podioReadbackBlockerMessage(podioReadback.status, podioReadback.body)
         : !podioApproved
           ? `Podio bearer-token export config is present; controlled write still requires ${PODIO_LIVE_WRITE_APPROVAL_KEY}=true.`
           : !podioBackup
