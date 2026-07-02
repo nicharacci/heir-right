@@ -2663,6 +2663,14 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 12px 28px rgba(15,23,42,.05);
       text-align: left;
       color: var(--text);
+      cursor: pointer;
+      transform: translateY(0);
+      transition:
+        transform 180ms cubic-bezier(.2,.8,.2,1),
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        background 180ms ease;
+      will-change: transform;
     }
 
     .process-folder-card::before {
@@ -2688,6 +2696,26 @@
       border-radius: 0 0 14px 0;
       background: color-mix(in srgb, var(--ios-fill-strong) 78%, white);
       box-shadow: 1px 1px 0 rgba(16,24,40,.06);
+    }
+
+    .process-folder-card:is(:hover, :focus-visible) {
+      transform: translateY(-6px);
+      border-color: color-mix(in srgb, var(--accent) 48%, var(--line-strong));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.62), 0 18px 34px rgba(15,23,42,.12);
+    }
+
+    .process-folder-card:active {
+      transform: translateY(-2px) scale(.995);
+    }
+
+    .process-folder-card.is-routing {
+      animation: process-folder-bounce 260ms cubic-bezier(.2,.8,.2,1);
+    }
+
+    @keyframes process-folder-bounce {
+      0% { transform: translateY(-6px); }
+      48% { transform: translateY(-10px); }
+      100% { transform: translateY(-2px) scale(.995); }
     }
 
     .folder-doc-stack {
@@ -9108,6 +9136,11 @@
         animation-iteration-count: 1 !important;
         scroll-behavior: auto !important;
         transition-duration: .01ms !important;
+      }
+      .process-folder-card,
+      .process-folder-card:is(:hover, :focus-visible, :active),
+      .process-folder-card.is-routing {
+        transform: none !important;
       }
     }
 
@@ -15963,13 +15996,21 @@ function renderDashboardView() {
   });
   target.querySelectorAll("[data-process-card]").forEach((button) => {
     button.addEventListener("click", () => {
+      const routes = {
+        "estate-discovery": { view: "dossiers", flow: "discovery" },
+        "closing-docs": { view: "dossiers", flow: "closing-docs" },
+        "handoff-review": { view: "queue" }
+      };
+      const route = routes[button.dataset.processCard] ?? routes["estate-discovery"];
       const rowId = button.dataset.processRow;
       if (rowId && rowById(rowId)) state.selectedId = rowId;
       state.docPrepListOpen = false;
-      if (button.dataset.processCard === "estate-discovery") setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
-      if (button.dataset.processCard === "closing-docs") setActiveDocPrepFlow("closing-docs", { persist: true, rerender: false });
+      if (route.flow) setActiveDocPrepFlow(route.flow, { persist: true, rerender: false });
       updateFooterLeadContext(selectedRow());
-      document.querySelector('[data-shell-nav="dossiers"]')?.click();
+      button.classList.add("is-routing");
+      window.setTimeout(() => {
+        document.querySelector(`[data-shell-nav="${route.view}"]`)?.click();
+      }, 120);
     });
   });
 }
