@@ -9916,7 +9916,6 @@
             <label class="check-row"><span>Property address</span><input type="checkbox" data-column-toggle="address" checked></label>
             <label class="check-row"><span>Score</span><input type="checkbox" data-column-toggle="score" checked></label>
             <label class="check-row"><span>Last Sale Date</span><input type="checkbox" data-column-toggle="evidence" checked></label>
-            <label class="check-row"><span>Queue action</span><input type="checkbox" data-column-toggle="next" checked></label>
           </div>
           <div class="filter-note" id="filterNote">The list updates as filters change. Clicking an estate or file opens the report rail on the right.</div>
         </div>
@@ -10424,8 +10423,7 @@ const columnMap = {
   lead: '[data-column="lead"]',
   address: '[data-column="address"]',
   score: '[data-column="score"]',
-  evidence: '[data-column="evidence"]',
-  next: '[data-column="next"]'
+  evidence: '[data-column="evidence"]'
 };
 
 const defaultColumnOrder = {
@@ -10437,8 +10435,7 @@ const tableColumnLabels = {
   lead: "Estate file",
   address: "Property address",
   score: "Score",
-  evidence: "Classification",
-  next: "Next step"
+  evidence: "Classification"
 };
 
 function tableColumnLabel(scope, key) {
@@ -10983,7 +10980,8 @@ function loadAssetDiscoveryState() {
 function normalizeColumnOrder(scope, order) {
   const defaults = defaultColumnOrder[scope] ?? defaultColumnOrder.results;
   const incoming = Array.isArray(order) ? order.map(String) : [];
-  return [...incoming.filter((key) => defaults.includes(key)), ...defaults.filter((key) => !incoming.includes(key))];
+  const sortable = incoming.filter((key) => defaults.includes(key));
+  return [...sortable, ...defaults.filter((key) => !sortable.includes(key))];
 }
 
 function persistColumnOrder() {
@@ -19183,7 +19181,7 @@ function orderedColumns(scope) {
 function tableHeaderHtml(scope, rows = []) {
   const selectScope = scope === "dossiers" ? "dossiers" : "results";
   const sort = state.sortState?.[scope] || {};
-  const actionColumn = selectScope === "results" ? `<th data-column="next" class="row-action-head" aria-label="Queue actions"></th>` : "";
+  const actionColumn = selectScope === "results" ? `<th data-column="next" class="row-action-head" aria-label="Row actions"></th>` : "";
   return `
     <th style="width: 42px;">${selectScope === "results" ? `<span id="resultsSelectAllMount"></span>` : selectAllCheckboxHtml(rows, "dossiers")}</th>
     ${orderedColumns(scope).map((key) => {
