@@ -9544,7 +9544,7 @@ const defaultColumnOrder = {
 };
 
 const tableColumnLabels = {
-  lead: "Last Name, First Initial",
+  lead: "Estate file",
   address: "Property address",
   score: "Score",
   evidence: "Classification",
@@ -10390,6 +10390,11 @@ function titleCaseNamePart(value) {
     .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
 
+const estateFileNameOverrides = new Map([
+  ["catherine etienne", "Estate Of Catherine Etienne"],
+  ["chusa sylvestre myrline aristil dieula albin", "Estate of Chusa Sylvestre Myrline Aristil Dieula Albin"]
+]);
+
 function leadNameInitialLabel(...candidates) {
   const raw = candidates
     .map((candidate) => String(candidate || "").trim())
@@ -10409,6 +10414,47 @@ function leadNameInitialLabel(...candidates) {
       .join(", ");
   }
   return titleCaseNamePart(clean || "Lead prospect");
+}
+
+function estateFileNameKey(value) {
+  return cleanDisplayValue(value)
+    .split(/\s+-\s+/)[0]
+    .replace(/\b(the\s+)?(estate\s+of|est\s+of)\b\s*/gi, "")
+    .replace(/\b(est|estate)\b\.?$/i, "")
+    .replace(/[^\p{L}\p{N},'\-\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function estateFileFromPersonName(person) {
+  const key = estateFileNameKey(person);
+  if (estateFileNameOverrides.has(key)) return estateFileNameOverrides.get(key);
+  if (!person || /lead prospect|needs review|current estate/i.test(person)) return "Estate file";
+  return `Estate of ${person}`;
+}
+
+function estateFileDisplayLabel(...candidates) {
+  const ownerEstateLabel = candidates
+    .map((candidate) => cleanDisplayValue(candidate).trim())
+    .find((candidate) => /\best\s+of\b/i.test(candidate) && !/^(?:the\s+)?(?:estate\s+of|est\s+of)\b/i.test(candidate) && !isPlaceholderLeadName(candidate));
+  if (ownerEstateLabel) return estateFileFromPersonName(leadNameInitialLabel(ownerEstateLabel));
+
+  const existingEstateLabel = candidates
+    .map((candidate) => cleanDisplayValue(candidate).trim())
+    .find((candidate) => /^(?:the\s+)?(?:estate\s+of|est\s+of)\b/i.test(candidate) && !isPlaceholderLeadName(candidate));
+  if (existingEstateLabel) {
+    const normalized = existingEstateLabel
+      .split(/\s+-\s+/)[0]
+      .replace(/^(?:the\s+)?est\s+of\b/i, "Estate of")
+      .replace(/\s+/g, " ")
+      .trim();
+    const override = estateFileNameOverrides.get(estateFileNameKey(normalized));
+    return override || normalized;
+  }
+
+  const person = leadNameInitialLabel(...candidates);
+  return estateFileFromPersonName(person);
 }
 
 function displayStatus(value, fallback = "Needs review") {
@@ -10647,9 +10693,10 @@ function freshBatchRowFromRun(run, index) {
   const sourceFactCount = run.seed?.confirmedSourceFacts?.length || facts;
   const baseScore = qualification?.coverageScore ?? Math.max(28, Math.min(94, facts * 3 + Math.max(0, 72 - taskCount(dossier) * 4)));
   const address = claimValue(dossier.property?.address, run.seed?.propertyAddress ?? "Address needs review");
-  const estate = claimValue(dossier.property?.estateName, dossier.summary?.displayName ?? `Live lead ${index + 1}`);
   const owner = claimValue(dossier.property?.ownerName, run.seed?.ownerName ?? "Owner needs review");
-  const leadName = leadNameInitialLabel(owner, estate, dossier.summary?.displayName);
+  const sourceEstate = claimValue(dossier.property?.estateName, dossier.summary?.displayName ?? `Live lead ${index + 1}`);
+  const estate = estateFileDisplayLabel(sourceEstate, owner, dossier.summary?.displayName);
+  const leadName = estateFileDisplayLabel(owner, sourceEstate, dossier.summary?.displayName);
   const caseNumber = claimValue(dossier.property?.caseNumber, dossier.summary?.caseNumber ?? "Internal report");
   const county = claimValue(dossier.property?.county, run.seed?.county ?? "miami-dade");
   const parcel = claimValue(dossier.property?.parcelId, run.seed?.parcelId ?? "Folio needs review");
@@ -10791,6 +10838,7 @@ function crmImportRow(imported) {
   const dossier = minimalImportedDossier(normalized);
   const missing = buildMissingSections(dossier);
   const archived = Boolean(normalized.archivedAt);
+  const estateFileName = estateFileDisplayLabel(normalized.estateName, normalized.ownerName);
   const row = {
     id: normalized.id,
     kind: "CRM Import",
@@ -10798,9 +10846,9 @@ function crmImportRow(imported) {
     sourceProvider: normalized.provider,
     sourceRecordId: normalized.sourceRecordId,
     isArchived: archived,
-    title: normalized.estateName,
+    title: estateFileName,
     file: normalized.sourceRecordId || crmProviderLabel(normalized.provider),
-    leadName: leadNameInitialLabel(normalized.ownerName, normalized.estateName),
+    leadName: estateFileName,
     address: normalized.propertyAddress,
     county: normalized.county,
     parcel: normalized.parcelId,
@@ -10912,9 +10960,10 @@ function buildRows(data, dossier) {
   const facts = data.facts?.length ?? 0;
   const baseScore = qualification?.coverageScore ?? Math.max(28, Math.min(94, facts * 3 + Math.max(0, 72 - taskCount(dossier) * 4)));
   const address = claimValue(dossier.property?.address, data.seed?.propertyAddress ?? "Address needs review");
-  const estate = claimValue(dossier.property?.estateName, dossier.summary?.displayName ?? "Current estate");
   const owner = claimValue(dossier.property?.ownerName, data.seed?.ownerName ?? "Owner needs review");
-  const leadName = leadNameInitialLabel(owner, estate, dossier.summary?.displayName);
+  const sourceEstate = claimValue(dossier.property?.estateName, dossier.summary?.displayName ?? "Current estate");
+  const estate = estateFileDisplayLabel(sourceEstate, owner, dossier.summary?.displayName);
+  const leadName = estateFileDisplayLabel(owner, sourceEstate, dossier.summary?.displayName);
   const caseNumber = claimValue(dossier.property?.caseNumber, dossier.summary?.caseNumber ?? "Case needs review");
   const county = claimValue(dossier.property?.county, data.seed?.county ?? "miami-dade");
   const parcel = claimValue(dossier.property?.parcelId, "Folio needs review");
