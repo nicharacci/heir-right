@@ -13749,7 +13749,7 @@ function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
       title: "Estate Discovery",
       done: discoveryStats.linked,
       total: discoveryStats.total,
-      tag: docPrepFlow("discovery").tag,
+      tag: "",
       due: `${discoveryDone}/${docPrepPhases("discovery").length} source steps`,
       status: discoveryStats.missing ? `${discoveryStats.linked}/${discoveryStats.total}` : "Ready to submit",
       ready: discoveryStats.missing === 0 && discoveryDone >= docPrepPhases("discovery").length
@@ -13854,7 +13854,7 @@ function processCardHtml(process) {
         ${processProgressDots(process.done, process.total)}
         <span class="process-folder-meta">
           <span>${escapeHtml(process.status)}</span>
-          <span class="process-tag ${process.ready ? "ready" : ""}">${escapeHtml(process.tag)}</span>
+          ${process.tag ? `<span class="process-tag ${process.ready ? "ready" : ""}">${escapeHtml(process.tag)}</span>` : ""}
           <span>${escapeHtml(process.due)}</span>
         </span>
       </span>
