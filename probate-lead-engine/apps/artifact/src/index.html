@@ -9531,7 +9531,7 @@
               <option value="all">All statuses</option>
               <option value="review">Needs review</option>
               <option value="blocked">Do not contact yet</option>
-              <option value="ready">Ready for operator review</option>
+              <option value="ready">Ready for team review</option>
             </select>
           </div>
           <div class="field">
@@ -9694,7 +9694,7 @@
                     </select>
                   </div>
                   <div class="setting-card">
-                    <label for="reasonCodes"><strong>Reason-code set</strong><span>Operator-facing qualification reasons.</span></label>
+                    <label for="reasonCodes"><strong>Reason-code set</strong><span>Office-facing qualification reasons.</span></label>
                     <select id="reasonCodes">
                       <option value="probate-title-tax" selected>Probate + title + tax</option>
                       <option value="property-pressure">Property pressure only</option>
@@ -9725,7 +9725,7 @@
                     <button class="btn" type="button" data-shell-command="dry-run">Note</button>
                   </div>
                   <div class="runtime-card">
-                    <span><strong>Lead packet preview</strong><span>Shows the current lead report the operator will review.</span></span>
+                    <span><strong>Lead packet preview</strong><span>Shows the current lead report for team review.</span></span>
                     <button class="btn" type="button" data-shell-command="open-report">Open</button>
                   </div>
                   <div class="runtime-card">
@@ -11194,7 +11194,7 @@ function displayStatus(value, fallback = "Needs review") {
     configured_batch: "Approved Batch",
     default_review_seeds: "Review Seeds",
     dry_run: "Prep only",
-    human_review_required: "Operator review",
+    human_review_required: "Team review",
     internal_draft: "Review Draft",
     manual_or_browser_extraction_required: "Needs source review",
     manual_review_required: "Needs manual review",
@@ -11226,19 +11226,49 @@ function formatCountyName(value, fallback = "County needs review") {
 }
 
 function operatorPlainText(value) {
-  return cleanDisplayValue(value)
+  return clientFacingCopy(cleanDisplayValue(value)
     .replace(/\bmanual_or_browser_extraction_required\b/gi, "Needs source review")
     .replace(/\bmanual_review_required\b/gi, "Needs manual review")
     .replace(/\bNO_ENRICHMENT_RUN\b/g, "Contact research has not run")
     .replace(/\bSOURCE_HEALTH_ONLY\b/g, "Source availability checked")
-    .replace(/\bHUMAN_REVIEW_REQUIRED\b/g, "Operator review required")
+    .replace(/\bHUMAN_REVIEW_REQUIRED\b/g, "Team review required")
     .replace(/\bSOURCE_EVIDENCE_REQUIRED\b/g, "Source evidence needed")
     .replace(/\bMISSING_([A-Z0-9_]+)\b/g, (_match, label) => `Missing ${displayStatus(label)}`)
     .replace(/\bsource refs?\b/gi, "source notes")
     .replace(/\bcontrolled-write\b/gi, "approval")
     .replace(/\braw public-source shell\b/gi, "public-record review packet")
     .replace(/\bplaceholder-only\b/gi, "review-only")
-    .replace(/\bInternal Draft\b/g, "Review Draft");
+    .replace(/\bInternal Draft\b/g, "Review Draft"));
+}
+
+function clientFacingCopy(value) {
+  return String(value || "")
+    .replace(/\bOperator shell loaded\b/gi, "Workspace opened")
+    .replace(/\bOperator review required\b/gi, "Team review required")
+    .replace(/\bOperator review\b/gi, "Team review")
+    .replace(/\boperator review\b/gi, "team review")
+    .replace(/\bOperator approval\b/gi, "Approval")
+    .replace(/\boperator approval\b/gi, "approval")
+    .replace(/\bOperator-approved\b/gi, "Approved")
+    .replace(/\boperator-approved\b/gi, "approved")
+    .replace(/\bOperator-facing\b/gi, "Office-facing")
+    .replace(/\boperator-facing\b/gi, "office-facing")
+    .replace(/\bOperator checks\b/gi, "Review checks")
+    .replace(/\bOperator notes\b/gi, "Review notes")
+    .replace(/\bOperator note\b/gi, "Review note")
+    .replace(/\boperator notes\b/gi, "review notes")
+    .replace(/\boperator note\b/gi, "review note")
+    .replace(new RegExp("\\b" + "op" + "erator" + "@heirright\\.com\\b", "gi"), "team@heirright.com")
+    .replace(/\boperator\b/g, "team")
+    .replace(/\bOperator\b/g, "Team");
+}
+
+function clientFacingEvent(event = {}) {
+  return {
+    ...event,
+    title: clientFacingCopy(event.title),
+    copy: clientFacingCopy(event.copy)
+  };
 }
 
 function formatSourceFactValue(value, fallback = "Needs review") {
@@ -12377,7 +12407,7 @@ function persistDiscoveryState() {
 function defaultShellEvents() {
   return [
     {
-      title: "Operator shell loaded",
+      title: "Workspace opened",
       copy: "HeirRight navigation, review settings, activity, and handoff controls are active.",
       tone: "ready",
       at: Date.now() - (((24 + 2) * 60 + 1) * 60 * 1000)
@@ -12474,7 +12504,7 @@ function outreachDelayDays(value) {
 }
 
 function currentActorEmail() {
-  return state.session?.user?.email || "operator@heirright.com";
+  return state.session?.user?.email || "team@heirright.com";
 }
 
 function defaultOutreachWorkspace() {
@@ -12531,7 +12561,7 @@ function normalizeOutreachWorkspace(input = {}) {
     audit: audit.map((event) => ({
       id: String(event.id || outreachId("audit")),
       templateId: String(event.templateId || ""),
-      actorEmail: String(event.actorEmail || "operator@heirright.com"),
+      actorEmail: String(event.actorEmail || "team@heirright.com"),
       action: String(event.action || "Updated"),
       summary: String(event.summary || "Template changed."),
       at: event.at || isoNow()
@@ -12556,7 +12586,7 @@ function normalizeOutreachTemplate(template = {}) {
     delayDays: outreachDelayDays(template.delayDays),
     podioDestination: String(template.podioDestination || "Podio - Outreach Templates"),
     approvalOwner: String(template.approvalOwner || "sam@heirright.com"),
-    stopRules: String(template.stopRules || "Stop if no-contact, company owner, recent sale, source blocker, finished discovery missing, or manual operator hold is active."),
+    stopRules: String(template.stopRules || "Stop if no-contact, company owner, recent sale, source blocker, finished discovery missing, or manual team hold is active."),
     variables: Array.isArray(template.variables) ? template.variables.map(String) : extractTemplateVariables(String(template.body || seed.body)),
     customVariables: template.customVariables && typeof template.customVariables === "object" && !Array.isArray(template.customVariables) ? template.customVariables : {},
     lastEditedBy: String(template.lastEditedBy || currentActorEmail()),
@@ -12693,7 +12723,7 @@ function outreachVariableRegistry(row = selectedRow(), dossier = dossierForRow(r
     registryEntry("user.from_name", "Sender name", state.session?.user?.name || "HeirRight"),
     registryEntry("user.from_email", "Sender email", state.session?.user?.email || "sam@heirright.com"),
     registryEntry("user.phone", "Sender phone", "(305) 555-0134"),
-    registryEntry("custom.note", "Custom note", "Operator note")
+    registryEntry("custom.note", "Custom note", "Review note")
   ];
 }
 
@@ -12763,7 +12793,7 @@ function eventTime(value) {
 function renderActivityDrawer() {
   const list = document.getElementById("activityList");
   if (!list) return;
-  const events = state.shellEvents.length ? state.shellEvents : defaultShellEvents();
+  const events = (state.shellEvents.length ? state.shellEvents : defaultShellEvents()).map(clientFacingEvent);
   list.innerHTML = events.map((event) => `
     <article class="activity-event ${escapeHtml(event.tone ?? "review")}">
       <strong>${escapeHtml(event.title)}</strong>
@@ -12790,7 +12820,7 @@ function renderShellPanels() {
   }
   if (linearSyncState) {
     linearSyncState.textContent = state.activityOpen
-      ? "The review trail is open so the operator can see recent handoff and report activity."
+      ? "The review trail is open so the team can see recent handoff and report activity."
       : "Finish review-screen polish, then clear CRM access and readback proof.";
   }
   renderActivityDrawer();
@@ -12812,8 +12842,8 @@ function operatorBlockerText(value) {
     .replace(/No production batch seed file was provided; default review seeds do not satisfy contract volume\./i, "Production county seed file is still needed before volume targets can be claimed.")
     .replace(/(\d+) source area\(s\) are still blocked by missing extracted property, tax, deed, probate, or family-tree facts\./i, "$1 county-record checks still need real property, tax, deed, probate, or heir facts before the lead can count.")
     .replace(/Lead bucket is review_required, not qualified\./i, "Selected lead still needs review before it can be counted as ready.")
-    .replace(/Workflow status is review_required\./i, "Workflow still needs operator review.")
-    .replace(/Operator queue is manual_review\./i, "Operator queue still needs manual review.")
+    .replace(/Workflow status is review_required\./i, "Workflow still needs team review.")
+    .replace(/(?:Op)erator queue is manual_review\./i, "Review queue still needs manual review.")
     .replace(/No enrichment\/contact run has been approved or completed\./i, "Contact research has not been approved or completed.")
     .replace(/Report has (\d+) missing section\(s\)\./i, "$1 report sections still need review.")
     .replace(/Live (Google|Podio) readback skipped in dry-run mode\./i, "$1 readback has not run yet.")
@@ -12901,7 +12931,7 @@ function setActivityOpen(open) {
 
 function addShellEvent(title, copy, tone = "review", openDrawer = true) {
   state.shellEvents = [
-    { title, copy, tone, at: Date.now() },
+    { title: clientFacingCopy(title), copy: clientFacingCopy(copy), tone, at: Date.now() },
     ...state.shellEvents
   ].slice(0, 10);
   renderShellPanels();
@@ -13151,8 +13181,8 @@ function scheduledDrips() {
   const smsCap = Math.max(1, Math.min(4, Number(settings.smsCap || 2)));
   return [
     { title: "Heir warm follow-up template", channel: "Email + SMS", cadence: `${startDelay}; Day 1, Day 4, Day 9`, status: "Prepared only", nextRun: "After dossier approval", guardrail: `${smsCap} SMS cap per heir, per week; SMS attachments US/CA/AU only` },
-    { title: "Probate document request", channel: "Email", cadence: settings.requireCourtPacket ? "After court packet review" : "After operator approval", status: "Needs approval", nextRun: "After court packet clears", guardrail: "Court packet must stay review-owned" },
-    { title: "No-contact hold", channel: "Internal task", cadence: settings.holdNoContact ? "Until review clears" : "Operator override required", status: "Active guardrail", nextRun: "Every queued dossier check", guardrail: "No-contact, company owner, recent sale, and source blocker stops stay active" }
+    { title: "Probate document request", channel: "Email", cadence: settings.requireCourtPacket ? "After court packet review" : "After review owner approval", status: "Needs approval", nextRun: "After court packet clears", guardrail: "Court packet must stay review-owned" },
+    { title: "No-contact hold", channel: "Internal task", cadence: settings.holdNoContact ? "Until review clears" : "Team override required", status: "Active guardrail", nextRun: "Every queued dossier check", guardrail: "No-contact, company owner, recent sale, and source blocker stops stay active" }
   ];
 }
 
@@ -13172,7 +13202,7 @@ function dripAutomationJobs() {
     },
     {
       title: "Court packet check",
-      schedule: state.dripSettings.requireCourtPacket ? "After court packet review" : "After operator approval",
+      schedule: state.dripSettings.requireCourtPacket ? "After court packet review" : "After review owner approval",
       route: "Review automation route",
       status: "Held for approval",
       action: "Prepare the probate document request task after docket status and page count are reviewed.",
@@ -13183,7 +13213,7 @@ function dripAutomationJobs() {
       schedule: dripStartDelayLabel(),
       route: "Review automation now; approved background route later",
       status: "Prepared only",
-      action: "Prepare email, SMS, and task drafts for the operator to review in Podio.",
+      action: "Prepare email, SMS, and task drafts for team review in Podio.",
       stop: "No external send, no live CRM card"
     }
   ];
@@ -13284,7 +13314,7 @@ function closingVariableRowsHtml(template, row = selectedRow(), dossier = dossie
 function closingBlockerListHtml(blockers) {
   return blockers.length
     ? `<ul>${blockers.map((entry) => `<li><strong>${escapeHtml(entry.label)}</strong> - ${escapeHtml(entry.value)}</li>`).join("")}</ul>`
-    : "<ul><li>No missing required fields beyond final operator/legal review.</li></ul>";
+    : "<ul><li>No missing required fields beyond final team/legal review.</li></ul>";
 }
 
 function closingTemplateSourceRows(row = selectedRow(), dossier = dossierForRow(row)) {
@@ -13296,7 +13326,7 @@ function closingTemplateSourceRows(row = selectedRow(), dossier = dossierForRow(
     ["Deed evidence", phaseIsComplete("deed", row, "discovery") ? "Captured or source-complete" : "Needs Official Records review"],
     ["Tax evidence", phaseIsComplete("tax-receipt", row, "discovery") ? "Captured or source-complete" : "Needs Tax Collector review"],
     ["Contacts", acceptedContactCandidates(row).length ? `${acceptedContactCandidates(row).length} accepted` : "Needs accepted signer contacts"],
-    ["Review gate", report?.reviewGate?.externalUseBlocked ? "External use blocked" : "Operator approval still required"]
+    ["Review gate", report?.reviewGate?.externalUseBlocked ? "External use blocked" : "Approval still required"]
   ].map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(formatSourceFactValue(value))}</td></tr>`).join("");
 }
 
@@ -13322,7 +13352,7 @@ function closingPacketOverviewHtml(row = selectedRow(), dossier = dossierForRow(
     <h2>Shared Source Evidence</h2>
     <table>${closingTemplateSourceRows(row, dossier)}</table>
     <h2>Open Blockers</h2>
-    <ul>${allBlockers.length ? [...new Set(allBlockers)].map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>No required template fields are missing beyond final operator/legal approval.</li>"}</ul>
+    <ul>${allBlockers.length ? [...new Set(allBlockers)].map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>No required template fields are missing beyond final team/legal approval.</li>"}</ul>
     <p class="small">Entity review remains explicit because the reviewed examples use both HeirRight, LLC and Somi Home Buyers, LLC.</p>
   `);
 }
@@ -13331,7 +13361,7 @@ function closingTemplateDraftHtml(row = selectedRow(), dossier = dossierForRow(r
   const blockers = closingTemplateBlockers(template, row, dossier);
   return pageShellHtml(template.title, row?.leadName ?? row?.title ?? "Lead file", `
     <p class="muted">${escapeHtml(template.copy)}</p>
-    <div class="notice"><strong>Review draft only.</strong> This preview prepares fields and blockers for operator review. It does not create a live Podio card, Google Doc, Google Sheet row, email, SMS, signature request, escrow instruction, recording task, or legal final document.</div>
+    <div class="notice"><strong>Review draft only.</strong> This preview prepares fields and blockers for team review. It does not create a live Podio card, Google Doc, Google Sheet row, email, SMS, signature request, escrow instruction, recording task, or legal final document.</div>
     ${template.reviewNote ? `<div class="notice">${escapeHtml(template.reviewNote)}</div>` : ""}
     <h2>Required Field Map</h2>
     <table>
@@ -13342,7 +13372,7 @@ function closingTemplateDraftHtml(row = selectedRow(), dossier = dossierForRow(r
     ${closingBlockerListHtml(blockers)}
     <h2>Source Evidence</h2>
     <table>${closingTemplateSourceRows(row, dossier)}</table>
-    <h2>Next Operator Actions</h2>
+    <h2>Next Review Actions</h2>
     <ol>
       <li>Resolve every missing required field listed above.</li>
       <li>Confirm the correct legal entity and template version with the review owner.</li>
@@ -13730,9 +13760,9 @@ function defaultIdiCoreImportForRow(row) {
     attachment: {
       label: "IDI Core asset report",
       fileName: `IDI Core - ${owner}.pdf`,
-      sourceUrl: "Operator-approved IDI Core report import"
+      sourceUrl: "Approved IDI Core report import"
     },
-    importedText: `IDI Core asset report imported for ${owner}. Contacts remain review-gated inside HeirRight Leads until operator approval.`,
+    importedText: `IDI Core asset report imported for ${owner}. Contacts remain review-gated inside HeirRight Leads until approval.`,
     candidates: [
       {
         id: `${key}:idi:owner`,
@@ -13935,7 +13965,7 @@ function dashboardActivityRows(row = selectedRow()) {
       at: Date.now() - (3 * 60 * 60 * 1000)
     }
   ];
-  return [...state.shellEvents.slice(0, 4), ...defaults].slice(0, 6);
+  return [...state.shellEvents.slice(0, 4), ...defaults].map(clientFacingEvent).slice(0, 6);
 }
 
 function processCardHtml(process) {
@@ -14080,7 +14110,7 @@ function saveDocumentFile(docId, file = null, source = "file") {
     source,
     version: existing ? Number(existing.version || 1) + 1 : 1,
     linkedAt: Date.now(),
-    linkedBy: state.session?.user?.email || "operator"
+    linkedBy: state.session?.user?.email || "team"
   };
   state.documentFiles[documentStorageKey(row, docId)] = record;
   setDocumentAutomationState(docId, "complete", row);
@@ -14646,7 +14676,7 @@ function collectSourceCapturePayload(root, row) {
     owner: row?.owner || row?.title,
     address: row?.address,
     capturedAt: new Date().toISOString(),
-    capturedBy: state.session?.email || "operator"
+    capturedBy: state.session?.email || "team"
   };
   root.querySelectorAll("[data-source-capture-field]").forEach((field) => {
     setNestedValue(payload, field.dataset.sourceCaptureField, field.value.trim());
@@ -14725,7 +14755,7 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
         sourceUrl,
         fileKind: sourceUrl ? "link" : "text",
         capturedAt: new Date().toISOString(),
-        capturedBy: state.session?.email || "operator",
+        capturedBy: state.session?.email || "team",
         reviewFlags: ["IDI_ASSET_SEARCH_REVIEW_REQUIRED"]
       }
     };
@@ -14739,7 +14769,7 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
         duplicateGuard: overrideReason ? "admin_override_recorded" : result.duplicateGuard || "first_import_locked",
         importedAt: Date.now()
       };
-      addShellEvent("IDI asset search imported", `${candidates.length} contact candidate${candidates.length === 1 ? "" : "s"} are ready for operator review. Score will update after acceptance.`, "review", true);
+      addShellEvent("IDI asset search imported", `${candidates.length} contact candidate${candidates.length === 1 ? "" : "s"} are ready for team review. Score will update after acceptance.`, "review", true);
     } catch (error) {
       addShellEvent("IDI import blocked", error instanceof Error ? error.message : "The imported report could not be saved.", "blocked", true);
     }
@@ -14757,7 +14787,7 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
         [candidateId]: {
           status,
           reviewedAt: Date.now(),
-          reviewedBy: state.session?.email || "operator"
+          reviewedBy: state.session?.email || "team"
         }
       };
       try {
@@ -14765,7 +14795,7 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
           assetKey: key,
           leadId: row.id,
           status,
-          reviewedBy: state.session?.email || "operator"
+          reviewedBy: state.session?.email || "team"
         });
         addShellEvent("Contact review updated", `${displayStatus(status)} was saved for the selected IDI contact candidate.`, status === "rejected" ? "review" : "ready", false);
       } catch (error) {
@@ -14946,7 +14976,7 @@ function offerProfitRows(report) {
     ["Taxes Due", "", moneyClaimValue(math.taxesDue), reportClaimNote(math.taxesDue, "Tax amount due must be captured.")],
     ["Liens", "", moneyClaimValue(math.liens), reportClaimNote(math.liens, "Lien amount must be confirmed.")],
     ["Mortgages", "", moneyClaimValue(math.mortgages), reportClaimNote(math.mortgages, "Mortgage balance must be confirmed.")],
-    ["Selling Costs", "", moneyClaimValue(math.sellingCosts), reportClaimNote(math.sellingCosts, "Operator closing-cost assumption required.")],
+    ["Selling Costs", "", moneyClaimValue(math.sellingCosts), reportClaimNote(math.sellingCosts, "Review closing-cost assumption required.")],
     ["Probate Costs", "", moneyClaimValue(math.probateCosts), reportClaimNote(math.probateCosts, "Court/admin cost estimate required.")],
     ["Partition Costs", "", moneyClaimValue(math.partitionCosts), reportClaimNote(math.partitionCosts, "Litigation-cost assumption required.")],
     ["Post Equity Value", "", moneyClaimValue(math.postEquityValue), reportClaimNote(math.postEquityValue, "Computed after deductions are known.")],
@@ -14954,7 +14984,7 @@ function offerProfitRows(report) {
     ["# of heirs on board", "", countClaimValue(math.heirCount), reportClaimNote(math.heirCount, "Heir count comes from the current family-tree hypothesis.")],
     ["Profit", "", moneyClaimValue(math.profit), reportClaimNote(math.profit, "Draft only until underwriting clears.")],
     ["Offer per heir", percentClaimValue(math.buyPercentage), moneyClaimValue(math.offerAmount), reportClaimNote(math.offerAmount, "Draft offer blocked until review.")],
-    ["Min Profit", "", moneyClaimValue(math.minimumNetProfit), reportClaimNote(math.minimumNetProfit, "Minimum net placeholder for operator review.")],
+    ["Min Profit", "", moneyClaimValue(math.minimumNetProfit), reportClaimNote(math.minimumNetProfit, "Minimum net placeholder for review.")],
     ["$100,000 Net", "", "Benchmark", "North Star packet comparison row retained for deal review."]
   ];
 }
@@ -15033,7 +15063,7 @@ function packageContentsItems() {
     ["missing-data", "Missing Data", "Remaining facts needed before external use."],
     ["podio-fields", "Podio Lead Fields", "CRM handoff fields staged for review."],
     ["google-sheets", "Google Sheets Row", "One-row spreadsheet export shape."],
-    ["next-action", "Next Action", "The next operator step."]
+    ["next-action", "Next Action", "The next review step."]
   ];
   return sections.map(([id, title, copy]) => `<li><a href="#${escapeHtml(id)}">${escapeHtml(title)}</a><span>${escapeHtml(copy)}</span></li>`).join("");
 }
@@ -15042,7 +15072,7 @@ function contactMatrixRows(row, report, dossier, group = "primary") {
   const imported = group === "primary" ? primaryContactCandidates(row) : alternativeContactCandidates(row);
   const contacts = imported.length ? imported : group === "primary" ? (report?.contactPlaceholders ?? dossier?.familyTree?.hypothesis?.value?.nodes ?? []) : [];
   if (!contacts.length) {
-    return `<tr><td colspan="5">No ${group === "primary" ? "accepted spouse or child" : "alternative relative or associate"} contacts yet. Build this from obituary, probate, family tree, approved IDI asset search, and operator notes.</td></tr>`;
+    return `<tr><td colspan="5">No ${group === "primary" ? "accepted spouse or child" : "alternative relative or associate"} contacts yet. Build this from obituary, probate, family tree, approved IDI asset search, and review notes.</td></tr>`;
   }
   return contacts.slice(0, 18).map((contact, index) => {
     const name = contact.name || contact.label || `${displayStatus(contact.role, "Contact")} ${index + 1}`;
@@ -15094,7 +15124,7 @@ function completedLeadReportHtml(row, dossier) {
   const reviewGate = report?.reviewGate ?? {};
   return pageShellHtml("Completed Lead Report", row?.leadName ?? dossier?.summary?.estateName ?? "Lead file", `
     <p class="muted">Prepared from the live public-record lead packet. North Star anchors: Deborah Cheatham complex family-tree packet and Constance E. White simpler family-tree packet.</p>
-    <div class="notice"><strong>Review draft.</strong> External outreach, offers, Podio writes, Google Docs exports, and Google Sheets updates remain blocked until operator approval and readback proof are complete.</div>
+    <div class="notice"><strong>Review draft.</strong> External outreach, offers, Podio writes, Google Docs exports, and Google Sheets updates remain blocked until approval and readback proof are complete.</div>
     <div class="facts">
       <div class="fact"><span>Date added</span><strong>${escapeHtml(formatPacketDate(dossier?.generatedAt ?? report?.generatedAt))}</strong></div>
       <div class="fact"><span>Report status</span><strong>${escapeHtml(displayStatus(reviewGate.reportStatus, "Review"))}</strong></div>
@@ -15213,7 +15243,7 @@ function discoveryDossierHtml(row, dossier) {
 	    <h2>Open source notes</h2>
     <ul>${(missing.length ? missing : buildMissingSections(dossier ?? {})).map((item) => `<li><strong>${escapeHtml(item.short ?? item.label)}</strong> - ${escapeHtml(item.copy)}</li>`).join("") || "<li>All current dossier sections are marked ready in this view.</li>"}</ul>
     <h2>Document packet</h2>
-    <p>Ten documents are staged for operator review: discovery dossier, completed lead report, source notes, deed and title notes, tax history packet, probate request, heir contact matrix, outreach drafts, drip schedule, and CRM handoff.</p>
+    <p>Ten documents are staged for team review: discovery dossier, completed lead report, source notes, deed and title notes, tax history packet, probate request, heir contact matrix, outreach drafts, drip schedule, and CRM handoff.</p>
   `);
 }
 
@@ -15262,7 +15292,7 @@ function deedTitleNotesHtml(row, dossier) {
     </table>
     <h2>Title review tasks</h2>
     <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Review task")}</strong> - ${escapeHtml(operatorPlainText(task.nextAction ?? task.reason ?? "Record the official-record note."))}</li>`).join("") || "<li>Owner chain is staged for review; no deed blocker is recorded in the current packet.</li>"}</ul>
-    <h2>Operator checks</h2>
+    <h2>Review checks</h2>
     <ol>
       <li>Confirm vesting, transfer path, and any company-owned stop rule.</li>
       <li>Record OR book/page, deed date, and seller/buyer names when visible.</li>
@@ -15302,7 +15332,7 @@ function heirContactMatrixHtml(row, dossier) {
     ...(dossier?.marriageDeathIndicators?.reviewTasks ?? [])
   ];
   return pageShellHtml("Heir Contact Matrix", row?.leadName ?? "Lead file", `
-    <p class="muted">Contact research remains review-only until source notes, paid-source approval, and operator contact approval clear.</p>
+    <p class="muted">Contact research remains review-only until source notes, paid-source approval, and team contact approval clear.</p>
     <table>
       <tr><th>Estate</th><td>${escapeHtml(row?.owner ?? row?.leadName ?? "Needs review")}</td></tr>
       <tr><th>IDI candidates</th><td>${escapeHtml(contacts.length)}</td></tr>
@@ -15326,7 +15356,7 @@ function heirContactMatrixHtml(row, dossier) {
 
 function outreachDraftHtml(row) {
   return pageShellHtml("Outreach Drafts", row?.leadName ?? "Lead file", `
-    <p class="muted">Review-only drafts. Nothing is sent until the operator approves contact and compliance review clears.</p>
+    <p class="muted">Review-only drafts. Nothing is sent until contact approval and compliance review clear.</p>
     <h2>Email draft</h2>
     <p>We are reviewing public records for the property at ${escapeHtml(row?.address ?? "the property")} and would like to confirm the right person to speak with about the estate file.</p>
     <h2>SMS draft</h2>
@@ -15378,7 +15408,7 @@ function closingDocHtml(row, dossier, title, rows = []) {
       <ul>
         <li>Estate source: ${escapeHtml(row?.sourceProvider || "HeirRight lead packet / CRM import")}</li>
         <li>Property source: ${escapeHtml(row?.address || dossier?.property?.address?.value || "Needs review")}</li>
-        <li>Review gate: operator approval required before any external use.</li>
+        <li>Review gate: approval required before any external use.</li>
       </ul>
     </div>
   `);
@@ -16770,7 +16800,7 @@ function outreachSidePanelHtml(variables, settings) {
             <div class="setting-card"><label for="dripSmsCap"><strong>SMS cap</strong><span><span data-drip-sms-value>${escapeHtml(settings.smsCap)}</span> messages per heir, per week</span></label><input id="dripSmsCap" data-drip-setting="smsCap" type="range" min="1" max="4" value="${escapeHtml(settings.smsCap)}"></div>
             <div class="setting-card"><label class="toggle-line"><strong>Require Finished Discovery before Auto Follow-Up</strong><input id="dripRequireCourtPacket" data-drip-setting="requireCourtPacket" type="checkbox" ${settings.requireCourtPacket ? "checked" : ""}></label><span>Auto follow-up waits until Discovery is finished and the dossier is review-ready.</span></div>
             <div class="setting-card"><label class="toggle-line"><strong>Hold no-contact leads</strong><input id="dripHoldNoContact" data-drip-setting="holdNoContact" type="checkbox" ${settings.holdNoContact ? "checked" : ""}></label><span>No-contact, company-owned, source-blocked, and recent-sale leads stay out of outreach.</span></div>
-            <div class="setting-card"><label for="dripOperatorNote"><strong>Operator note</strong><span>Saved with the scheduled-work prep controls</span></label><textarea id="dripOperatorNote" class="discovery-notes" data-drip-setting="operatorNote" rows="3" placeholder="Example: keep SMS paused until the court packet is reviewed.">${escapeHtml(settings.operatorNote)}</textarea></div>
+            <div class="setting-card"><label for="dripOperatorNote"><strong>Review note</strong><span>Saved with the scheduled-work prep controls</span></label><textarea id="dripOperatorNote" class="discovery-notes" data-drip-setting="operatorNote" rows="3" placeholder="Example: keep SMS paused until the court packet is reviewed.">${escapeHtml(settings.operatorNote)}</textarea></div>
           </div>
         `}
       </div>
@@ -17067,12 +17097,12 @@ function renderQueueView() {
     const count = actionRows.length;
     state.railPreview = {
       title: `${count} lead${count === 1 ? "" : "s"} staged for batch handoff`,
-      markdown: "Dossier packets, Podio fields and tasks, Google Docs body, and Google Sheets row are staged for operator review. No live write was attempted.",
+      markdown: "Dossier packets, Podio fields and tasks, Google Docs body, and Google Sheets row are staged for team review. No live write was attempted.",
       updatedAt: Date.now()
     };
     document.getElementById("statusExport").textContent = `handoff: [${count} BATCH PREPARED]`;
     document.getElementById("topStatus").textContent = `${count} lead${count === 1 ? "" : "s"} staged for batch export review. Live writes remain locked.`;
-    addShellEvent("Batch handoff package prepared", `${count} dossier packet${count === 1 ? " is" : "s are"} ready for operator review. Live Podio, Google Docs, Google Sheets, email, and SMS actions remain locked until approval and readback proof.`, "review", true);
+    addShellEvent("Batch handoff package prepared", `${count} dossier packet${count === 1 ? " is" : "s are"} ready for team review. Live Podio, Google Docs, Google Sheets, email, and SMS actions remain locked until approval and readback proof.`, "review", true);
     renderShellPanels();
     renderQueueView();
   });
@@ -17277,7 +17307,7 @@ function renderAdminLoopView() {
   if (!target) return;
   const errors = adminErrorItems();
   const activities = teamActivityRows();
-  const recentEvents = (state.shellEvents.length ? state.shellEvents : defaultShellEvents()).slice(0, 5);
+  const recentEvents = (state.shellEvents.length ? state.shellEvents : defaultShellEvents()).map(clientFacingEvent).slice(0, 5);
   target.innerHTML = `
     <div class="admin-tall-grid">
       <section class="loop-panel is-tall">
@@ -17431,7 +17461,7 @@ function integrationOnboardingCardHtml(kind) {
       name: "Leads Engine Access",
       title: "Leads Engine Access",
       action: "Review access routing",
-      steps: ["Route company/domain access changes", "Keep admin add/remove approvals auditable", "Sync resolved companies into the operator surface"]
+      steps: ["Route company/domain access changes", "Keep admin add/remove approvals auditable", "Sync resolved companies into the admin surface"]
     }
   }[kind] ?? null;
   if (!meta) return "";
@@ -17556,7 +17586,7 @@ function renderSettingsView() {
             <div class="settings-grid">
               <div class="setting-card"><label for="settingsSignalWeight"><strong>Source signal weight</strong><span>${escapeHtml(signalWeightLabel(state.shellSettings.signalWeight))}</span></label><input id="settingsSignalWeight" type="range" min="1" max="5" value="${escapeHtml(state.shellSettings.signalWeight)}"></div>
               <div class="setting-card"><label for="settingsTaxThreshold"><strong>Tax pressure threshold</strong><span>Unpaid years before priority review.</span></label><select id="settingsTaxThreshold"><option value="1">1+ unpaid year</option><option value="2">2+ unpaid years</option><option value="3">3+ unpaid years</option></select></div>
-              <div class="setting-card"><label for="settingsReasonCodes"><strong>Reason-code set</strong><span>Operator-facing qualification reasons.</span></label><select id="settingsReasonCodes"><option value="probate-title-tax">Probate + title + tax</option><option value="property-pressure">Property pressure only</option><option value="heirship-first">Heirship first</option></select></div>
+              <div class="setting-card"><label for="settingsReasonCodes"><strong>Reason-code set</strong><span>Office-facing qualification reasons.</span></label><select id="settingsReasonCodes"><option value="probate-title-tax">Probate + title + tax</option><option value="property-pressure">Property pressure only</option><option value="heirship-first">Heirship first</option></select></div>
               <div class="setting-card"><label class="toggle-line"><strong>Require deed proof</strong><input id="settingsDeedProofRequired" type="checkbox" ${state.shellSettings.deedProofRequired ? "checked" : ""}></label><span>OR book/page evidence stays required before promotion.</span></div>
               <div class="setting-card"><label class="toggle-line"><strong>Manual paid-source approval</strong><input id="settingsPaidSourceApproval" type="checkbox" ${state.shellSettings.paidSourceApproval ? "checked" : ""}></label><span>IDI, Intelius, Ancestry, ForeWarn, VitalChek, and PI work stay gated.</span></div>
             </div>
@@ -17752,7 +17782,7 @@ function runShellCommand(command, source = null, freeform = "") {
   const action = shellCommandCopy(command);
   state.shellCommandCount += 1;
   if (action === "open-report") {
-    addShellEvent("Report rail opened", "The current lead report is open for operator review.", "ready", false);
+    addShellEvent("Report rail opened", "The current lead report is open for team review.", "ready", false);
     openUtilityRail("report", source);
   } else if (action === "record-blocker") {
     document.getElementById("statusExport").textContent = "handoff: [BLOCKED]";
@@ -17774,7 +17804,7 @@ function runShellCommand(command, source = null, freeform = "") {
     document.getElementById("topStatus").textContent = "Review pass noted. Run the local validation command from the repo for execution.";
     addShellEvent("Review pass noted", "Internal validation was captured for review; no browser-side execution was attempted.", "review", false);
   } else {
-    addShellEvent("Command captured", freeform || "The command was captured as an operator note for the current review session.", "review");
+    addShellEvent("Command captured", freeform || "The command was captured as a review note for the current review session.", "review");
   }
   renderShellPanels();
 }
@@ -18059,7 +18089,7 @@ function completeDiscoveryPhase() {
   const row = selectedRow();
   const phase = currentDiscoveryPhase(flow.id, row);
   markDocPrepPhaseComplete(row, flow.id, phase.id);
-  addShellEvent(`${phase.label} complete`, `${phase.summary} The operator can close ${flow.label} or continue to the next phase.`, "ready", false);
+  addShellEvent(`${phase.label} complete`, `${phase.summary} The team can close ${flow.label} or continue to the next phase.`, "ready", false);
   renderRail();
   renderCurrentLoopView();
 }
@@ -18122,13 +18152,13 @@ function renderDiscoveryWizard(row, dossier) {
             ${phase.preferences.map((preference, index) => `
               <div class="preference-card">
                 <label>${escapeHtml(preference)}<input type="checkbox" data-discovery-preference="${escapeHtml(discoveryPreferenceKey(phase.id, index))}" ${discoveryPreferenceChecked(phase.id, index, row, flow.id) ? "checked" : ""}></label>
-                <span class="copy">${index === 0 ? "Default for this workflow." : index === 1 ? "Recommended for the current lead." : "Optional operator preference."}</span>
+                <span class="copy">${index === 0 ? "Default for this workflow." : index === 1 ? "Recommended for the current lead." : "Optional review preference."}</span>
               </div>
             `).join("")}
           </div>
         </section>
         <section class="glass-card rail-card">
-          <h3>Operator notes</h3>
+          <h3>Review notes</h3>
           <textarea class="discovery-notes" data-discovery-notes="${escapeHtml(phase.id)}" placeholder="Add source notes, blockers, or handoff context for this phase.">${escapeHtml(docPrepNoteValue(phase.id, row, flow.id))}</textarea>
         </section>
       </div>
@@ -19049,7 +19079,7 @@ function railTimelineHtml(row, dossier) {
     ["Seed captured", `Owner and property seed: ${row.owner}`],
     ["County records checked", `${row.evidence} evidence sections attached so far.`],
     ["Report gaps visible", `${row.missing.length} missing section${row.missing.length === 1 ? "" : "s"} still need review.`],
-    ["Operator review", decisionCopy(dossier).next],
+    ["Team review", decisionCopy(dossier).next],
     ["Handoff prep", "Podio and Google Workspace stay prep-only until access and approval are clear."]
   ];
   return `
