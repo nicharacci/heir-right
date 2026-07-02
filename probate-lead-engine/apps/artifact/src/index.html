@@ -16134,7 +16134,7 @@ function renderDossiersView() {
               <h3>${escapeHtml(flow.title)}</h3>
             </div>
             <div class="process-side-actions">
-              <button class="btn primary solvys-liquid-glass" type="button" data-queue-stage>${escapeHtml(flow.id === "closing-docs" ? "Export Google" : "Export bundle")}</button>
+              <button class="btn primary solvys-liquid-glass" type="button" data-queue-stage>Queue</button>
               <span class="headless-menu-wrap" data-ui-menu>
                 <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Process actions">${nucleoIcon("sliders", 16)}</button>
                 <span class="headless-menu t-dropdown" data-origin="top-right" role="menu" hidden>
@@ -16184,10 +16184,6 @@ function renderDossiersView() {
   });
   target.querySelector("[data-begin-discovery]")?.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget));
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
-    if (state.activeDocPrepFlow === "closing-docs") {
-      exportClosingDocsToGoogle();
-      return;
-    }
     addRowsToQueue(rowsForBatchAction());
   });
   target.querySelectorAll("[data-shell-nav-shortcut]").forEach((button) => {
