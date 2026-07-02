@@ -3,7 +3,7 @@
 Date: 2026-07-01
 Branch: `v1.1.1/heirright-2026-06-30-s28-production-loop`
 Production URL: `https://heirright-leads.vercel.app`
-Frontend deployment: `https://heirright-landing-demo-dcspvdbyr-solvys.vercel.app`
+Frontend deployment: `https://heirright-landing-demo-ccf0ll4u9-solvys.vercel.app`
 Worker deployment: Cloudflare Worker production API surface
 
 ## Shipped
@@ -23,7 +23,7 @@ Worker deployment: Cloudflare Worker production API surface
 - `pnpm build` passed.
 - `pnpm --filter @ple/worker test` passed.
 - `git diff --check` passed.
-- Vercel production deployment `dpl_G7e2ga156n95bwJZQnvTus6EpWMM` is READY.
+- Vercel production deployment `dpl_Eoded7rAQvk63whZnypGNKaxLagy` is READY.
 - `heirright-leads.vercel.app` is aliased to the latest deployment.
 - `GET /api/health/deep` reports `backendTarget: cloudflare-worker` with 21 available routes.
 - Live browser proof at 1444x994:
@@ -33,6 +33,7 @@ Worker deployment: Cloudflare Worker production API surface
   - Google Workspace export/readback created Doc `1Y6CMgv1FejgdbesTYKzZYbP0jzi1nIiU6TeSRCXhxUg` and appended/read back the tracking Sheet row.
   - Import split menu border-left: `0px`.
   - Deal Status enhanced select present with open menu background `rgb(43, 46, 56)`, radius `10px`.
+  - Deal Status rename proof: pencil opacity `0` before hover, opacity `1` after the 3-second reveal, renamed label persisted as `{"pre-discovery":"Needs Research"}` in the browser session.
   - Admin Team Activity counters: `0/10`, `0/0`, `7`, `2`; no `.sparkline` or `.radial-kpi` elements.
 
 ## Remaining Blockers
