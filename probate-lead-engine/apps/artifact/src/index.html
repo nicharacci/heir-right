@@ -1270,7 +1270,8 @@
       display: flex;
       align-items: center;
       gap: 9px;
-      width: min(250px, 100%);
+      width: min(340px, 100%);
+      min-width: 0;
     }
 
     .workbench-heading-row {
@@ -1553,22 +1554,20 @@
     .filter-resizer:hover::after { opacity: .78; }
 
     .filter-reopen {
-      position: absolute;
-      left: 12px;
-      top: 24px;
       z-index: 22;
       width: 42px;
       height: 42px;
-      display: inline-grid;
+      flex: 0 0 42px;
+      display: none;
       place-items: center;
       color: #0a84ff;
       --solvys-lg-tint-source: rgba(10, 132, 255, .40);
       --solvys-lg-rim-source: rgba(116, 185, 255, .62);
       --solvys-lg-text-source: #0a84ff;
       border-radius: 999px;
-      opacity: 0;
-      pointer-events: none;
-      transform: translateX(-10px) scale(.96);
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0) scale(1);
       transition: opacity .18s var(--ease), transform .2s var(--ease-out), color .18s var(--ease);
     }
 
@@ -1579,8 +1578,7 @@
     }
 
     .content.is-filter-collapsed .filter-reopen {
-      opacity: 1;
-      pointer-events: auto;
+      display: inline-grid;
       transform: translateX(0) scale(1);
     }
 
@@ -1937,7 +1935,7 @@
     }
 
     .content.is-filter-collapsed .workbench-head {
-      padding-left: 86px;
+      padding-left: 18px;
     }
 
     h1 {
@@ -8941,16 +8939,15 @@
           <div class="filter-note" id="filterNote">The list updates as filters change. Clicking an estate or file opens the report rail on the right.</div>
         </div>
       </aside>
-      <button id="filterWidthToggle" class="filter-reopen nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" aria-controls="leadFilters" aria-expanded="true" aria-label="Expand filters" title="Expand filters">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="m8 6 6 6-6 6M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-
       <section class="workbench" aria-label="Lead results and selected details">
         <div class="workbench-head" data-view-panel="find-estates">
           <div class="workbench-heading-row">
             <div class="workbench-title-row">
+              <button id="filterWidthToggle" class="filter-reopen nav-item is-active solvys-liquid-glass sidebar-selected-glass" type="button" aria-controls="leadFilters" aria-expanded="true" aria-label="Close add estates rail" title="Close add estates rail">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="m8 6 6 6-6 6M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
               <h1>Estates</h1>
               <div class="shell-info-wrap">
                 <button class="icon-button shell-info-button" type="button" aria-label="Lead review help" aria-describedby="shellInfoPopover">
