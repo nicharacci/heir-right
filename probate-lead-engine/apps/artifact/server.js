@@ -7,7 +7,31 @@ const reportPdfHandler = require("./api/reports/pdf.js");
 const activepiecesHandler = require("./api/outreach/activepieces.js");
 const supportLinearHandler = require("./api/support/linear.js");
 const adminAccessHandler = require("./api/admin/access.js");
-const { buildConnectionStatuses } = require("./api/connections/status.js");
+const { buildConnectionStatuses, buildIdiCoreStatus } = require("./api/connections/status.js");
+
+function loadLocalEnvFile(filePath) {
+  if (!existsSync(filePath)) return;
+  const content = readFileSync(filePath, "utf8");
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
+    const index = trimmed.indexOf("=");
+    const key = trimmed.slice(0, index).trim();
+    const value = trimmed.slice(index + 1).trim().replace(/^['"]|['"]$/g, "");
+    if (!key || process.env[key] !== undefined) continue;
+    process.env[key] = value;
+  }
+}
+
+function loadLocalEnv() {
+  [
+    join(__dirname, ".env.local"),
+    join(__dirname, "..", "..", ".env.local"),
+    join(__dirname, "..", "..", "..", ".env.local"),
+  ].forEach(loadLocalEnvFile);
+}
+
+loadLocalEnv();
 
 const port = Number(process.env.PORT || 4173);
 const root = join(__dirname, "dist");
@@ -307,6 +331,8 @@ function operatorAccessList(items) {
     .replace(/SMS_CARRIER_GATEWAY/g, "approved SMS carrier gateway")
     .replace(/SMS_GATEWAY_API_KEY/g, "SMS gateway access")
     .replace(/SMS_LIVE_SEND_APPROVED/g, "SMS internal-test approval")
+    .replace(/IDI_CORE_API_URL/g, "IDI Core endpoint")
+    .replace(/IDI_CORE_API_KEY/g, "IDI Core access")
   ).join(", ");
 }
 
@@ -472,6 +498,122 @@ function localIdiLockKey(body = {}) {
   ].filter(Boolean).join(":");
 }
 
+function idiCoreUserApiKey(body = {}) {
+  const directKey = String(body.idiCoreApiKey || body.userApiKey || "").trim();
+  return directKey || "";
+}
+
+function idiCoreRequestApiKey(body = {}) {
+  return idiCoreUserApiKey(body) || String(process.env.IDI_CORE_API_KEY || "").trim();
+}
+
+function idiCoreApiKeySource(body = {}) {
+  if (idiCoreUserApiKey(body)) return "user_override";
+  return process.env.IDI_CORE_API_KEY ? "shared_default" : "missing";
+}
+
+function idiCoreMissingConfig(body = {}) {
+  const missing = [];
+  if (!process.env.IDI_CORE_API_URL) missing.push("IDI_CORE_API_URL");
+  if (!idiCoreRequestApiKey(body)) missing.push("IDI_CORE_API_KEY");
+  return missing;
+}
+
+function idiCoreLiveApproved(body = {}) {
+  return body.liveRunApproved === true || body.liveRunApproved === "true" || process.env.IDI_CORE_LIVE_RUN_APPROVED === "true";
+}
+
+function redactIdiCoreProviderResponse(value, depth = 0) {
+  if (depth > 6) return null;
+  if (Array.isArray(value)) return value.map((item) => redactIdiCoreProviderResponse(item, depth + 1));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, nested]) => [
+    key,
+    /authorization|api[_-]?key|token|secret|password/i.test(key)
+      ? "[redacted]"
+      : redactIdiCoreProviderResponse(nested, depth + 1),
+  ]));
+}
+
+async function runLiveIdiCore(body = {}, lockKey = "") {
+  const apiKey = idiCoreRequestApiKey(body);
+  const apiKeySource = idiCoreApiKeySource(body);
+  const missing = idiCoreMissingConfig(body);
+  if (!idiCoreLiveApproved(body)) {
+    return {
+      ok: false,
+      status: 403,
+      error: "idi_live_run_not_approved",
+      blockers: ["A live IDI Core run needs explicit approval before the app can spend a paid lookup."],
+      message: "Live IDI Core is blocked until the review owner approves this paid asset search.",
+    };
+  }
+  if (missing.length) {
+    const status = buildIdiCoreStatus(process.env);
+    const portalConfigured = status.configuredMode === "operator_portal";
+    return {
+      ok: false,
+      status: 503,
+      error: "idi_core_not_configured",
+      blockers: [`Live IDI Core needs approved access before it can run: ${operatorAccessList(missing) || missing.join(", ")}`],
+      message: portalConfigured
+        ? "idiCORE portal access is configured for approved operator searches, but backend live runs still need vendor API access. Open idiCORE, run the approved property search, then import the report."
+        : "Live IDI Core is not configured. Import an approved report or add the vendor access before running the paid search.",
+      idiCoreStatus: status,
+      apiKeySource,
+    };
+  }
+  const response = await fetch(process.env.IDI_CORE_API_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      propertyAddress: body.propertyAddress || body.address || body.assetAddress,
+      ownerName: body.ownerName || body.estateName,
+      estateName: body.estateName || body.ownerName,
+      county: body.county || "miami-dade",
+      lockKey,
+      reason: body.reason || "HeirRight controlled asset-search proof",
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.ok === false) {
+    return {
+      ok: false,
+      status: response.status || 502,
+      error: data.error || "idi_core_run_failed",
+      blockers: data.blockers || [`IDI Core returned ${response.status}. No Discovery contact facts were accepted.`],
+      message: data.message || "Live IDI Core did not complete. The Discovery file remains blocked.",
+      providerResponse: redactIdiCoreProviderResponse(data),
+      apiKeySource,
+    };
+  }
+  const candidates = data.candidates || data.contactCandidates || [];
+  return {
+    ok: true,
+    status: 200,
+    mode: "live_idi_core",
+    provider: body.provider || "idi",
+    lockKey,
+    importedAt: new Date().toISOString(),
+    duplicateGuard: body.adminOverrideReason ? "admin_override_recorded" : "first_paid_run_only",
+    adminOverrideReason: body.adminOverrideReason || null,
+    paidRun: true,
+    apiKeySource,
+    readbackStatus: data.readbackStatus || data.status || "provider_completed",
+    sourceEvidence: data.sourceEvidence || data.evidence || null,
+    attachment: data.attachment || body.attachment || null,
+    importedText: data.importedText || data.reportText || "",
+    candidates,
+    contactPreviewCount: Array.isArray(candidates)
+      ? candidates.length
+      : String(data.importedText || data.reportText || "").split(/\n{2,}/).filter(Boolean).length,
+    message: "Live IDI Core asset search completed and is ready for contact review.",
+  };
+}
+
 async function handleIdiAssetImport(req, res) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
   const proxied = await proxyWorkerJson("/api/discovery/idi-asset-search/import", {
@@ -493,6 +635,25 @@ async function handleIdiAssetImport(req, res) {
       message: "This estate address already has an imported IDI asset search. Admin override requires a reason.",
       lockKey,
       firstImportedAt: existing.importedAt,
+    }, { "cache-control": "no-store" });
+    return;
+  }
+  const wantsLiveRun = body.runMode === "live_idi_core" || body.mode === "live_idi_core" || body.paidRun === true;
+  if (wantsLiveRun) {
+    const result = await runLiveIdiCore(body, lockKey);
+    if (result.ok) {
+      localIdiRuns.set(lockKey, result);
+      sendJson(res, 200, result, { "cache-control": "no-store" });
+      return;
+    }
+    sendJson(res, result.status || 503, result, { "cache-control": "no-store" });
+    return;
+  }
+  if (!String(body.importedText || "").trim() && !(body.attachment && (body.attachment.sourceUrl || body.attachment.fileName))) {
+    sendJson(res, 400, {
+      ok: false,
+      error: "missing_idi_report",
+      message: "Paste the approved IDI Asset Discovery report text or attach report metadata before importing.",
     }, { "cache-control": "no-store" });
     return;
   }
@@ -721,6 +882,13 @@ async function handleLocalExport(req, res) {
     dossierId: JSON.parse(readFileSync(latestRunPath, "utf8")).dossier?.id ?? "latest",
     routes: results,
     blockers: results.flatMap((result) => result.blockers),
+    artifact: {
+      kind: "single_pdf",
+      contentType: "application/pdf",
+      flow: body.flow || (body.batch ? "batch" : "discovery"),
+      url: `/api/reports/pdf?title=${encodeURIComponent(body.batch ? "HeirRight Batch Doc Prep Packet" : "HeirRight Doc Prep Packet")}&status=${encodeURIComponent(dryRun ? "Review packet" : "Controlled export packet")}`,
+      sections: ["Discovery dossier", "Completed lead report", "Source notes", "Closing Prep review", "CRM handoff"],
+    },
   }));
 }
 
@@ -1098,6 +1266,20 @@ function handleRequest(req, res) {
           return;
         }
         sendJson(res, 200, localConnectionStatuses(), { "cache-control": "no-store" });
+      })
+      .catch((error) => sendJson(res, 502, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/api/discovery/idi-core/status") {
+    proxyWorkerJson("/api/discovery/idi-core/status", { req, method: "GET" })
+      .then((proxied) => {
+        if (proxied) {
+          res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+          res.end(proxied.body);
+          return;
+        }
+        sendJson(res, 200, buildIdiCoreStatus(process.env), { "cache-control": "no-store" });
       })
       .catch((error) => sendJson(res, 502, { ok: false, error: error.message }));
     return;

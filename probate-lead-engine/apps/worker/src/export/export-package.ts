@@ -37,6 +37,81 @@ function missing(keys: string[], env: RuntimeEnv): string[] {
   return keys.filter((key) => !env[key]);
 }
 
+function idiCorePortalConfigured(env: RuntimeEnv): boolean {
+  return Boolean(
+    (env.IDI_CORE_PORTAL_URL || env.IDI_CORE_SEARCH_URL)
+      && (env.IDI_CORE_ACCOUNT_ID || env.IDI_CORE_ACCOUNT_COMPANY || env.IDI_CORE_OPERATOR_EMAIL)
+  );
+}
+
+function idiCoreApiDetails(env: RuntimeEnv): {
+  endpointConfigured: boolean;
+  sharedDefaultConfigured: boolean;
+  userOverrideAllowed: boolean;
+} {
+  return {
+    endpointConfigured: Boolean(env.IDI_CORE_API_URL),
+    sharedDefaultConfigured: Boolean(env.IDI_CORE_API_KEY),
+    userOverrideAllowed: true,
+  };
+}
+
+function idiCoreApiConfigured(env: RuntimeEnv): boolean {
+  const api = idiCoreApiDetails(env);
+  return Boolean(api.endpointConfigured && api.sharedDefaultConfigured);
+}
+
+function idiCoreConnectionStatus(env: RuntimeEnv, checkedAt: string): ConnectionStatus {
+  const api = idiCoreApiDetails(env);
+  const apiConfigured = idiCoreApiConfigured(env);
+  const liveApproved = env.IDI_CORE_LIVE_RUN_APPROVED === "true";
+  const portalConfigured = idiCorePortalConfigured(env);
+  const searchUrl = env.IDI_CORE_PORTAL_URL || env.IDI_CORE_SEARCH_URL || "https://idicore.com/search/PropertySearch";
+  const loginUrl = env.IDI_CORE_LOGIN_URL || "https://login.idicore.com/";
+  if (apiConfigured) {
+    return {
+      name: "IDI Core",
+      ok: liveApproved,
+      mode: liveApproved ? "live" : "review",
+      configuredMode: "api",
+      message: liveApproved
+        ? "idiCORE API access and paid-run approval are configured for the controlled Asset Discovery path."
+        : "idiCORE API access is configured; paid runs still require review-owner approval before Discovery can spend a lookup.",
+      checkedAt,
+      portal: { configured: portalConfigured, searchUrl, loginUrl },
+      api: { ...api, accessConfigured: true, liveRunApproved: liveApproved },
+    };
+  }
+  if (portalConfigured) {
+    return {
+      name: "IDI Core",
+      ok: true,
+      mode: "review",
+      configuredMode: "operator_portal",
+      message: "idiCORE portal access is confirmed for approved operator searches. Backend paid-run automation still needs IDI API access; import the approved report after the controlled search.",
+      checkedAt,
+      portal: { configured: true, searchUrl, loginUrl },
+      api: { ...api, accessConfigured: false, liveRunApproved: liveApproved },
+      blockers: [
+        api.endpointConfigured
+          ? "Team-default IDI Core API access is not configured here; a user can paste their own key for one approved run."
+          : "Backend IDI Core live runs need a vendor API endpoint before they can execute from HeirRight."
+      ],
+    };
+  }
+  return {
+    name: "IDI Core",
+    ok: false,
+    mode: "blocked",
+    configuredMode: "none",
+    message: "idiCORE is not configured. Add either approved API access for backend live runs or the confirmed operator portal account for report import.",
+    checkedAt,
+    portal: { configured: false, searchUrl, loginUrl },
+    api: { ...api, accessConfigured: false, liveRunApproved: liveApproved },
+    blockers: ["IDI Core portal/account confirmation or vendor API access is missing."],
+  };
+}
+
 function routeResult(input: Omit<ExportRouteResult, "blockers"> & { blockers?: string[] }): ExportRouteResult {
   return {
     blockers: input.blockers ?? [],
@@ -976,6 +1051,7 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
       message: "Public web search/source checks are handled by the worker and reported per run.",
       checkedAt,
     },
+    idiCoreConnectionStatus(env, checkedAt),
     {
       name: "Activepieces",
       ok: activepiecesReady,

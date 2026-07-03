@@ -7,3 +7,6 @@ account_id = "e7a583857399cb19fd86f879c3a4629f"
 [vars]
 DEPLOYMENT_KEY = "heirright"
 COUNTY_LIST = "miami-dade"
+IDI_CORE_LOGIN_URL = "https://login.idicore.com/"
+IDI_CORE_PORTAL_URL = "https://idicore.com/search/PropertySearch"
+IDI_CORE_LIVE_RUN_APPROVED = "false"

@@ -57,6 +57,13 @@ function blockedResponse(body) {
       status: "blocked",
       message: "Production artifact app stopped before write because export credentials and worker API routing are not configured.",
     },
+    artifact: {
+      kind: "single_pdf",
+      contentType: "application/pdf",
+      flow: body?.flow || "batch",
+      url: "/api/reports/pdf?title=HeirRight%20Doc%20Prep%20Batch&status=Batch%20export%20blocked",
+      sections: ["Discovery dossier", "Completed lead report", "Source notes", "Closing Prep review", "CRM handoff"],
+    },
   };
 }
 

@@ -46,6 +46,15 @@ interface CloudflareEnv {
   GOOGLE_LIVE_WRITE_APPROVED?: string;
   GOOGLE_WORKSPACE_WEBHOOK_URL?: string;
   GOOGLE_WORKSPACE_WEBHOOK_SECRET?: string;
+  IDI_CORE_API_URL?: string;
+  IDI_CORE_API_KEY?: string;
+  IDI_CORE_LIVE_RUN_APPROVED?: string;
+  IDI_CORE_LOGIN_URL?: string;
+  IDI_CORE_PORTAL_URL?: string;
+  IDI_CORE_SEARCH_URL?: string;
+  IDI_CORE_ACCOUNT_ID?: string;
+  IDI_CORE_ACCOUNT_COMPANY?: string;
+  IDI_CORE_OPERATOR_EMAIL?: string;
   ACTIVEPIECES_WEBHOOK_URL?: string;
   HEIRRIGHT_ACTIVEPIECES_WEBHOOK_URL?: string;
   ACTIVEPIECES_API_KEY?: string;
@@ -87,6 +96,7 @@ function routeList(): string[] {
     "/qualification-review.md",
     "/api/leads/fresh-batch",
     "/api/leads/public-source-pull",
+    "/api/discovery/idi-core/status",
     "/api/discovery/idi-asset-search/import",
     "/api/discovery/source-capture",
     "/api/discovery/contact-candidates/:id/review",
@@ -349,6 +359,121 @@ function idiLockKey(body: Record<string, unknown>): string {
   ].filter(Boolean).join(":");
 }
 
+function idiCoreUserApiKey(body: Record<string, unknown>): string {
+  return stringValue(body.idiCoreApiKey || body.userApiKey);
+}
+
+function idiCoreRequestApiKey(body: Record<string, unknown>, env: CloudflareEnv): string {
+  return idiCoreUserApiKey(body) || stringValue(env.IDI_CORE_API_KEY);
+}
+
+function idiCoreApiKeySource(body: Record<string, unknown>, env: CloudflareEnv): "user_override" | "shared_default" | "missing" {
+  if (idiCoreUserApiKey(body)) return "user_override";
+  return env.IDI_CORE_API_KEY ? "shared_default" : "missing";
+}
+
+function idiCoreMissingConfig(env: CloudflareEnv, body: Record<string, unknown> = {}): string[] {
+  const missing: string[] = [];
+  if (!env.IDI_CORE_API_URL) missing.push("IDI_CORE_API_URL");
+  if (!idiCoreRequestApiKey(body, env)) missing.push("IDI_CORE_API_KEY");
+  return missing;
+}
+
+function idiCorePortalConfigured(env: CloudflareEnv): boolean {
+  return Boolean(
+    (env.IDI_CORE_PORTAL_URL || env.IDI_CORE_SEARCH_URL)
+      && (env.IDI_CORE_ACCOUNT_ID || env.IDI_CORE_ACCOUNT_COMPANY || env.IDI_CORE_OPERATOR_EMAIL)
+  );
+}
+
+function idiCoreLiveApproved(body: Record<string, unknown>, env: CloudflareEnv): boolean {
+  return body.liveRunApproved === true || body.liveRunApproved === "true" || env.IDI_CORE_LIVE_RUN_APPROVED === "true";
+}
+
+function redactIdiCoreProviderResponse(value: unknown, depth = 0): unknown {
+  if (depth > 6) return null;
+  if (Array.isArray(value)) return value.map((item) => redactIdiCoreProviderResponse(item, depth + 1));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, nested]) => [
+    key,
+    /authorization|api[_-]?key|token|secret|password/i.test(key)
+      ? "[redacted]"
+      : redactIdiCoreProviderResponse(nested, depth + 1),
+  ]));
+}
+
+async function liveIdiCoreResponse(body: Record<string, unknown>, env: CloudflareEnv): Promise<Response> {
+  const lockKey = idiLockKey(body);
+  const apiKey = idiCoreRequestApiKey(body, env);
+  const apiKeySource = idiCoreApiKeySource(body, env);
+  if (!idiCoreLiveApproved(body, env)) {
+    return json({
+      ok: false,
+      error: "idi_live_run_not_approved",
+      blockers: ["A live IDI Core run needs explicit approval before the app can spend a paid lookup."],
+      message: "Live IDI Core is blocked until the review owner approves this paid asset search.",
+    }, { status: 403, headers: { "cache-control": "no-store" } });
+  }
+  const missing = idiCoreMissingConfig(env, body);
+  if (missing.length) {
+    const portalConfigured = idiCorePortalConfigured(env);
+    return json({
+      ok: false,
+      error: "idi_core_not_configured",
+      blockers: [`Live IDI Core needs approved vendor access before it can run: ${missing.join(", ")}.`],
+      message: portalConfigured
+        ? "idiCORE portal access is configured for approved operator searches, but backend live runs still need vendor API access. Open idiCORE, run the approved property search, then import the report."
+        : "Live IDI Core is not configured. Import an approved report or add vendor access before running the paid search.",
+      apiKeySource,
+    }, { status: 503, headers: { "cache-control": "no-store" } });
+  }
+  const response = await fetch(String(env.IDI_CORE_API_URL), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      propertyAddress: body.propertyAddress || body.address || body.assetAddress,
+      ownerName: body.ownerName || body.estateName,
+      estateName: body.estateName || body.ownerName,
+      county: body.county || "miami-dade",
+      lockKey,
+      reason: body.reason || "HeirRight controlled asset-search proof",
+    }),
+  });
+  const data = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (!response.ok || data.ok === false) {
+    return json({
+      ok: false,
+      error: data.error || "idi_core_run_failed",
+      blockers: data.blockers || [`IDI Core returned ${response.status}. No Discovery contact facts were accepted.`],
+      message: data.message || "Live IDI Core did not complete. The Discovery file remains blocked.",
+      providerResponse: redactIdiCoreProviderResponse(data),
+      apiKeySource,
+    }, { status: response.status || 502, headers: { "cache-control": "no-store" } });
+  }
+  const candidates = Array.isArray(data.candidates) ? data.candidates : Array.isArray(data.contactCandidates) ? data.contactCandidates : [];
+  return json({
+    ok: true,
+    mode: "live_idi_core",
+    provider: body.provider || "idi",
+    lockKey,
+    importedAt: nowIso(),
+    duplicateGuard: body.adminOverrideReason ? "admin_override_recorded" : "first_paid_run_only",
+    adminOverrideReason: body.adminOverrideReason || null,
+    attachment: data.attachment || body.attachment || null,
+    importedText: data.importedText || data.reportText || "",
+    candidates,
+    contactPreviewCount: candidates.length || stringValue(data.importedText || data.reportText).split(/\n{2,}/).filter(Boolean).length,
+    paidRun: true,
+    apiKeySource,
+    readbackStatus: data.readbackStatus || data.status || "provider_completed",
+    sourceEvidence: data.sourceEvidence || data.evidence || null,
+    message: "Live IDI Core asset search completed and is ready for contact review.",
+  }, { headers: { "cache-control": "no-store" } });
+}
+
 function receiptId(prefix = "heirright"): string {
   return `${prefix}-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}-${crypto.randomUUID().slice(0, 8)}`;
 }
@@ -489,13 +614,25 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
     dryRun: body?.dryRun ?? dryRun,
     controlledTest: body?.controlledTest,
   }, env as Record<string, string | undefined>);
-  return json(result, { headers: { "cache-control": "no-store" } });
+  return json({
+    ...result,
+    artifact: {
+      kind: "single_pdf",
+      contentType: "application/pdf",
+      flow: body?.controlledTest ? "controlled-test" : "discovery",
+      estateId: pipeline.dossier.id,
+      url: `/api/reports/pdf?title=${encodeURIComponent(`HeirRight Doc Prep Packet - ${pipeline.dossier.summary.displayName}`)}&status=${encodeURIComponent(result.ok ? "Export review packet" : "Export blocked")}`,
+      sections: ["Discovery dossier", "Completed lead report", "Source notes", "Closing Prep review", "CRM handoff"],
+    },
+  }, { headers: { "cache-control": "no-store" } });
 }
 
-async function idiAssetImportResponse(request: Request): Promise<Response> {
+async function idiAssetImportResponse(request: Request, env: CloudflareEnv): Promise<Response> {
   const body = request.method === "POST"
     ? await request.json().catch(() => ({})) as Record<string, unknown>
     : {};
+  const wantsLiveRun = body.runMode === "live_idi_core" || body.mode === "live_idi_core" || body.paidRun === true;
+  if (wantsLiveRun) return liveIdiCoreResponse(body, env);
   if (!stringValue(body.importedText) && !(body.attachment && typeof body.attachment === "object" && stringValue((body.attachment as Record<string, unknown>).sourceUrl))) {
     return json({
       ok: false,
@@ -514,6 +651,8 @@ async function idiAssetImportResponse(request: Request): Promise<Response> {
     attachment: body.attachment || null,
     contactPreviewCount: stringValue(body.importedText).split(/\n{2,}/).filter(Boolean).length,
     paidRun: false,
+    readbackStatus: "operator_import_only",
+    sourceEvidence: null,
     message: "Approved IDI report metadata was imported for review. The production backend did not run IDI Core.",
   }, { headers: { "cache-control": "no-store" } });
 }
@@ -559,7 +698,16 @@ async function contactCandidateReviewResponse(request: Request, candidateId: str
   }, { headers: { "cache-control": "no-store" } });
 }
 
-function closingDocValue(dossier: RawDossier, key: string): string {
+function closingOverrideValue(values: Record<string, unknown>, key: string): string {
+  const raw = values[key];
+  if (typeof raw === "string") return raw.trim();
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) return stringValue((raw as Record<string, unknown>).value);
+  return "";
+}
+
+function closingDocValue(dossier: RawDossier, key: string, closingFieldValues: Record<string, unknown> = {}): string {
+  const override = closingOverrideValue(closingFieldValues, key);
+  if (override) return override;
   const values: Record<string, unknown> = {
     estate_name: dossier.summary.estateName || dossier.summary.displayName,
     property_address: dossier.property.address.value,
@@ -578,7 +726,7 @@ function closingDocValue(dossier: RawDossier, key: string): string {
   return value === undefined || value === null ? "" : String(value);
 }
 
-function buildClosingDocsPacket(dossier: RawDossier, notes = ""): { title: string; markdown: string; blockers: string[] } {
+function buildClosingDocsPacket(dossier: RawDossier, notes = "", closingFieldValues: Record<string, unknown> = {}): { title: string; markdown: string; blockers: string[] } {
   const templates = [
     "Fund Transfer / Bank Account Transfer",
     "Contract for Deed",
@@ -595,12 +743,12 @@ function buildClosingDocsPacket(dossier: RawDossier, notes = ""): { title: strin
     "Buyer Purchase Agreement",
     "Unclaimed Funds Instructions",
   ];
-  const required = ["estate_name", "property_address", "county", "folio", "owner_name", "tax_status", "title_status", "probate_status"];
+  const required = ["estate_name", "property_address", "county", "folio", "owner_name", "tax_status", "title_status", "probate_status", "buyer_entity", "seller_heirs", "offer_amount"];
   const blockers = required
-    .filter((key) => !closingDocValue(dossier, key))
+    .filter((key) => !closingDocValue(dossier, key, closingFieldValues))
     .map((key) => `Missing closing-doc field: ${key.replace(/_/g, " ")}.`);
   const title = `Closing Prep Packet - ${dossier.summary.displayName}`;
-  const facts = required.map((key) => `- ${key.replace(/_/g, " ")}: ${closingDocValue(dossier, key) || "[NEEDS REVIEW]"}`).join("\n");
+  const facts = required.map((key) => `- ${key.replace(/_/g, " ")}: ${closingDocValue(dossier, key, closingFieldValues) || "[NEEDS REVIEW]"}`).join("\n");
   const templateList = templates.map((template) => `- ${template}: Draft - Review Required`).join("\n");
   const markdown = [
     `# ${title}`,
@@ -633,6 +781,7 @@ async function closingDocsGoogleExportResponse(request: Request, url: URL, env: 
       workspaceDestinationEmail?: string;
       shareWithEmails?: string[];
       requestedByEmail?: string;
+      closingFieldValues?: Record<string, unknown>;
     }
     : {};
   const pipeline = body.dossier
@@ -642,7 +791,7 @@ async function closingDocsGoogleExportResponse(request: Request, url: URL, env: 
   if (!dossier) {
     return json({ ok: false, error: "missing_dossier", message: "Closing Docs export needs a dossier or estate seed." }, { status: 400 });
   }
-  const packet = buildClosingDocsPacket(dossier, body.notes);
+  const packet = buildClosingDocsPacket(dossier, body.notes, body.closingFieldValues || {});
   const exportResult = await exportCompletedReport({
     routes: ["google"],
     dossier,
@@ -1170,10 +1319,18 @@ export default {
       return freshLeadBatchResponse(request, url, env);
     }
 
+    if (url.pathname === "/api/discovery/idi-core/status") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      const runtimeEnv = await podioRuntimeEnv(request, env);
+      const statuses = await connectionStatuses(runtimeEnv as Record<string, string | undefined>);
+      return json(statuses.find((status) => status.name === "IDI Core") ?? { ok: false, error: "idi_core_status_unavailable" }, { headers: { "cache-control": "no-store" } });
+    }
+
     if (url.pathname === "/api/discovery/idi-asset-search/import") {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
-      return idiAssetImportResponse(request);
+      return idiAssetImportResponse(request, env);
     }
 
     if (url.pathname === "/api/discovery/source-capture") {

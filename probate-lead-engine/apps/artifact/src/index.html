@@ -7804,15 +7804,19 @@
     }
 
     #dossiersView,
-    body[data-theme] #dossiersView,
+    body[data-theme] #dossiersView {
+      background: #202124;
+      background-color: #202124;
+    }
+
     .sidebar-top,
     .nav-list,
     .sidebar-footer,
     body[data-theme] .sidebar-top,
     body[data-theme] .nav-list,
     body[data-theme] .sidebar-footer {
-      background: #202124;
-      background-color: #202124;
+      background: #17181b;
+      background-color: #17181b;
     }
 
     .dossier-doc,
@@ -10245,6 +10249,7 @@ const state = {
   freshBatch: null,
   session: null,
   connections: [],
+  idiCoreUserApiKey: "",
   exportResult: null,
   rows: [],
   filteredRows: [],
@@ -10308,6 +10313,7 @@ const state = {
   idiImports: {},
   contactReviews: {},
   documentFiles: {},
+  closingFieldValues: {},
   closingExportState: {},
   documentActionModal: {
     open: false,
@@ -10391,8 +10397,10 @@ const dealStatusLabelStateKey = "heirright:deal-status-labels";
 const crmImportStateKey = "heirright:crm-imported-estates";
 const sourceCaptureStateKey = "heirright:source-capture-state";
 const idiImportStateKey = "heirright:idi-asset-imports";
+const idiCoreUserApiKeyKey = "heirright:idi-core-user-api-key";
 const contactReviewStateKey = "heirright:contact-review-state";
 const documentFilesStateKey = "heirright:document-files-state";
+const closingFieldValuesStateKey = "heirright:closing-field-values";
 const closingExportStateKey = "heirright:closing-export-state";
 const columnOrderStateKey = "heirright:column-order-state";
 const searchHistoryStateKey = "heirright:search-history-state";
@@ -10413,6 +10421,7 @@ const serverBackedStateKeys = new Set([
   idiImportStateKey,
   contactReviewStateKey,
   documentFilesStateKey,
+  closingFieldValuesStateKey,
   closingExportStateKey,
   outreachWorkspaceKey
 ]);
@@ -10891,6 +10900,64 @@ function storageSetItem(key, value) {
   persistServerState(key, text);
 }
 
+function privateStorageGetItem(key) {
+  try {
+    const store = window.localStorage;
+    if (store && typeof store.getItem === "function") {
+      const stored = store.getItem(key);
+      if (stored !== null) return stored;
+    }
+  } catch {}
+  try {
+    const store = window.sessionStorage;
+    if (store && typeof store.getItem === "function") {
+      const stored = store.getItem(key);
+      if (stored !== null) return stored;
+    }
+  } catch {}
+  return "";
+}
+
+function privateStorageSetItem(key, value) {
+  const text = String(value ?? "");
+  try {
+    const store = window.localStorage;
+    if (store && typeof store.setItem === "function" && typeof store.removeItem === "function") {
+      if (text) store.setItem(key, text);
+      else store.removeItem(key);
+      return;
+    }
+  } catch {}
+  try {
+    const store = window.sessionStorage;
+    if (store && typeof store.setItem === "function" && typeof store.removeItem === "function") {
+      if (text) store.setItem(key, text);
+      else store.removeItem(key);
+    }
+  } catch {}
+}
+
+function loadIdiCoreUserApiKey() {
+  state.idiCoreUserApiKey = privateStorageGetItem(idiCoreUserApiKeyKey).trim();
+}
+
+function persistIdiCoreUserApiKey(value = "", { announce = false } = {}) {
+  const previous = state.idiCoreUserApiKey;
+  const next = String(value || "").trim();
+  state.idiCoreUserApiKey = next;
+  privateStorageSetItem(idiCoreUserApiKeyKey, next);
+  if (announce && previous !== next) {
+    addShellEvent(
+      next ? "Personal IDI key saved" : "Personal IDI key cleared",
+      next
+        ? "Live IDI runs from this browser will use your key. The team default stays unchanged."
+        : "Live IDI runs from this browser will use the team default when it is configured.",
+      next ? "review" : "ready",
+      false
+    );
+  }
+}
+
 function restoreObjectFromStorage(key, fallback = {}) {
   try {
     const stored = JSON.parse(storageGetItem(key) ?? "null");
@@ -10908,6 +10975,10 @@ function persistAssetDiscoveryState() {
 
 function persistDocumentFiles() {
   storageSetItem(documentFilesStateKey, JSON.stringify(state.documentFiles));
+}
+
+function persistClosingFieldValues() {
+  storageSetItem(closingFieldValuesStateKey, JSON.stringify(state.closingFieldValues));
 }
 
 function persistClosingExportState() {
@@ -10969,6 +11040,7 @@ function loadAssetDiscoveryState() {
   state.idiImports = restoreObjectFromStorage(idiImportStateKey, {});
   state.contactReviews = restoreObjectFromStorage(contactReviewStateKey, {});
   state.documentFiles = restoreObjectFromStorage(documentFilesStateKey, {});
+  state.closingFieldValues = restoreObjectFromStorage(closingFieldValuesStateKey, {});
   state.closingExportState = restoreObjectFromStorage(closingExportStateKey, {});
   const storedColumnOrder = restoreObjectFromStorage(columnOrderStateKey, {});
   state.columnOrder = {
@@ -11127,6 +11199,10 @@ function applyServerBackedStateValue(key, value) {
   }
   if (key === documentFilesStateKey) {
     state.documentFiles = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    return true;
+  }
+  if (key === closingFieldValuesStateKey) {
+    state.closingFieldValues = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
     return true;
   }
   if (key === closingExportStateKey) {
@@ -12607,6 +12683,7 @@ function loadSavedState() {
   loadDealStatuses();
   loadCrmImports();
   loadAssetDiscoveryState();
+  loadIdiCoreUserApiKey();
   loadSearchHistory();
   loadShellSettings();
   loadDripSettings();
@@ -13664,6 +13741,38 @@ function queueItems() {
   }));
 }
 
+function closingFieldRecord(row = selectedRow(), key = "") {
+  const estateKey = assetDiscoveryKey(row);
+  const record = state.closingFieldValues?.[estateKey] ?? {};
+  const value = record?.[key];
+  if (value && typeof value === "object" && !Array.isArray(value)) return value;
+  if (typeof value === "string") return { value, note: "", savedAt: "" };
+  return { value: "", note: "", savedAt: "" };
+}
+
+function closingFieldOverrideValue(row = selectedRow(), key = "") {
+  return String(closingFieldRecord(row, key).value || "").trim();
+}
+
+function setClosingFieldOverride(row = selectedRow(), key = "", value = "", note = "") {
+  if (!row || !key) return;
+  const estateKey = assetDiscoveryKey(row);
+  state.closingFieldValues[estateKey] = {
+    ...(state.closingFieldValues[estateKey] ?? {}),
+    [key]: {
+      value: String(value || "").trim(),
+      note: String(note || "").trim(),
+      savedAt: isoNow(),
+      savedBy: state.session?.user?.email || "team"
+    }
+  };
+  persistClosingFieldValues();
+}
+
+function closingResolvedValue(row = selectedRow(), key = "", inferred = "") {
+  return closingFieldOverrideValue(row, key) || inferred;
+}
+
 function closingRegistryEntry(key, label, value, { fallback = "Needs review", resolved } = {}) {
   const display = cleanDisplayValue(value || fallback);
   const autoResolved = Boolean(value) && !/needs review|missing|blocked|unknown|confirm|required/i.test(display);
@@ -13692,30 +13801,30 @@ function closingVariableRegistry(row = selectedRow(), dossier = dossierForRow(ro
   const perHeirAmount = offer.equityPerHeir ? moneyClaimValue(offer.equityPerHeir) : "";
   const taxesDue = report?.taxStatus?.amountDue ? moneyClaimValue(report.taxStatus.amountDue) : report?.taxSummary || dossier?.taxHistory?.status || "";
   return [
-    closingRegistryEntry("estate_name", "Estate / lead file", dossier?.summary?.estateName || row?.leadName || row?.title),
-    closingRegistryEntry("deceased_name", "Deceased / owner name", deceasedName),
-    closingRegistryEntry("deceased_dob_dod", "DOB / DOD", "", { fallback: "Needs vital, obituary, probate, or memorial source review" }),
-    closingRegistryEntry("property_address", "Property address", row?.address || dossier?.property?.address?.value),
-    closingRegistryEntry("county", "County", formatCountyName(row?.county || dossier?.property?.county?.value || "Miami-Dade County, FL")),
-    closingRegistryEntry("folio", "Folio / parcel", row?.parcel || dossier?.property?.parcelId?.value || row?.folio),
-    closingRegistryEntry("seller_heirs", "Seller / heir signers", sellerNames, { fallback: "Needs accepted signer contacts from Contact Review" }),
-    closingRegistryEntry("heir_relationships", "Heir relationships", contactRelationships, { fallback: "Needs family-tree relationship review" }),
-    closingRegistryEntry("buyer_entity", "Buyer / assignee entity", "Confirm HeirRight, LLC vs Somi Home Buyers, LLC", { resolved: false }),
-    closingRegistryEntry("representative", "Representative / attorney-in-fact", primaryContacts[0]?.name || "", { fallback: "Needs representative or attorney-in-fact" }),
-    closingRegistryEntry("trust_name", "Land trust name", "", { fallback: "Needs title-approved trust name" }),
-    closingRegistryEntry("trustee", "Trustee", "", { fallback: "Needs trustee" }),
-    closingRegistryEntry("title_company", "Title company / closer", "", { fallback: "Needs title-company contact" }),
-    closingRegistryEntry("offer_amount", "Offer amount", offerAmount),
-    closingRegistryEntry("assignment_amount", "Assignment amount", offerAmount),
-    closingRegistryEntry("per_heir_amount", "Per-heir amount", perHeirAmount),
-    closingRegistryEntry("tax_paid_by", "Last tax paid by", taxPaidBy, { fallback: "Needs Tax Collector receipt payer" }),
-    closingRegistryEntry("taxes_due", "Taxes due / reimbursement amount", taxesDue),
-    closingRegistryEntry("title_evidence", "Title / deed evidence", titleEvidence, { fallback: "Needs deed instrument and tax receipt evidence" }),
-    closingRegistryEntry("probate_case", "Probate / court case", probateCase, { fallback: "Needs probate or official-record case reference" }),
-    closingRegistryEntry("bank_transfer", "Bank transfer instructions", "", { fallback: "Needs seller-approved disbursement instructions" }),
-    closingRegistryEntry("closing_date", "Closing / signing date", "", { fallback: "Needs approved closing date" }),
-    closingRegistryEntry("name_variants", "Name variants", "", { fallback: "Needs same-name review notes" }),
-    closingRegistryEntry("claim_instructions", "Claim instructions", "", { fallback: "Needs court or agency claim route" })
+    closingRegistryEntry("estate_name", "Estate / lead file", closingResolvedValue(row, "estate_name", dossier?.summary?.estateName || row?.leadName || row?.title)),
+    closingRegistryEntry("deceased_name", "Deceased / owner name", closingResolvedValue(row, "deceased_name", deceasedName)),
+    closingRegistryEntry("deceased_dob_dod", "DOB / DOD", closingResolvedValue(row, "deceased_dob_dod", ""), { fallback: "Needs vital, obituary, probate, or memorial source review" }),
+    closingRegistryEntry("property_address", "Property address", closingResolvedValue(row, "property_address", row?.address || dossier?.property?.address?.value)),
+    closingRegistryEntry("county", "County", closingResolvedValue(row, "county", formatCountyName(row?.county || dossier?.property?.county?.value || "Miami-Dade County, FL"))),
+    closingRegistryEntry("folio", "Folio / parcel", closingResolvedValue(row, "folio", row?.parcel || dossier?.property?.parcelId?.value || row?.folio)),
+    closingRegistryEntry("seller_heirs", "Seller / heir signers", closingResolvedValue(row, "seller_heirs", sellerNames), { fallback: "Needs accepted signer contacts from Contact Review" }),
+    closingRegistryEntry("heir_relationships", "Heir relationships", closingResolvedValue(row, "heir_relationships", contactRelationships), { fallback: "Needs family-tree relationship review" }),
+    closingRegistryEntry("buyer_entity", "Buyer / assignee entity", closingResolvedValue(row, "buyer_entity", ""), { fallback: "Confirm HeirRight, LLC vs Somi Home Buyers, LLC" }),
+    closingRegistryEntry("representative", "Representative / attorney-in-fact", closingResolvedValue(row, "representative", primaryContacts[0]?.name || ""), { fallback: "Needs representative or attorney-in-fact" }),
+    closingRegistryEntry("trust_name", "Land trust name", closingResolvedValue(row, "trust_name", ""), { fallback: "Needs title-approved trust name" }),
+    closingRegistryEntry("trustee", "Trustee", closingResolvedValue(row, "trustee", ""), { fallback: "Needs trustee" }),
+    closingRegistryEntry("title_company", "Title company / closer", closingResolvedValue(row, "title_company", ""), { fallback: "Needs title-company contact" }),
+    closingRegistryEntry("offer_amount", "Offer amount", closingResolvedValue(row, "offer_amount", offerAmount)),
+    closingRegistryEntry("assignment_amount", "Assignment amount", closingResolvedValue(row, "assignment_amount", offerAmount)),
+    closingRegistryEntry("per_heir_amount", "Per-heir amount", closingResolvedValue(row, "per_heir_amount", perHeirAmount)),
+    closingRegistryEntry("tax_paid_by", "Last tax paid by", closingResolvedValue(row, "tax_paid_by", taxPaidBy), { fallback: "Needs Tax Collector receipt payer" }),
+    closingRegistryEntry("taxes_due", "Taxes due / reimbursement amount", closingResolvedValue(row, "taxes_due", taxesDue)),
+    closingRegistryEntry("title_evidence", "Title / deed evidence", closingResolvedValue(row, "title_evidence", titleEvidence), { fallback: "Needs deed instrument and tax receipt evidence" }),
+    closingRegistryEntry("probate_case", "Probate / court case", closingResolvedValue(row, "probate_case", probateCase), { fallback: "Needs probate or official-record case reference" }),
+    closingRegistryEntry("bank_transfer", "Bank transfer instructions", closingResolvedValue(row, "bank_transfer", ""), { fallback: "Needs seller-approved disbursement instructions" }),
+    closingRegistryEntry("closing_date", "Closing / signing date", closingResolvedValue(row, "closing_date", ""), { fallback: "Needs approved closing date" }),
+    closingRegistryEntry("name_variants", "Name variants", closingResolvedValue(row, "name_variants", ""), { fallback: "Needs same-name review notes" }),
+    closingRegistryEntry("claim_instructions", "Claim instructions", closingResolvedValue(row, "claim_instructions", ""), { fallback: "Needs court or agency claim route" })
   ];
 }
 
@@ -14050,9 +14159,11 @@ function docPrepFlowIsComplete(row = selectedRow(), flowId = state.activeDocPrep
   if (!row) return false;
   const phases = docPrepPhases(flowId);
   const phaseComplete = phases.length > 0 && phases.every((phase) => phaseIsComplete(phase.id, row, flowId));
-  const stats = documentPrepStats(row, dossierForRow(row), flowId);
+  const dossier = dossierForRow(row);
+  const stats = documentPrepStats(row, dossier, flowId);
   const documentsComplete = stats.total > 0 && stats.missing === 0;
-  return phaseComplete && documentsComplete;
+  const closingFieldsComplete = flowId !== "closing-docs" || closingTemplateFamilies.every((template) => closingTemplateBlockers(template, row, dossier).length === 0);
+  return phaseComplete && documentsComplete && closingFieldsComplete;
 }
 
 function docPrepMainRunLabel(row = selectedRow(), flowId = "discovery") {
@@ -14077,6 +14188,59 @@ function docPrepRunControlsHtml(row = selectedRow(), flowId = state.activeDocPre
       >${escapeHtml(docPrepMainRunLabel(row, flow.id))}</button>
     </div>
   `;
+}
+
+function docPrepPhaseBlocker(row = selectedRow(), flowId = state.activeDocPrepFlow, phase = currentDiscoveryPhase(flowId, row)) {
+  if (!row || !phase) return "";
+  const dossier = dossierForRow(row);
+  if (flowId === "discovery") {
+    if (phase.id === "tax-receipt" && !assetPhaseComplete(row, "tax-receipt")) return "Tax receipt needs payer, receipt link, or saved source evidence before Discovery can continue.";
+    if (phase.id === "deed" && !assetPhaseComplete(row, "deed")) return "Latest deed needs OR book/page, instrument, attachment, or saved Official Records evidence before Discovery can continue.";
+    if (phase.id === "obituary" && !assetPhaseComplete(row, "obituary")) return "Obituary review needs a found link/snapshot or an explicit reviewed-not-found note.";
+    if (phase.id === "idi-asset-search" && !assetPhaseComplete(row, "idi-asset-search")) return "IDI Core asset search needs a controlled live run or an approved report import before contact review.";
+    if (phase.id === "contact-review" && !assetPhaseComplete(row, "contact-review")) return "Contact review needs at least one accepted or promoted spouse, child, heir, or representative contact.";
+  }
+  if (flowId === "closing-docs") {
+    const blockers = closingTemplateFamilies.flatMap((template) => closingTemplateBlockers(template, row, dossier));
+    if (phase.id === "closing-package" && blockers.length) return `${blockers.length} required Closing Prep field${blockers.length === 1 ? "" : "s"} must be filled or marked not applicable before export.`;
+    if (phase.id === "title-clearance" && !assetPhaseComplete(row, "title-clearance")) return "Title Clearance needs deed and tax evidence from Discovery before Closing Prep can continue.";
+    if (phase.id === "seller-approval" && !assetPhaseComplete(row, "seller-approval")) return "Seller Approval needs accepted signer/contact review before Closing Prep can continue.";
+  }
+  return "";
+}
+
+function linkGeneratedDocPrepPackets(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  if (!row) return 0;
+  const flow = docPrepFlow(flowId);
+  const flowState = docPrepFlowState(row, flow.id);
+  let linked = 0;
+  docsForFlow(row, dossierForRow(row), flow.id).forEach((doc) => {
+    const storageKey = documentStorageKey(row, doc.id);
+    if (state.documentFiles[storageKey]) return;
+    state.documentFiles[storageKey] = {
+      id: doc.id,
+      name: `${doc.title} - ${docPrepOwnerLabel(row)} - ${flow.shortTitle}.pdf`,
+      size: Math.max(1024, String(doc.body || "").length),
+      type: "application/pdf",
+      source: "s29-generated-docprep-packet",
+      version: 1,
+      linkedAt: Date.now(),
+      linkedBy: state.session?.user?.email || "team"
+    };
+    linked += 1;
+  });
+  flowState.generatedPackets = [
+    {
+      flowId: flow.id,
+      generatedAt: isoNow(),
+      artifact: "single_pdf",
+      documents: docsForFlow(row, dossierForRow(row), flow.id).length
+    },
+    ...(flowState.generatedPackets || [])
+  ].slice(0, 25);
+  persistDocumentFiles();
+  persistDocPrepEstateState();
+  return linked;
 }
 
 function closingGoogleExportControlHtml(row = selectedRow()) {
@@ -14120,11 +14284,12 @@ function finishFullDiscoveryRun(row = selectedRow(), flowId = "discovery") {
   const key = docPrepRunKey(row, flowId);
   docPrepRunTimers.delete(key);
   setDocPrepRunState(row, flowId, "");
+  const linkedCount = linkGeneratedDocPrepPackets(row, flowId);
   const finalIndex = Math.max(0, docPrepPhases(flowId).length - 1);
   setDocPrepPhaseIndex(row, flowId, finalIndex, { persist: false });
   persistDiscoveryState();
   document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} ${flow.shortTitle} run complete.`;
-  addShellEvent(`${flow.shortTitle} complete`, `${docPrepEstateLabel(row)} completed the ${flow.shortTitle} run. Supporting phases are ready to review.`, "ready", false);
+  addShellEvent(`${flow.shortTitle} complete`, `${docPrepEstateLabel(row)} completed the ${flow.shortTitle} run. ${linkedCount} generated packet section${linkedCount === 1 ? "" : "s"} were linked for review.`, "ready", false);
   renderDocPrepRunSurfaces();
 }
 
@@ -14144,6 +14309,14 @@ function scheduleNextFullDiscoveryPhase(row = selectedRow(), flowId = state.acti
   const timer = window.setTimeout(() => {
     docPrepRunTimers.delete(key);
     if (!docPrepMainRunActive(row, flowId)) return;
+    const blocker = docPrepPhaseBlocker(row, flowId, phase);
+    if (blocker) {
+      setDocPrepRunState(row, flowId, "");
+      document.getElementById("topStatus").textContent = blocker;
+      addShellEvent(`${phase.label} needs review`, blocker, "blocked", true);
+      renderDocPrepRunSurfaces();
+      return;
+    }
     markDocPrepPhaseComplete(row, flowId, phase.id);
     addShellEvent(`${phase.label} complete`, `${phase.summary} ${docPrepFlow(flowId).shortTitle} continued automatically.`, "ready", false);
     scheduleNextFullDiscoveryPhase(row, flowId, phaseIndex + 1);
@@ -14413,6 +14586,7 @@ function defaultClosingExportRecordForRow(row) {
 }
 
 function ensureCompletedDocPrepProofFile() {
+  if (storageGetItem("heirright:allow-legacy-s28-proof-seed") !== "true") return;
   const row = completedDocPrepProofRow();
   if (!row) return;
   const key = assetDiscoveryKey(row);
@@ -14735,7 +14909,7 @@ function documentNeedsHumanInput(docId, action = "add") {
   const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === docId) ?? selectedDossierDocument(row);
   const workflow = doc ? dossierDocWorkflowState(doc) : null;
   if (action === "replace") return true;
-  return Boolean(workflow?.state === "blocked" || /blocked|locked/i.test(doc?.status || ""));
+  return Boolean(workflow?.state !== "complete" || /blocked|locked/i.test(doc?.status || ""));
 }
 
 function stopDocumentAutomation(docId, row = selectedRow()) {
@@ -15158,6 +15332,58 @@ function assetDiscoveryChecklistHtml(row = selectedRow()) {
   `;
 }
 
+function closingRequiredFieldInputsHtml(row = selectedRow(), dossier = dossierForRow(row)) {
+  const requiredKeys = [...new Set(closingTemplateFamilies.flatMap((template) => template.required ?? []))];
+  const variables = closingVariableMap(row, dossier);
+  const rows = requiredKeys
+    .map((key) => variables.get(key) || closingRegistryEntry(key, displayStatus(key), "", { fallback: "Needs review" }))
+    .filter((entry) => !entry.resolved)
+    .slice(0, 12);
+  if (!rows.length) {
+    return `
+      <section class="glass-card rail-card">
+        <h3>Required closing fields</h3>
+        <p class="copy">Required Closing Prep fields are either source-backed or saved by the operator. Keep final legal review before external use.</p>
+      </section>
+    `;
+  }
+  return `
+    <section class="glass-card rail-card">
+      <h3>Required closing fields</h3>
+      <p class="copy">Fill only what the Discovery file or attached deal notes cannot prove. Use “not applicable” only when the review owner confirms the field does not apply.</p>
+      <div class="asset-capture-grid">
+        ${rows.map((entry) => {
+          const record = closingFieldRecord(row, entry.key);
+          return `
+            <div class="field full">
+              <label>${escapeHtml(entry.label)}</label>
+              <input data-closing-field="${escapeHtml(entry.key)}" value="${escapeHtml(record.value || "")}" placeholder="${escapeHtml(entry.value)}">
+              <span class="field-note">${escapeHtml(record.note || "Add a value, attach support in Discovery, or write not applicable after review.")}</span>
+            </div>
+          `;
+        }).join("")}
+      </div>
+      <div class="discovery-actions">
+        <span class="copy">${escapeHtml(rows.length)} field${rows.length === 1 ? "" : "s"} blocking Closing Prep export.</span>
+        <button class="btn primary solvys-liquid-glass" type="button" data-save-closing-fields>Save Required Fields</button>
+      </div>
+    </section>
+  `;
+}
+
+function wireClosingFieldControls(content, row = selectedRow()) {
+  content.querySelector("[data-save-closing-fields]")?.addEventListener("click", () => {
+    content.querySelectorAll("[data-closing-field]").forEach((input) => {
+      const value = input.value.trim();
+      if (!value) return;
+      setClosingFieldOverride(row, input.dataset.closingField, value, "Saved from Closing Prep required-field panel.");
+    });
+    addShellEvent("Closing fields saved", "Required Closing Prep values were saved to the estate file. Legal-template language was not changed.", "ready", false);
+    renderDossiersView();
+    renderRail();
+  });
+}
+
 function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(row)) {
   const report = dossier?.completedLeadReport ?? {};
   const offer = report.offerMath ?? {};
@@ -15192,6 +15418,7 @@ function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(r
       </div>
       ${googleUrl ? `<a class="text-link" href="${escapeHtml(googleUrl)}" target="_blank" rel="noopener" data-google-doc-link>${escapeHtml(googleReady ? "Open Google Doc" : "Review Google Doc access")}</a>` : ""}
     </section>
+    ${closingRequiredFieldInputsHtml(row, dossier)}
     <section class="glass-card rail-card">
       <h3>Closing template families</h3>
       <p class="copy">The generated packet maps every reviewed template family to estate facts and keeps missing fields visible before export.</p>
@@ -15226,13 +15453,17 @@ function assetCaptureFormHtml(row = selectedRow()) {
 
 function idiImportPanelHtml(row = selectedRow()) {
   const stored = idiImportForRow(row);
+  const idiConnection = connectionByName("IDI Core");
+  const idiCredential = idiCoreCredentialStatus(idiConnection);
+  const idiPortalUrl = idiConnection?.portal?.searchUrl || "https://idicore.com/search/PropertySearch";
   return `
     <section class="glass-card rail-card">
       <h3>IDI asset search</h3>
       <p class="copy">Run IDI Core once by asset address, then import the report text or attachment metadata. Duplicate paid runs are blocked unless admin override includes a reason.</p>
       ${stored ? `
         <ul class="mini-list">
-          <li><strong>Status</strong><span>${escapeHtml(stored.duplicateGuard === "admin_override_recorded" ? "Imported with admin override" : "Imported once")}</span></li>
+          <li><strong>Status</strong><span>${escapeHtml(stored.mode === "live_idi_core" ? "Live IDI Core run completed" : stored.duplicateGuard === "admin_override_recorded" ? "Imported with admin override" : "Imported once")}</span></li>
+          <li><strong>Paid run</strong><span>${escapeHtml(stored.paidRun ? "Yes - controlled proof" : "No - report import only")}</span></li>
           <li><strong>Lock key</strong><span>${escapeHtml(stored.lockKey ?? assetDiscoveryKey(row))}</span></li>
           <li><strong>Contacts found</strong><span>${escapeHtml(stored.candidates?.length ?? 0)} candidates, ${escapeHtml(acceptedContactCandidates(row).length)} accepted</span></li>
         </ul>
@@ -15240,12 +15471,21 @@ function idiImportPanelHtml(row = selectedRow()) {
       <div class="idi-import-grid">
         <div class="field"><label>Report label</label><input data-idi-report-label value="${escapeHtml(stored?.attachment?.label ?? "IDI expanded asset search")}"></div>
         <div class="field"><label>Source link / file</label><input data-idi-report-source value="${escapeHtml(stored?.attachment?.sourceUrl ?? stored?.attachment?.fileName ?? "")}" placeholder="IDI report PDF, CSV, or source note"></div>
+        <div class="field full">
+          <label>Personal IDI access key</label>
+          <input data-idi-user-api-key type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(state.idiCoreUserApiKey)}" placeholder="Leave blank to use team default">
+          <span class="copy">${escapeHtml(idiCredential.copy)}</span>
+        </div>
         <div class="field full"><label>IDI report text</label><textarea data-idi-import-text placeholder="Paste likely relatives and associates from the expanded asset report.">${escapeHtml(stored?.importedText ?? "")}</textarea></div>
         <div class="field full"><label>Admin override reason</label><input data-idi-admin-reason value="" placeholder="Only required if replacing an existing imported IDI asset search"></div>
       </div>
       <div class="discovery-actions">
-        <span class="copy">Raw IDI import does not raise the score until contacts are accepted.</span>
-        <button class="btn primary solvys-liquid-glass" type="button" data-import-idi>Import IDI</button>
+        <span class="copy">Raw IDI import does not raise the score until contacts are accepted. ${escapeHtml(idiCredential.label)}.</span>
+        <div>
+          <a class="btn" href="${escapeHtml(idiPortalUrl)}" target="_blank" rel="noreferrer">Open idiCORE</a>
+          <button class="btn" type="button" data-run-live-idi>Run live IDI Core</button>
+          <button class="btn primary solvys-liquid-glass" type="button" data-import-idi>Import approved report</button>
+        </div>
       </div>
     </section>
   `;
@@ -15325,6 +15565,36 @@ function collectSourceCapturePayload(root, row) {
   return payload;
 }
 
+function idiCoreCredentialStatus(connection = connectionByName("IDI Core")) {
+  const api = connection?.api || {};
+  if (state.idiCoreUserApiKey) {
+    return {
+      tone: "review",
+      label: "Your key",
+      copy: "This browser will use your pasted IDI key for live runs. The team default stays unchanged."
+    };
+  }
+  if (api.sharedDefaultConfigured || api.accessConfigured) {
+    return {
+      tone: "ready",
+      label: "Team default",
+      copy: "Live IDI runs use the shared team key unless you paste your own."
+    };
+  }
+  if (api.endpointConfigured && api.userOverrideAllowed) {
+    return {
+      tone: "review",
+      label: "Personal key optional",
+      copy: "Paste your own IDI key for this browser, or leave blank once the team default is added."
+    };
+  }
+  return {
+    tone: "blocked",
+    label: "Key not ready",
+    copy: "Leave blank for the team default. A vendor endpoint is still required before live API runs can execute."
+  };
+}
+
 async function postJson(url, payload) {
   const response = await fetch(url, {
     method: "POST",
@@ -15333,7 +15603,7 @@ async function postJson(url, payload) {
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = json.error || json.message || `Request failed with ${response.status}`;
+    const message = json.message || json.blockers?.[0] || json.error || `Request failed with ${response.status}`;
     throw new Error(message);
   }
   return json;
@@ -15349,6 +15619,11 @@ function rerenderAssetDiscoverySurface() {
 
 function wireAssetDiscoveryControls(content, row = selectedRow()) {
   if (!content || !row) return;
+  content.querySelector("[data-idi-user-api-key]")?.addEventListener("change", (event) => {
+    persistIdiCoreUserApiKey(event.target.value, { announce: true });
+    if (state.activeView === "settings") renderSettingsView();
+  });
+
   content.querySelector("[data-save-source-capture]")?.addEventListener("click", async (event) => {
     event.preventDefault();
     const payload = collectSourceCapturePayload(content, row);
@@ -15413,6 +15688,60 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
       addShellEvent("IDI asset search imported", `${candidates.length} contact candidate${candidates.length === 1 ? "" : "s"} are ready for team review. Score will update after acceptance.`, "review", true);
     } catch (error) {
       addShellEvent("IDI import blocked", error instanceof Error ? error.message : "The imported report could not be saved.", "blocked", true);
+    }
+    rerenderAssetDiscoverySurface();
+  });
+
+  content.querySelector("[data-run-live-idi]")?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    const key = assetDiscoveryKey(row);
+    const overrideReason = content.querySelector("[data-idi-admin-reason]")?.value.trim() ?? "";
+    const personalIdiKey = content.querySelector("[data-idi-user-api-key]")?.value.trim() ?? state.idiCoreUserApiKey;
+    persistIdiCoreUserApiKey(personalIdiKey);
+    if (state.idiImports[key] && !overrideReason) {
+      addShellEvent("Duplicate IDI run blocked", "This estate already has one IDI asset-search record. Add an admin override reason before spending another paid lookup.", "blocked", true);
+      return;
+    }
+    const payload = {
+      assetKey: key,
+      leadId: row.id,
+      ownerName: row.owner || row.title,
+      estateName: row.leadName || row.title,
+      propertyAddress: row.address,
+      address: row.address,
+      county: row.county || "miami-dade",
+      provider: "idi",
+      runMode: "live_idi_core",
+      paidRun: true,
+      liveRunApproved: true,
+      idiCoreApiKey: personalIdiKey || undefined,
+      apiKeySource: personalIdiKey ? "user_override" : "shared_default",
+      adminOverrideReason: overrideReason,
+      reason: "S29 controlled Discovery proof from Doc Prep",
+      attachment: {
+        label: "IDI Core live asset search",
+        fileKind: "provider-run",
+        capturedAt: new Date().toISOString(),
+        capturedBy: state.session?.user?.email || "team",
+        reviewFlags: ["IDI_CORE_LIVE_RUN_REVIEW_REQUIRED"]
+      }
+    };
+    try {
+      const result = await postJson("/api/discovery/idi-asset-search/import", payload);
+      const liveCandidates = Array.isArray(result.candidates) && result.candidates.length
+        ? result.candidates
+        : parseIdiImportCandidates(row, result.importedText || "");
+      state.idiImports[key] = {
+        ...result,
+        candidates: liveCandidates,
+        attachment: result.attachment || payload.attachment,
+        importedText: result.importedText || "",
+        duplicateGuard: overrideReason ? "admin_override_recorded" : result.duplicateGuard || "first_paid_run_only",
+        importedAt: Date.now()
+      };
+      addShellEvent("Live IDI Core completed", `${liveCandidates.length} contact candidate${liveCandidates.length === 1 ? "" : "s"} are ready for review from the controlled paid search.`, "ready", true);
+    } catch (error) {
+      addShellEvent("Live IDI Core blocked", error instanceof Error ? error.message : "Live IDI Core could not run. Import an approved report or configure vendor access.", "blocked", true);
     }
     rerenderAssetDiscoverySurface();
   });
@@ -16216,6 +16545,15 @@ async function exportClosingDocsToGoogle() {
     return;
   }
   const dossier = dossierForRow(row);
+  const fieldBlockers = closingTemplateFamilies.flatMap((template) => closingTemplateBlockers(template, row, dossier).map((entry) => `${template.title}: ${entry.label}`));
+  if (fieldBlockers.length) {
+    document.getElementById("topStatus").textContent = `${fieldBlockers.length} required Closing Prep field${fieldBlockers.length === 1 ? "" : "s"} must be filled before export.`;
+    addShellEvent("Closing Prep export blocked", `${fieldBlockers.slice(0, 3).join("; ")}${fieldBlockers.length > 3 ? "..." : ""}`, "blocked", true);
+    state.activeDocPrepFlow = "closing-docs";
+    renderDossiersView();
+    renderRail();
+    return;
+  }
   const notes = state.discoveryNotes?.[assetDiscoveryKey(row)] || "";
   const activeUserEmail = String(state.session?.user?.email || "").trim().toLowerCase();
   const shareWithEmails = Array.from(new Set([
@@ -16237,6 +16575,7 @@ async function exportClosingDocsToGoogle() {
         source: "operator_ui"
       },
       notes,
+      closingFieldValues: state.closingFieldValues?.[assetDiscoveryKey(row)] || {},
       workspaceDestination: "heirright",
       workspaceDestinationEmail: activeUserEmail || "sam@heirright.com",
       shareWithEmails,
@@ -16800,6 +17139,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   });
   content.querySelector("[data-export-closing-google]")?.addEventListener("click", exportClosingDocsToGoogle);
   wireAssetDiscoveryControls(content, row);
+  wireClosingFieldControls(content, row);
   content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
     input.addEventListener("change", (event) => {
       setDocPrepPreference(event.target.dataset.discoveryPreference, event.target.checked, row, flow.id);
@@ -17808,7 +18148,7 @@ function renderQueueView() {
 }
 
 function adminErrorItems() {
-  const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "Activepieces", "Linear Support", "Leads Engine Access"];
+  const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "IDI Core", "Activepieces", "Linear Support", "Leads Engine Access"];
   const actionItems = state.actionErrorLog.map((item) => ({ ...item, ready: false }));
   const loggedActionTitles = new Set(actionItems.map((item) => item.title));
   const blockedEventItems = state.shellEvents
@@ -17830,11 +18170,12 @@ function adminErrorItems() {
   const connectionItems = connectionNames.map((name) => {
     const connection = connectionByName(name);
     const ok = Boolean(connection?.ok && connection?.mode === "live");
+    const tone = connectionTone(connection);
     return {
       id: `connection-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
       title: `${name} setup`,
       copy: operatorConnectionMessage(connection, name),
-      severity: ok ? "ready" : "blocked",
+      severity: ok ? "ready" : tone === "review" ? "review" : "blocked",
       ready: ok,
       payload: {
         source: "admin-error-log",
@@ -18173,6 +18514,12 @@ function integrationOnboardingCardHtml(kind) {
       action: "Review source status",
       steps: ["Run Miami-Dade public-source fetch", "Capture source facts into Discovery", "Keep paid-source work approval-gated"]
     },
+    idi: {
+      name: "IDI Core",
+      title: "IDI Core",
+      action: "Open idiCORE",
+      steps: ["Use the approved idiCORE account or the shared team key", "Paste a personal key only for your own approved runs", "Import or review contacts before Discovery can use them"]
+    },
     leads: {
       name: "Leads Engine Access",
       title: "Leads Engine Access",
@@ -18182,13 +18529,25 @@ function integrationOnboardingCardHtml(kind) {
   }[kind] ?? null;
   if (!meta) return "";
   const isGoogle = kind === "google";
+  const isIdi = kind === "idi";
   const connection = connectionByName(meta.name);
   const connected = Boolean(connection?.ok && connection?.mode === "live");
   const sessionReady = Boolean(state.session?.auth?.configured);
   const actionLabel = connected ? "Connected" : meta.action;
   const statusLabel = connected ? "Live" : connection?.mode ? displayStatus(connection.mode) : "Setup required";
   const steps = meta.steps.map((step, index) => index === 0 && connected ? `${meta.title} setup present` : step);
-  const action = isGoogle && sessionReady
+  const idiPortalUrl = connection?.portal?.searchUrl || "https://idicore.com/search/PropertySearch";
+  const idiCredential = isIdi ? idiCoreCredentialStatus(connection) : null;
+  const idiCredentialControl = isIdi ? `
+    <div class="field">
+      <label>Personal IDI access key</label>
+      <input data-idi-settings-api-key type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(state.idiCoreUserApiKey)}" placeholder="Leave blank to use team default">
+      <span class="copy">${escapeHtml(idiCredential.copy)}</span>
+    </div>
+  ` : "";
+  const action = isIdi && connection?.configuredMode === "operator_portal"
+    ? `<a class="btn primary solvys-liquid-glass" href="${escapeHtml(idiPortalUrl)}" target="_blank" rel="noreferrer">Open idiCORE</a>`
+    : isGoogle && sessionReady
     ? `<a class="btn primary solvys-liquid-glass" href="/auth/login?integration=google-workspace">${actionLabel}</a>`
     : `<button class="btn ${connected ? "" : "primary solvys-liquid-glass"}" type="button" data-integration-onboarding="${escapeHtml(kind)}" ${connected ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>`;
   return `
@@ -18204,6 +18563,7 @@ function integrationOnboardingCardHtml(kind) {
       <ul class="integration-steps">
         ${steps.map((step) => `<li><span>${escapeHtml(step)}</span></li>`).join("")}
       </ul>
+      ${idiCredentialControl}
       <div class="integration-card-actions">${action}</div>
     </article>
   `;
@@ -18222,9 +18582,11 @@ function handleIntegrationOnboarding(kind) {
             ? "Linear Support"
             : kind === "web"
               ? "Web Search"
-              : kind === "leads"
-                ? "Leads Engine Access"
-                : "Podio";
+              : kind === "idi"
+                ? "IDI Core"
+                : kind === "leads"
+                  ? "Leads Engine Access"
+                  : "Podio";
   const isGoogle = kind === "google";
   const connection = connectionByName(name);
   if (isGoogle && !state.session?.auth?.configured) {
@@ -18239,7 +18601,7 @@ function handleIntegrationOnboarding(kind) {
 }
 
 function integrationStatusRowsHtml() {
-  const names = ["Podio", "Google", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
+  const names = ["Podio", "Google", "IDI Core", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
   const items = names.map((name) => {
     const connection = connectionByName(name);
     const connected = Boolean(connection?.ok && connection?.mode === "live");
@@ -18294,6 +18656,7 @@ function renderSettingsView() {
             <div class="integration-onboarding settings-integrations-list">
               ${integrationOnboardingCardHtml("podio")}
               ${integrationOnboardingCardHtml("google")}
+              ${integrationOnboardingCardHtml("idi")}
               ${integrationOnboardingCardHtml("activepieces")}
               ${integrationOnboardingCardHtml("linear")}
               ${integrationOnboardingCardHtml("web")}
@@ -18330,6 +18693,13 @@ function renderSettingsView() {
   });
   target.querySelectorAll("[data-integration-onboarding]").forEach((button) => {
     button.addEventListener("click", () => handleIntegrationOnboarding(button.dataset.integrationOnboarding));
+  });
+  target.querySelectorAll("[data-idi-settings-api-key]").forEach((input) => {
+    input.addEventListener("input", () => persistIdiCoreUserApiKey(input.value));
+    input.addEventListener("change", () => {
+      persistIdiCoreUserApiKey(input.value, { announce: true });
+      renderSettingsView();
+    });
   });
   target.querySelector("#settingsSignalWeight")?.addEventListener("input", (event) => {
     state.shellSettings.signalWeight = event.target.value;
@@ -18914,6 +19284,14 @@ function completeDiscoveryPhase() {
   const flow = docPrepFlow();
   const row = selectedRow();
   const phase = currentDiscoveryPhase(flow.id, row);
+  const blocker = docPrepPhaseBlocker(row, flow.id, phase);
+  if (blocker) {
+    document.getElementById("topStatus").textContent = blocker;
+    addShellEvent(`${phase.label} needs review`, blocker, "blocked", true);
+    renderRail();
+    renderCurrentLoopView();
+    return;
+  }
   markDocPrepPhaseComplete(row, flow.id, phase.id);
   addShellEvent(`${phase.label} complete`, `${phase.summary} The team can close ${flow.label} or continue to the next phase.`, "ready", false);
   renderRail();
@@ -20082,13 +20460,14 @@ function connectionByName(name) {
 
 function operatorConnectionMessage(connection, name) {
   const raw = connection?.message ?? "";
-  const hasSetupDetail = /[A-Z0-9]+_[A-Z0-9_]+|config|credential|missing|token|field map/i.test(raw);
+  const hasSetupDetail = /[A-Z0-9]+_[A-Z0-9_]+|credential|missing|token|field map|config is missing|setup is incomplete|not configured/i.test(raw);
   if (!raw || hasSetupDetail) {
     if (name === "Podio") return "Podio is not connected yet. Keep CRM review prep-only until access, one approved sample card, and confirmation are complete.";
     if (name === "Google") return "Google Workspace export is not connected yet. Keep Docs and Sheets prep-only until destination approval is complete.";
     if (name === "Resend") return "Resend fallback is not approved yet. Keep email drafts queued in Podio and use only controlled internal test recipients after approval.";
     if (name === "SMS Gateway") return "SMS delivery is not configured yet. Keep SMS templates in the app-owned queue until a carrier or Podio-native SMS path is approved.";
     if (name === "Web Search") return "Public-source validation needs a fresh checked lead packet before promotion.";
+    if (name === "IDI Core") return "idiCORE portal access is not confirmed yet. Keep Discovery blocked until an approved operator search is imported or vendor API access is provisioned.";
     if (name === "Activepieces") return "Activepieces is not configured yet. Outreach will use the first-party fallback package and stay queued for Podio review.";
     if (name === "Linear Support") return "Linear support routing is not configured yet. Admin tickets stay local until the Worker has API access and a team route.";
     if (name === "Leads Engine Access") return "Leads engine access changes are captured in-app until support routing or the access webhook is configured.";
@@ -20767,6 +21146,8 @@ async function chooseExportRoute(route, source = null) {
         controlledTest: isControlledTest,
         batch: isBatch,
         leadIds: batchRows.map((row) => row.id),
+        flow: state.activeDocPrepFlow,
+        expectedArtifact: "single_pdf",
       }),
     });
     const result = await response.json();
@@ -20787,7 +21168,7 @@ async function chooseExportRoute(route, source = null) {
       : result.ok
         ? {
             title: exportSuccessActivityTitle(),
-            markdown: exportSuccessActivityCopy(meta.label),
+            markdown: `${exportSuccessActivityCopy(meta.label)} Single PDF artifact: ${result.artifact?.url || "prepared by export route"}.`,
             updatedAt: Date.now()
           }
         : {
@@ -20801,8 +21182,8 @@ async function chooseExportRoute(route, source = null) {
       ? "Podio sample card delivered and readback confirmed."
       : result.ok
         ? isBatch
-          ? `${checkedCount} selected leads prepared for ${meta.label} batch export review. Live writes and readback still need approval before any external record is created.`
-          : `${meta.label} export prepared for review. Live write and readback still need approval before any external record is created.`
+          ? `${checkedCount} selected leads prepared as one ${meta.label} batch PDF for review. Live writes and readback still need approval before any external record is created.`
+          : `${meta.label} export prepared as one PDF for review. Live write and readback still need approval before any external record is created.`
         : blockers.length
           ? `${meta.label} export has ${blockers.length} blocker${blockers.length === 1 ? "" : "s"}.`
           : `${meta.label} export is blocked.`;

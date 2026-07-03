@@ -492,11 +492,25 @@ export interface ExportResult {
 }
 
 export interface ConnectionStatus {
-  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search" | "Activepieces" | "Linear Support" | "Leads Engine Access";
+  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search" | "IDI Core" | "Activepieces" | "Linear Support" | "Leads Engine Access";
   ok: boolean;
-  mode: "live" | "dry_run" | "blocked";
+  mode: "live" | "dry_run" | "review" | "blocked";
   message: string;
   checkedAt: string;
+  configuredMode?: "api" | "operator_portal" | "none";
+  blockers?: string[];
+  portal?: {
+    configured: boolean;
+    searchUrl: string;
+    loginUrl: string;
+  };
+  api?: {
+    endpointConfigured: boolean;
+    accessConfigured: boolean;
+    sharedDefaultConfigured?: boolean;
+    userOverrideAllowed?: boolean;
+    liveRunApproved: boolean;
+  };
 }
 
 export type ReadbackRouteStatus = "passed" | "blocked" | "prepared_only";
