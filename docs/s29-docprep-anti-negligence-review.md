@@ -63,6 +63,20 @@ Assume every AI-built completion claim is false until the app proves it with sou
   - `Listing page HTML / source note`.
 - Visual proof saved at `/tmp/heirright-docprep-source.png` shows the public-record capture panel contained in the Doc Prep rail.
 
+## Dedicated Final Review Pass
+
+/solvys-heir-audit
+Source checked: `/Users/tifos/Desktop/HRight/HeirRight Workflow. pdf.pdf`, `/Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md`, repo routes, local API proof, and headless Chrome proof.
+Backward: S29 now has a unified external source-run route and a Doc Prep `Run Source Search` control. This supports the workflow steps for owner/property/deed/tax/probate/vital/IDI review by making every bucket visible, preserving source facts, and blocking incomplete buckets instead of filling legal/document blanks from assumptions.
+UX pass: aligned with gaps. The operator can run the source search from Doc Prep and see public-record capture fields in the rail. The remaining gap is that browser-based Tax Collector and court/vital extraction still require production workflows before a non-technical user can complete Discovery without manual source work.
+Forward: S30 must demo Discovery/Closing with the source-run blockers visible, not hidden. S31 must expose source/integration readiness in Settings. S32 must reject shipment unless Tax Collector browser workflow, IDI shared-default proof, and court/vital source workflows are either automated or explicitly accepted as human-required.
+Alignment: aligned with gaps
+Required corrections before complete:
+- Do not claim all external Discovery sources are automated. They are callable/visible buckets with honest blockers.
+- Implement/prove Browserbase or controlled Chrome for the Tax Collector public-search flow.
+- Implement/prove Official Records, Probate/Civil/Family Court, and vital/obituary extraction or keep them as explicit operator-review steps.
+- Configure/prove real IDI Core shared-default access before calling IDI production-ready.
+
 ## TP Checklist
 
 - Run an estate from CRM import.
