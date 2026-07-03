@@ -1,4 +1,5 @@
-import type { FactType, FreshLeadBatchRequest, FreshLeadSearchMode, IntakeSeed, RawDossier, SourceFact } from "@ple/types";
+import type { FactType, FreshLeadBatchRequest, FreshLeadSearchMode, IntakeSeed, RawDossier, ReviewFlag, SourceAttachmentRef, SourceFact } from "@ple/types";
+import { discoverTaxCollectorReceipt } from "./adapters/tax-collector-receipt";
 import { runDailyProduction } from "./daily/run-daily";
 import { buildControlledPodioTestSeed } from "./export/controlled-test-lead";
 import { connectionStatuses, exportCompletedReport, podioReadbackBlockerMessage, resolvePodioAccessToken } from "./export/export-package";
@@ -486,7 +487,14 @@ function sourceFactsFromCapture(runId: string, seed: IntakeSeed, capture: Record
   const subject = intakeSubject(seed);
   const fetchedAt = nowIso();
   const out: SourceFact[] = [];
-  const addFact = (source: SourceFact["source"], factType: FactType, value: unknown, sourceUrl?: string) => {
+  const addFact = (
+    source: SourceFact["source"],
+    factType: FactType,
+    value: unknown,
+    sourceUrl?: string,
+    attachment?: SourceAttachmentRef,
+    reviewFlags?: ReviewFlag[],
+  ) => {
     if (value === undefined || value === null || value === "") return;
     out.push(fact({
       runId,
@@ -499,14 +507,35 @@ function sourceFactsFromCapture(runId: string, seed: IntakeSeed, capture: Record
       value,
       confidence: 0.85,
       sourceUrl,
-      reviewFlags: ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
+      attachment,
+      reviewFlags: reviewFlags ?? (sourceUrl || attachment
+        ? ["HUMAN_REVIEW_REQUIRED"]
+        : ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"]),
     }));
   };
   const taxReceipt = (capture.taxReceipt && typeof capture.taxReceipt === "object") ? capture.taxReceipt as Record<string, unknown> : {};
   const deed = (capture.deed && typeof capture.deed === "object") ? capture.deed as Record<string, unknown> : {};
   const obituary = (capture.obituary && typeof capture.obituary === "object") ? capture.obituary as Record<string, unknown> : {};
-  addFact("tax_collector", "tax_last_paid_by", taxReceipt.paidBy, stringValue(taxReceipt.sourceUrl));
-  addFact("tax_collector", "tax_receipt_status", taxReceipt.status, stringValue(taxReceipt.sourceUrl));
+  const receiptDiscovery = discoverTaxCollectorReceipt(taxReceipt);
+  const receiptUrl = receiptDiscovery?.receiptUrl || stringValue(taxReceipt.receiptUrl) || stringValue(taxReceipt.receiptLink);
+  const listingUrl = receiptDiscovery?.listingUrl || stringValue(taxReceipt.listingUrl) || stringValue(taxReceipt.sourceUrl);
+  const receiptAttachment = receiptUrl ? {
+    label: "Tax Collector receipt",
+    sourceUrl: receiptUrl,
+    fileKind: "link",
+    capturedAt: fetchedAt,
+    capturedBy: "source-capture",
+    reviewFlags: receiptDiscovery?.reviewFlags ?? ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"],
+  } satisfies SourceAttachmentRef : undefined;
+  addFact("tax_collector", "tax_last_paid_by", taxReceipt.paidBy, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_payer_identity", taxReceipt.paidBy || taxReceipt.payerIdentity, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_paid_date", taxReceipt.paidDate, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_receipt_status", taxReceipt.status || (receiptUrl ? "receipt_link_captured" : undefined), listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_receipt_link", receiptUrl, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
+  addFact("tax_collector", "tax_receipt_attachment", receiptAttachment, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
+  addFact("tax_collector", "tax_amount_due", taxReceipt.amountDue, listingUrl || receiptUrl);
+  addFact("tax_collector", "unpaid_tax_years", taxReceipt.unpaidYears, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_reassessment_signal", taxReceipt.reassessment, listingUrl || receiptUrl);
   addFact("official_records", "or_book_page", deed.instrument, stringValue(deed.sourceUrl));
   addFact("official_records", "latest_deed", deed.status || deed.instrument, stringValue(deed.sourceUrl));
   addFact("official_records", "title_signal", deed.note, stringValue(deed.sourceUrl));
@@ -667,11 +696,12 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
   const sourceFacts = sourceFactsFromCapture(runId, seed, body);
   return json({
     ok: true,
+    mode: "review_receipt",
     id: body.assetKey || body.id || receiptId("source-capture"),
     capturedAt: nowIso(),
     seed,
     sourceFacts,
-    reviewFlags: sourceFacts.flatMap((item) => item.reviewFlags),
+    reviewFlags: [...new Set(sourceFacts.flatMap((item) => item.reviewFlags))],
     message: sourceFacts.length
       ? "Source capture saved for Discovery review."
       : "Source capture saved, but no structured source facts were detected.",

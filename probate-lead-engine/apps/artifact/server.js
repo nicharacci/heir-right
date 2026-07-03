@@ -8,6 +8,7 @@ const activepiecesHandler = require("./api/outreach/activepieces.js");
 const supportLinearHandler = require("./api/support/linear.js");
 const adminAccessHandler = require("./api/admin/access.js");
 const { buildConnectionStatuses, buildIdiCoreStatus } = require("./api/connections/status.js");
+const { discoverTaxCollectorReceipt } = require("./api/_shared.js");
 
 function loadLocalEnvFile(filePath) {
   if (!existsSync(filePath)) return;
@@ -460,7 +461,7 @@ function localSourceFactsFromCapture(body = {}) {
     county,
   };
   const facts = [];
-  const addFact = (source, factType, value, sourceUrl) => {
+  const addFact = (source, factType, value, sourceUrl, attachment, reviewFlags) => {
     if (value === undefined || value === null || value === "") return;
     facts.push({
       id: `${body.runId || "local-source-capture"}:${source}:${factType}:${facts.length + 1}`,
@@ -474,14 +475,33 @@ function localSourceFactsFromCapture(body = {}) {
       value,
       confidence: 0.85,
       sourceUrl,
-      reviewFlags: ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
+      attachment,
+      reviewFlags: reviewFlags || (sourceUrl || attachment ? ["HUMAN_REVIEW_REQUIRED"] : ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"]),
     });
   };
   const taxReceipt = body.taxReceipt || {};
   const deed = body.deed || {};
   const obituary = body.obituary || {};
-  addFact("tax_collector", "tax_last_paid_by", taxReceipt.paidBy, taxReceipt.sourceUrl);
-  addFact("tax_collector", "tax_receipt_status", taxReceipt.status, taxReceipt.sourceUrl);
+  const receiptDiscovery = discoverTaxCollectorReceipt(taxReceipt);
+  const receiptUrl = receiptDiscovery?.receiptUrl || taxReceipt.receiptUrl || taxReceipt.receiptLink;
+  const listingUrl = receiptDiscovery?.listingUrl || taxReceipt.listingUrl || taxReceipt.sourceUrl;
+  const receiptAttachment = receiptUrl ? {
+    label: "Tax Collector receipt",
+    sourceUrl: receiptUrl,
+    fileKind: "link",
+    capturedAt,
+    capturedBy: "source-capture",
+    reviewFlags: receiptDiscovery?.reviewFlags || ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"],
+  } : undefined;
+  addFact("tax_collector", "tax_last_paid_by", taxReceipt.paidBy, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_payer_identity", taxReceipt.paidBy || taxReceipt.payerIdentity, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_paid_date", taxReceipt.paidDate, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_receipt_status", taxReceipt.status || (receiptUrl ? "receipt_link_captured" : undefined), listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_receipt_link", receiptUrl, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
+  addFact("tax_collector", "tax_receipt_attachment", receiptAttachment, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
+  addFact("tax_collector", "tax_amount_due", taxReceipt.amountDue, listingUrl || receiptUrl);
+  addFact("tax_collector", "unpaid_tax_years", taxReceipt.unpaidYears, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_reassessment_signal", taxReceipt.reassessment, listingUrl || receiptUrl);
   addFact("official_records", "or_book_page", deed.instrument, deed.sourceUrl);
   addFact("official_records", "latest_deed", deed.status || deed.instrument, deed.sourceUrl);
   addFact("official_records", "title_signal", deed.note, deed.sourceUrl);
@@ -691,11 +711,12 @@ async function handleSourceCapture(req, res) {
   const sourceFacts = localSourceFactsFromCapture(body);
   const result = {
     ok: true,
+    mode: "review_receipt",
     id,
     capturedAt: new Date().toISOString(),
     artifact: body,
     sourceFacts,
-    reviewFlags: sourceFacts.flatMap((item) => item.reviewFlags),
+    reviewFlags: [...new Set(sourceFacts.flatMap((item) => item.reviewFlags))],
     message: sourceFacts.length
       ? "Source capture saved for Discovery review."
       : "Source capture saved, but no structured source facts were detected.",

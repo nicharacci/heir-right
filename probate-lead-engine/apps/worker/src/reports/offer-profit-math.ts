@@ -162,7 +162,7 @@ export function buildOfferProfitMath(dossier: RawDossier): OfferProfitMath {
       fetchedAt: item.fetchedAt,
     })),
     reviewFlags: ["UNDERWRITING_REVIEW_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
-    note: "Default minimum net profit placeholder.",
+    note: "Default minimum net profit target pending operator review.",
   });
 
   const deductions = sumKnown([

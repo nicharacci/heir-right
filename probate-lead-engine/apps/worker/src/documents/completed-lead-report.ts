@@ -339,7 +339,7 @@ function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholderEntry[
       phones: [],
       emails: [],
       addresses: [],
-      note: "No heir contact placeholders yet. Build family tree hypothesis first.",
+      note: "No heir contact candidates yet. Build family tree hypothesis first.",
       reviewFlags: ["NO_ENRICHMENT_RUN", "HUMAN_REVIEW_REQUIRED"],
     }];
   }
@@ -350,7 +350,7 @@ function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholderEntry[
     phones: [],
     emails: [],
     addresses: node.contactPlaceholder ? [node.contactPlaceholder] : [],
-    note: node.contactPlaceholder ?? "Contact placeholder pending enrichment or manual capture.",
+    note: node.contactPlaceholder ?? "Contact candidate pending enrichment or manual capture.",
     reviewFlags: uniqueFlags([...node.reviewFlags, "NO_ENRICHMENT_RUN", "HUMAN_REVIEW_REQUIRED"]),
   }));
 }
@@ -401,6 +401,9 @@ function buildBackstory(dossier: RawDossier): string {
     dossier.taxHistory.receiptStatus.value
       ? `Tax receipt status: ${dossier.taxHistory.receiptStatus.value}.`
       : "Tax receipt status is not yet captured.",
+    dossier.taxHistory.receiptLink.value
+      ? `Tax Collector receipt link captured: ${dossier.taxHistory.receiptLink.value}.`
+      : "Tax Collector listing-page receipt link still needs capture.",
     dossier.deedHistory.mortgageSignal.value
       ? `Mortgage signal: ${dossier.deedHistory.mortgageSignal.value}.`
       : "Mortgage balance/details require operator confirmation.",
@@ -428,6 +431,8 @@ function buildSummaries(dossier: RawDossier) {
       `Amount due: ${dossier.taxHistory.amountDue.value ? formatMoney({ ...dossier.taxHistory.amountDue, label: "Taxes due", currency: "USD" } as OfferProfitField) : "Needs review"}`,
       `Reassessment: ${claimText(dossier.taxHistory.reassessment.value)}`,
       `Receipt status: ${claimText(dossier.taxHistory.receiptStatus.value)}`,
+      `Receipt link: ${claimText(dossier.taxHistory.receiptLink.value)}`,
+      `Paid date: ${claimText(dossier.taxHistory.paidDate.value)}`,
       `Payer identity: ${claimText(dossier.taxHistory.payerIdentity.value)}`,
     ].join("\n"),
     deedSummary: [
@@ -469,7 +474,7 @@ function renderOfferTable(offerMath: OfferProfitMath): string[] {
     ["# of heirs on board", "", offerMath.heirCount.value === null ? "Needs review" : String(offerMath.heirCount.value), reviewNote(offerMath.heirCount, "Heir count is a hypothesis until reviewed")],
     ["Profit", "", formatMoney(offerMath.profit), reviewNote(offerMath.profit, "Draft only until underwriting clears")],
     ["Offer per heir", formatPercent(offerMath.buyPercentage), formatMoney(offerMath.offerAmount), reviewNote(offerMath.offerAmount, "Draft offer blocked until review")],
-    ["Min profit", "", formatMoney(offerMath.minimumNetProfit), reviewNote(offerMath.minimumNetProfit, "Minimum net placeholder for operator review")],
+    ["Min profit", "", formatMoney(offerMath.minimumNetProfit), reviewNote(offerMath.minimumNetProfit, "Minimum net target pending operator review")],
     ["$100,000 net", "", "Benchmark", "North Star packet comparison row retained for deal review"],
   ];
   return [
@@ -921,7 +926,7 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
     ...renderSourceLinks(sourceLinks),
     "",
     "## Missing Data",
-    ...(missingData.length ? missingData.map((item) => `- ${item}`) : ["- No critical missing-data items flagged beyond review placeholders."]),
+    ...(missingData.length ? missingData.map((item) => `- ${item}`) : ["- No critical missing-data items flagged beyond visible review tasks."]),
     "",
     "## Lead Quality Profile",
     `Lead bucket: ${humanStatus(leadQualityProfile.leadBucket)}`,

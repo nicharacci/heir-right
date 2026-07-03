@@ -105,7 +105,63 @@ function receiptId(prefix = "artifact") {
   return `${prefix}-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}-${random}`;
 }
 
+function stripTags(value) {
+  return String(value || "")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function resolveUrl(href, baseUrl) {
+  try {
+    return new URL(href, baseUrl || "https://miamidade.county-taxes.com/").toString();
+  } catch {
+    return href;
+  }
+}
+
+function discoverTaxCollectorReceipt(input = {}) {
+  const explicitUrl = String(input.receiptUrl || input.receiptLink || "").trim();
+  const listingUrl = String(input.listingUrl || input.sourceUrl || "").trim();
+  if (explicitUrl) {
+    const url = resolveUrl(explicitUrl, listingUrl);
+    return {
+      listingUrl,
+      receiptUrl: url,
+      mode: "explicit",
+      candidates: [{ href: explicitUrl, url, text: "Operator supplied receipt link", index: 0 }],
+      reviewFlags: ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"],
+    };
+  }
+  const html = String(input.listingHtml || "");
+  if (!html) return null;
+  const candidates = [];
+  const anchorPattern = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>[\s\S]*?<\/a>/gi;
+  let match;
+  while ((match = anchorPattern.exec(html)) !== null) {
+    const href = String(match[1] || "").trim();
+    const text = stripTags(match[0]);
+    const searchable = `${href} ${text}`.toLowerCase();
+    if (!href || !/(receipt|taxbill|tax-bill|print|payment)/i.test(searchable)) continue;
+    candidates.push({ href, url: resolveUrl(href, listingUrl), text: text || "Tax receipt", index: candidates.length });
+  }
+  const receipt = candidates.at(-1);
+  if (!receipt) return null;
+  return {
+    listingUrl,
+    receiptUrl: receipt.url,
+    mode: "listing_page_bottom_right",
+    candidates,
+    reviewFlags: ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"],
+  };
+}
+
 module.exports = {
+  discoverTaxCollectorReceipt,
   idiLockKey,
   methodGuard,
   proxyWorkerJson,

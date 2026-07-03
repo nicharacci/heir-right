@@ -1,4 +1,4 @@
-import type { ContactCandidate, DossierClaim, DossierEvent, DocketReference, FamilyTreeHypothesisData, LatestDeedRecord, MemorialSearchPlaceholder, OfficialRecordCrossLink, OrBookPageRef, RawDossier, ReviewFlag, SourceAttachmentRef, SourceEvidenceReviewTask, SourceFact, SourceGovernanceCatalog, SourceKey, SourceRef, TaxAmountDue } from "@ple/types";
+import type { ContactCandidate, DossierClaim, DossierEvent, DocketReference, FamilyTreeHypothesisData, LatestDeedRecord, MemorialSearchTask, OfficialRecordCrossLink, OrBookPageRef, RawDossier, ReviewFlag, SourceAttachmentRef, SourceEvidenceReviewTask, SourceFact, SourceGovernanceCatalog, SourceKey, SourceRef, TaxAmountDue } from "@ple/types";
 import { nowIso, sourceRef, slug } from "../lib";
 import { buildOutreachWorkflow } from "../outreach/build-outreach-workflow";
 import { buildSourceCoverageProfile } from "../qa/source-coverage";
@@ -114,6 +114,8 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
   const amountDue = claim<TaxAmountDue>(facts, "tax_amount_due", "MISSING_TAX_FACT");
   const reassessment = claim<string>(facts, "tax_reassessment_signal", "REASSESSMENT_REVIEW_REQUIRED");
   const receiptStatus = claim<string>(facts, "tax_receipt_status", "MISSING_TAX_RECEIPT_FACT");
+  const receiptLink = claim<string>(facts, "tax_receipt_link", "TAX_RECEIPT_LINK_REQUIRED");
+  const paidDate = claim<string>(facts, "tax_paid_date", "MISSING_TAX_RECEIPT_FACT");
   const payerIdentity = claim<string>(facts, "tax_payer_identity", "MISSING_TAX_PAYER_FACT");
   const receiptAttachment = claim<SourceAttachmentRef>(facts, "tax_receipt_attachment", "SOURCE_ATTACHMENT_REQUIRED");
   const lastPaidBy = claim<string>(facts, "tax_last_paid_by", "MISSING_TAX_PAYER_FACT");
@@ -123,6 +125,8 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
     amountDue,
     reassessment,
     receiptStatus,
+    receiptLink,
+    paidDate,
     payerIdentity,
     receiptAttachment,
     lastPaidBy,
@@ -141,8 +145,8 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
         title: "Capture tax amount due",
         source: "tax_collector",
         reason: includeDealMath
-          ? "Offer math and lead-quality review need the unpaid-tax amount instead of a placeholder."
-          : "Lead-quality review needs the unpaid-tax amount instead of a placeholder.",
+          ? "Offer math and lead-quality review need the unpaid-tax amount from the Tax Collector record."
+          : "Lead-quality review needs the unpaid-tax amount from the Tax Collector record.",
         nextAction: "Record amount due, currency, and tax years from the source record.",
         claim: amountDue,
         fallbackFlags: ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
@@ -158,12 +162,30 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
       }),
       reviewTask({
         code: "TAX_RECEIPT_STATUS",
-        title: "Download or record tax receipt status",
+        title: "Capture tax receipt status",
         source: "tax_collector",
-        reason: "Automated receipt download is not validated, so receipt capture must remain a manual operator step.",
-        nextAction: "Download the receipt manually or mark it unavailable with a visible reason.",
+        reason: "The workflow needs the tax receipt status and the receipt artifact before payer identity can be trusted.",
+        nextAction: "Open the Tax Collector listing page and use the receipt link in the bottom-right corner, then record the status or source blocker.",
         claim: receiptStatus,
-        fallbackFlags: ["MANUAL_TAX_RECEIPT_DOWNLOAD_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
+        fallbackFlags: ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
+      }),
+      reviewTask({
+        code: "TAX_RECEIPT_LINK",
+        title: "Capture listing-page receipt link",
+        source: "tax_collector",
+        reason: "The receipt link is available from the Tax Collector listing page and should be saved as evidence before any manual override.",
+        nextAction: "Use the bottom-right receipt link on the listing page; if it is not present, save a source blocker and screenshot.",
+        claim: receiptLink,
+        fallbackFlags: ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
+      }),
+      reviewTask({
+        code: "TAX_PAID_DATE",
+        title: "Capture tax paid date",
+        source: "tax_collector",
+        reason: "Paid date helps confirm whether taxes were handled by an heir, the estate, or another party.",
+        nextAction: "Record the paid date from the receipt or mark it unavailable after checking the receipt artifact.",
+        claim: paidDate,
+        fallbackFlags: ["MISSING_TAX_RECEIPT_FACT", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
       }),
       reviewTask({
         code: "TAX_PAYER_IDENTITY",
@@ -179,16 +201,23 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
         title: "Attach last paid tax receipt",
         source: "tax_collector",
         reason: "The last paid receipt anchors the paid-by party and keeps tax history auditable.",
-        nextAction: "Attach the last receipt from the Tax Collector and record the paid-by party shown on it.",
+        nextAction: "Attach or link the receipt found from the Tax Collector listing page and record the paid-by party shown on it.",
         claim: receiptAttachment,
-        fallbackFlags: ["MANUAL_TAX_RECEIPT_DOWNLOAD_REQUIRED", "SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
+        fallbackFlags: ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED"],
       }),
     ]),
     manualReceiptTask: {
-      required: true,
-      reason: "Automated tax receipt download is not validated yet; keep receipt capture as an operator task.",
-      sourceRefs: refsFor(facts, "tax_receipt_status"),
-      reviewFlags: ["MANUAL_TAX_RECEIPT_DOWNLOAD_REQUIRED", "HUMAN_REVIEW_REQUIRED"] as ReviewFlag[],
+      required: receiptLink.value === null || receiptAttachment.value === null,
+      reason: receiptLink.value === null
+        ? "Tax Collector listing-page receipt link has not been captured yet. Manual override is allowed only after that source path is attempted or blocked."
+        : "Receipt link is captured; attach or review the receipt artifact before closing tax history.",
+      sourceRefs: Array.from(new Map(
+        [...refsFor(facts, "tax_receipt_status"), ...refsFor(facts, "tax_receipt_link"), ...refsFor(facts, "tax_receipt_attachment")]
+          .map((ref) => [`${ref.source}:${ref.rawId}:${ref.fetchedAt}`, ref]),
+      ).values()),
+      reviewFlags: receiptLink.value === null
+        ? ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED"] as ReviewFlag[]
+        : ["SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED"] as ReviewFlag[],
     },
   };
   const deedSourceStatus = claim<string>(facts, "deed_history_status", "MISSING_DEED_FACT");
@@ -380,7 +409,7 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
   const dateOfDeath = claim<string>(facts, "date_of_death", "MISSING_MARRIAGE_DEATH_FACT");
   const obituaryLink = claim<string>(facts, "obituary_link", "MISSING_MARRIAGE_DEATH_FACT");
   const obituarySnapshot = claim<SourceAttachmentRef>(facts, "obituary_snapshot", "SOURCE_ATTACHMENT_REQUIRED");
-  const memorialSearches = claim<MemorialSearchPlaceholder[]>(facts, "memorial_search_placeholder", "MISSING_MARRIAGE_DEATH_FACT");
+  const memorialSearches = claim<MemorialSearchTask[]>(facts, "memorial_search_tasks", "MISSING_MARRIAGE_DEATH_FACT");
   const deathCertificateStatus = claim<string>(facts, "death_certificate_status", "MISSING_MARRIAGE_DEATH_FACT");
   const incarcerationStatus = claim<string>(facts, "incarceration_status_signal", "MISSING_MARRIAGE_DEATH_FACT");
   const marriageDeathIndicators = {
@@ -398,9 +427,9 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
       reviewTask({ code: "DOB_DOD", title: "Capture DOB/DOD indicators", source: "clerk_of_courts", reason: "Birth and death dates must remain reviewable facts with source refs.", nextAction: "Record DOB/DOD from public sources or mark unknown with review flags.", claim: combineClaims([dateOfBirth, dateOfDeath]), fallbackFlags: ["MISSING_MARRIAGE_DEATH_FACT", "HUMAN_REVIEW_REQUIRED"] }),
       reviewTask({ code: "OBITUARY_LINK", title: "Capture obituary links", source: "clerk_of_courts", reason: "Obituary links support research but do not prove heirship.", nextAction: "Attach obituary URLs or note that none were found.", claim: obituaryLink, fallbackFlags: ["MISSING_MARRIAGE_DEATH_FACT", "HUMAN_REVIEW_REQUIRED"] }),
       reviewTask({ code: "OBITUARY_SNAPSHOT", title: "Attach obituary snapshot", source: "clerk_of_courts", reason: "If an obituary exists, the dossier needs the screenshot or saved page plus the public URL.", nextAction: "Capture the obituary screenshot and link, or record reviewed-not-found.", claim: obituarySnapshot, fallbackFlags: ["SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED"] }),
-      reviewTask({ code: "MEMORIAL_SEARCH", title: "Review memorial search placeholders", source: "clerk_of_courts", reason: "Findagrave/Legacy/Google placeholders keep research auditable without automated scraping.", nextAction: "Record search results or absent status for each memorial provider.", claim: memorialSearches, fallbackFlags: ["HUMAN_REVIEW_REQUIRED"] }),
+      reviewTask({ code: "MEMORIAL_SEARCH", title: "Review memorial search tasks", source: "clerk_of_courts", reason: "Findagrave, Legacy, and Google searches must be recorded as links, absent status, or visible tasks.", nextAction: "Record search results or absent status for each memorial provider.", claim: memorialSearches, fallbackFlags: ["HUMAN_REVIEW_REQUIRED"] }),
       reviewTask({ code: "DEATH_CERTIFICATE", title: "Capture death certificate status", source: "clerk_of_courts", reason: "VitalChek and automated death-certificate ordering remain blocked.", nextAction: "Record whether a death certificate was requested, obtained, or still missing.", claim: deathCertificateStatus, fallbackFlags: ["MANUAL_DEATH_CERTIFICATE_REQUIRED", "HUMAN_REVIEW_REQUIRED"] }),
-      reviewTask({ code: "INCARCERATION", title: "Check incarceration status signal", source: "clerk_of_courts", reason: "Incarceration status is a placeholder research signal only.", nextAction: "Record incarceration signal or mark unknown with source evidence.", claim: incarcerationStatus, fallbackFlags: ["MISSING_MARRIAGE_DEATH_FACT", "HUMAN_REVIEW_REQUIRED"] }),
+      reviewTask({ code: "INCARCERATION", title: "Check incarceration status signal", source: "clerk_of_courts", reason: "Incarceration status must be recorded as match, no-match, or source-blocked.", nextAction: "Record incarceration signal or mark unknown with source evidence.", claim: incarcerationStatus, fallbackFlags: ["MISSING_MARRIAGE_DEATH_FACT", "HUMAN_REVIEW_REQUIRED"] }),
     ]),
     deathCertificateTask: {
       required: deathCertificateStatus.value === null,

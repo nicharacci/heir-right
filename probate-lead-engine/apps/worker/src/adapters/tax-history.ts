@@ -2,6 +2,7 @@ import type { IntakeSeed, SourceFact } from "@ple/types";
 import { fact, intakeSubject, nowIso, seedIdentity, slug } from "../lib";
 
 const TAX_COLLECTOR_REVIEW_URL = "https://www.miamidade.gov/global/service.page?Mduid_service=ser1499797463762502";
+const TAX_COLLECTOR_RECEIPT_NOTE = "Open the Tax Collector listing page and capture the receipt link shown in the bottom-right corner.";
 
 export async function fetchTaxHistoryFacts(runId: string, seed: IntakeSeed): Promise<SourceFact[]> {
   const fetchedAt = nowIso();
@@ -72,7 +73,33 @@ export async function fetchTaxHistoryFacts(runId: string, seed: IntakeSeed): Pro
       value: null,
       confidence: 0,
       sourceUrl: TAX_COLLECTOR_REVIEW_URL,
-      reviewFlags: ["MISSING_TAX_RECEIPT_FACT", "MANUAL_TAX_RECEIPT_DOWNLOAD_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+      reviewFlags: ["MISSING_TAX_RECEIPT_FACT", "TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+    }),
+    fact({
+      runId,
+      source: "tax_collector",
+      rawId: `${rawId}:receipt-link`,
+      fetchedAt,
+      county: seed.county,
+      subject,
+      factType: "tax_receipt_link",
+      value: null,
+      confidence: 0,
+      sourceUrl: TAX_COLLECTOR_REVIEW_URL,
+      reviewFlags: ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+    }),
+    fact({
+      runId,
+      source: "tax_collector",
+      rawId: `${rawId}:paid-date`,
+      fetchedAt,
+      county: seed.county,
+      subject,
+      factType: "tax_paid_date",
+      value: null,
+      confidence: 0,
+      sourceUrl: TAX_COLLECTOR_REVIEW_URL,
+      reviewFlags: ["MISSING_TAX_RECEIPT_FACT", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
     }),
     fact({
       runId,
@@ -98,7 +125,7 @@ export async function fetchTaxHistoryFacts(runId: string, seed: IntakeSeed): Pro
       value: null,
       confidence: 0,
       sourceUrl: TAX_COLLECTOR_REVIEW_URL,
-      reviewFlags: ["SOURCE_ATTACHMENT_REQUIRED", "MANUAL_TAX_RECEIPT_DOWNLOAD_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+      reviewFlags: ["SOURCE_ATTACHMENT_REQUIRED", "TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
     }),
     fact({
       runId,
@@ -112,6 +139,19 @@ export async function fetchTaxHistoryFacts(runId: string, seed: IntakeSeed): Pro
       confidence: 0,
       sourceUrl: TAX_COLLECTOR_REVIEW_URL,
       reviewFlags: ["MISSING_TAX_PAYER_FACT", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+    }),
+    fact({
+      runId,
+      source: "tax_collector",
+      rawId: `${rawId}:listing-page-next-action`,
+      fetchedAt,
+      county: seed.county,
+      subject,
+      factType: "source_status",
+      value: TAX_COLLECTOR_RECEIPT_NOTE,
+      confidence: 0.4,
+      sourceUrl: TAX_COLLECTOR_REVIEW_URL,
+      reviewFlags: ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
     }),
   ];
 }

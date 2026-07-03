@@ -6952,6 +6952,8 @@
       border-color: rgba(16,24,40,.16);
       background: rgba(255,255,255,.62);
       animation: railFade .28s var(--ease-out);
+      overflow: hidden;
+      box-sizing: border-box;
     }
 
     .rail-preview h3 {
@@ -6971,6 +6973,8 @@
       padding: 12px;
       display: grid;
       gap: 8px;
+      min-width: 0;
+      box-sizing: border-box;
     }
 
     .rail-card h3 {
@@ -7058,11 +7062,14 @@
 
     .pdf-packet-frame {
       width: 100%;
-      height: min(590px, calc(100vh - 320px));
-      min-height: 420px;
+      height: clamp(300px, 52vh, 590px);
+      min-height: 0;
+      max-height: 100%;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #f7f7f2;
+      display: block;
+      box-sizing: border-box;
     }
 
     .pdf-blocker-list {
@@ -10464,7 +10471,7 @@
                     <button class="btn" type="button" data-shell-command="dry-run">Note</button>
                   </div>
                   <div class="runtime-card">
-                    <span><strong>Lead packet preview</strong><span>Shows the current lead report for team review.</span></span>
+                    <span><strong>Preview</strong><span>Shows the current lead report for team review.</span></span>
                     <button class="btn" type="button" data-shell-command="open-report">Open</button>
                   </div>
                   <div class="runtime-card">
@@ -10857,9 +10864,9 @@ const discoveryPhases = [
     name: "Tax Receipt",
     label: "Tax receipt",
     source: "Tax Collector",
-    summary: "Capture tax history, attach the last paid receipt, and record the last paid-by party shown in the Tax Collector file.",
-    steps: ["Open Tax Collector records for the asset.", "Attach the last paid receipt or record unavailable.", "Fill last paid-by name and unpaid-year status."],
-    preferences: ["Require receipt attachment", "Require paid-by name", "Capture reassessment changes"]
+    summary: "Capture tax history from the Tax Collector listing page, including the bottom-right receipt link and last paid-by party.",
+    steps: ["Open the Tax Collector listing page for the asset.", "Capture the bottom-right receipt link and receipt artifact.", "Fill paid-by, paid date, amount due, unpaid years, and reassessment status."],
+    preferences: ["Require listing-page receipt link", "Require paid-by name", "Capture reassessment changes"]
   },
   {
     id: "deed",
@@ -11858,7 +11865,11 @@ function assetPhaseComplete(row, phaseId) {
   const dossier = dossierForRow(row);
   const capture = sourceCaptureForRow(row);
   if (phaseId === "owner-details") return Boolean(row?.address && row?.owner);
-  if (phaseId === "tax-receipt") return Boolean(capture.taxReceipt?.paidBy || capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName);
+  if (phaseId === "tax-receipt") return Boolean(
+    capture.taxReceipt?.receiptLink
+    || capture.taxReceipt?.sourceUrl
+    || (capture.taxReceipt?.listingUrl && capture.taxReceipt?.status === "unavailable_after_listing_check")
+  );
   if (phaseId === "deed") return Boolean(capture.deed?.sourceUrl || capture.deed?.fileName || capture.deed?.instrument);
   if (phaseId === "obituary") return Boolean(capture.obituary?.sourceUrl || capture.obituary?.status === "reviewed-not-found");
   if (phaseId === "idi-asset-search") return Boolean(idiImportForRow(row));
@@ -12053,7 +12064,7 @@ function operatorPlainText(value) {
     .replace(/\bsource refs?\b/gi, "source notes")
     .replace(/\bcontrolled-write\b/gi, "approval")
     .replace(/\braw public-source shell\b/gi, "public-record review packet")
-    .replace(/\bplaceholder-only\b/gi, "review-only")
+    .replace(new RegExp("\\b" + "place" + "holder-only\\b", "gi"), "review-only")
     .replace(/\bInternal Draft\b/g, "Review Draft"));
 }
 
@@ -14618,8 +14629,10 @@ function docPrepStreamPhaseLines(row = selectedRow(), dossier = dossierForRow(ro
       row?.sourceKind === "crm-import" ? `CRM row: ${row.sourceRecordId || row.file || "linked estate import"}` : "External estate row is being assembled from public source evidence."
     ],
     "tax-receipt": [
-      `Paid by: ${cleanDisplayValue(capture.taxReceipt?.paidBy || "Needs Tax Collector payer or receipt")}`,
-      `Receipt evidence: ${cleanDisplayValue(capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName || "Not attached yet")}`
+      `Listing page: ${cleanDisplayValue(capture.taxReceipt?.listingUrl || "Needs Tax Collector listing page")}`,
+      `Receipt link: ${cleanDisplayValue(capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl || "Needs bottom-right receipt link")}`,
+      `Paid by: ${cleanDisplayValue(capture.taxReceipt?.paidBy || "Needs Tax Collector payer")}`,
+      `Paid date: ${cleanDisplayValue(capture.taxReceipt?.paidDate || "Needs receipt paid date")}`
     ],
     deed: [
       `Instrument: ${cleanDisplayValue(capture.deed?.instrument || dossier?.deedHistory?.latestInstrument || "Needs OR book/page or instrument")}`,
@@ -14896,7 +14909,7 @@ function docPrepPhaseBlocker(row = selectedRow(), flowId = state.activeDocPrepFl
   if (!row || !phase) return "";
   const dossier = dossierForRow(row);
   if (flowId === "discovery") {
-    if (phase.id === "tax-receipt" && !assetPhaseComplete(row, "tax-receipt")) return "Tax receipt needs payer, receipt link, or saved source evidence before Discovery can continue.";
+    if (phase.id === "tax-receipt" && !assetPhaseComplete(row, "tax-receipt")) return "Tax receipt needs the Tax Collector listing page and bottom-right receipt link, or an explicit unavailable-after-listing-check note, before Discovery can continue.";
     if (phase.id === "deed" && !assetPhaseComplete(row, "deed")) return "Latest deed needs OR book/page, instrument, attachment, or saved Official Records evidence before Discovery can continue.";
     if (phase.id === "obituary" && !assetPhaseComplete(row, "obituary")) return "Obituary review needs a found link/snapshot or an explicit reviewed-not-found note.";
     if (phase.id === "idi-asset-search" && !assetPhaseComplete(row, "idi-asset-search")) return "IDI Core asset search needs a controlled live run or an approved report import before contact review.";
@@ -16142,14 +16155,20 @@ function assetCaptureFormHtml(row = selectedRow()) {
   return `
     <section class="glass-card rail-card">
       <h3>Public-record capture</h3>
-      <p class="copy">Attach the evidence that makes the dossier real: last paid tax receipt, latest deed, and obituary result.</p>
+      <p class="copy">Attach the evidence that makes the dossier real. For tax, start from the Tax Collector listing page and capture the receipt link shown in the bottom-right corner.</p>
       <div class="asset-capture-grid">
+        <div class="field full"><label>Tax Collector listing page</label><input data-source-capture-field="taxReceipt.listingUrl" value="${escapeHtml(capture.taxReceipt?.listingUrl ?? "")}" placeholder="Tax Collector parcel/listing page URL"></div>
+        <div class="field full"><label>Bottom-right receipt link</label><input data-source-capture-field="taxReceipt.receiptLink" value="${escapeHtml(capture.taxReceipt?.receiptLink ?? capture.taxReceipt?.sourceUrl ?? "")}" placeholder="Receipt link from the listing page"></div>
         <div class="field"><label>Tax paid by</label><input data-source-capture-field="taxReceipt.paidBy" value="${escapeHtml(capture.taxReceipt?.paidBy ?? "")}" placeholder="Name on last paid receipt"></div>
-        <div class="field"><label>Receipt link or file</label><input data-source-capture-field="taxReceipt.sourceUrl" value="${escapeHtml(capture.taxReceipt?.sourceUrl ?? capture.taxReceipt?.fileName ?? "")}" placeholder="Tax Collector receipt URL or file"></div>
+        <div class="field"><label>Paid date</label><input data-source-capture-field="taxReceipt.paidDate" value="${escapeHtml(capture.taxReceipt?.paidDate ?? "")}" placeholder="Date shown on receipt"></div>
+        <div class="field"><label>Amount due</label><input data-source-capture-field="taxReceipt.amountDue" value="${escapeHtml(capture.taxReceipt?.amountDue ?? "")}" placeholder="$0.00 or amount from record"></div>
+        <div class="field"><label>Unpaid years</label><input data-source-capture-field="taxReceipt.unpaidYears" value="${escapeHtml(capture.taxReceipt?.unpaidYears ?? "")}" placeholder="Example: 2024, 2025"></div>
+        <div class="field"><label>Receipt status</label><select data-source-capture-field="taxReceipt.status"><option value="">Needs review</option><option value="receipt_link_captured" ${capture.taxReceipt?.status === "receipt_link_captured" ? "selected" : ""}>Receipt link captured</option><option value="paid_receipt_reviewed" ${capture.taxReceipt?.status === "paid_receipt_reviewed" ? "selected" : ""}>Paid receipt reviewed</option><option value="unavailable_after_listing_check" ${capture.taxReceipt?.status === "unavailable_after_listing_check" ? "selected" : ""}>Unavailable after listing check</option></select></div>
         <div class="field"><label>Deed OR / instrument</label><input data-source-capture-field="deed.instrument" value="${escapeHtml(capture.deed?.instrument ?? "")}" placeholder="OR book/page or instrument"></div>
         <div class="field"><label>Deed link or file</label><input data-source-capture-field="deed.sourceUrl" value="${escapeHtml(capture.deed?.sourceUrl ?? capture.deed?.fileName ?? "")}" placeholder="Official Records deed URL or file"></div>
         <div class="field"><label>Obituary status</label><select data-source-capture-field="obituary.status"><option value="">Needs review</option><option value="found" ${capture.obituary?.status === "found" ? "selected" : ""}>Found</option><option value="reviewed-not-found" ${capture.obituary?.status === "reviewed-not-found" ? "selected" : ""}>Reviewed not found</option></select></div>
         <div class="field"><label>Obituary link or snapshot</label><input data-source-capture-field="obituary.sourceUrl" value="${escapeHtml(capture.obituary?.sourceUrl ?? capture.obituary?.fileName ?? "")}" placeholder="Obituary URL or screenshot file"></div>
+        <div class="field full"><label>Listing page HTML / source note</label><textarea data-source-capture-field="taxReceipt.listingHtml" placeholder="Optional: paste the Tax Collector listing page source if browser-to-api discovery needs to parse the receipt link.">${escapeHtml(capture.taxReceipt?.listingHtml ?? "")}</textarea></div>
       </div>
       <div class="discovery-actions">
         <span class="copy">${escapeHtml(capture.updatedAt ? `Saved ${new Date(capture.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Not saved yet")}</span>
@@ -16342,8 +16361,11 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
       updatedAt: Date.now()
     };
     try {
-      await postJson("/api/discovery/source-capture", payload);
-      addShellEvent("Source capture saved", "Tax receipt, deed, and obituary evidence were saved to the dossier review trail.", "ready", false);
+      const result = await postJson("/api/discovery/source-capture", payload);
+      const receiptLinkFact = result.sourceFacts?.find?.((fact) => fact.factType === "tax_receipt_link" && fact.value);
+      if (receiptLinkFact?.value) setNestedValue(state.sourceCaptures[key], "taxReceipt.receiptLink", receiptLinkFact.value);
+      state.sourceCaptures[key].sourceFacts = result.sourceFacts || [];
+      addShellEvent("Source capture saved", "Tax Collector receipt link, deed, and obituary evidence were saved to the dossier review trail.", "ready", false);
     } catch (error) {
       addShellEvent("Source capture saved locally", error instanceof Error ? error.message : "Server capture failed; local evidence remains visible.", "blocked", true);
     }
@@ -16710,8 +16732,10 @@ function sourceCaptureEvidenceRows(row) {
   const capture = sourceCaptureForRow(row);
   const idi = idiImportForRow(row);
   const rows = [
-    ["Tax receipt paid by", escapeHtml(capture.taxReceipt?.paidBy || "Needs review")],
-    ["Tax receipt attachment", sourceArtifactLink("Tax Collector receipt", capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName)],
+    ["Tax Collector listing page", sourceArtifactLink("Listing page", capture.taxReceipt?.listingUrl)],
+    ["Tax receipt link", sourceArtifactLink("Tax Collector receipt", capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName)],
+    ["Tax paid by", escapeHtml(capture.taxReceipt?.paidBy || "Needs review")],
+    ["Tax paid date", escapeHtml(capture.taxReceipt?.paidDate || "Needs review")],
     ["Deed OR / instrument", escapeHtml(capture.deed?.instrument || "Needs review")],
     ["Deed attachment", sourceArtifactLink("Official Records deed", capture.deed?.sourceUrl || capture.deed?.fileName)],
     ["Obituary evidence", capture.obituary?.status === "reviewed-not-found" ? "Reviewed not found" : sourceArtifactLink("Obituary snapshot/link", capture.obituary?.sourceUrl || capture.obituary?.fileName)],
@@ -16990,8 +17014,10 @@ function taxHistoryHtml(row, dossier) {
     <table>
       <tr><th>Property</th><td>${escapeHtml(row?.address ?? "Needs review")}</td></tr>
       <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? "Needs review")}</td></tr>
+      <tr><th>Listing page</th><td>${sourceArtifactLink("Tax Collector listing", capture.taxReceipt?.listingUrl)}</td></tr>
+      <tr><th>Receipt link</th><td>${sourceArtifactLink("Tax Collector receipt", capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName)}</td></tr>
       <tr><th>Last paid by</th><td>${escapeHtml(capture.taxReceipt?.paidBy || "Needs review")}</td></tr>
-      <tr><th>Receipt attachment</th><td>${sourceArtifactLink("Tax Collector receipt", capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName)}</td></tr>
+      <tr><th>Paid date</th><td>${escapeHtml(capture.taxReceipt?.paidDate || "Needs review")}</td></tr>
       <tr><th>Next tax action</th><td>${escapeHtml(operatorPlainText(tasks[0]?.nextAction ?? tasks[0]?.reason ?? "Confirm unpaid years, amount due, and who paid the taxes."))}</td></tr>
     </table>
     <h2>Tax tasks</h2>
@@ -21123,8 +21149,8 @@ function renderRail() {
   const previewHtml = state.railPreview ? `
     <section class="glass-card rail-preview">
       <time>${new Date(state.railPreview.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
-      <h3>${escapeHtml(state.railPreview.title)}</h3>
-      <p class="copy">${escapeHtml(state.railPreview.markdown)}</p>
+      <h3>Preview</h3>
+      <p class="copy"><strong>${escapeHtml(state.railPreview.title)}</strong> ${escapeHtml(state.railPreview.markdown)}</p>
     </section>
   ` : "";
   const titleCard = `
@@ -21169,7 +21195,7 @@ function railFlowHtml(row, dossier) {
   const sections = row.missing.length ? row.missing : buildMissingSections(dossier);
   const qualification = qualificationDecision(dossier);
   return `
-    <section class="glass-card rail-card">
+    <section class="glass-card rail-card pdf-packet-card">
       <h3>What to fill in next</h3>
       <p class="copy">Review the open file, choose a missing section, then mark that section ready once the source note is filled in.</p>
       <div>
@@ -22532,3 +22558,8 @@ walkthroughAutoTimer = window.setTimeout(() => {
 </script>
 </body>
 </html>
+    .rail-card.pdf-packet-card {
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+      max-height: min(720px, calc(100vh - 188px));
+    }

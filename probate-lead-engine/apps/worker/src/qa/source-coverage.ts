@@ -10,11 +10,11 @@ interface CoverageField {
 
 const ACTIONS: Record<SourceCoverageAreaKey, string> = {
   property: "Confirm parcel, mailing address, and owner details in the county property record.",
-  tax: "Capture unpaid tax years, amount due, receipt status, and payer identity from tax records.",
+  tax: "Capture unpaid tax years, amount due, receipt status, listing-page receipt link, paid date, and payer identity from tax records.",
   deed_title: "Capture latest deed, OR book/page or instrument number, recent sale, and title-friction signals.",
   probate: "Search probate/civil/family dockets and record case status, affidavit status, and document availability.",
-  family_tree_contacts: "Replace intake placeholders with sourced heir/contact facts and operator-reviewed contact inputs.",
-  family_tree_offer: "Replace intake placeholders with sourced heir/contact facts and operator-reviewed offer inputs.",
+  family_tree_contacts: "Replace intake-only relationship guesses with sourced heir/contact facts and operator-reviewed contact inputs.",
+  family_tree_offer: "Replace intake-only relationship guesses with sourced heir/contact facts and operator-reviewed offer inputs.",
 };
 
 function unique<T>(items: T[]): T[] {
@@ -83,6 +83,8 @@ export function buildSourceCoverageProfile(dossier: CoverageInput): SourceCovera
         { label: "unpaid tax years", claim: dossier.taxHistory.unpaidYears },
         { label: "tax amount due", claim: dossier.taxHistory.amountDue },
         { label: "receipt status", claim: dossier.taxHistory.receiptStatus },
+        { label: "receipt link", claim: dossier.taxHistory.receiptLink },
+        { label: "paid date", claim: dossier.taxHistory.paidDate },
         { label: "payer identity", claim: dossier.taxHistory.payerIdentity },
       ],
     }),

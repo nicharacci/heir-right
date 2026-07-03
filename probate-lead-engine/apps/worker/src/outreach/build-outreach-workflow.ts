@@ -89,7 +89,7 @@ function buildFollowUpTasks(includeDealMath: boolean): FollowUpTaskTemplate[] {
       attemptNumber: null,
       window: "multi_day",
       assignedRole: "operator",
-      description: "Check all known relatives, owners, and contact placeholders before deciding which person or number to call next.",
+      description: "Check all known relatives, owners, contact candidates, and missing-contact tasks before deciding which person or number to call next.",
     }),
     manualTask({
       id: "joshua-escalation",
@@ -113,7 +113,7 @@ function buildReadiness(dossier: Omit<RawDossier, "outreach">, report?: Complete
     includeDealMath
       ? "Approved disclaimers are not attached to script, text, email, or offer-letter drafts."
       : "Approved disclaimers are not attached to script, text, or email drafts.",
-    "Contact data is still placeholder-only until enrichment or manual capture is reviewed.",
+    "Contact data is still blocked until enrichment or manual capture is reviewed.",
     includeDealMath
       ? "Live calls, texts, emails, and offer letters are disabled by the no-auto-send guard."
       : "Live calls, texts, and emails are disabled by the no-auto-send guard.",

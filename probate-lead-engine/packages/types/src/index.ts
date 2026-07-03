@@ -611,6 +611,9 @@ export type ReviewFlag =
   | "MISSING_TAX_HISTORY_FACT"
   | "MISSING_TAX_RECEIPT_FACT"
   | "MISSING_TAX_PAYER_FACT"
+  | "TAX_COLLECTOR_LISTING_PAGE_REQUIRED"
+  | "TAX_RECEIPT_LINK_REQUIRED"
+  | "TAX_RECEIPT_LINK_CAPTURED"
   | "SOURCE_EVIDENCE_REQUIRED"
   | "MANUAL_TAX_RECEIPT_DOWNLOAD_REQUIRED"
   | "REASSESSMENT_REVIEW_REQUIRED"
@@ -656,6 +659,8 @@ export type FactType =
   | "tax_amount_due"
   | "tax_reassessment_signal"
   | "tax_receipt_status"
+  | "tax_receipt_link"
+  | "tax_paid_date"
   | "tax_payer_identity"
   | "tax_receipt_attachment"
   | "tax_last_paid_by"
@@ -691,7 +696,7 @@ export type FactType =
   | "date_of_death"
   | "obituary_link"
   | "obituary_snapshot"
-  | "memorial_search_placeholder"
+  | "memorial_search_tasks"
   | "death_certificate_status"
   | "incarceration_status_signal"
   | "family_tree_status"
@@ -861,6 +866,8 @@ export interface TaxHistory {
   amountDue: DossierClaim<TaxAmountDue>;
   reassessment: DossierClaim<string>;
   receiptStatus: DossierClaim<string>;
+  receiptLink: DossierClaim<string>;
+  paidDate: DossierClaim<string>;
   payerIdentity: DossierClaim<string>;
   receiptAttachment: DossierClaim<SourceAttachmentRef>;
   lastPaidBy: DossierClaim<string>;
@@ -934,7 +941,7 @@ export interface ProbateDocket {
   };
 }
 
-export interface MemorialSearchPlaceholder {
+export interface MemorialSearchTask {
   provider: "findagrave" | "legacy" | "google";
   query?: string;
   url?: string;
@@ -948,7 +955,7 @@ export interface MarriageDeathIndicators {
   dateOfDeath: DossierClaim<string>;
   obituaryLink: DossierClaim<string>;
   obituarySnapshot: DossierClaim<SourceAttachmentRef>;
-  memorialSearches: DossierClaim<MemorialSearchPlaceholder[]>;
+  memorialSearches: DossierClaim<MemorialSearchTask[]>;
   deathCertificateStatus: DossierClaim<string>;
   incarcerationStatus: DossierClaim<string>;
   reviewTasks: SourceEvidenceReviewTask[];

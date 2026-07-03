@@ -92,11 +92,11 @@ export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: Inta
       fetchedAt,
       county: seed.county,
       subject,
-      factType: "memorial_search_placeholder",
+      factType: "memorial_search_tasks",
       value: [
         { provider: "findagrave", note: "Search by decedent name; record link or absent status with source ref." },
         { provider: "legacy", note: "Search Legacy.com obituaries; record link or absent status with source ref." },
-        { provider: "google", note: "Record Google result placeholders only; no automated scraping." },
+        { provider: "google", note: "Record reviewed Google result links or absent status; no automated account probing." },
       ],
       confidence: 0.4,
       reviewFlags: ["SOURCE_HEALTH_ONLY", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],

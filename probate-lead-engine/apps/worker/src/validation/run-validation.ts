@@ -132,7 +132,8 @@ async function main(): Promise<void> {
   if (!result.dossier.workflow.rules.length) failures.push("Workflow rules missing.");
   if (!result.dossier.workflow.leadQuality.enabledSignals.length) failures.push("Lead-quality settings missing.");
   if (!result.facts.some((item) => item.factType === "owner_type")) failures.push("Owner-type workflow fact missing.");
-  if (!result.dossier.taxHistory.manualReceiptTask.required) failures.push("Manual tax receipt fallback missing.");
+  if (!result.dossier.taxHistory.manualReceiptTask.required) failures.push("Tax Collector receipt capture task missing.");
+  if (!result.dossier.taxHistory.reviewTasks.some((task) => task.code === "TAX_RECEIPT_LINK")) failures.push("Tax Collector listing-page receipt link task missing.");
   if (result.dossier.taxHistory.reviewTasks.length < 5) failures.push("Tax history review tasks missing.");
   if (result.dossier.deedHistory.reviewTasks.length < 7) failures.push("Deed/title review tasks missing.");
   if (!result.dossier.probateDocket.reviewTasks.length) failures.push("Probate docket review tasks missing.");
@@ -197,10 +198,10 @@ async function main(): Promise<void> {
   if (dailyResult.rawLeadCount !== 2) failures.push("S14 daily run did not dedupe repeated seeds.");
   if (dailyResult.duplicateCount !== 1) failures.push("S14 daily duplicate count missing.");
   if (dailyResult.duplicates.length !== 1) failures.push("S18 daily duplicate sample missing.");
-  if (dailyResult.qualifiedLeadCount !== 0) failures.push("S14 should not count review-placeholder/no-enrichment leads as qualified.");
+  if (dailyResult.qualifiedLeadCount !== 0) failures.push("S14 should not count review-only/no-enrichment leads as qualified.");
   if (dailyResult.leads.some((lead) => !lead.qualificationDecision)) failures.push("S18 daily lead qualification decision missing.");
   if (dailyResult.leads.some((lead) => lead.qualified && lead.qualificationDecision.blockers.length)) failures.push("S18 blocked lead was counted as qualified.");
-  if (dailyResult.qualificationReview.summary.qualified !== 0) failures.push("S18 review-placeholder run should have zero qualified samples.");
+  if (dailyResult.qualificationReview.summary.qualified !== 0) failures.push("S18 review-only run should have zero qualified samples.");
   if (dailyResult.qualificationReview.summary.review < 1) failures.push("S18 review sample count missing.");
   if (dailyResult.qualificationReview.summary.duplicate !== 1) failures.push("S18 duplicate summary missing.");
   if (!dailyResult.qualificationReview.samples.review.length) failures.push("S18 review sample missing.");
