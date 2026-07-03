@@ -90,6 +90,23 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - fact coverage for `tax_receipt_link`, `latest_deed`, `deed_attachment`, `mailing_address_signal`, `case_number`, `obituary_link`, and `date_of_death`.
 - Served DOM proof found the new source fields plus `Preview` and `pdf-packet-card`.
 
+## Third Repair Pass: Single-PDF Export Contract
+
+- Local artifact server, serverless export fallback, and worker export response now normalize the requested Doc Prep flow instead of treating every batch as generic Discovery.
+- Discovery batch export route proof returned:
+  - `artifact.kind: single_pdf`
+  - `artifact.contentType: application/pdf`
+  - `artifact.flow: discovery`
+  - `artifact.estateId: estate-proof-discovery`
+  - sections: `Discovery dossier`, `Completed lead report`, `Source notes`, `Closing Prep review`, `CRM handoff`
+- Closing Prep batch export route proof returned:
+  - `artifact.kind: single_pdf`
+  - `artifact.contentType: application/pdf`
+  - `artifact.flow: closing-docs`
+  - `artifact.estateId: estate-proof-closing`
+  - sections: `Reviewed Discovery File`, `Closing field map`, `Required seller/client fields`, `Template fill review`, `Closing Prep packet`
+- PDF route proof returned `Content-Type: application/pdf` and `Content-Disposition: inline; filename="heirright-report-packet.pdf"`.
+
 ## Next Work
 
 - Run real browser screenshot/video proof after freeing disk space.

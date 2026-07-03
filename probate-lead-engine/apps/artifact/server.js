@@ -914,6 +914,25 @@ function sanitizeLocalExportResult(result) {
   };
 }
 
+function normalizedExportFlow(body = {}) {
+  const raw = String(body.flow || body.docPrepFlow || (body.batch ? "batch" : "discovery")).trim();
+  if (raw === "closing" || raw === "closing-docs" || raw === "closing-prep") return "closing-docs";
+  if (raw === "batch") return body.docPrepFlow === "closing-docs" ? "closing-docs" : "discovery";
+  return "discovery";
+}
+
+function exportSectionsForFlow(flow) {
+  if (flow === "closing-docs") {
+    return ["Reviewed Discovery File", "Closing field map", "Required seller/client fields", "Template fill review", "Closing Prep packet"];
+  }
+  return ["Discovery dossier", "Completed lead report", "Source notes", "Closing Prep review", "CRM handoff"];
+}
+
+function exportTitleForFlow(flow, isBatch) {
+  if (flow === "closing-docs") return isBatch ? "HeirRight Batch Closing Prep Packet" : "HeirRight Closing Prep Packet";
+  return isBatch ? "HeirRight Batch Discovery Prep Packet" : "HeirRight Discovery Prep Packet";
+}
+
 async function localControlledPodioExport() {
   const { runDryPipeline } = require("../worker/dist/index");
   const { buildControlledPodioTestSeed } = require("../worker/dist/export/controlled-test-lead");
@@ -974,19 +993,24 @@ async function handleLocalExport(req, res) {
     sendJson(res, 404, { ok: false, error: "Load the latest lead packet first." });
     return;
   }
+  const latestRun = JSON.parse(readFileSync(latestRunPath, "utf8"));
+  const flow = normalizedExportFlow(body);
+  const estateId = body.estateId || body.leadId || latestRun.dossier?.id || "latest";
+  const title = exportTitleForFlow(flow, Boolean(body.batch || body.mode === "batch"));
   const results = Array.from(new Set(routes)).map((route) => localExportRoute(route, dryRun));
   sendJson(res, 200, sanitizeLocalExportResult({
     ok: results.every((result) => result.ok),
     generatedAt: new Date().toISOString(),
-    dossierId: JSON.parse(readFileSync(latestRunPath, "utf8")).dossier?.id ?? "latest",
+    dossierId: latestRun.dossier?.id ?? "latest",
     routes: results,
     blockers: results.flatMap((result) => result.blockers),
     artifact: {
       kind: "single_pdf",
       contentType: "application/pdf",
-      flow: body.flow || (body.batch ? "batch" : "discovery"),
-      url: `/api/reports/pdf?title=${encodeURIComponent(body.batch ? "HeirRight Batch Doc Prep Packet" : "HeirRight Doc Prep Packet")}&status=${encodeURIComponent(dryRun ? "Review packet" : "Controlled export packet")}`,
-      sections: ["Discovery dossier", "Completed lead report", "Source notes", "Closing Prep review", "CRM handoff"],
+      flow,
+      estateId,
+      url: `/api/reports/pdf?title=${encodeURIComponent(title)}&status=${encodeURIComponent(dryRun ? "Review packet" : "Controlled export packet")}`,
+      sections: exportSectionsForFlow(flow),
     },
   }));
 }

@@ -26,6 +26,24 @@ function workerApiBase() {
   return process.env.HEIRRIGHT_WORKER_URL || process.env.WORKER_API_URL || process.env.WORKER_BASE_URL || "";
 }
 
+function normalizedExportFlow(body = {}) {
+  const raw = String(body.flow || body.docPrepFlow || (body.batch ? "batch" : "discovery")).trim();
+  if (raw === "closing" || raw === "closing-docs" || raw === "closing-prep") return "closing-docs";
+  if (raw === "batch") return body.docPrepFlow === "closing-docs" ? "closing-docs" : "discovery";
+  return "discovery";
+}
+
+function exportSectionsForFlow(flow) {
+  if (flow === "closing-docs") {
+    return ["Reviewed Discovery File", "Closing field map", "Required seller/client fields", "Template fill review", "Closing Prep packet"];
+  }
+  return ["Discovery dossier", "Completed lead report", "Source notes", "Closing Prep review", "CRM handoff"];
+}
+
+function exportTitleForFlow(flow) {
+  return flow === "closing-docs" ? "HeirRight Closing Prep Batch" : "HeirRight Discovery Prep Batch";
+}
+
 async function proxyWorkerExport(body) {
   const base = workerApiBase().replace(/\/+$/, "");
   if (!base) return null;
@@ -45,6 +63,8 @@ async function proxyWorkerExport(body) {
 
 function blockedResponse(body) {
   const routes = Array.isArray(body?.routes) ? body.routes : [];
+  const flow = normalizedExportFlow(body);
+  const estateId = body?.estateId || body?.leadId || body?.assetKey || "batch";
   return {
     ok: false,
     status: "blocked",
@@ -60,9 +80,10 @@ function blockedResponse(body) {
     artifact: {
       kind: "single_pdf",
       contentType: "application/pdf",
-      flow: body?.flow || "batch",
-      url: "/api/reports/pdf?title=HeirRight%20Doc%20Prep%20Batch&status=Batch%20export%20blocked",
-      sections: ["Discovery dossier", "Completed lead report", "Source notes", "Closing Prep review", "CRM handoff"],
+      flow,
+      estateId,
+      url: `/api/reports/pdf?title=${encodeURIComponent(exportTitleForFlow(flow))}&status=Batch%20export%20blocked`,
+      sections: exportSectionsForFlow(flow),
     },
   };
 }

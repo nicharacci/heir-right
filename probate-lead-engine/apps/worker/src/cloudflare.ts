@@ -700,6 +700,21 @@ async function freshLeadBatchResponse(request: Request, url: URL, env: Cloudflar
   return json(result, { headers: { "cache-control": "no-store" } });
 }
 
+function normalizedExportFlow(body?: { flow?: unknown; docPrepFlow?: unknown; batch?: unknown; controlledTest?: unknown }): "controlled-test" | "discovery" | "closing-docs" {
+  if (body?.controlledTest) return "controlled-test";
+  const raw = stringValue(body?.flow) || stringValue(body?.docPrepFlow) || (body?.batch ? "batch" : "discovery");
+  if (raw === "closing" || raw === "closing-docs" || raw === "closing-prep") return "closing-docs";
+  if (raw === "batch") return body?.docPrepFlow === "closing-docs" ? "closing-docs" : "discovery";
+  return "discovery";
+}
+
+function exportSectionsForFlow(flow: "controlled-test" | "discovery" | "closing-docs"): string[] {
+  if (flow === "closing-docs") {
+    return ["Reviewed Discovery File", "Closing field map", "Required seller/client fields", "Template fill review", "Closing Prep packet"];
+  }
+  return ["Discovery dossier", "Completed lead report", "Source notes", "Closing Prep review", "CRM handoff"];
+}
+
 async function exportResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
   const dryRun = url.searchParams.get("dry-run") !== "false";
   const routesParam = url.searchParams.get("routes");
@@ -707,7 +722,7 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
     ? routesParam.split(",").map((route) => route.trim()).filter((route): route is "google" | "podio" => route === "google" || route === "podio")
     : ["google", "podio"] as Array<"google" | "podio">;
   const body = request.method === "POST"
-    ? await request.json().catch(() => undefined) as { seed?: IntakeSeed; routes?: Array<"google" | "podio">; dryRun?: boolean; controlledTest?: boolean } | undefined
+    ? await request.json().catch(() => undefined) as { seed?: IntakeSeed; routes?: Array<"google" | "podio">; dryRun?: boolean; controlledTest?: boolean; flow?: string; docPrepFlow?: string; batch?: boolean; estateId?: string; leadId?: string } | undefined
     : undefined;
   const seed = body?.controlledTest
     ? buildControlledPodioTestSeed(env as Record<string, string | undefined>)
@@ -721,15 +736,19 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
     dryRun: body?.dryRun ?? dryRun,
     controlledTest: body?.controlledTest,
   }, env as Record<string, string | undefined>);
+  const flow = normalizedExportFlow(body);
+  const title = flow === "closing-docs"
+    ? `HeirRight Closing Prep Packet - ${pipeline.dossier.summary.displayName}`
+    : `HeirRight Discovery Prep Packet - ${pipeline.dossier.summary.displayName}`;
   return json({
     ...result,
     artifact: {
       kind: "single_pdf",
       contentType: "application/pdf",
-      flow: body?.controlledTest ? "controlled-test" : "discovery",
-      estateId: pipeline.dossier.id,
-      url: `/api/reports/pdf?title=${encodeURIComponent(`HeirRight Doc Prep Packet - ${pipeline.dossier.summary.displayName}`)}&status=${encodeURIComponent(result.ok ? "Export review packet" : "Export blocked")}`,
-      sections: ["Discovery dossier", "Completed lead report", "Source notes", "Closing Prep review", "CRM handoff"],
+      flow,
+      estateId: body?.estateId || body?.leadId || pipeline.dossier.id,
+      url: `/api/reports/pdf?title=${encodeURIComponent(title)}&status=${encodeURIComponent(result.ok ? "Export review packet" : "Export blocked")}`,
+      sections: exportSectionsForFlow(flow),
     },
   }, { headers: { "cache-control": "no-store" } });
 }
