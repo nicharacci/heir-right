@@ -838,7 +838,7 @@ const discoverySourceLabels: Array<{ source: SourceFact["source"]; label: string
   { source: "tax_collector", label: "Tax Collector", mode: "script_or_browser_required" },
   { source: "official_records", label: "Official Records", mode: "commercial_api_or_browser_capture" },
   { source: "probate_court", label: "Probate/Civil/Family Court", mode: "commercial_api_or_browser_capture" },
-  { source: "clerk_of_courts", label: "Marriage, death, obituary, and vital review", mode: "public_manual_or_browser" },
+  { source: "clerk_of_courts", label: "Marriage, death, obituary, and vital review", mode: "browser_workflow_or_source_capture" },
   { source: "idi", label: "IDI Core Asset Search", mode: "paid_api_or_operator_import" },
   { source: "skip_trace", label: "Skip trace/contact enrichment", mode: "paid_manual_approval" },
 ];

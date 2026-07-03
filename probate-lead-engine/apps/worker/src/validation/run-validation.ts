@@ -174,6 +174,7 @@ async function main(): Promise<void> {
   if (!podioProbate) failures.push("Podio probate_docket payload missing.");
   if (!result.dossier.marriageDeathIndicators.reviewTasks.length) failures.push("Marriage/death review tasks missing.");
   if (!result.dossier.marriageDeathIndicators.deathCertificateTask.required) failures.push("Death certificate task missing.");
+  if (!result.facts.some((item) => item.source === "clerk_of_courts" && item.factType === "source_status" && item.reviewFlags.includes("VITAL_RECORDS_WORKFLOW_REQUIRED"))) failures.push("Vital/obituary workflow source-status blocker missing.");
   if (!result.dossier.familyTree.hypothesis.value?.nodes.length) failures.push("Family tree hypothesis nodes missing.");
   if (!result.dossier.sourceGovernance.catalog.value?.governedSources.length) failures.push("Source governance catalog missing.");
   if (!result.dossier.sourceGovernance.catalog.value?.publicSourceContracts.length) failures.push("Public source acquisition contracts missing.");

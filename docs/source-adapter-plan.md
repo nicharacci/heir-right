@@ -55,7 +55,7 @@ type SourceFact = {
 | Miami-Dade Tax Collector | Guarded listing-page receipt client implemented for explicit receipt links, supplied listing HTML, direct listing URLs, configured listing URL templates, and `TAX_COLLECTOR_BROWSER_WORKFLOW_URL`; public GovHub entry currently returns a Cloudflare/browser-workflow blocker unless the browser workflow API is configured | folio, address, owner, listing page URL, browser workflow response | acquisition/source status, receipt link, receipt artifact/link, paid date, payer identity, unpaid years, amount due, reassessment/status notes | block until bottom-right receipt link is captured or the browser-workflow/source blocker is preserved |
 | Miami-Dade Official Records / Clerk | Commercial API client by folio when `MIAMI_DADE_CLERK_AUTH_KEY` exists; live app reachability + title/deed capture fallback | folio, owner, address, OR book/page | source status, latest record/deed candidate, OR book/page, recorded/document date, parties, title friction | `commercial_api_key_required` without AuthKey; human review required even when API returns records |
 | Probate/Civil/Family Court | Commercial API client by case number when `MIAMI_DADE_CLERK_AUTH_KEY` exists; browser/capture fallback | case number, estate name, owner/decedent | source status, case number, case status, docket refs, affidavit/document availability | `commercial_api_key_required` without AuthKey; `commercial_api_input_required` without case number; human review required |
-| Marriage/death/obituary/vital review | Source-run bucket + capture fields; browser/manual extraction next | decedent/heir names, DOB/DOD, county | obituary link, DOB/DOD, marriage/license signal, death certificate status | human-review blocker until source evidence or reviewed-not-found note is saved |
+| Marriage/death/obituary/vital review | Configurable workflow API hook implemented through `OBITUARY_VITAL_WORKFLOW_URL` / equivalents; real controlled-browser/API endpoint proof remains | estate/owner/decedent names, address, folio, case number, county | source status, obituary link, DOB/DOD, marriage-license signal, obituary snapshot, death-certificate status, incarceration/deceased-indicator status | `workflow_required` and `VITAL_RECORDS_WORKFLOW_REQUIRED` until the workflow is configured; human review required even when facts return |
 | IDI Core / skip trace | Source-run bucket only; paid/API proof requires configured vendor access and approval | owner/address/DOB/DOD | imported or live-run contact/address/family evidence | paid/manual blocker until shared/default key or approved user key run produces readback |
 | Landing/intake | Local dry-run seed | address, owner, county, folio | intake seed fact | missing fields become review flags |
 | Podio | Dry-run only unless config exists | raw dossier | CRM payload fact | missing credentials block live sync |
@@ -146,7 +146,8 @@ Stop and report a blocker instead of forcing source extraction when:
 9. Tax Collector search/listing client that lands on the listing page and extracts the bottom-right receipt link; direct listing/template path and saved browser-workflow blockers are implemented, Browserbase/Chrome capture remains for GovHub/Cloudflare.
 10. Tax Collector browser-workflow API hook via `TAX_COLLECTOR_BROWSER_WORKFLOW_URL`; hook implemented and mock-proven, real Browserbase/Chrome endpoint proof remains.
 11. Miami-Dade Clerk Commercial Data Services clients for Official Records by folio and Civil/Family/Probate by case number; AuthKey-gated client implemented, credentialed proof remains.
-12. Tax/deed depth adapters.
-13. Probate/heirship research queue.
-14. Paid/manual source governance.
-15. Completed lead report and offer math payload.
+12. Vital/obituary/marriage/death workflow API hook via `OBITUARY_VITAL_WORKFLOW_URL` / `VITAL_OBITUARY_WORKFLOW_URL` / `MARRIAGE_DEATH_WORKFLOW_URL`; hook implemented and mock-proven, real controlled-browser/API source proof remains.
+13. Tax/deed depth adapters.
+14. Probate/heirship research queue.
+15. Paid/manual source governance.
+16. Completed lead report and offer math payload.

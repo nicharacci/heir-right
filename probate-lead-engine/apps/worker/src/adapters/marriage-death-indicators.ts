@@ -1,16 +1,145 @@
-import type { IntakeSeed, SourceFact } from "@ple/types";
+import type { IntakeSeed, ReviewFlag, SourceFact } from "@ple/types";
 import { fact, intakeSubject, nowIso, seedIdentity, slug } from "../lib";
 
 const CLERK_RECORDS_URL = "https://www2.miamidadeclerk.gov/ocs/";
-const missingFlags = ["MISSING_MARRIAGE_DEATH_FACT", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"] as const;
-const deathCertFlags = ["MANUAL_DEATH_CERTIFICATE_REQUIRED", "MISSING_MARRIAGE_DEATH_FACT", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"] as const;
+const missingFlags: ReviewFlag[] = ["MISSING_MARRIAGE_DEATH_FACT", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"];
+const vitalWorkflowFlags: ReviewFlag[] = ["VITAL_RECORDS_WORKFLOW_REQUIRED", ...missingFlags];
+const deathCertFlags: ReviewFlag[] = ["MANUAL_DEATH_CERTIFICATE_REQUIRED", "MISSING_MARRIAGE_DEATH_FACT", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"];
+const workflowCapturedFlags: ReviewFlag[] = ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"];
 
-export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: IntakeSeed): Promise<SourceFact[]> {
+type RuntimeEnv = Record<string, string | undefined>;
+type JsonRecord = Record<string, unknown>;
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function workflowUrl(env: RuntimeEnv): string {
+  return stringValue(env.OBITUARY_VITAL_WORKFLOW_URL)
+    || stringValue(env.VITAL_OBITUARY_WORKFLOW_URL)
+    || stringValue(env.MARRIAGE_DEATH_WORKFLOW_URL);
+}
+
+function workflowToken(env: RuntimeEnv): string {
+  return stringValue(env.OBITUARY_VITAL_WORKFLOW_TOKEN)
+    || stringValue(env.VITAL_OBITUARY_WORKFLOW_TOKEN)
+    || stringValue(env.MARRIAGE_DEATH_WORKFLOW_TOKEN)
+    || stringValue(env.BROWSERBASE_API_KEY);
+}
+
+async function fetchVitalWorkflow(seed: IntakeSeed, env: RuntimeEnv): Promise<{ ok: boolean; status: number; url: string; data: JsonRecord; error?: string } | null> {
+  const url = workflowUrl(env);
+  if (!url) return null;
+
+  try {
+    const headers: Record<string, string> = {
+      accept: "application/json",
+      "content-type": "application/json",
+      "user-agent": "HeirRight-VitalObituaryWorkflow/1.0",
+    };
+    const token = workflowToken(env);
+    if (token) headers.authorization = `Bearer ${token}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        source: "vital_obituary_review",
+        estateName: seed.estateName ?? "",
+        ownerName: seed.ownerName ?? "",
+        propertyAddress: seed.propertyAddress ?? "",
+        parcelId: seed.parcelId ?? "",
+        caseNumber: seed.caseNumber ?? "",
+        county: seed.county,
+        clerkSearchUrl: CLERK_RECORDS_URL,
+      }),
+    });
+    const data = await response.json().catch(() => ({})) as JsonRecord;
+    return {
+      ok: response.ok && data.ok !== false,
+      status: response.status,
+      url,
+      data,
+      error: stringValue(data.error) || stringValue(data.message),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      url,
+      data: {},
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+function workflowField(data: JsonRecord, ...keys: string[]): unknown {
+  for (const key of keys) {
+    const value = data[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (value !== undefined && value !== null && typeof value !== "string") return value;
+  }
+  return null;
+}
+
+function hasValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0;
+  return value !== null && value !== undefined;
+}
+
+function flagsFor(value: unknown, fallback: ReviewFlag[] = missingFlags): ReviewFlag[] {
+  return hasValue(value) ? workflowCapturedFlags : fallback;
+}
+
+export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: IntakeSeed, env: RuntimeEnv = {}): Promise<SourceFact[]> {
   const fetchedAt = nowIso();
   const rawId = `marriage-death:${slug(seedIdentity(seed))}`;
   const subject = intakeSubject(seed);
+  const workflow = await fetchVitalWorkflow(seed, env);
+  const workflowData = workflow?.data ?? {};
+  const sourceUrl = stringValue(workflowField(workflowData, "sourceUrl", "obituaryUrl", "obituaryLink", "marriageLicenseUrl", "deathCertificateUrl"))
+    || workflow?.url
+    || CLERK_RECORDS_URL;
+  const marriageLicenseSignal = workflowField(workflowData, "marriageLicenseSignal", "marriageStatus", "marriageLicense");
+  const dateOfBirth = workflowField(workflowData, "dateOfBirth", "dob");
+  const dateOfDeath = workflowField(workflowData, "dateOfDeath", "dod");
+  const obituaryLink = workflowField(workflowData, "obituaryLink", "obituaryUrl", "sourceUrl");
+  const obituarySnapshot = workflowField(workflowData, "obituarySnapshot", "obituaryExcerpt", "obituaryText", "obituaryAttachment");
+  const deathCertificateStatus = workflowField(workflowData, "deathCertificateStatus", "deathCertificate");
+  const incarcerationStatus = workflowField(workflowData, "incarcerationStatus", "incarcerationStatusSignal", "incarcerationSignal");
+  const statusValue = workflowField(workflowData, "status", "marriageDeathStatus", "obituaryStatus");
+  const sourceStatus = workflow
+    ? {
+        mode: workflow.ok ? "workflow_reviewed" : "workflow_failed",
+        ok: workflow.ok,
+        status: workflow.status,
+        note: workflow.ok
+          ? "Vital, obituary, marriage, and deceased-indicator workflow returned reviewable source facts. A person still needs to confirm heirship before Closing Prep uses them."
+          : `Vital, obituary, marriage, and deceased-indicator workflow did not return usable facts: ${workflow.error || `HTTP ${workflow.status}`}.`,
+        workflowUrl: workflow.url,
+      }
+    : {
+        mode: "workflow_required",
+        ok: false,
+        note: "Vital, obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator review needs a configured browser/API workflow before the app can fill these Discovery facts automatically.",
+        workflowUrl: null,
+      };
+  const sourceStatusFlags = workflow?.ok ? workflowCapturedFlags : vitalWorkflowFlags;
 
   return [
+    fact({
+      runId,
+      source: "clerk_of_courts",
+      rawId: `${rawId}:source-status`,
+      fetchedAt,
+      county: seed.county,
+      subject,
+      factType: "source_status",
+      value: sourceStatus,
+      confidence: workflow?.ok ? 0.82 : 0.2,
+      sourceUrl,
+      reviewFlags: [...sourceStatusFlags],
+    }),
     fact({
       runId,
       source: "clerk_of_courts",
@@ -19,10 +148,10 @@ export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: Inta
       county: seed.county,
       subject,
       factType: "marriage_death_status",
-      value: "manual_review_required",
-      confidence: 0,
-      sourceUrl: CLERK_RECORDS_URL,
-      reviewFlags: [...missingFlags],
+      value: statusValue || (workflow ? (workflow.ok ? "workflow_reviewed" : "workflow_failed") : "workflow_required"),
+      confidence: workflow?.ok ? 0.72 : 0.2,
+      sourceUrl,
+      reviewFlags: workflow?.ok ? ["HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"] : [...vitalWorkflowFlags],
     }),
     fact({
       runId,
@@ -32,10 +161,10 @@ export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: Inta
       county: seed.county,
       subject,
       factType: "marriage_license_signal",
-      value: null,
-      confidence: 0,
-      sourceUrl: CLERK_RECORDS_URL,
-      reviewFlags: [...missingFlags],
+      value: marriageLicenseSignal,
+      confidence: hasValue(marriageLicenseSignal) ? 0.72 : 0,
+      sourceUrl,
+      reviewFlags: flagsFor(marriageLicenseSignal, workflow?.ok ? missingFlags : vitalWorkflowFlags),
     }),
     fact({
       runId,
@@ -45,9 +174,10 @@ export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: Inta
       county: seed.county,
       subject,
       factType: "date_of_birth",
-      value: null,
-      confidence: 0,
-      reviewFlags: [...missingFlags],
+      value: dateOfBirth,
+      confidence: hasValue(dateOfBirth) ? 0.7 : 0,
+      sourceUrl,
+      reviewFlags: flagsFor(dateOfBirth, workflow?.ok ? missingFlags : vitalWorkflowFlags),
     }),
     fact({
       runId,
@@ -57,9 +187,10 @@ export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: Inta
       county: seed.county,
       subject,
       factType: "date_of_death",
-      value: null,
-      confidence: 0,
-      reviewFlags: [...missingFlags],
+      value: dateOfDeath,
+      confidence: hasValue(dateOfDeath) ? 0.75 : 0,
+      sourceUrl,
+      reviewFlags: flagsFor(dateOfDeath, workflow?.ok ? missingFlags : vitalWorkflowFlags),
     }),
     fact({
       runId,
@@ -69,9 +200,10 @@ export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: Inta
       county: seed.county,
       subject,
       factType: "obituary_link",
-      value: null,
-      confidence: 0,
-      reviewFlags: [...missingFlags],
+      value: obituaryLink,
+      confidence: hasValue(obituaryLink) ? 0.75 : 0,
+      sourceUrl: stringValue(obituaryLink) || sourceUrl,
+      reviewFlags: flagsFor(obituaryLink, workflow?.ok ? missingFlags : vitalWorkflowFlags),
     }),
     fact({
       runId,
@@ -81,9 +213,10 @@ export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: Inta
       county: seed.county,
       subject,
       factType: "obituary_snapshot",
-      value: null,
-      confidence: 0,
-      reviewFlags: ["SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+      value: obituarySnapshot,
+      confidence: hasValue(obituarySnapshot) ? 0.65 : 0,
+      sourceUrl,
+      reviewFlags: flagsFor(obituarySnapshot, workflow?.ok ? ["SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"] : vitalWorkflowFlags),
     }),
     fact({
       runId,
@@ -109,9 +242,10 @@ export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: Inta
       county: seed.county,
       subject,
       factType: "death_certificate_status",
-      value: null,
-      confidence: 0,
-      reviewFlags: [...deathCertFlags],
+      value: deathCertificateStatus,
+      confidence: hasValue(deathCertificateStatus) ? 0.65 : 0,
+      sourceUrl,
+      reviewFlags: flagsFor(deathCertificateStatus, workflow?.ok ? deathCertFlags : [...deathCertFlags, "VITAL_RECORDS_WORKFLOW_REQUIRED"]),
     }),
     fact({
       runId,
@@ -121,9 +255,10 @@ export async function fetchMarriageDeathIndicatorFacts(runId: string, seed: Inta
       county: seed.county,
       subject,
       factType: "incarceration_status_signal",
-      value: null,
-      confidence: 0,
-      reviewFlags: [...missingFlags],
+      value: incarcerationStatus,
+      confidence: hasValue(incarcerationStatus) ? 0.65 : 0,
+      sourceUrl,
+      reviewFlags: flagsFor(incarcerationStatus, workflow?.ok ? missingFlags : vitalWorkflowFlags),
     }),
   ];
 }

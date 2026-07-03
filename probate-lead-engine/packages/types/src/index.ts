@@ -492,7 +492,7 @@ export interface ExportResult {
 }
 
 export interface ConnectionStatus {
-  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search" | "Tax Collector Source" | "Miami-Dade Clerk API" | "IDI Core" | "Activepieces" | "Linear Support" | "Leads Engine Access";
+  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search" | "Tax Collector Source" | "Miami-Dade Clerk API" | "Vital/Obituary Workflow" | "IDI Core" | "Activepieces" | "Linear Support" | "Leads Engine Access";
   ok: boolean;
   mode: "live" | "dry_run" | "review" | "blocked";
   message: string;
@@ -520,6 +520,8 @@ export interface ConnectionStatus {
     civilCaseApi?: string;
     civilDocketApi?: string;
     baseUrl?: string;
+    workflowConfigured?: boolean;
+    supports?: string[];
   };
 }
 
@@ -635,6 +637,7 @@ export type ReviewFlag =
   | "MISSING_AFFIDAVIT_OF_HEIRS_FACT"
   | "PROBATE_DOCUMENT_REQUEST_REQUIRED"
   | "MISSING_MARRIAGE_DEATH_FACT"
+  | "VITAL_RECORDS_WORKFLOW_REQUIRED"
   | "MANUAL_DEATH_CERTIFICATE_REQUIRED"
   | "PAID_SOURCE_APPROVAL_REQUIRED"
   | "MANUAL_SOURCE_APPROVAL_REQUIRED"

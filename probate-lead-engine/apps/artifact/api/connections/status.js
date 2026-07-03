@@ -160,6 +160,28 @@ function clerkCommercialApiStatus(env, checkedAt = new Date().toISOString()) {
   };
 }
 
+function vitalObituaryWorkflowStatus(env, checkedAt = new Date().toISOString()) {
+  const workflowUrl = env.OBITUARY_VITAL_WORKFLOW_URL
+    || env.VITAL_OBITUARY_WORKFLOW_URL
+    || env.MARRIAGE_DEATH_WORKFLOW_URL;
+  const configured = Boolean(workflowUrl);
+  return {
+    name: "Vital/Obituary Workflow",
+    ok: configured,
+    mode: configured ? "review" : "blocked",
+    configuredMode: configured ? "browser_workflow" : "none",
+    message: configured
+      ? "Vital, obituary, marriage-license, death-certificate, and deceased-indicator workflow is configured. Returned facts stay review-gated before Closing Prep uses them."
+      : "Vital, obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator review needs a configured browser/API workflow before Discovery can fill those facts automatically.",
+    checkedAt,
+    blockers: configured ? [] : ["Configure OBITUARY_VITAL_WORKFLOW_URL or equivalent before claiming vital/obituary source automation."],
+    sourceAutomation: {
+      workflowConfigured: configured,
+      supports: ["obituary", "marriageLicense", "dateOfBirth", "dateOfDeath", "deathCertificateStatus", "incarcerationStatus"],
+    },
+  };
+}
+
 function idiCoreStatus(env, checkedAt = new Date().toISOString()) {
   const api = idiCoreApiDetails(env);
   const apiConfigured = idiCoreApiConfigured(env);
@@ -253,6 +275,7 @@ function operatorAccessList(items) {
     .replace(/MIAMI_DADE_CLERK_AUTH_KEY/g, "Miami-Dade Clerk API access")
     .replace(/MIAMI_DADE_COMMERCIAL_AUTH_KEY/g, "Miami-Dade Clerk API access")
     .replace(/CLERK_COMMERCIAL_AUTH_KEY/g, "Miami-Dade Clerk API access")
+    .replace(/OBITUARY_VITAL_WORKFLOW_URL/g, "vital/obituary workflow")
     .replace(/IDI_CORE_API_URL/g, "IDI Core endpoint")
     .replace(/IDI_CORE_API_KEY/g, "IDI Core access")
     .replace(/IDI_CORE_PORTAL_URL/g, "idiCORE portal")
@@ -337,6 +360,7 @@ function buildConnectionStatuses(env = process.env, options = {}) {
     },
     taxCollectorSourceStatus(env, checkedAt),
     clerkCommercialApiStatus(env, checkedAt),
+    vitalObituaryWorkflowStatus(env, checkedAt),
     idiCoreStatus(env, checkedAt),
     {
       name: "Activepieces",

@@ -113,6 +113,28 @@ function clerkCommercialApiConnectionStatus(env: RuntimeEnv, checkedAt: string):
   };
 }
 
+function vitalObituaryWorkflowConnectionStatus(env: RuntimeEnv, checkedAt: string): ConnectionStatus {
+  const workflowUrl = env.OBITUARY_VITAL_WORKFLOW_URL
+    || env.VITAL_OBITUARY_WORKFLOW_URL
+    || env.MARRIAGE_DEATH_WORKFLOW_URL;
+  const configured = Boolean(workflowUrl);
+  return {
+    name: "Vital/Obituary Workflow",
+    ok: configured,
+    mode: configured ? "review" : "blocked",
+    configuredMode: configured ? "browser_workflow" : "none",
+    message: configured
+      ? "Vital, obituary, marriage-license, death-certificate, and deceased-indicator workflow is configured. Returned facts stay review-gated before Closing Prep uses them."
+      : "Vital, obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator review needs a configured browser/API workflow before Discovery can fill those facts automatically.",
+    checkedAt,
+    blockers: configured ? [] : ["Configure OBITUARY_VITAL_WORKFLOW_URL or equivalent before claiming vital/obituary source automation."],
+    sourceAutomation: {
+      workflowConfigured: configured,
+      supports: ["obituary", "marriageLicense", "dateOfBirth", "dateOfDeath", "deathCertificateStatus", "incarcerationStatus"],
+    },
+  };
+}
+
 function idiCoreConnectionStatus(env: RuntimeEnv, checkedAt: string): ConnectionStatus {
   const api = idiCoreApiDetails(env);
   const apiConfigured = idiCoreApiConfigured(env);
@@ -1105,6 +1127,7 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
     },
     taxCollectorSourceConnectionStatus(env, checkedAt),
     clerkCommercialApiConnectionStatus(env, checkedAt),
+    vitalObituaryWorkflowConnectionStatus(env, checkedAt),
     idiCoreConnectionStatus(env, checkedAt),
     {
       name: "Activepieces",

@@ -18,6 +18,8 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - `/api/discovery/external-source-run` now gives Doc Prep one callable source-run surface across worker, local artifact server, and serverless fallback. It returns all required Discovery source buckets, source facts, and blockers without marking missing sources complete.
 - Doc Prep now has an operator-facing `Run Source Search` control in the public-record capture panel. It writes back returned source facts, Tax Collector browser blockers, receipt links, and source summaries into the estate-scoped capture state.
 - Official Records and Civil/Family/Probate now have explicit Miami-Dade Clerk Commercial Data Services API clients. They are credential-gated by `MIAMI_DADE_CLERK_AUTH_KEY` and return `commercial_api_key_required` blockers when the paid AuthKey is missing.
+- Marriage/death/obituary/vital indicators now have a configurable workflow API hook. When no workflow is configured, they return `workflow_required` plus `VITAL_RECORDS_WORKFLOW_REQUIRED` instead of blank source facts.
+- Settings/export readiness now exposes `Vital/Obituary Workflow` separately from generic Web Search readiness.
 - Closing Prep cannot auto-complete title, seller approval, or package phases when required evidence or fields are missing.
 - Required Closing fields persist per estate and feed the deterministic field map.
 - Closing export blocks before Google export if required fields are unresolved.
@@ -43,8 +45,9 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - A production Browserbase/Chrome Tax Collector workflow still needs to be implemented and proven against the real public-search flow. Current proof preserves the blocker and parses reachable listing pages; it does not claim the GovHub browser run is automated end to end.
 - The Tax Collector browser-workflow hook is mock-proven, but the real Browserbase/controlled Chrome endpoint must still be configured and run against GovHub.
 - Live system-Chrome proof reached Cloudflare security verification at the public GovHub entry, confirming pure script is not enough from the public search URL.
-- Official Records, Probate/Civil/Family Court, marriage/death/obituary/vital sources, and skip trace are represented in the source-run contract but still need extraction/browser workflows or explicit operator-review completion proof before anyone can say the external-source Discovery workflow is fully automated.
+- Official Records, Probate/Civil/Family Court, Tax Collector public search, marriage/death/obituary/vital sources, and skip trace are represented in the source-run contract but still need credentialed workflow proof or explicit operator-review completion proof before anyone can say the external-source Discovery workflow is fully automated.
 - Official Records and Probate/Civil/Family Court now have official commercial API paths, but they still need a credentialed paid proof run with an enabled Clerk developer account and pre-paid units before anyone can call them production-complete.
+- Vital/obituary workflow hook is mock-proven, but the real controlled browser/API endpoint must still be configured and run against source pages before anyone can call those fields production-complete.
 - Google/Podio live write and readback still require configured credentials and approval.
 - Browser E2E and PDF inspection must be rerun after any additional source-flow or preview changes.
 
@@ -68,6 +71,8 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Visual proof saved at `/tmp/heirright-docprep-source.png` shows the public-record capture panel contained in the Doc Prep rail.
 - Clerk API route proof returned explicit `commercial_api_key_required` blockers for Official Records and Probate/Civil/Family Court and added `Miami-Dade Clerk API` to Settings connection status.
 - Tax Collector browser-workflow hook proof returned a bottom-right receipt link from mocked workflow listing HTML and preserved review flags.
+- Vital/obituary workflow direct proof returned mocked DOB/DOD/obituary/marriage/death-certificate facts and preserved review flags.
+- Vital/obituary route proof returned `workflow_required` and `VITAL_RECORDS_WORKFLOW_REQUIRED`; Settings returned `Vital/Obituary Workflow` as blocked until the workflow URL is configured.
 
 ## Dedicated Final Review Pass
 
@@ -82,7 +87,7 @@ Required corrections before complete:
 - Implement/prove Browserbase or controlled Chrome for the Tax Collector public-search flow.
 - Configure/prove Miami-Dade Clerk Commercial Data Services AuthKey for Official Records and Probate/Civil/Family Court, then inspect returned deed/docket facts against the source packets.
 - Configure/prove the real `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` Browserbase/Chrome endpoint against the public GovHub search flow.
-- Implement/prove vital/obituary extraction or keep it as an explicit operator-review step.
+- Configure/prove the real `OBITUARY_VITAL_WORKFLOW_URL` or equivalent controlled workflow against obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator pages.
 - Configure/prove real IDI Core shared-default access before calling IDI production-ready.
 
 ## TP Checklist
@@ -98,3 +103,4 @@ Required corrections before complete:
 - Save a Tax Collector `Browser workflow blocked` status and confirm the Discovery tax phase does not complete until a receipt link or approved unavailable-after-check blocker exists.
 - In Doc Prep, open `?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture`, click `Run Source Search`, and confirm source summaries show returned facts plus blockers instead of blank fields.
 - In Settings, confirm `Miami-Dade Clerk API` shows blocked until `MIAMI_DADE_CLERK_AUTH_KEY` is configured.
+- In Settings, confirm `Vital/Obituary Workflow` shows blocked until `OBITUARY_VITAL_WORKFLOW_URL` or equivalent is configured.

@@ -312,11 +312,50 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - `receiptUrl: https://miamidade.county-taxes.test/receipt/2025.pdf`;
   - review flags: `TAX_RECEIPT_LINK_CAPTURED`, `HUMAN_REVIEW_REQUIRED`.
 
+## Thirteenth Repair Pass: Vital/Obituary Workflow API Hook
+
+- Replaced the worker marriage/death/obituary adapter's import-only/manual posture with a configurable browser/API workflow contract:
+  - `OBITUARY_VITAL_WORKFLOW_URL`;
+  - `VITAL_OBITUARY_WORKFLOW_URL`;
+  - `MARRIAGE_DEATH_WORKFLOW_URL`.
+- The worker posts estate name, owner name, property address, folio, case number, county, and the Clerk search URL to the configured workflow.
+- Workflow responses can persist reviewable Discovery facts for:
+  - marriage-license signal;
+  - date of birth;
+  - date of death;
+  - obituary link;
+  - obituary snapshot/excerpt/attachment;
+  - death-certificate status;
+  - incarceration/deceased-indicator status.
+- When no workflow is configured, the source run now saves a first-class `source_status` fact with:
+  - `source_status.value.mode: workflow_required`;
+  - `VITAL_RECORDS_WORKFLOW_REQUIRED`;
+  - a plain-language next action for vital, obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator review.
+- Added `Vital/Obituary Workflow` to Settings/export readiness so the app no longer hides this requirement behind generic Web Search readiness.
+- Direct adapter proof with a mocked workflow response returned:
+  - `source_status.value.mode: workflow_reviewed`;
+  - `date_of_death: 2024-01-02`;
+  - `obituary_link: https://legacy.test/example-obituary`;
+  - `marriage_license_signal: reviewed-no-hit`;
+  - `death_certificate_status: requested-not-attached`.
+- Local route proof on `http://localhost:4178/api/discovery/external-source-run` returned:
+  - vital summary mode `browser_workflow_or_source_capture`;
+  - vital summary status `needs_review`;
+  - `source_status.value.mode: workflow_required`;
+  - `VITAL_RECORDS_WORKFLOW_REQUIRED`.
+- Local Settings proof on `http://localhost:4178/api/connections/status` returned `Vital/Obituary Workflow` as blocked with `OBITUARY_VITAL_WORKFLOW_URL` blocker.
+- Route-level UI proof for `?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` confirmed:
+  - `Public-record capture`;
+  - `Run Source Search`;
+  - `Tax Collector listing page`;
+  - `Preview`;
+  - old `Live packet preview` wording absent.
+
 ## Next Work
 
 - Point `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` at the real Browserbase or controlled Chrome workflow, run it against GovHub, and store the captured listing/receipt proof.
 - If browser observation exposes stable API calls behind GovHub, move them into the deterministic script client.
 - Configure/prove `MIAMI_DADE_CLERK_AUTH_KEY` in the target environment, then run a paid controlled Official Records and Civil/Family/Probate API proof with readback.
-- Add actual extraction adapters or browser workflows for vital/obituary sources. They are currently visible/callable buckets with blockers, not proven end-to-end automations.
+- Point `OBITUARY_VITAL_WORKFLOW_URL` or equivalent at the real controlled browser/API workflow and prove obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator capture against a real estate packet.
 - Rerun S30 demos against the corrected S29 source contracts before treating S30 as final client acceptance proof.
 - Continue source-backed treatment for marriage/death, offender/professional-license, voter/license, field/neighbor/code-enforcement, and paid/manual research tasks as explicitly human-required or approval-gated.
