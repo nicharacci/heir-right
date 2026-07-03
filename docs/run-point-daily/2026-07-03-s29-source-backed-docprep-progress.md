@@ -61,6 +61,13 @@ Browser screenshot proof could not be emitted because the machine is out of temp
 
 This is a proof blocker only. Build, tests, route probes, PDF response shape, and static DOM checks passed.
 
+IDI Core shared-default proof is blocked by missing deployment/runtime config:
+
+- Local runtime: `IDI_CORE_API_KEY` missing, `IDI_CORE_API_URL` missing.
+- Vercel project env list for `heirright-landing-demo`: no `IDI_CORE_API_KEY` or `IDI_CORE_API_URL` entries found.
+- Current app behavior is correct for this state: user override is allowed, but live paid runs block until explicit approval and vendor endpoint/shared access are present.
+- This means the code path supports team default plus user override, but the shared default is not actually configured in the current local/deployment environment.
+
 ## Anti-Negligence Review
 
 - Source checked: the user-corrected Tax Collector receipt source is the listing page, with the receipt link in the bottom-right corner. The app now models that source directly instead of treating the receipt as an optional manual attachment.
