@@ -492,12 +492,12 @@ export interface ExportResult {
 }
 
 export interface ConnectionStatus {
-  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search" | "Tax Collector Source" | "IDI Core" | "Activepieces" | "Linear Support" | "Leads Engine Access";
+  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search" | "Tax Collector Source" | "Miami-Dade Clerk API" | "IDI Core" | "Activepieces" | "Linear Support" | "Leads Engine Access";
   ok: boolean;
   mode: "live" | "dry_run" | "review" | "blocked";
   message: string;
   checkedAt: string;
-  configuredMode?: "api" | "operator_portal" | "script_listing" | "browser_workflow" | "none";
+  configuredMode?: "api" | "commercial_api" | "operator_portal" | "script_listing" | "browser_workflow" | "none";
   blockers?: string[];
   portal?: {
     configured: boolean;
@@ -512,10 +512,14 @@ export interface ConnectionStatus {
     liveRunApproved: boolean;
   };
   sourceAutomation?: {
-    scriptDirectListingConfigured: boolean;
-    scriptLiveProbeEnabled: boolean;
-    browserWorkflowConfigured: boolean;
-    publicSearchUrl: string;
+    scriptDirectListingConfigured?: boolean;
+    scriptLiveProbeEnabled?: boolean;
+    browserWorkflowConfigured?: boolean;
+    publicSearchUrl?: string;
+    officialRecordsApi?: string;
+    civilCaseApi?: string;
+    civilDocketApi?: string;
+    baseUrl?: string;
   };
 }
 

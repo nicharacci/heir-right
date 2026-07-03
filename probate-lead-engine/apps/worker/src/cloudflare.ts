@@ -836,8 +836,8 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
 const discoverySourceLabels: Array<{ source: SourceFact["source"]; label: string; mode: string }> = [
   { source: "property_appraiser", label: "Property Appraiser", mode: "public_api" },
   { source: "tax_collector", label: "Tax Collector", mode: "script_or_browser_required" },
-  { source: "official_records", label: "Official Records", mode: "public_browser_or_capture" },
-  { source: "probate_court", label: "Probate/Civil/Family Court", mode: "public_browser_or_capture" },
+  { source: "official_records", label: "Official Records", mode: "commercial_api_or_browser_capture" },
+  { source: "probate_court", label: "Probate/Civil/Family Court", mode: "commercial_api_or_browser_capture" },
   { source: "clerk_of_courts", label: "Marriage, death, obituary, and vital review", mode: "public_manual_or_browser" },
   { source: "idi", label: "IDI Core Asset Search", mode: "paid_api_or_operator_import" },
   { source: "skip_trace", label: "Skip trace/contact enrichment", mode: "paid_manual_approval" },
@@ -873,7 +873,8 @@ function summarizeSourceRunFacts(facts: SourceFact[]): Array<Record<string, unkn
   return discoverySourceLabels.map((item) => {
     const sourceFacts = facts.filter((factItem) => factItem.source === item.source);
     const flags = Array.from(new Set(sourceFacts.flatMap((factItem) => factItem.reviewFlags || [])));
-    const sourceStatusFact = sourceFacts.find((factItem) => factItem.factType === "source_status" || `${factItem.factType}`.endsWith("_status"));
+    const sourceStatusFact = sourceFacts.find((factItem) => factItem.factType === "source_status")
+      || sourceFacts.find((factItem) => `${factItem.factType}`.endsWith("_status"));
     const extractedFacts = sourceFacts.filter((factItem) =>
       factValuePresent(factItem.value)
       && !(factItem.reviewFlags || []).includes("SOURCE_HEALTH_ONLY")

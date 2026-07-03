@@ -138,6 +138,28 @@ function taxCollectorSourceStatus(env, checkedAt = new Date().toISOString()) {
   };
 }
 
+function clerkCommercialApiStatus(env, checkedAt = new Date().toISOString()) {
+  const authConfigured = Boolean(env.MIAMI_DADE_CLERK_AUTH_KEY || env.MIAMI_DADE_COMMERCIAL_AUTH_KEY || env.CLERK_COMMERCIAL_AUTH_KEY);
+  const baseUrl = env.MIAMI_DADE_CLERK_API_BASE || "https://www2.miamidadeclerk.gov/Developers/api";
+  return {
+    name: "Miami-Dade Clerk API",
+    ok: authConfigured,
+    mode: authConfigured ? "review" : "blocked",
+    configuredMode: authConfigured ? "commercial_api" : "none",
+    message: authConfigured
+      ? "Miami-Dade Clerk Commercial Data Services AuthKey is configured. Official Records and Civil/Family/Probate API calls can run, but each returned fact still needs review before legal or outreach use."
+      : "Official Records and Civil/Family/Probate APIs require a Miami-Dade Clerk Commercial Data Services AuthKey and pre-paid units before HeirRight can run them automatically.",
+    checkedAt,
+    blockers: authConfigured ? [] : ["Configure MIAMI_DADE_CLERK_AUTH_KEY before claiming Official Records or Probate/Court API automation."],
+    sourceAutomation: {
+      officialRecordsApi: "api/OfficialRecords?parameter1={folio}&parameter2=FN&authKey=...",
+      civilCaseApi: "api/Civil?caseNumber={caseNumber}&AuthKey=...",
+      civilDocketApi: "api/Civil?civilCaseNumber={caseNumber}&AuthKey=...",
+      baseUrl,
+    },
+  };
+}
+
 function idiCoreStatus(env, checkedAt = new Date().toISOString()) {
   const api = idiCoreApiDetails(env);
   const apiConfigured = idiCoreApiConfigured(env);
@@ -228,6 +250,9 @@ function operatorAccessList(items) {
     .replace(/TAX_COLLECTOR_LISTING_URL_TEMPLATE/g, "Tax Collector listing URL template")
     .replace(/BROWSERBASE_API_KEY/g, "Browserbase access")
     .replace(/BROWSERBASE_PROJECT_ID/g, "Browserbase project")
+    .replace(/MIAMI_DADE_CLERK_AUTH_KEY/g, "Miami-Dade Clerk API access")
+    .replace(/MIAMI_DADE_COMMERCIAL_AUTH_KEY/g, "Miami-Dade Clerk API access")
+    .replace(/CLERK_COMMERCIAL_AUTH_KEY/g, "Miami-Dade Clerk API access")
     .replace(/IDI_CORE_API_URL/g, "IDI Core endpoint")
     .replace(/IDI_CORE_API_KEY/g, "IDI Core access")
     .replace(/IDI_CORE_PORTAL_URL/g, "idiCORE portal")
@@ -311,6 +336,7 @@ function buildConnectionStatuses(env = process.env, options = {}) {
       checkedAt,
     },
     taxCollectorSourceStatus(env, checkedAt),
+    clerkCommercialApiStatus(env, checkedAt),
     idiCoreStatus(env, checkedAt),
     {
       name: "Activepieces",

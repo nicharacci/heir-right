@@ -270,10 +270,36 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Headless Chrome DOM proof for `?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` found `Public-record capture`, `Run Source Search`, `Tax Collector listing page`, `Bottom-right receipt link`, `Tax source blocker note`, and `Listing page HTML / source note`.
   - Visual proof saved at `/tmp/heirright-docprep-source.png` showed the Doc Prep rail on the public-record capture panel with tax receipt fields contained inside the rail.
 
+## Eleventh Repair Pass: Clerk Commercial API Path
+
+- Researched the official Miami-Dade Clerk Commercial Data Services API docs:
+  - Official Records API: `GET api/OfficialRecords?parameter1={parameter1}&parameter2={parameter2}&authKey={authKey}`.
+  - Civil/Family/Probate case API: `GET api/Civil?caseNumber={caseNumber}&AuthKey={AuthKey}`.
+  - Civil docket API: `GET api/Civil?civilCaseNumber={civilCaseNumber}&AuthKey={AuthKey}`.
+  - The Clerk documentation says developer accounts must be enabled and contain units; commercial API use is paid per request.
+- Added a typed worker adapter for those official APIs:
+  - Official Records searches by folio using `parameter1=<folio>` and `parameter2=FN`.
+  - Civil/Family/Probate uses the estate case number when present.
+  - API URLs are redacted before they are stored in source facts.
+  - Missing `MIAMI_DADE_CLERK_AUTH_KEY` creates explicit `source_status` blockers instead of generic manual-review text.
+- Routed Official Records and Probate/Civil/Family Court source facts through this API adapter before the older health-only/browser fallback facts.
+- Added `Miami-Dade Clerk API` to Settings connection status with:
+  - `configuredMode: commercial_api` when an AuthKey exists;
+  - `configuredMode: none` and a blocker when the AuthKey is missing;
+  - exact endpoint shapes for Official Records, case, and docket APIs.
+- Local route proof on `http://localhost:4178/api/discovery/external-source-run` returned:
+  - Official Records status: `blocked`;
+  - Official Records next action: Clerk Official Records API requires a commercial Developer AuthKey and pre-paid units;
+  - Probate/Civil/Family Court status: `blocked`;
+  - Probate next action: Clerk Civil/Family/Probate API requires a commercial Developer AuthKey and pre-paid units;
+  - `source_status.value.mode: commercial_api_key_required` for both buckets.
+- Local Settings proof on `http://localhost:4178/api/connections/status` returned `Miami-Dade Clerk API` as blocked with endpoint shapes and `MIAMI_DADE_CLERK_AUTH_KEY` blocker.
+
 ## Next Work
 
 - Capture and automate the real Tax Collector browser workflow with Browserbase or controlled Chrome, then either configure a stable listing URL template or keep the browser-run fallback as the production acquisition method.
 - If browser observation exposes stable API calls behind GovHub, move them into the deterministic script client.
-- Add actual extraction adapters or browser workflows for Official Records, Probate/Civil/Family Court, and vital/obituary sources. They are currently visible/callable buckets with blockers, not proven end-to-end automations.
+- Configure/prove `MIAMI_DADE_CLERK_AUTH_KEY` in the target environment, then run a paid controlled Official Records and Civil/Family/Probate API proof with readback.
+- Add actual extraction adapters or browser workflows for vital/obituary sources. They are currently visible/callable buckets with blockers, not proven end-to-end automations.
 - Rerun S30 demos against the corrected S29 source contracts before treating S30 as final client acceptance proof.
 - Continue source-backed treatment for marriage/death, offender/professional-license, voter/license, field/neighbor/code-enforcement, and paid/manual research tasks as explicitly human-required or approval-gated.

@@ -3,8 +3,8 @@ const { methodGuard, proxyWorkerJson, readJsonBody, receiptId, sendJson, sendPro
 const discoverySourceLabels = [
   { source: "property_appraiser", label: "Property Appraiser", mode: "public_api" },
   { source: "tax_collector", label: "Tax Collector", mode: "script_or_browser_required" },
-  { source: "official_records", label: "Official Records", mode: "public_browser_or_capture" },
-  { source: "probate_court", label: "Probate/Civil/Family Court", mode: "public_browser_or_capture" },
+  { source: "official_records", label: "Official Records", mode: "commercial_api_or_browser_capture" },
+  { source: "probate_court", label: "Probate/Civil/Family Court", mode: "commercial_api_or_browser_capture" },
   { source: "clerk_of_courts", label: "Marriage, death, obituary, and vital review", mode: "public_manual_or_browser" },
   { source: "idi", label: "IDI Core Asset Search", mode: "paid_api_or_operator_import" },
   { source: "skip_trace", label: "Skip trace/contact enrichment", mode: "paid_manual_approval" },
@@ -44,7 +44,8 @@ function summarizeFacts(sourceFacts) {
   return discoverySourceLabels.map((item) => {
     const facts = sourceFacts.filter((fact) => fact.source === item.source);
     const flags = [...new Set(facts.flatMap((fact) => fact.reviewFlags || []))];
-    const sourceStatusFact = facts.find((fact) => fact.factType === "source_status" || String(fact.factType || "").endsWith("_status"));
+    const sourceStatusFact = facts.find((fact) => fact.factType === "source_status")
+      || facts.find((fact) => String(fact.factType || "").endsWith("_status"));
     const extractedFacts = facts.filter((fact) =>
       factValuePresent(fact.value)
       && !(fact.reviewFlags || []).includes("SOURCE_HEALTH_ONLY")

@@ -16,6 +16,8 @@ The route is intentionally proof-or-blocker:
 
 Current route proof returned all seven buckets with 49 source facts: Property Appraiser `partial`, Tax Collector `blocked`, and Official Records / Probate Court / vital review / IDI / skip trace as review or blocker states. That means the buckets are callable and visible, not that every external source is fully automated end to end.
 
+Official Records and Civil/Family/Probate now have first-class Miami-Dade Clerk Commercial Data Services API clients. They run only when `MIAMI_DADE_CLERK_AUTH_KEY` is configured; otherwise they return `commercial_api_key_required` blockers. This matches the Clerk's published API posture: developer account enabled, pre-paid units required, and `AuthKey` supplied with each request.
+
 ## Adapter Output Principle
 
 Adapters return normalized `SourceFact[]`. They do not decide CRM state, score, outreach strategy, or legal interpretation. The dossier builder converts facts into claims, title events, review flags, document fields, and CRM adapter dry-run payloads.
@@ -51,8 +53,8 @@ type SourceFact = {
 | --- | --- | --- | --- | --- |
 | Miami-Dade Property Appraiser | Live app reachability + public search URL; structured extraction where feasible | address, owner, folio | source status, search URL, seed address/owner/folio/county facts | `SOURCE_HEALTH_ONLY`, `MISSING_PROPERTY_FACT`, source refs |
 | Miami-Dade Tax Collector | Guarded listing-page receipt client implemented for explicit receipt links, supplied listing HTML, direct listing URLs, and configured listing URL templates; source-capture now saves `browser_workflow_required` blockers; public GovHub entry currently returns a Cloudflare/browser-workflow blocker | folio, address, owner, listing page URL | acquisition/source status, receipt link, receipt artifact/link, paid date, payer identity, unpaid years, amount due, reassessment/status notes | block until bottom-right receipt link is captured or the browser-workflow/source blocker is preserved |
-| Miami-Dade Official Records / Clerk | Source-run bucket + live app reachability + title/deed source capture; browser/API extraction next | owner, address, folio, OR book/page | official-record source, deed attachment/link, OR book/page, recording date, grantor/grantee, title friction | `MISSING_TITLE_FACT`, source refs, needs-review blocker until exact deed/title evidence is captured |
-| Probate/Civil/Family Court | Source-run bucket + capture fields; browser/API extraction next | estate name, owner/decedent, case number | docket URL, case number, case status, affidavit/document availability | needs-review blocker until docket/document evidence is captured |
+| Miami-Dade Official Records / Clerk | Commercial API client by folio when `MIAMI_DADE_CLERK_AUTH_KEY` exists; live app reachability + title/deed capture fallback | folio, owner, address, OR book/page | source status, latest record/deed candidate, OR book/page, recorded/document date, parties, title friction | `commercial_api_key_required` without AuthKey; human review required even when API returns records |
+| Probate/Civil/Family Court | Commercial API client by case number when `MIAMI_DADE_CLERK_AUTH_KEY` exists; browser/capture fallback | case number, estate name, owner/decedent | source status, case number, case status, docket refs, affidavit/document availability | `commercial_api_key_required` without AuthKey; `commercial_api_input_required` without case number; human review required |
 | Marriage/death/obituary/vital review | Source-run bucket + capture fields; browser/manual extraction next | decedent/heir names, DOB/DOD, county | obituary link, DOB/DOD, marriage/license signal, death certificate status | human-review blocker until source evidence or reviewed-not-found note is saved |
 | IDI Core / skip trace | Source-run bucket only; paid/API proof requires configured vendor access and approval | owner/address/DOB/DOD | imported or live-run contact/address/family evidence | paid/manual blocker until shared/default key or approved user key run produces readback |
 | Landing/intake | Local dry-run seed | address, owner, county, folio | intake seed fact | missing fields become review flags |
@@ -142,7 +144,8 @@ Stop and report a blocker instead of forcing source extraction when:
 7. Dashboard/intake and Friday handoff.
 8. Workflow rule engine for disqualifications and review-required states.
 9. Tax Collector search/listing client that lands on the listing page and extracts the bottom-right receipt link; direct listing/template path and saved browser-workflow blockers are implemented, Browserbase/Chrome capture remains for GovHub/Cloudflare.
-10. Tax/deed depth adapters.
-11. Probate/heirship research queue.
-12. Paid/manual source governance.
-13. Completed lead report and offer math payload.
+10. Miami-Dade Clerk Commercial Data Services clients for Official Records by folio and Civil/Family/Probate by case number; AuthKey-gated client implemented, credentialed proof remains.
+11. Tax/deed depth adapters.
+12. Probate/heirship research queue.
+13. Paid/manual source governance.
+14. Completed lead report and offer math payload.
