@@ -1021,8 +1021,28 @@ export interface ManualResearchTask {
   reviewFlags: ReviewFlag[];
 }
 
+export interface PublicSourceAcquisitionStage {
+  code: string;
+  title: string;
+  operatorAction: string;
+  requiredEvidence: string[];
+  blocksUntilCaptured: boolean;
+}
+
+export interface PublicSourceAcquisitionContract {
+  code: string;
+  label: string;
+  source: SourceKey;
+  accessClass: SourceAccessClass;
+  automationAllowed: boolean;
+  entryUrl: string;
+  stages: PublicSourceAcquisitionStage[];
+  reviewFlags: ReviewFlag[];
+}
+
 export interface SourceGovernanceCatalog {
   taxonomy: SourceAccessClass[];
+  publicSourceContracts: PublicSourceAcquisitionContract[];
   governedSources: GovernedSourceEntry[];
   manualTasks: ManualResearchTask[];
   auditNotes: string[];

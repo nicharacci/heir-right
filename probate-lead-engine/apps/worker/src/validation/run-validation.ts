@@ -145,6 +145,11 @@ async function main(): Promise<void> {
   if (!result.dossier.marriageDeathIndicators.deathCertificateTask.required) failures.push("Death certificate task missing.");
   if (!result.dossier.familyTree.hypothesis.value?.nodes.length) failures.push("Family tree hypothesis nodes missing.");
   if (!result.dossier.sourceGovernance.catalog.value?.governedSources.length) failures.push("Source governance catalog missing.");
+  if (!result.dossier.sourceGovernance.catalog.value?.publicSourceContracts.length) failures.push("Public source acquisition contracts missing.");
+  const taxCollectorContract = result.dossier.sourceGovernance.catalog.value?.publicSourceContracts.find((source) => source.code === "tax_collector_receipt");
+  if (!taxCollectorContract?.stages.some((stage) => stage.code === "bottom_right_receipt" && stage.blocksUntilCaptured)) {
+    failures.push("Tax Collector bottom-right receipt source contract missing.");
+  }
   const paidSource = result.dossier.sourceGovernance.catalog.value?.governedSources.find((source) => source.code === "idi");
   if (paidSource?.automationAllowed) failures.push("Paid source IDI incorrectly marked as automated.");
   if (!result.facts.some((item) => item.factType === "marriage_death_status")) failures.push("Marriage/death status fact missing.");

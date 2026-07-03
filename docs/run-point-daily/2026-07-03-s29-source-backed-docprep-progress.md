@@ -107,6 +107,21 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - sections: `Reviewed Discovery File`, `Closing field map`, `Required seller/client fields`, `Template fill review`, `Closing Prep packet`
 - PDF route proof returned `Content-Type: application/pdf` and `Content-Disposition: inline; filename="heirright-report-packet.pdf"`.
 
+## Fourth Repair Pass: Public Source Acquisition Contracts
+
+- Added dossier-level public source acquisition contracts for:
+  - `property_appraiser`
+  - `tax_collector_receipt`
+  - `official_records_deed`
+  - `probate_court`
+  - `obituary_vital_review`
+- Added validation so the worker test fails if public-source contracts are missing or if the Tax Collector contract does not include the blocking `bottom_right_receipt` stage.
+- Generated dossier proof from `apps/worker/output/latest-dossier.json` showed:
+  - `contractCount: 5`
+  - Tax Collector stage codes: `tax_search`, `listing_page`, `bottom_right_receipt`, `payer_review`
+  - `bottom_right_receipt.blocksUntilCaptured: true`
+  - required evidence: `receipt link`, `receipt artifact`
+
 ## Next Work
 
 - Run real browser screenshot/video proof after freeing disk space.
