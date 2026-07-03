@@ -833,6 +833,109 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
   }, { headers: { "cache-control": "no-store" } });
 }
 
+const discoverySourceLabels: Array<{ source: SourceFact["source"]; label: string; mode: string }> = [
+  { source: "property_appraiser", label: "Property Appraiser", mode: "public_api" },
+  { source: "tax_collector", label: "Tax Collector", mode: "script_or_browser_required" },
+  { source: "official_records", label: "Official Records", mode: "public_browser_or_capture" },
+  { source: "probate_court", label: "Probate/Civil/Family Court", mode: "public_browser_or_capture" },
+  { source: "clerk_of_courts", label: "Marriage, death, obituary, and vital review", mode: "public_manual_or_browser" },
+  { source: "idi", label: "IDI Core Asset Search", mode: "paid_api_or_operator_import" },
+  { source: "skip_trace", label: "Skip trace/contact enrichment", mode: "paid_manual_approval" },
+];
+
+function sourceRunSeedFromBody(body: Record<string, unknown>, fallback: IntakeSeed): IntakeSeed {
+  const seed = body.seed && typeof body.seed === "object" ? body.seed as Record<string, unknown> : {};
+  const capture = body.capture && typeof body.capture === "object" ? body.capture as Record<string, unknown> : body;
+  const taxReceipt = capture.taxReceipt && typeof capture.taxReceipt === "object" ? capture.taxReceipt as Record<string, unknown> : {};
+  return {
+    ownerName: stringValue(seed.ownerName) || stringValue(body.ownerName) || stringValue(body.owner) || fallback.ownerName,
+    estateName: stringValue(seed.estateName) || stringValue(body.estateName) || fallback.estateName,
+    propertyAddress: stringValue(seed.propertyAddress) || stringValue(body.propertyAddress) || stringValue(body.address) || fallback.propertyAddress,
+    caseNumber: stringValue(seed.caseNumber) || stringValue(body.caseNumber) || fallback.caseNumber,
+    county: stringValue(seed.county) || stringValue(body.county) || fallback.county || "miami-dade",
+    parcelId: stringValue(seed.parcelId) || stringValue(body.parcelId) || stringValue(body.folio) || fallback.parcelId,
+    taxCollectorListingUrl: stringValue(seed.taxCollectorListingUrl) || stringValue(taxReceipt.listingUrl) || fallback.taxCollectorListingUrl,
+    taxCollectorReceiptUrl: stringValue(seed.taxCollectorReceiptUrl) || stringValue(taxReceipt.receiptLink) || stringValue(taxReceipt.receiptUrl) || fallback.taxCollectorReceiptUrl,
+    source: "operator_cli",
+    includeDealMath: false,
+    includeSkipTrace: body.includeSkipTrace === true,
+  };
+}
+
+function factValuePresent(value: unknown): boolean {
+  if (value === undefined || value === null || value === "") return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length > 0;
+  return true;
+}
+
+function summarizeSourceRunFacts(facts: SourceFact[]): Array<Record<string, unknown>> {
+  return discoverySourceLabels.map((item) => {
+    const sourceFacts = facts.filter((factItem) => factItem.source === item.source);
+    const flags = Array.from(new Set(sourceFacts.flatMap((factItem) => factItem.reviewFlags || [])));
+    const sourceStatusFact = sourceFacts.find((factItem) => factItem.factType === "source_status" || `${factItem.factType}`.endsWith("_status"));
+    const extractedFacts = sourceFacts.filter((factItem) =>
+      factValuePresent(factItem.value)
+      && !(factItem.reviewFlags || []).includes("SOURCE_HEALTH_ONLY")
+      && !(factItem.reviewFlags || []).some((flag) => String(flag).startsWith("MISSING_"))
+    );
+    const blocked = flags.includes("SOURCE_BLOCKED")
+      || flags.includes("TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED")
+      || flags.includes("PAID_SOURCE_APPROVAL_REQUIRED")
+      || flags.includes("MISSING_SKIPTRACE_CONFIG");
+    const status = blocked ? "blocked" : extractedFacts.length ? "partial" : "needs_review";
+    return {
+      source: item.source,
+      label: item.label,
+      mode: item.mode,
+      status,
+      factCount: sourceFacts.length,
+      extractedFactTypes: Array.from(new Set(extractedFacts.map((factItem) => factItem.factType))),
+      reviewFlags: flags,
+      nextAction: sourceStatusFact?.value && typeof sourceStatusFact.value === "object" && "note" in sourceStatusFact.value
+        ? String((sourceStatusFact.value as Record<string, unknown>).note || "")
+        : blocked
+          ? `${item.label} needs source access or browser/operator review before Discovery can treat it as complete.`
+          : extractedFacts.length
+            ? `${item.label} returned structured facts; review and keep source evidence attached.`
+            : `${item.label} still needs source evidence before Discovery can treat it as complete.`,
+    };
+  });
+}
+
+async function externalSourceRunResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  const body = request.method === "POST"
+    ? await request.json().catch(() => ({})) as Record<string, unknown>
+    : {};
+  const seed = sourceRunSeedFromBody(body, seedFromUrl(url, env));
+  const pipeline = await runDryPipeline(seed, { env: env as Record<string, string | undefined> });
+  const sourceFacts = pipeline.facts.filter((factItem) => discoverySourceLabels.some((source) => source.source === factItem.source));
+  const sourceSummaries = summarizeSourceRunFacts(sourceFacts);
+  const blockers = Array.from(new Set([
+    ...sourceSummaries
+      .filter((summary) => summary.status === "blocked" || summary.status === "needs_review")
+      .map((summary) => String(summary.nextAction)),
+    ...(pipeline.dossier.audit.reviewFlags.includes("SOURCE_BLOCKED")
+      ? ["One or more Discovery sources are blocked; keep the packet in review."]
+      : []),
+  ]));
+  return json({
+    ok: blockers.length === 0,
+    mode: "external_source_run",
+    runId: pipeline.runId,
+    estateId: stringValue(body.assetKey) || seedIdentity(seed),
+    generatedAt: nowIso(),
+    seed,
+    sourceSummaries,
+    sourceFacts,
+    dossier: pipeline.dossier,
+    blockers,
+    message: blockers.length
+      ? "Discovery source APIs ran and returned review blockers. The app did not assume missing public or paid-source facts."
+      : "Discovery source APIs returned structured source facts for review.",
+  }, { headers: { "cache-control": "no-store" } });
+}
+
 async function contactCandidateReviewResponse(request: Request, candidateId: string): Promise<Response> {
   const body = request.method === "POST"
     ? await request.json().catch(() => ({})) as Record<string, unknown>
@@ -1492,6 +1595,12 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return sourceCaptureResponse(request, env);
+    }
+
+    if (url.pathname === "/api/discovery/external-source-run") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return externalSourceRunResponse(request, url, env);
     }
 
     const contactReviewMatch = url.pathname.match(/^\/api\/discovery\/contact-candidates\/([^/]+)\/review$/);
