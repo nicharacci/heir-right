@@ -2237,7 +2237,8 @@
     .app[data-active-view="drips"] [data-view-panel="drips"],
     .app[data-active-view="queue"] [data-view-panel="queue"],
     .app[data-active-view="admin"] [data-view-panel="admin"],
-    .app[data-active-view="settings"] [data-view-panel="settings"] {
+    .app[data-active-view="settings"] [data-view-panel="settings"],
+    .app[data-active-view="help-demos"] [data-view-panel="help-demos"] {
       display: block;
     }
 
@@ -2257,7 +2258,8 @@
     .app[data-active-view="drips"] .workbench,
     .app[data-active-view="queue"] .workbench,
     .app[data-active-view="admin"] .workbench,
-    .app[data-active-view="settings"] .workbench {
+    .app[data-active-view="settings"] .workbench,
+    .app[data-active-view="help-demos"] .workbench {
       grid-template-rows: minmax(0, 1fr);
     }
 
@@ -3763,6 +3765,366 @@
       background: var(--ios-fill-strong);
     }
 
+    .docprep-artifact-stream {
+      gap: 12px;
+      min-height: 360px;
+      align-content: start;
+      overflow: visible;
+    }
+
+    .artifact-stream-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .artifact-stream-head h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .artifact-stream-head .copy {
+      margin: 4px 0 0;
+    }
+
+    .docprep-section-control {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) 34px;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--shell-surface) 78%, transparent);
+    }
+
+    .docprep-section-control button {
+      min-width: 0;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .docprep-section-control > button {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+    }
+
+    .docprep-section-control button:hover,
+    .docprep-section-control button:focus-visible {
+      outline: 0;
+      color: var(--text);
+      border-color: var(--line-strong);
+      background: var(--ios-fill-strong);
+    }
+
+    .docprep-section-chips {
+      min-width: 0;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+    }
+
+    .docprep-section-chip {
+      flex: 0 0 auto;
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .docprep-section-chip[data-active="true"] {
+      color: var(--accent);
+      border-color: var(--focus-ring);
+      background: color-mix(in srgb, var(--focus-ring) 13%, var(--shell-surface));
+    }
+
+    .docprep-section-chip::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--soft);
+    }
+
+    .docprep-section-chip[data-state="writing"]::before {
+      background: var(--accent);
+      animation: pulseDot 1.05s ease-in-out infinite;
+    }
+
+    .docprep-section-chip[data-state="complete"]::before,
+    .docprep-section-chip[data-state="exported"]::before {
+      background: var(--success);
+    }
+
+    .docprep-section-chip[data-state="blocked"]::before {
+      background: var(--danger);
+    }
+
+    .artifact-stream-document {
+      max-height: min(58vh, 560px);
+      overflow: auto;
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--shell-surface) 94%, transparent), color-mix(in srgb, var(--shell-surface) 80%, transparent));
+      scroll-behavior: smooth;
+    }
+
+    .artifact-stream-section {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.42);
+      transition: border-color .2s ease, background .2s ease, transform .2s ease;
+      scroll-margin-block-start: 10px;
+    }
+
+    .artifact-stream-section[data-active="true"] {
+      border-color: var(--focus-ring);
+      background: color-mix(in srgb, var(--focus-ring) 9%, rgba(255,255,255,.5));
+    }
+
+    .artifact-stream-section[data-state="writing"] {
+      transform: translateY(-1px);
+    }
+
+    .artifact-stream-section h4 {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.25;
+    }
+
+    .artifact-stream-lines {
+      margin: 0;
+      padding-left: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .artifact-stream-lines li + li {
+      margin-top: 4px;
+    }
+
+    .artifact-stream-shortcut {
+      margin: 0;
+      color: var(--soft);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .stream-cursor {
+      display: inline-block;
+      width: 7px;
+      height: 14px;
+      margin-left: 4px;
+      vertical-align: -2px;
+      border-radius: 2px;
+      background: var(--accent);
+      animation: cursorBlink 1s steps(2, end) infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% {
+        opacity: .58;
+        transform: scale(.92);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.12);
+      }
+    }
+
+    @keyframes cursorBlink {
+      0%, 42% { opacity: 1; }
+      43%, 100% { opacity: 0; }
+    }
+
+    .help-demos-shell {
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+    }
+
+    .help-demos-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: end;
+    }
+
+    .help-demos-head h2 {
+      margin: 0;
+      color: var(--text);
+      font-size: clamp(24px, 2.4vw, 34px);
+      line-height: 1.04;
+    }
+
+    .help-demo-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .help-demo-tabs button {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 10px;
+      color: var(--muted);
+      background: rgba(255,255,255,.42);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .help-demo-tabs button[aria-pressed="true"] {
+      color: var(--accent);
+      border-color: var(--focus-ring);
+      background: color-mix(in srgb, var(--focus-ring) 12%, var(--shell-surface));
+    }
+
+    .help-demo-section-head {
+      display: flex;
+      justify-content: flex-end;
+      text-align: right;
+    }
+
+    .help-demo-section-head h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .help-demo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .help-demo-card {
+      min-height: 176px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      color: var(--text);
+      background: rgba(255,255,255,.48);
+      text-align: left;
+      box-shadow: var(--shadow-card);
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+
+    .help-demo-card:hover,
+    .help-demo-card:focus-visible {
+      outline: 0;
+      transform: translateY(-1px);
+      border-color: var(--focus-ring);
+      background: color-mix(in srgb, var(--focus-ring) 8%, rgba(255,255,255,.56));
+    }
+
+    .help-demo-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .help-demo-card-icon {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--accent);
+      background: var(--ios-fill);
+    }
+
+    .help-demo-duration {
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .help-demo-card h4 {
+      margin: 0 0 6px;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .help-demo-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    .help-demo-card-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    @media (max-width: 980px) {
+      .help-demos-head {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      .help-demo-tabs,
+      .help-demo-section-head {
+        justify-content: flex-start;
+        text-align: left;
+      }
+
+      .help-demo-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .help-demos-shell {
+        padding: 12px;
+      }
+
+      .help-demo-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .process-template-card {
       display: grid;
       gap: 10px;
@@ -3839,7 +4201,12 @@
     body[data-theme="dark"] .file-drop-icon,
     body[data-theme="dark"] .file-control-box,
     body[data-theme="dark"] .doc-flow-tab,
-    body[data-theme="dark"] .process-template-card {
+    body[data-theme="dark"] .process-template-card,
+    body[data-theme="dark"] .docprep-section-control,
+    body[data-theme="dark"] .artifact-stream-section,
+    body[data-theme="dark"] .help-demo-tabs button,
+    body[data-theme="dark"] .help-demo-card,
+    body[data-theme="dark"] .help-demo-card-icon {
       background: rgba(44,44,46,.72);
       border-color: var(--line);
     }
@@ -6606,6 +6973,17 @@
       margin: 0;
       font-size: 13px;
       color: var(--text);
+    }
+
+    .rail-card.docprep-artifact-stream {
+      min-height: 360px;
+      align-content: start;
+      gap: 12px;
+      overflow: visible;
+    }
+
+    .rail-card.docprep-artifact-stream .artifact-stream-document {
+      min-height: 220px;
     }
 
     .rail-item {
@@ -9692,6 +10070,7 @@
       <button class="nav-item" type="button" title="Queue" data-shell-nav="queue" data-hover-label="Queue" data-hover-description="Batch export prep"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10h8M8 14h5M17 14l2 2 3-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Queue</span></button>
       <button class="nav-item" type="button" title="Admin" data-shell-nav="admin" data-hover-label="Admin" data-hover-description="Team review and controls"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM4 20a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 11.5a3 3 0 1 0-1-5.84M17 20h3a4.5 4.5 0 0 0-5.3-4.43" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nav-label">Admin</span></button>
       <button class="nav-item" type="button" title="Settings" data-shell-nav="settings" data-hover-label="Settings" data-hover-description="Preferences and review gates"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.67 4.14a2.34 2.34 0 0 1 4.66 0 2.34 2.34 0 0 0 3.32 1.91 2.34 2.34 0 0 1 2.33 4.04 2.34 2.34 0 0 0 0 3.82 2.34 2.34 0 0 1-2.33 4.04 2.34 2.34 0 0 0-3.32 1.91 2.34 2.34 0 0 1-4.66 0 2.34 2.34 0 0 0-3.32-1.91 2.34 2.34 0 0 1-2.33-4.04 2.34 2.34 0 0 0 0-3.82 2.34 2.34 0 0 1 2.33-4.04 2.34 2.34 0 0 0 3.32-1.91Z" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.65"/></svg></span><span class="nav-label">Settings</span></button>
+      <button class="nav-item" type="button" title="Help &amp; Demos" data-shell-nav="help-demos" data-hover-label="Help &amp; Demos" data-hover-description="Guided walkthroughs for each workflow"><span class="nav-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.2a2.7 2.7 0 0 1 5.1 1.25c0 1.75-1.4 2.35-2.2 3.2-.38.4-.5.8-.5 1.35" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 18h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span><span class="nav-label">Help &amp; Demos</span></button>
     </nav>
     <div class="sidebar-footer">
       <div class="theme-row">
@@ -10023,7 +10402,7 @@
               </section>
               <section class="glass-card detail-card">
                 <h3 class="card-title">30-Day readiness blockers</h3>
-                <p class="copy">These explain why the demo cannot yet claim enough reviewed leads or a live CRM review.</p>
+                <p class="copy">These explain why the workspace cannot yet claim enough reviewed leads or a live CRM review.</p>
                 <ul id="milestoneBlockers" class="mini-list"></ul>
               </section>
               <section class="glass-card detail-card">
@@ -10034,7 +10413,7 @@
                 <div>
                   <p class="eyebrow">Settings</p>
                   <h3 class="card-title">Lead-quality controls</h3>
-                  <p class="copy">Tune how the demo prioritizes review work. These controls do not unlock outreach, CRM card creation, or paid-source research.</p>
+                  <p class="copy">Tune how the workspace prioritizes review work. These controls do not unlock outreach, CRM card creation, or paid-source research.</p>
                 </div>
                 <div class="settings-grid">
                   <div class="setting-card">
@@ -10085,7 +10464,7 @@
                     <button class="btn" type="button" data-shell-command="open-report">Open</button>
                   </div>
                   <div class="runtime-card">
-                    <span><strong>Next demo focus</strong><span id="linearSyncState">Finish review-screen polish, then clear CRM access and readback proof.</span></span>
+                    <span><strong>Next review focus</strong><span id="linearSyncState">Finish review-screen polish, then clear CRM access and readback proof.</span></span>
                     <button class="btn" type="button" data-shell-command="linear-sync">Sync</button>
                   </div>
                 </div>
@@ -10110,6 +10489,7 @@
         <section id="queueView" class="loop-view" data-view-panel="queue" aria-label="Batch export queue"></section>
         <section id="adminView" class="loop-view" data-view-panel="admin" aria-label="Admin"></section>
         <section id="settingsView" class="loop-view" data-view-panel="settings" aria-label="Settings"></section>
+        <section id="helpDemosView" class="loop-view" data-view-panel="help-demos" aria-label="Help and Demos"></section>
       </section>
 
       <aside id="researchRail" class="research-rail" data-open="false" aria-label="HeirRight Report Rail">
@@ -10358,10 +10738,14 @@ const state = {
   settingsTab: "integrations",
   documentAutomationStates: {},
   docPrepRunStates: {},
+  docPrepStreamStates: {},
+  docPrepSectionIndex: {},
+  helpDemoTab: "docprep",
   reportDateAdded: "",
   walkthrough: {
     open: false,
-    index: 0
+    index: 0,
+    demoId: "product-tour"
   },
   adminAccessStatus: {
     state: "idle",
@@ -10452,7 +10836,7 @@ function tableColumnLabel(scope, key) {
   return tableColumnLabels[key] ?? displayStatus(key);
 }
 
-const productViews = ["dashboard", "find-estates", "dossiers", "drips", "queue", "admin", "settings"];
+const productViews = ["dashboard", "find-estates", "dossiers", "drips", "queue", "admin", "settings", "help-demos"];
 
 const discoveryPhases = [
   {
@@ -10642,7 +11026,7 @@ const closingTemplateFamilies = [
     title: "Fund Transfer / Bank Account Transfer",
     phaseId: "closing-package",
     type: "Disbursement setup",
-    copy: "Seller proceeds, wire/ACH destination, and payment authorization placeholders.",
+    copy: "Seller proceeds, wire/ACH destination, and payment authorization fields.",
     variables: ["seller_heirs", "property_address", "offer_amount", "bank_transfer", "closing_date"],
     required: ["seller_heirs", "property_address", "offer_amount", "bank_transfer", "closing_date"]
   },
@@ -13454,7 +13838,8 @@ function activeViewLabel(view = state.activeView) {
     drips: "Outreach",
     queue: "Queue",
     admin: "Admin",
-    settings: "Settings"
+    settings: "Settings",
+    "help-demos": "Help & Demos"
   }[view] ?? "Dashboard";
 }
 
@@ -13489,7 +13874,8 @@ function applyNucleoIcons() {
     drips: "scheduled-drips",
     queue: "batch-tray",
     admin: "admin-shield",
-    settings: "gear"
+    settings: "gear",
+    "help-demos": "open-book"
   };
   document.querySelectorAll("[data-shell-nav]").forEach((button) => {
     const slot = button.querySelector(".nav-icon");
@@ -14190,6 +14576,318 @@ function docPrepRunControlsHtml(row = selectedRow(), flowId = state.activeDocPre
   `;
 }
 
+function docPrepStreamKey(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  const flow = docPrepFlow(flowId);
+  return `${docPrepEstateKey(row)}:${flow.id}:stream`;
+}
+
+function docPrepStreamForRow(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  if (!row) return null;
+  return state.docPrepStreamStates[docPrepStreamKey(row, flowId)] || null;
+}
+
+function docPrepStreamStatusLabel(status = "pending") {
+  return {
+    pending: "Waiting",
+    writing: "Writing",
+    complete: "Written",
+    blocked: "Needs review",
+    paused: "Paused",
+    exported: "Exported"
+  }[status] || "Waiting";
+}
+
+function docPrepStreamPhaseLines(row = selectedRow(), dossier = dossierForRow(row), flowId = state.activeDocPrepFlow, phase = currentDiscoveryPhase(flowId, row), status = "pending", message = "") {
+  const capture = sourceCaptureForRow(row);
+  const idi = idiImportForRow(row);
+  const accepted = acceptedContactCandidates(row);
+  const docs = docsForFlow(row, dossier, flowId);
+  const common = [
+    `Estate: ${docPrepEstateLabel(row)}`,
+    `Property: ${cleanDisplayValue(row?.address || dossier?.property?.address?.value || "Address needs review")}`,
+    `Source: ${phase?.source || docPrepFlow(flowId).title}`
+  ];
+  const phaseLines = {
+    "owner-details": [
+      `Owner: ${docPrepOwnerLabel(row)}`,
+      `Folio: ${cleanDisplayValue(row?.parcel || dossier?.property?.parcelId?.value || "Needs folio review")}`,
+      row?.sourceKind === "crm-import" ? `CRM row: ${row.sourceRecordId || row.file || "linked estate import"}` : "External estate row is being assembled from public source evidence."
+    ],
+    "tax-receipt": [
+      `Paid by: ${cleanDisplayValue(capture.taxReceipt?.paidBy || "Needs Tax Collector payer or receipt")}`,
+      `Receipt evidence: ${cleanDisplayValue(capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName || "Not attached yet")}`
+    ],
+    deed: [
+      `Instrument: ${cleanDisplayValue(capture.deed?.instrument || dossier?.deedHistory?.latestInstrument || "Needs OR book/page or instrument")}`,
+      `Deed evidence: ${cleanDisplayValue(capture.deed?.sourceUrl || capture.deed?.fileName || "Not attached yet")}`
+    ],
+    obituary: [
+      `Obituary status: ${cleanDisplayValue(capture.obituary?.status || (capture.obituary?.sourceUrl ? "found" : "Needs obituary source review"))}`,
+      `Obituary evidence: ${cleanDisplayValue(capture.obituary?.sourceUrl || capture.obituary?.fileName || "Not attached yet")}`
+    ],
+    "idi-asset-search": [
+      `IDI mode: ${idi?.mode || "Needs controlled run or approved import"}`,
+      `Contacts parsed: ${Array.isArray(idi?.candidates) ? idi.candidates.length : 0}`,
+      `Readback: ${idi?.readbackStatus || idi?.sourceEvidence?.readbackStatus || "Not completed"}`
+    ],
+    "contact-review": [
+      `Accepted contacts: ${accepted.length}`,
+      accepted.length ? `Signer/contact names: ${accepted.map((contact) => contact.name).filter(Boolean).join(", ")}` : "Signer/contact review is still required."
+    ],
+    "dossier-export": [
+      `Packet sections: ${docs.length}`,
+      "Batch Queue export target: one combined Discovery Prep PDF for this estate flow."
+    ],
+    "closing-intake": [
+      `Imported row: ${row?.sourceRecordId || row?.file || "estate row linked"}`,
+      `Review owner: ${state.session?.user?.email || "team"}`
+    ],
+    "title-clearance": [
+      `Deed status: ${assetPhaseComplete(row, "deed") ? "deed evidence present" : "needs deed evidence"}`,
+      `Tax status: ${assetPhaseComplete(row, "tax-receipt") ? "tax evidence present" : "needs tax evidence"}`
+    ],
+    "seller-approval": [
+      `Accepted signers: ${accepted.length}`,
+      accepted.length ? `Signer/contact names: ${accepted.map((contact) => contact.name).filter(Boolean).join(", ")}` : "Closing signer approval is still required."
+    ],
+    "offer-underwriting": [
+      `Offer amount: ${moneyClaimValue(dossier?.completedLeadReport?.offerMath?.offerAmount) || "Needs offer review"}`,
+      `Minimum net: ${moneyClaimValue(dossier?.completedLeadReport?.offerMath?.minimumNetProfit) || "Needs review"}`
+    ],
+    "closing-package": [
+      `Template families: ${closingTemplateFamilies.length}`,
+      `Required-field blockers: ${closingTemplateFamilies.reduce((total, template) => total + closingTemplateBlockers(template, row, dossier).length, 0)}`,
+      "Export target: one combined Closing Prep PDF. Legal template language remains unchanged."
+    ]
+  };
+  const result = [...common, ...(phaseLines[phase?.id] || [phase?.summary || docPrepFlow(flowId).copy])];
+  if (message) result.push(message);
+  if (status === "complete") result.push(`${phase?.label || "Section"} written from current reviewed fields.`);
+  if (status === "blocked") result.push("Stopped before export so the user can supply or approve the missing information.");
+  if (status === "writing") result.push("Writing visible packet text from the saved estate record now.");
+  return result.filter(Boolean);
+}
+
+function buildDocPrepStreamSections(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  const dossier = dossierForRow(row);
+  return docPrepPhases(flowId).map((phase) => {
+    const status = phaseIsComplete(phase.id, row, flowId) ? "complete" : "pending";
+    return {
+      id: phase.id,
+      title: phase.name,
+      eyebrow: phase.label,
+      source: phase.source,
+      status,
+      updatedAt: isoNow(),
+      lines: docPrepStreamPhaseLines(row, dossier, flowId, phase, status)
+    };
+  });
+}
+
+function beginDocPrepStream(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  if (!row) return null;
+  const flow = docPrepFlow(flowId);
+  const sections = buildDocPrepStreamSections(row, flow.id);
+  const firstOpenIndex = Math.max(0, sections.findIndex((section) => section.status !== "complete"));
+  const index = firstOpenIndex < 0 ? 0 : firstOpenIndex;
+  const key = docPrepStreamKey(row, flow.id);
+  state.docPrepStreamStates[key] = {
+    flowId: flow.id,
+    estateKey: docPrepEstateKey(row),
+    estateLabel: docPrepEstateLabel(row),
+    status: "writing",
+    activeSectionId: sections[index]?.id || sections[0]?.id || "",
+    startedAt: isoNow(),
+    updatedAt: isoNow(),
+    sections
+  };
+  state.docPrepSectionIndex[key] = index;
+  return state.docPrepStreamStates[key];
+}
+
+function setDocPrepStreamPhase(row = selectedRow(), flowId = state.activeDocPrepFlow, phase = currentDiscoveryPhase(flowId, row), status = "writing", message = "") {
+  if (!row || !phase) return null;
+  const flow = docPrepFlow(flowId);
+  const key = docPrepStreamKey(row, flow.id);
+  const stream = state.docPrepStreamStates[key] || beginDocPrepStream(row, flow.id);
+  if (!stream) return null;
+  const index = Math.max(0, stream.sections.findIndex((section) => section.id === phase.id));
+  const section = stream.sections[index] || {
+    id: phase.id,
+    title: phase.name,
+    eyebrow: phase.label,
+    source: phase.source,
+    status: "pending",
+    lines: []
+  };
+  stream.sections[index] = {
+    ...section,
+    status,
+    updatedAt: isoNow(),
+    lines: docPrepStreamPhaseLines(row, dossierForRow(row), flow.id, phase, status, message)
+  };
+  stream.status = status === "blocked" ? "blocked" : status === "paused" ? "paused" : "writing";
+  stream.activeSectionId = phase.id;
+  stream.updatedAt = isoNow();
+  state.docPrepSectionIndex[key] = index;
+  return stream;
+}
+
+function completeDocPrepStream(row = selectedRow(), flowId = state.activeDocPrepFlow, linkedCount = 0) {
+  if (!row) return null;
+  const flow = docPrepFlow(flowId);
+  const stream = state.docPrepStreamStates[docPrepStreamKey(row, flow.id)] || beginDocPrepStream(row, flow.id);
+  if (!stream) return null;
+  stream.status = "exported";
+  stream.updatedAt = isoNow();
+  stream.activeSectionId = stream.sections[stream.sections.length - 1]?.id || stream.activeSectionId;
+  stream.summary = `${flow.shortTitle} generated ${linkedCount} packet section${linkedCount === 1 ? "" : "s"} for one combined PDF export.`;
+  stream.sections = stream.sections.map((section) => ({
+    ...section,
+    status: "complete",
+    updatedAt: isoNow(),
+    lines: section.lines?.length ? section.lines : docPrepStreamPhaseLines(row, dossierForRow(row), flow.id, docPrepPhases(flow.id).find((phase) => phase.id === section.id), "complete")
+  }));
+  state.docPrepSectionIndex[docPrepStreamKey(row, flow.id)] = Math.max(0, stream.sections.length - 1);
+  return stream;
+}
+
+function pauseDocPrepStream(row = selectedRow(), flowId = state.activeDocPrepFlow, message = "") {
+  const phase = currentDiscoveryPhase(flowId, row);
+  return setDocPrepStreamPhase(row, flowId, phase, "paused", message || `${docPrepFlow(flowId).shortTitle} paused before the next section.`);
+}
+
+function docPrepStreamTone(stream) {
+  if (!stream) return "review";
+  if (stream.status === "blocked") return "blocked";
+  if (stream.status === "exported") return "ready";
+  return "review";
+}
+
+function docPrepStreamProgressLabel(stream) {
+  if (!stream?.sections?.length) return "0 / 0";
+  const done = stream.sections.filter((section) => section.status === "complete" || section.status === "exported").length;
+  return `${done} / ${stream.sections.length}`;
+}
+
+function docPrepStreamPanelHtml(row = selectedRow(), dossier = dossierForRow(row), flowId = state.activeDocPrepFlow) {
+  const stream = docPrepStreamForRow(row, flowId);
+  if (!stream) return "";
+  const key = docPrepStreamKey(row, flowId);
+  const flow = docPrepFlow(flowId);
+  const index = Math.max(0, Math.min(stream.sections.length - 1, Number(state.docPrepSectionIndex[key] ?? 0)));
+  const activeSectionId = stream.activeSectionId || stream.sections[index]?.id || stream.sections[0]?.id || "";
+  const complete = stream.status === "exported";
+  return `
+    <section class="glass-card rail-card docprep-artifact-stream" data-docprep-stream="${escapeHtml(key)}" data-docprep-stream-flow="${escapeHtml(flow.id)}">
+      <div class="artifact-stream-head">
+        <div>
+          <p class="eyebrow">Live packet preview</p>
+          <h3>${escapeHtml(flow.shortTitle)} artifact ${complete ? "ready for review" : "being written"}</h3>
+          <p class="copy">${escapeHtml(stream.summary || "Sections update as the actual Doc Prep run clears source, IDI, contact, and closing-field gates.")}</p>
+        </div>
+        ${statusPill(docPrepStreamTone(stream), `${docPrepStreamProgressLabel(stream)} sections`)}
+      </div>
+      <div class="docprep-section-control" aria-label="${escapeHtml(flow.shortTitle)} section navigation">
+        <button type="button" data-docprep-section-cycle="-1" aria-label="Previous packet section">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m15 18-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="docprep-section-chips" role="tablist" aria-label="${escapeHtml(flow.shortTitle)} packet sections">
+          ${stream.sections.map((section) => `
+            <button
+              class="docprep-section-chip"
+              type="button"
+              role="tab"
+              aria-selected="${section.id === activeSectionId ? "true" : "false"}"
+              data-docprep-section-jump="${escapeHtml(section.id)}"
+              data-active="${section.id === activeSectionId ? "true" : "false"}"
+              data-state="${escapeHtml(section.status)}"
+            >${escapeHtml(section.eyebrow || section.title)}</button>
+          `).join("")}
+        </div>
+        <button type="button" data-docprep-section-cycle="1" aria-label="Next packet section">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="artifact-stream-document" data-docprep-stream-document>
+        ${stream.sections.map((section) => `
+          <article class="artifact-stream-section" data-docprep-stream-section="${escapeHtml(section.id)}" data-state="${escapeHtml(section.status)}" data-active="${section.id === activeSectionId ? "true" : "false"}">
+            <h4>
+              <span>${escapeHtml(section.title)}</span>
+              <span class="pill neutral">${escapeHtml(docPrepStreamStatusLabel(section.status))}</span>
+            </h4>
+            <ol class="artifact-stream-lines">
+              ${(section.lines || []).map((line, lineIndex) => `<li>${escapeHtml(line)}${section.status === "writing" && lineIndex === (section.lines || []).length - 1 ? `<span class="stream-cursor" aria-hidden="true"></span>` : ""}</li>`).join("")}
+            </ol>
+          </article>
+        `).join("")}
+      </div>
+      <p class="artifact-stream-shortcut">Use Option+Up / Option+Down to cycle sections while this rail is open.</p>
+    </section>
+  `;
+}
+
+function syncDocPrepStreamActiveDom(sectionId) {
+  const content = document.getElementById("railContent");
+  if (!content || !sectionId) return;
+  content.querySelectorAll("[data-docprep-section-jump]").forEach((button) => {
+    const active = button.dataset.docprepSectionJump === sectionId;
+    button.dataset.active = active ? "true" : "false";
+    button.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  content.querySelectorAll("[data-docprep-stream-section]").forEach((section) => {
+    section.dataset.active = section.dataset.docprepStreamSection === sectionId ? "true" : "false";
+  });
+}
+
+function scrollToDocPrepStreamSection(sectionId, { behavior = "smooth", announce = true } = {}) {
+  const row = selectedRow();
+  const flow = docPrepFlow();
+  const stream = docPrepStreamForRow(row, flow.id);
+  if (!row || !stream || !sectionId) return false;
+  const index = stream.sections.findIndex((section) => section.id === sectionId);
+  if (index < 0) return false;
+  const key = docPrepStreamKey(row, flow.id);
+  stream.activeSectionId = sectionId;
+  state.docPrepSectionIndex[key] = index;
+  syncDocPrepStreamActiveDom(sectionId);
+  const target = Array.from(document.querySelectorAll("[data-docprep-stream-section]")).find((section) => section.dataset.docprepStreamSection === sectionId);
+  if (target) {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ block: "start", inline: "nearest", behavior: reduced ? "auto" : behavior });
+  }
+  if (announce) {
+    const label = stream.sections[index]?.title || "packet section";
+    document.getElementById("topStatus").textContent = `${label} selected in the ${flow.shortTitle} preview.`;
+  }
+  return true;
+}
+
+function cycleDocPrepStreamSection(direction = 1) {
+  const row = selectedRow();
+  const flow = docPrepFlow();
+  const stream = docPrepStreamForRow(row, flow.id);
+  if (!stream?.sections?.length) return false;
+  const key = docPrepStreamKey(row, flow.id);
+  const current = Math.max(0, Math.min(stream.sections.length - 1, Number(state.docPrepSectionIndex[key] ?? 0)));
+  const next = (current + Number(direction || 1) + stream.sections.length) % stream.sections.length;
+  return scrollToDocPrepStreamSection(stream.sections[next].id);
+}
+
+function wireDocPrepStreamControls(root, row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  const stream = docPrepStreamForRow(row, flowId);
+  if (!root || !stream) return;
+  root.querySelectorAll("[data-docprep-section-jump]").forEach((button) => {
+    button.addEventListener("click", () => scrollToDocPrepStreamSection(button.dataset.docprepSectionJump));
+  });
+  root.querySelectorAll("[data-docprep-section-cycle]").forEach((button) => {
+    button.addEventListener("click", () => cycleDocPrepStreamSection(Number(button.dataset.docprepSectionCycle || 1)));
+  });
+  if (docPrepMainRunActive(row, flowId)) {
+    requestAnimationFrame(() => scrollToDocPrepStreamSection(stream.activeSectionId, { behavior: "smooth", announce: false }));
+  }
+}
+
 function docPrepPhaseBlocker(row = selectedRow(), flowId = state.activeDocPrepFlow, phase = currentDiscoveryPhase(flowId, row)) {
   if (!row || !phase) return "";
   const dossier = dossierForRow(row);
@@ -14271,6 +14969,7 @@ function stopFullDiscoveryRun(row = selectedRow(), flowId = "discovery", { silen
   if (timer) window.clearTimeout(timer);
   docPrepRunTimers.delete(key);
   setDocPrepRunState(row, flowId, "");
+  pauseDocPrepStream(row, flowId);
   if (!silent) {
     document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} ${flow.shortTitle} run stopped.`;
     addShellEvent(`${flow.shortTitle} stopped`, `${docPrepEstateLabel(row)} ${flow.shortTitle} was stopped before the next phase completed.`, "review", false);
@@ -14285,6 +14984,7 @@ function finishFullDiscoveryRun(row = selectedRow(), flowId = "discovery") {
   docPrepRunTimers.delete(key);
   setDocPrepRunState(row, flowId, "");
   const linkedCount = linkGeneratedDocPrepPackets(row, flowId);
+  completeDocPrepStream(row, flowId, linkedCount);
   const finalIndex = Math.max(0, docPrepPhases(flowId).length - 1);
   setDocPrepPhaseIndex(row, flowId, finalIndex, { persist: false });
   persistDiscoveryState();
@@ -14303,6 +15003,7 @@ function scheduleNextFullDiscoveryPhase(row = selectedRow(), flowId = state.acti
     return;
   }
   setDocPrepPhaseIndex(row, flowId, phaseIndex, { persist: false });
+  setDocPrepStreamPhase(row, flowId, phase, "writing");
   persistDiscoveryState();
   document.getElementById("topStatus").textContent = `${phase.label} running for ${docPrepEstateLabel(row)}.`;
   renderDocPrepRunSurfaces();
@@ -14312,12 +15013,14 @@ function scheduleNextFullDiscoveryPhase(row = selectedRow(), flowId = state.acti
     const blocker = docPrepPhaseBlocker(row, flowId, phase);
     if (blocker) {
       setDocPrepRunState(row, flowId, "");
+      setDocPrepStreamPhase(row, flowId, phase, "blocked", blocker);
       document.getElementById("topStatus").textContent = blocker;
       addShellEvent(`${phase.label} needs review`, blocker, "blocked", true);
       renderDocPrepRunSurfaces();
       return;
     }
     markDocPrepPhaseComplete(row, flowId, phase.id);
+    setDocPrepStreamPhase(row, flowId, phase, "complete");
     addShellEvent(`${phase.label} complete`, `${phase.summary} ${docPrepFlow(flowId).shortTitle} continued automatically.`, "ready", false);
     scheduleNextFullDiscoveryPhase(row, flowId, phaseIndex + 1);
   }, 680);
@@ -14333,10 +15036,11 @@ function runFullDiscovery(row = selectedRow(), source = null, flowId = state.act
   ensureDocPrepStarted(row, flowId, { persist: false });
   setActiveDocPrepFlow(flowId, { persist: false, rerender: false });
   setDocPrepRunState(row, flowId, "running");
+  beginDocPrepStream(row, flowId);
   addShellEvent(`${flow.shortTitle} started`, `${docPrepEstateLabel(row)} is running each ${flow.shortTitle} phase in order. Use ${flow.id === "discovery" ? "Stop Discovery" : `Stop ${flow.shortTitle}`} to pause before the next phase completes.`, "review", false);
   const firstIndex = docPrepPhases(flowId).findIndex((phase) => !docPrepPhaseMarkedComplete(row, flowId, phase.id));
   scheduleNextFullDiscoveryPhase(row, flowId, firstIndex < 0 ? 0 : firstIndex);
-  setRailOpen(state.railOpen, source);
+  setRailOpen(true, source);
 }
 
 function toggleFullDiscoveryRun(source = null, flowId = state.activeDocPrepFlow) {
@@ -15954,7 +16658,7 @@ function offerProfitRows(report) {
     ["# of heirs on board", "", countClaimValue(math.heirCount), reportClaimNote(math.heirCount, "Heir count comes from the current family-tree hypothesis.")],
     ["Profit", "", moneyClaimValue(math.profit), reportClaimNote(math.profit, "Draft only until underwriting clears.")],
     ["Offer per heir", percentClaimValue(math.buyPercentage), moneyClaimValue(math.offerAmount), reportClaimNote(math.offerAmount, "Draft offer blocked until review.")],
-    ["Min Profit", "", moneyClaimValue(math.minimumNetProfit), reportClaimNote(math.minimumNetProfit, "Minimum net placeholder for review.")],
+    ["Min Profit", "", moneyClaimValue(math.minimumNetProfit), reportClaimNote(math.minimumNetProfit, "Minimum net still needs review.")],
     ["$100,000 Net", "", "Benchmark", "North Star packet comparison row retained for deal review."]
   ];
 }
@@ -16167,7 +16871,7 @@ function completedLeadReportHtml(row, dossier) {
       <h2 id="source-links">Source Links</h2>
       <ul class="source-links">${sourceLinkItems(report)}</ul>
       <h2 id="missing-data">Missing Data</h2>
-      <ul>${missing.length ? missing.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>No critical missing-data items flagged beyond review placeholders.</li>"}</ul>
+      <ul>${missing.length ? missing.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>No critical missing-data items flagged beyond review markers.</li>"}</ul>
     </div>
 
     <div class="section" id="podio-fields">
@@ -16223,7 +16927,7 @@ function sourceNotesHtml(row, dossier) {
     .slice(0, 16);
   const coverage = qualificationDecision(dossier)?.coverage ?? [];
   return pageShellHtml("Source Notes", row?.leadName ?? "Lead file", `
-    <p class="muted">County-record and workflow checks remain visible so placeholders never count as confirmed facts.</p>
+    <p class="muted">County-record and workflow checks remain visible so unconfirmed values never count as confirmed facts.</p>
     <h2>Coverage</h2>
     <ul>${coverage.map((area) => `<li><strong>${escapeHtml(area.label)}</strong> - ${escapeHtml(displayStatus(area.status))}: ${escapeHtml(operatorPlainText(area.nextAction))}</li>`).join("") || "<li>Run qualification review to populate coverage.</li>"}</ul>
     <h2>Facts</h2>
@@ -16337,7 +17041,7 @@ function outreachDraftHtml(row) {
 function dripScheduleHtml(row) {
   const drips = scheduledDrips();
   return pageShellHtml("Drip Schedule", row?.leadName ?? "Lead file", `
-    <p class="muted">Scheduled automations are prepared only. No email, SMS, or CRM card is created from this demo surface.</p>
+    <p class="muted">Scheduled automations are prepared only. No email, SMS, or CRM card is created from this review surface.</p>
     <h2>Prepared cadences</h2>
     <table>
       <tr><th>Sequence</th><th>Channel</th><th>Cadence</th><th>Status</th><th>Guardrail</th></tr>
@@ -17130,7 +17834,9 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
       ${flow.id === "closing-docs" ? closingWorkflowPanelHtml(row, dossier) : `${assetCaptureFormHtml(row)}${idiImportPanelHtml(row)}${contactReviewPanelHtml(row)}`}
     `;
   }
-  content.innerHTML = (state.railTab === "flow" ? titleCard : "") + bodyHtml;
+  const streamPanel = docPrepStreamPanelHtml(row, dossier, flow.id);
+  content.innerHTML = (state.railTab === "flow" ? titleCard : "") + streamPanel + bodyHtml;
+  wireDocPrepStreamControls(content, row, flow.id);
   content.querySelectorAll("[data-docprep-main-run]").forEach((button) => {
     button.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget, button.dataset.docprepMainRun || state.activeDocPrepFlow));
   });
@@ -18724,6 +19430,74 @@ function renderSettingsView() {
   });
 }
 
+function helpDemoCardsForTab(tabId = state.helpDemoTab) {
+  return Object.entries(walkthroughDemos)
+    .filter(([id, demo]) => id !== "product-tour" && demo.tab === tabId)
+    .map(([id, demo]) => ({ id, ...demo }));
+}
+
+function renderHelpDemosView() {
+  const target = document.getElementById("helpDemosView");
+  if (!target) return;
+  const tab = helpDemoTabs.some((item) => item.id === state.helpDemoTab) ? state.helpDemoTab : "docprep";
+  state.helpDemoTab = tab;
+  const cards = helpDemoCardsForTab(tab);
+  const activeTab = helpDemoTabs.find((item) => item.id === tab) || helpDemoTabs[0];
+  target.innerHTML = `
+    <div class="help-demos-shell">
+      <header class="help-demos-head">
+        <div>
+          <p class="eyebrow">Help &amp; Demos</p>
+          <h2>One-minute workflow guides</h2>
+          <p class="copy">Start a walkthrough, then follow the highlighted workspace changes and rail transitions.</p>
+        </div>
+        <div class="help-demo-tabs" role="tablist" aria-label="Help and demo categories">
+          ${helpDemoTabs.map((item) => `
+            <button type="button" role="tab" aria-pressed="${item.id === tab ? "true" : "false"}" data-help-demo-tab="${escapeHtml(item.id)}">${escapeHtml(item.label)}</button>
+          `).join("")}
+        </div>
+      </header>
+      <section class="help-demo-section" aria-label="${escapeHtml(activeTab.label)} walkthroughs">
+        <div class="help-demo-section-head">
+          <h3>${escapeHtml(activeTab.label)}</h3>
+        </div>
+        <div class="help-demo-grid">
+          ${cards.map((card) => `
+            <button class="help-demo-card" type="button" data-help-demo-card="${escapeHtml(card.id)}">
+              <span class="help-demo-card-top">
+                <span class="help-demo-card-icon">${nucleoIcon(card.icon || "open-book", 18)}</span>
+                <span class="help-demo-duration">${escapeHtml(card.duration || "1 min")}</span>
+              </span>
+              <span>
+                <h4>${escapeHtml(card.title)}</h4>
+                <p>${escapeHtml(card.cardCopy || "")}</p>
+              </span>
+              <span class="help-demo-card-action">
+                <span>Start walkthrough</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+            </button>
+          `).join("")}
+        </div>
+      </section>
+    </div>
+  `;
+  target.querySelectorAll("[data-help-demo-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.helpDemoTab = button.dataset.helpDemoTab || "docprep";
+      renderHelpDemosView();
+    });
+  });
+  target.querySelectorAll("[data-help-demo-card]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const demoId = button.dataset.helpDemoCard || "product-tour";
+      const demo = walkthroughDemos[demoId] || walkthroughDemos["product-tour"];
+      addShellEvent("Walkthrough started", `${demo.title} opened from Help & Demos.`, "review", false);
+      openWalkthrough(0, demoId);
+    });
+  });
+}
+
 function renderCurrentLoopView() {
   if (state.activeView === "dashboard") renderDashboardView();
   if (state.activeView === "dossiers") renderDossiersView();
@@ -18731,6 +19505,7 @@ function renderCurrentLoopView() {
   if (state.activeView === "queue") renderQueueView();
   if (state.activeView === "admin") renderAdminLoopView();
   if (state.activeView === "settings") renderSettingsView();
+  if (state.activeView === "help-demos") renderHelpDemosView();
 }
 
 function playShellViewTransition(view) {
@@ -18751,7 +19526,7 @@ function playShellViewTransition(view) {
   }, 280);
 }
 
-const walkthroughSteps = [
+const productTourSteps = [
   {
     view: "dossiers",
     title: "Document Prep",
@@ -18794,9 +19569,140 @@ const walkthroughSteps = [
   }
 ];
 
+const walkthroughDemos = {
+  "product-tour": {
+    title: "Product Tour",
+    tab: "overview",
+    icon: "open-book",
+    duration: "55 sec",
+    startView: "dossiers",
+    kicker: "Guided walkthrough",
+    cardCopy: "Walk the main workspaces in order: Document Prep, Estates, Outreach, Queue, Admin, and Settings.",
+    steps: productTourSteps
+  },
+  "docprep-discovery": {
+    title: "Run Estate Discovery",
+    tab: "docprep",
+    icon: "magnifier-route",
+    duration: "50 sec",
+    startView: "dossiers",
+    flowId: "discovery",
+    kicker: "Discovery walkthrough",
+    cardCopy: "Open an estate, run Discovery, resolve source/IDI blockers, review contacts, then inspect the streamed packet.",
+    steps: [
+      { view: "dossiers", title: "Open the estate", copy: "Choose the estate in Document Prep and keep the rail on Flow so source capture and packet preview stay together." },
+      { view: "dossiers", title: "Run Discovery", copy: "Run Full Discovery walks owner, tax, deed, obituary, IDI, contact review, and dossier export in order." },
+      { view: "dossiers", title: "Fix blockers", copy: "If a phase stops, add the required source evidence or contact review item. The run resumes only after that fact is saved." },
+      { view: "dossiers", title: "Review the packet", copy: "Use the live preview and section chips to inspect the Discovery Prep PDF sections before queueing export." }
+    ]
+  },
+  "docprep-closing": {
+    title: "Prepare Closing Docs",
+    tab: "docprep",
+    icon: "packet-clock",
+    duration: "55 sec",
+    startView: "dossiers",
+    flowId: "closing-docs",
+    kicker: "Closing Prep walkthrough",
+    cardCopy: "Switch to Closing Prep, fill required legal-template variables, and export only after blockers clear.",
+    steps: [
+      { view: "dossiers", title: "Switch workflow", copy: "Open the estate and select Closing Prep. The same estate file supplies the reviewed Discovery facts." },
+      { view: "dossiers", title: "Fill required fields", copy: "Complete missing seller, signer, buyer entity, title, offer, and closing-date fields. Unknown values must stay blocked." },
+      { view: "dossiers", title: "Run Closing Prep", copy: "The run checks intake, title clearance, seller approval, underwriting, and package readiness without changing template language." },
+      { view: "dossiers", title: "Export one packet", copy: "When required fields pass, export produces one combined Closing Prep PDF for review." }
+    ]
+  },
+  "batch-queue-export": {
+    title: "Batch Queue Export",
+    tab: "export",
+    icon: "batch-tray",
+    duration: "45 sec",
+    startView: "queue",
+    kicker: "Queue walkthrough",
+    cardCopy: "Stage reviewed estates and confirm the batch output is one combined PDF per selected flow.",
+    steps: [
+      { view: "dossiers", title: "Select ready estates", copy: "Use Document Prep or the list controls to select reviewed estate packets for export." },
+      { view: "queue", title: "Stage Queue", copy: "Queue shows the estate packets waiting for batch review and keeps live external writes locked." },
+      { view: "queue", title: "Export bundle", copy: "Use the export route after review. The default output is a single combined PDF per selected flow." }
+    ]
+  },
+  "outreach-simple": {
+    title: "Outreach Review",
+    tab: "export",
+    icon: "scheduled-drips",
+    duration: "50 sec",
+    startView: "drips",
+    kicker: "Outreach walkthrough",
+    cardCopy: "Create simple approved email/SMS packages without exposing the automation builder to everyday users.",
+    steps: [
+      { view: "drips", title: "Choose a campaign", copy: "Open Outreach and pick the campaign or template that matches the estate follow-up stage." },
+      { view: "drips", title: "Review guardrails", copy: "Set stop rules, approval owner, delay, and channel before asking for approval." },
+      { view: "drips", title: "Approve before sync", copy: "Sync/send controls stay blocked until template content, variables, credentials, and approval state all pass." }
+    ]
+  },
+  "settings-readiness": {
+    title: "Settings Readiness",
+    tab: "admin",
+    icon: "gear",
+    duration: "45 sec",
+    startView: "settings",
+    kicker: "Settings walkthrough",
+    cardCopy: "Review team access, integration readiness, IDI default key behavior, paid-source gates, and audit controls.",
+    steps: [
+      { view: "settings", title: "Check integrations", copy: "Open Settings and confirm each connector shows a clear status, reconnect action, and review gate." },
+      { view: "settings", title: "Review domains", copy: "Allowed business domains control team access. Personal domains should fail the sign-in gate in S31." },
+      { view: "settings", title: "Confirm enrichment gates", copy: "IDI Core uses the team default key unless a user pastes their own key, and paid-source work stays manually approved." }
+    ]
+  },
+  "crm-import": {
+    title: "Import From CRM",
+    tab: "docprep",
+    icon: "open-book",
+    duration: "40 sec",
+    startView: "dossiers",
+    flowId: "discovery",
+    kicker: "CRM import walkthrough",
+    cardCopy: "Import a CRM estate row, keep the row linkage, then start Discovery without triggering paid source work.",
+    steps: [
+      { view: "dossiers", title: "Import estate row", copy: "Use Import to add one estate or paste a batch from Podio, Sheets, or CSV." },
+      { view: "dossiers", title: "Verify linkage", copy: "Confirm estate name, owner, property address, county, folio, and CRM row ID before Discovery." },
+      { view: "dossiers", title: "Start Discovery", copy: "Discovery starts from the imported estate and blocks external or paid work until the user explicitly runs it." }
+    ]
+  },
+  "external-estate-fetch": {
+    title: "Fetch External Estate",
+    tab: "docprep",
+    icon: "search-estate",
+    duration: "45 sec",
+    startView: "find-estates",
+    kicker: "External fetch walkthrough",
+    cardCopy: "Fetch public-source inventory, inspect source status, then add an estate to Document Prep.",
+    steps: [
+      { view: "find-estates", title: "Search public source", copy: "Choose address, folio, or estate-name mode and run the estate search from the Estates workspace." },
+      { view: "find-estates", title: "Review evidence", copy: "Confirm owner, property, deed, tax, probate, and source status before adding anything to Document Prep." },
+      { view: "dossiers", title: "Start packet prep", copy: "Add the estate to Document Prep, then run Discovery only when the user is ready to spend paid-source effort." }
+    ]
+  }
+};
+
+const helpDemoTabs = [
+  { id: "docprep", label: "Doc Prep" },
+  { id: "export", label: "Export & Outreach" },
+  { id: "admin", label: "Settings & Access" }
+];
+
+function activeWalkthroughDemo() {
+  return walkthroughDemos[state.walkthrough.demoId] || walkthroughDemos["product-tour"];
+}
+
+function activeWalkthroughSteps() {
+  return activeWalkthroughDemo().steps || productTourSteps;
+}
+
 function positionWalkthrough() {
   if (!state.walkthrough.open) return;
-  const step = walkthroughSteps[state.walkthrough.index] || walkthroughSteps[0];
+  const steps = activeWalkthroughSteps();
+  const step = steps[state.walkthrough.index] || steps[0];
   const popover = document.querySelector(".walkthrough-popover");
   const anchor = document.querySelector(`[data-shell-nav="${step.view}"]`);
   if (!popover || !anchor) return;
@@ -18816,26 +19722,28 @@ function renderWalkthrough() {
     mount.innerHTML = "";
     return;
   }
-  const index = Math.max(0, Math.min(walkthroughSteps.length - 1, state.walkthrough.index));
+  const demo = activeWalkthroughDemo();
+  const steps = activeWalkthroughSteps();
+  const index = Math.max(0, Math.min(steps.length - 1, state.walkthrough.index));
   state.walkthrough.index = index;
-  const step = walkthroughSteps[index];
+  const step = steps[index];
   mount.innerHTML = `
     <section class="walkthrough-popover" role="dialog" aria-modal="false" aria-label="${escapeHtml(step.title)} walkthrough tip">
       <div class="walkthrough-step-row">
-        <p class="eyebrow">Product demo</p>
-        <span class="walkthrough-step-count">${index + 1} / ${walkthroughSteps.length}</span>
+        <p class="eyebrow">${escapeHtml(demo.kicker || "Guided walkthrough")}</p>
+        <span class="walkthrough-step-count">${index + 1} / ${steps.length}</span>
       </div>
       <h3>${escapeHtml(step.title)}</h3>
       <p>${escapeHtml(step.copy)}</p>
       <div class="walkthrough-actions">
         <button class="btn text-action" type="button" data-walkthrough-close>Skip</button>
-        <button class="btn primary solvys-liquid-glass" type="button" data-walkthrough-next>${index === walkthroughSteps.length - 1 ? "Done" : "Next"}</button>
+        <button class="btn primary solvys-liquid-glass" type="button" data-walkthrough-next>${index === steps.length - 1 ? "Done" : "Next"}</button>
       </div>
     </section>
   `;
   mount.querySelector("[data-walkthrough-close]")?.addEventListener("click", () => closeWalkthrough(true));
   mount.querySelector("[data-walkthrough-next]")?.addEventListener("click", () => {
-    if (state.walkthrough.index >= walkthroughSteps.length - 1) {
+    if (state.walkthrough.index >= steps.length - 1) {
       closeWalkthrough(true);
       return;
     }
@@ -18848,26 +19756,46 @@ function renderWalkthrough() {
 
 function syncWalkthroughView() {
   if (!state.walkthrough.open) return;
-  const index = Math.max(0, Math.min(walkthroughSteps.length - 1, state.walkthrough.index));
-  const step = walkthroughSteps[index];
+  const steps = activeWalkthroughSteps();
+  const index = Math.max(0, Math.min(steps.length - 1, state.walkthrough.index));
+  const step = steps[index];
   if (step && state.activeView !== step.view) {
     setActiveShellView(step.view, activeViewLabel(step.view));
   }
 }
 
-function openWalkthrough(index = 0) {
+function prepareWalkthroughDemo(demoId = "product-tour") {
+  const demo = walkthroughDemos[demoId] || walkthroughDemos["product-tour"];
+  if (demo.startView) setActiveShellView(demo.startView, activeViewLabel(demo.startView));
+  if (demo.flowId && selectedRow()) {
+    state.docPrepListOpen = false;
+    state.discoveryOpen = false;
+    state.railMode = "dossier";
+    state.railTab = "flow";
+    setActiveDocPrepFlow(demo.flowId, { persist: true, rerender: false });
+    renderCurrentLoopView();
+    renderRail();
+    setRailOpen(true);
+  }
+}
+
+function openWalkthrough(index = 0, demoId = "product-tour", { prepare = true } = {}) {
   if (walkthroughAutoTimer) {
     window.clearTimeout(walkthroughAutoTimer);
     walkthroughAutoTimer = null;
   }
+  state.walkthrough.demoId = walkthroughDemos[demoId] ? demoId : "product-tour";
+  if (prepare) prepareWalkthroughDemo(state.walkthrough.demoId);
+  const steps = activeWalkthroughSteps();
   state.walkthrough.open = true;
-  state.walkthrough.index = Math.max(0, Math.min(walkthroughSteps.length - 1, Number(index) || 0));
+  state.walkthrough.index = Math.max(0, Math.min(steps.length - 1, Number(index) || 0));
   syncWalkthroughView();
   renderWalkthrough();
 }
 
 function closeWalkthrough(markSeen = false) {
   state.walkthrough.open = false;
+  state.walkthrough.demoId = "product-tour";
   if (markSeen) storageSetItem(walkthroughStateKey, "true");
   renderWalkthrough();
 }
@@ -20764,7 +21692,7 @@ function exportRouteMeta(route) {
       label: "Google Workspace",
       status: "export: [GOOGLE]",
       title: "Prepare Google Workspace export",
-      copy: "Prepare the completed report for Google Docs or Sheets review. Use this when the team needs a clean document package before outreach; no live file is created from the demo surface."
+      copy: "Prepare the completed report for Google Docs or Sheets review. Use this when the team needs a clean document package before outreach; no live file is created from the review surface."
     },
     podio: {
       label: "Podio",
@@ -21120,8 +22048,8 @@ async function chooseExportRoute(route, source = null) {
   const checkedCount = checkedRows().length;
   const isBatch = checkedCount > 0 && !isControlledTest;
   const batchCopy = isBatch
-    ? ` Preparing a ${checkedCount}-lead Doc Prep batch now. No live CRM card, Google Doc, Google Sheet row, email, or SMS will be created from this demo surface.`
-    : " Preparing a review-only Doc Prep package now. No live CRM card will be created from this demo surface.";
+    ? ` Preparing a ${checkedCount}-lead Doc Prep batch now. No live CRM card, Google Doc, Google Sheet row, email, or SMS will be created from this review surface.`
+    : " Preparing a review-only Doc Prep package now. No live CRM card will be created from this review surface.";
   state.railPreview = {
     title: isBatch ? `${meta.title} Batch` : meta.title,
     markdown: isControlledTest
@@ -21464,6 +22392,8 @@ function wireEvents() {
     button.addEventListener("click", () => setRailTab(button.dataset.railTab));
   });
   document.addEventListener("keydown", (event) => {
+    const activeTag = document.activeElement?.tagName;
+    const typing = activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT" || document.activeElement?.isContentEditable;
     if (event.key === "Escape") {
       closeAllEnhancedSelects();
       setExportMenuOpen(false);
@@ -21476,7 +22406,14 @@ function wireEvents() {
       if (state.crmImportModal.open) closeCrmImportModal();
       if (state.documentActionModal.open) closeDocumentActionModal();
     }
-    if (event.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "SELECT") {
+    if (!typing && state.activeView === "dossiers" && state.railMode === "dossier" && event.altKey && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+      if (cycleDocPrepStreamSection(event.key === "ArrowDown" ? 1 : -1)) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+    }
+    if (event.key === "/" && !typing) {
       event.preventDefault();
       document.getElementById("globalSearch").focus();
     }
