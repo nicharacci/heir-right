@@ -31,6 +31,7 @@ Make Doc Prep visibly stream real Discovery and Closing Prep packet sections, ad
 ## Review Notes
 - Stream card clipping found during screenshot proof and fixed in source plus rebuilt artifact.
 - Hostile review finding resolved: final post-fix proof now exists in fresh Chrome/DevTools screenshots and metrics, not the stale cached in-app browser tab.
+- Post-S29 correction note: the earlier S30 proof was run before the Tax Collector listing-page receipt contract, broader public-source capture fields, and IDI API/shared-default blocker were tightened. Treat the UI streaming mechanics as proven, but rerun the S30 demo against the corrected S29 source contracts before using it as final client acceptance evidence.
 
 ## S30 Plan Check
 - Streaming Discovery and Closing docs in Doc Prep rail: passed in browser; both flows streamed and then completed after real UI evidence entry.
@@ -39,3 +40,8 @@ Make Doc Prep visibly stream real Discovery and Closing Prep packet sections, ad
 - No production-breaking wording in S30 surfaces: passed source scan for bad copy terms.
 - Desktop/mobile proof: passed. Fresh Chrome/DevTools screenshots and metrics prove the post-fix stream panel renders at stable dimensions with no horizontal overflow.
 - Console health: passed during browser checks; no console warnings/errors were reported during Help & Demos, Discovery stream, keyboard navigation, or Closing Prep stream proof.
+
+## Required Rerun Before Final Acceptance
+- Discovery streaming must show Tax Collector listing-page receipt capture, bottom-right receipt link preservation, deed/title source evidence, probate/court source evidence, obituary/vital review, IDI operator import or exact API blocker, and contact review.
+- Closing Prep streaming must start from the reviewed Discovery File and block on missing required seller/client/template fields without editing legal template language.
+- Preview proof must confirm the header says `Preview`, no `Live packet preview` wording remains, and the PDF/stream preview is visually contained inside its rail card on desktop and mobile.

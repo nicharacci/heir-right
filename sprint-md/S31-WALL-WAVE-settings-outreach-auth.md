@@ -14,6 +14,8 @@ Prepare the non-Doc Prep surfaces for team shipping after S29 and S30 prove the 
 ## Acceptance Criteria
 
 - [ ] Settings covers team access, allowed domains, integration status/reconnect, API/webhook controls, activity/audit log, templates, and source/enrichment controls.
+- [ ] Settings clearly separates IDI operator portal access from backend API access, shows whether the shared default IDI API endpoint/key is configured, and keeps personal pasted keys as per-user overrides only.
+- [ ] Settings exposes source automation readiness for Property Appraiser, Tax Collector receipt, Official Records, Probate Court, obituary/vital review, and any Browserbase fallback credentials without implying unproven automation.
 - [ ] Outreach does not expose the ActivePieces builder as the user-facing UX.
 - [ ] Outreach shows stage/review/approve/sync/send states with no-send guardrails.
 - [ ] Every Outreach button either works or clearly explains the blocker.
@@ -29,6 +31,6 @@ Prepare the non-Doc Prep surfaces for team shipping after S29 and S30 prove the 
 - Confirm disallowed domain cannot clear the app gate.
 - Click the avatar and verify account menu behavior.
 - Review every Settings tab and integration status.
+- Confirm IDI shared-default status and personal override copy are understandable to a non-technical operator.
 - Click every Outreach control and confirm safe blocked/ready behavior.
 - Confirm ActivePieces is backstage only.
-

@@ -6,6 +6,8 @@ idiCORE operator portal access has been confirmed through the saved browser prof
 
 This is not the same thing as backend API access. The visible idiCORE profile and admin surface do not expose API keys, developer credentials, webhooks, or integration settings.
 
+July 3, 2026 local proof: `/api/connections/status` reports IDI Core as `operator_portal` / `review` mode, with portal access configured, `api.endpointConfigured: false`, `api.sharedDefaultConfigured: false`, `api.userOverrideAllowed: true`, and `api.liveRunApproved: false`. Do not describe this as a successful live backend IDI Core run.
+
 ## App Contract
 
 HeirRight supports two distinct IDI states:
@@ -26,6 +28,8 @@ API mode additionally requires:
 - `IDI_CORE_LIVE_RUN_APPROVED=true` for the single approved paid proof
 
 Users can also paste a personal IDI access key in Settings or the Doc Prep IDI panel. That key is stored only in the user's browser and sent only with the live IDI run they trigger. It does not replace `IDI_CORE_API_KEY`, and the app never returns either key from connection-status APIs.
+
+When IDI provides backend API access, configure the shared default once in the deployment/runtime environment. Leave the personal-key field available for a user override, but never make a user's pasted key the team default and never echo either key back to the browser.
 
 ## Guardrails
 

@@ -4939,6 +4939,23 @@
       background: white;
     }
 
+    .rail-card.pdf-packet-card {
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+      height: clamp(360px, 62vh, 720px);
+      max-height: min(720px, calc(100vh - 188px));
+    }
+
+    .rail-card.pdf-packet-card .pdf-reader {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      max-height: 100%;
+      margin: 0;
+      display: block;
+      box-sizing: border-box;
+    }
+
     .research-rail .pdf-reader {
       width: 100%;
       min-height: min(520px, 58vh);
@@ -7062,7 +7079,7 @@
 
     .pdf-packet-frame {
       width: 100%;
-      height: clamp(300px, 52vh, 590px);
+      height: 100%;
       min-height: 0;
       max-height: 100%;
       border: 1px solid var(--line);
@@ -17890,7 +17907,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
         </div>
         ${dossierChecklistHtml(docs)}
       </section>
-      <section class="glass-card rail-card">
+      <section class="glass-card rail-card pdf-packet-card">
         <div class="pdf-toolbar"><span>${escapeHtml(selectedDoc?.type ?? "PDF packet")} - ${escapeHtml(selectedDoc?.status ?? "Review")}</span><span class="tracker-date">Embedded PDF reader</span></div>
         <iframe class="pdf-reader" title="${escapeHtml(selectedDoc?.title ?? "Discovery Dossier")}" sandbox="allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation" srcdoc="${escapeHtml(selectedDoc?.body ?? "")}"></iframe>
       </section>
@@ -21236,7 +21253,7 @@ function railFlowHtml(row, dossier) {
   const sections = row.missing.length ? row.missing : buildMissingSections(dossier);
   const qualification = qualificationDecision(dossier);
   return `
-    <section class="glass-card rail-card pdf-packet-card">
+    <section class="glass-card rail-card">
       <h3>What to fill in next</h3>
       <p class="copy">Review the open file, choose a missing section, then mark that section ready once the source note is filled in.</p>
       <div>
@@ -21347,10 +21364,10 @@ function railDocsHtml(row, dossier) {
   const exportResults = state.exportResult?.routes ?? [];
   const exportBlockers = exportBlockerItems();
   return `
-    <section class="glass-card rail-card">
+    <section class="glass-card rail-card pdf-packet-card">
       <div class="pdf-packet-toolbar">
         <div>
-          <p class="eyebrow">Completed report packet</p>
+          <p class="eyebrow">Preview</p>
           <h2 class="rail-title">${escapeHtml(row?.leadName || row?.title || "Lead report")}</h2>
         </div>
         <label class="pdf-date-select">Date added
@@ -21359,7 +21376,7 @@ function railDocsHtml(row, dossier) {
           </select>
         </label>
       </div>
-      <iframe class="pdf-packet-frame" title="Completed report packet PDF" src="${escapeHtml(reportPacketPdfUrl(row, dossier, dateAdded))}"></iframe>
+      <iframe class="pdf-packet-frame" title="Preview PDF" src="${escapeHtml(reportPacketPdfUrl(row, dossier, dateAdded))}"></iframe>
     </section>
     <section class="glass-card rail-card">
       <h3>Notes and blockers</h3>
@@ -22599,8 +22616,3 @@ walkthroughAutoTimer = window.setTimeout(() => {
 </script>
 </body>
 </html>
-    .rail-card.pdf-packet-card {
-      grid-template-rows: auto minmax(0, 1fr);
-      overflow: hidden;
-      max-height: min(720px, calc(100vh - 188px));
-    }

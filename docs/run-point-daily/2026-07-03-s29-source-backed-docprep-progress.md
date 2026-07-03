@@ -51,22 +51,25 @@ Status: implemented first S12/S29 source-backed Doc Prep repair pass in `probate
   - `Help & Demos`
   - Tax Collector listing-page/bottom-right receipt language.
 - Targeted legacy scan found no remaining `Live packet preview`, `memorial_search_placeholder`, `placeholderNode`, or `review-placeholder` tokens in the touched Doc Prep/worker surfaces.
+- Fresh Chrome proof after clearing generated temp artifacts showed:
+  - Dossier rail Docs tab uses a bounded `.pdf-packet-card`.
+  - Embedded `.pdf-reader` geometry is contained by its card.
+  - Report rail Docs tab toolbar text starts with `Preview`.
+  - `Completed report packet` and `Live packet preview` are absent from the served page.
+  - `.pdf-packet-frame` geometry is contained by its card.
+  - Console and page error arrays were empty.
+- Direct fallback workflow packet text check used `/Users/tifos/Desktop/HRight/HeirRight Workflow. pdf.pdf` because the canonical copy was absent. Extracted text confirms the workflow requires tax history, receipt status, who paid taxes, downloading tax receipts when payer differs, civil/family/probate records, marriage, obituary, Findagrave/Legacy/Ancestry/Intelius/IDI, voter records, and completed lead report fields.
 
-## Blocked Proof
-
-Browser screenshot proof could not be emitted because the machine is out of temp space:
-
-- `/tmp` writes fail with `No space left on device`.
-- `df -h` shows `/System/Volumes/Data` at 100% with about 405MB available.
-
-This is a proof blocker only. Build, tests, route probes, PDF response shape, and static DOM checks passed.
+## Current IDI Proof Blocker
 
 IDI Core shared-default proof is blocked by missing deployment/runtime config:
 
 - Local runtime: `IDI_CORE_API_KEY` missing, `IDI_CORE_API_URL` missing.
 - Vercel project env list for `heirright-landing-demo`: no `IDI_CORE_API_KEY` or `IDI_CORE_API_URL` entries found.
-- Current app behavior is correct for this state: user override is allowed, but live paid runs block until explicit approval and vendor endpoint/shared access are present.
+- `/api/connections/status` reports IDI Core as `operator_portal` / `review` mode with portal configured, `api.endpointConfigured: false`, `api.sharedDefaultConfigured: false`, `api.userOverrideAllowed: true`, and `api.liveRunApproved: false`.
+- Current app behavior is correct for this state: personal user override is allowed, but live paid backend runs block until explicit approval and vendor endpoint/shared access are present.
 - This means the code path supports team default plus user override, but the shared default is not actually configured in the current local/deployment environment.
+- `/api/discovery/idi-asset-search/import` correctly rejects an import without approved report text/metadata with `missing_idi_report`.
 
 ## Anti-Negligence Review
 
@@ -106,6 +109,9 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - `artifact.estateId: estate-proof-closing`
   - sections: `Reviewed Discovery File`, `Closing field map`, `Required seller/client fields`, `Template fill review`, `Closing Prep packet`
 - PDF route proof returned `Content-Type: application/pdf` and `Content-Disposition: inline; filename="heirright-report-packet.pdf"`.
+- Fresh local API proof after the preview fix returned real PDF bytes for both batch flows:
+  - Discovery batch: `artifact.kind: single_pdf`, `artifact.contentType: application/pdf`, `artifact.flow: discovery`, `sectionCount: 5`, PDF magic `%PDF-1.4`.
+  - Closing batch: `artifact.kind: single_pdf`, `artifact.contentType: application/pdf`, `artifact.flow: closing-docs`, `sectionCount: 5`, PDF magic `%PDF-1.4`.
 
 ## Fourth Repair Pass: Public Source Acquisition Contracts
 
@@ -122,8 +128,20 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - `bottom_right_receipt.blocksUntilCaptured: true`
   - required evidence: `receipt link`, `receipt artifact`
 
+## Fifth Repair Pass: Preview Containment And Plan Refinement
+
+- Freed generated/temp artifacts enough to run fresh Chrome proof.
+- Moved `.rail-card.pdf-packet-card` CSS inside the actual stylesheet and removed the dead rule that had been appended after `</html>`.
+- Applied bounded `pdf-packet-card` behavior to both the Dossier rail embedded reader and report rail packet frame.
+- Changed the completed packet rail eyebrow to `Preview`.
+- Verified in Chrome that the Dossier rail reader is contained in its card and has no console/page errors.
+- Verified in Chrome that the report rail Docs tab shows `Preview`, no `Completed report packet`, no `Live packet preview`, and the PDF frame is contained in its card.
+- Final Chrome proof also confirmed the iframe title is `Preview PDF` and the served page HTML no longer contains `Completed report packet`.
+- Refined S29-S32 briefs, S29 anti-negligence review, S30 progress, IDI configuration, and source-adapter plan so later sprints cannot claim completion without the corrected Tax Collector receipt, source evidence, and IDI API/shared-default proof.
+
 ## Next Work
 
-- Run real browser screenshot/video proof after freeing disk space.
 - Add live source-run client for the actual Tax Collector search/listing endpoint once endpoint discovery is captured from the browser workflow.
-- Continue S29 by expanding the same source-backed treatment to deed/title, probate/court, marriage/death, offender/professional-license, and manual/field tasks.
+- Prefer a deterministic script/API client for Tax Collector search/listing extraction first. Use Browserbase only if the public site requires browser session state, JS navigation, or endpoint discovery that cannot be captured safely by a script.
+- Rerun S30 demos against the corrected S29 source contracts before treating S30 as final client acceptance proof.
+- Continue source-backed treatment for marriage/death, offender/professional-license, voter/license, field/neighbor/code-enforcement, and paid/manual research tasks as explicitly human-required or approval-gated.

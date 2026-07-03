@@ -37,7 +37,8 @@ type SourceFact = {
 | Source | Friday posture | Primary inputs | Output facts | Blocker behavior |
 | --- | --- | --- | --- | --- |
 | Miami-Dade Property Appraiser | Live app reachability + public search URL; structured extraction where feasible | address, owner, folio | source status, search URL, seed address/owner/folio/county facts | `SOURCE_HEALTH_ONLY`, `MISSING_PROPERTY_FACT`, source refs |
-| Miami-Dade Official Records / Clerk | Live app reachability + title-signal placeholder; browser/API extraction next | owner, address, folio | official-record status, title-signal review event | `MISSING_TITLE_FACT`, source refs |
+| Miami-Dade Tax Collector | Listing-page receipt capture implemented for supplied listing HTML or explicit receipt link; live search/listing workflow automation next | folio, address, owner, listing page URL | receipt link, receipt artifact/link, paid date, payer identity, unpaid years, amount due, reassessment/status notes | block until bottom-right receipt link is captured or operator marks unavailable after checking listing page |
+| Miami-Dade Official Records / Clerk | Live app reachability + title/deed source capture; browser/API extraction next | owner, address, folio, OR book/page | official-record source, deed attachment/link, OR book/page, recording date, grantor/grantee, title friction | `MISSING_TITLE_FACT`, source refs |
 | Landing/intake | Local dry-run seed | address, owner, county, folio | intake seed fact | missing fields become review flags |
 | Podio | Dry-run only unless config exists | raw dossier | CRM payload fact | missing credentials block live sync |
 | Document packet | Draft internal summary first | raw dossier | document output fact | `HUMAN_REVIEW_REQUIRED` |
@@ -52,7 +53,7 @@ The workflow PDF expands the source plan beyond the Friday public-source slice. 
 | Owner type qualification | Automatable when source exposes owner type | owner name, property record | individual owner, company owner, trust/estate owner, disqualification status | Company-owned properties default out of scope |
 | Recent sale / deed history | Public-source target | folio, address, owner, OR book/page | deed event, sale date, book/page, ownership activity | Sale within 5 years defaults disqualified/review |
 | Adverse possession | Public-source target where available | owner, address, folio | adverse-possession claim/status | Missing signal becomes review flag |
-| Tax history | Public-source target | folio, address, owner | unpaid tax years, tax amount, receipt status, reassessment, payer identity | PDF receipt download stays manual until validated |
+| Tax history | Public-source target with listing-page receipt extraction | folio, address, owner, Tax Collector listing page | unpaid tax years, tax amount, receipt status/link, reassessment, payer identity, paid date | Listing-page receipt link is required; automate with a script/API client first, use Browserbase only when the site requires a browser/session workflow |
 | Civil/family/probate docket | Public-source target | estate name, decedent, case number | case status, docket refs, affidavit of heirs, document availability | No legal conclusion; record-only facts |
 | Marriage licenses | Public-source target | decedent/heir names | marriage-license signal, spouse hypothesis | Human review required |
 | Obituary/death indicators | Public web/manual target | name, DOB/DOD, location | obituary link, death date, family names | Human review required |
@@ -88,7 +89,7 @@ Every source ref must also identify its access class:
 Stop and report a blocker instead of forcing source extraction when:
 
 - a source requires login or authenticated access without approval;
-- a source presents CAPTCHA or anti-automation controls;
+- a source presents CAPTCHA, Cloudflare, or anti-automation controls;
 - a source returns repeated 403/429 responses;
 - the public app is reachable but structured records require endpoint discovery;
 - fetching would violate a known source restriction.
@@ -113,7 +114,8 @@ Stop and report a blocker instead of forcing source extraction when:
 6. Internal summary document packet.
 7. Dashboard/intake and Friday handoff.
 8. Workflow rule engine for disqualifications and review-required states.
-9. Tax/deed depth adapters.
-10. Probate/heirship research queue.
-11. Paid/manual source governance.
-12. Completed lead report and offer math payload.
+9. Tax Collector search/listing client that lands on the listing page and extracts the bottom-right receipt link; use Browserbase only as a fallback for session-required browser workflows.
+10. Tax/deed depth adapters.
+11. Probate/heirship research queue.
+12. Paid/manual source governance.
+13. Completed lead report and offer math payload.

@@ -11,6 +11,8 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - IDI now has two explicit modes: `live_idi_core` for controlled paid runs and `operator_import` for approved report imports.
 - Missing IDI access or approval blocks with a human-readable message.
 - Discovery cannot auto-complete tax, deed, obituary, IDI, or contact-review phases without evidence.
+- Tax Collector evidence now has to include the listing page receipt path: the bottom-right receipt link, paid date, payer identity, or an explicit unavailable-after-listing-check blocker.
+- Public-source acquisition contracts now name the expected Property Appraiser, Tax Collector receipt, Official Records deed/title, Probate Court, and obituary/vital review stages.
 - Closing Prep cannot auto-complete title, seller approval, or package phases when required evidence or fields are missing.
 - Required Closing fields persist per estate and feed the deterministic field map.
 - Closing export blocks before Google export if required fields are unresolved.
@@ -24,12 +26,13 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Closing template values could rely on unresolved inferred data. Required input panel added.
 - Google Closing export could be requested before missing legal-template fields were resolved. Preflight block added.
 - Export responses did not clearly state one PDF artifact. Artifact contract added.
+- Preview rail could let the embedded PDF bleed outside the card and still had stale packet-preview wording. The report rail now uses `Preview`, the old wording is absent, and Chrome geometry proof shows the PDF frame/card containment passes.
 
 ## Remaining Proof Required
 
-- A real live IDI Core run still requires vendor credentials and approval in the target environment.
+- A real live IDI Core backend run still requires `IDI_CORE_API_URL`, the shared default `IDI_CORE_API_KEY`, and approval in the target environment. Current proof shows operator portal/import mode only, with user override allowed.
 - Google/Podio live write and readback still require configured credentials and approval.
-- Browser E2E and PDF inspection must be run after build.
+- Browser E2E and PDF inspection must be rerun after any additional source-flow or preview changes.
 
 ## TP Checklist
 
@@ -40,4 +43,4 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Fill Closing required fields.
 - Confirm Closing export blocks while a field is missing.
 - Confirm Batch Queue describes one PDF artifact.
-
+- Confirm the report rail header is `Preview` and the PDF does not bleed outside the card.
