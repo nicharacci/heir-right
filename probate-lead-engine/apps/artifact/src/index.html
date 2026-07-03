@@ -3766,10 +3766,12 @@
     }
 
     .docprep-artifact-stream {
+      --artifact-preview-height: clamp(220px, 38vh, 480px);
       gap: 12px;
-      min-height: 360px;
+      grid-template-rows: auto auto var(--artifact-preview-height) auto;
+      min-height: calc(var(--artifact-preview-height) + 230px);
       align-content: start;
-      overflow: visible;
+      overflow: hidden;
     }
 
     .artifact-stream-head {
@@ -3875,7 +3877,9 @@
     }
 
     .artifact-stream-document {
-      max-height: min(58vh, 560px);
+      min-height: 220px;
+      height: var(--artifact-preview-height);
+      max-height: none;
       overflow: auto;
       display: grid;
       gap: 10px;
@@ -6976,10 +6980,10 @@
     }
 
     .rail-card.docprep-artifact-stream {
-      min-height: 360px;
+      min-height: calc(var(--artifact-preview-height) + 230px);
       align-content: start;
       gap: 12px;
-      overflow: visible;
+      overflow: hidden;
     }
 
     .rail-card.docprep-artifact-stream .artifact-stream-document {
@@ -14782,7 +14786,7 @@ function docPrepStreamPanelHtml(row = selectedRow(), dossier = dossierForRow(row
     <section class="glass-card rail-card docprep-artifact-stream" data-docprep-stream="${escapeHtml(key)}" data-docprep-stream-flow="${escapeHtml(flow.id)}">
       <div class="artifact-stream-head">
         <div>
-          <p class="eyebrow">Live packet preview</p>
+          <p class="eyebrow">Preview</p>
           <h3>${escapeHtml(flow.shortTitle)} artifact ${complete ? "ready for review" : "being written"}</h3>
           <p class="copy">${escapeHtml(stream.summary || "Sections update as the actual Doc Prep run clears source, IDI, contact, and closing-field gates.")}</p>
         </div>

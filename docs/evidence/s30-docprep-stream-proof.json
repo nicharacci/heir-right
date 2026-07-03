@@ -1,98 +1,132 @@
 {
-  "url": "http://localhost:4173/?s30-clean-proof=1783107343704",
-  "desktopPath": "/tmp/heirright-s30-cdp-desktop-clean.png",
-  "mobilePath": "/tmp/heirright-s30-cdp-mobile-clean.png",
-  "desktop": {
-    "href": "http://localhost:4173/?s30-clean-proof=1783107343704",
-    "activeView": "dossiers",
-    "walkthroughOpen": false,
-    "streamHeading": "Estate Discovery artifact being written",
-    "topStatus": "Tax receipt needs payer, receipt link, or saved source evidence before Discovery can continue.",
-    "cssMatches": [
-      ".docprep-artifact-stream { gap: 12px; min-height: 360px; align-content: start; overflow: visible; }",
-      ".rail-card.docprep-artifact-stream { min-height: 360px; align-content: start; gap: 12px; overflow: visible; }",
-      ".rail-card.docprep-artifact-stream .artifact-stream-document { min-height: 220px; }"
-    ],
-    "panelRect": {
-      "x": 893,
-      "y": 422,
-      "width": 535,
-      "height": 360,
-      "overflow": "visible",
-      "minHeight": "360px"
+  "generatedAt": "2026-07-03T19:51:47.684Z",
+  "url": "http://localhost:4173/?previewFitProof=1783108299621",
+  "checks": [
+    {
+      "label": "desktop",
+      "headerText": "Preview",
+      "panelFound": true,
+      "docFound": true,
+      "panelOverflow": "hidden",
+      "docOverflow": "auto",
+      "panelRect": {
+        "top": 243.1,
+        "bottom": 891.1,
+        "height": 648,
+        "width": 520
+      },
+      "docRect": {
+        "top": 413.5,
+        "bottom": 831.5,
+        "height": 418,
+        "width": 494
+      },
+      "panelScrollHeight": 646,
+      "panelClientHeight": 646,
+      "docClientHeight": 416,
+      "docScrollHeight": 1366,
+      "docWithinPanel": true,
+      "allChildrenContained": true,
+      "children": [
+        {
+          "tag": "div",
+          "className": "artifact-stream-head",
+          "top": 256.1,
+          "bottom": 330.5,
+          "contained": true
+        },
+        {
+          "tag": "div",
+          "className": "docprep-section-control",
+          "top": 342.5,
+          "bottom": 401.5,
+          "contained": true
+        },
+        {
+          "tag": "div",
+          "className": "artifact-stream-document",
+          "top": 413.5,
+          "bottom": 831.5,
+          "contained": true
+        },
+        {
+          "tag": "p",
+          "className": "artifact-stream-shortcut",
+          "top": 843.5,
+          "bottom": 858.3,
+          "contained": true
+        }
+      ],
+      "panelOverflowX": 0,
+      "pageOverflowX": 0,
+      "railOverflowX": 0,
+      "activeSectionCount": 7
     },
-    "documentRect": {
-      "x": 906,
-      "y": 585,
-      "width": 509,
-      "height": 220,
-      "overflow": "auto",
-      "minHeight": "220px"
-    },
-    "chips": [
-      {
-        "text": "Owner details",
-        "state": "complete",
-        "active": "false"
+    {
+      "label": "mobile",
+      "headerText": "Preview",
+      "panelFound": true,
+      "docFound": true,
+      "panelOverflow": "hidden",
+      "docOverflow": "auto",
+      "panelRect": {
+        "top": 161.7,
+        "bottom": 739.1,
+        "height": 577.5,
+        "width": 392.4
       },
-      {
-        "text": "Tax receipt",
-        "state": "blocked",
-        "active": "true"
+      "docRect": {
+        "top": 342.5,
+        "bottom": 684.5,
+        "height": 342,
+        "width": 366.4
       },
-      {
-        "text": "Deed",
-        "state": "pending",
-        "active": "false"
-      },
-      {
-        "text": "Obituary",
-        "state": "pending",
-        "active": "false"
-      },
-      {
-        "text": "IDI asset search",
-        "state": "pending",
-        "active": "false"
-      },
-      {
-        "text": "Contact review",
-        "state": "pending",
-        "active": "false"
-      },
-      {
-        "text": "Dossier export",
-        "state": "pending",
-        "active": "false"
-      }
-    ],
-    "horizontalOverflow": false,
-    "bodyWidth": 1440,
-    "viewportWidth": 1440
-  },
-  "mobile": {
-    "activeView": "dossiers",
-    "walkthroughOpen": false,
-    "streamHeading": "Estate Discovery artifact being written",
-    "panelRect": {
-      "x": 13,
-      "y": 328,
-      "width": 392,
-      "height": 725,
-      "overflow": "visible",
-      "minHeight": "360px"
-    },
-    "documentRect": {
-      "x": 26,
-      "y": 509,
-      "width": 366,
-      "height": 490,
-      "overflow": "auto",
-      "minHeight": "220px"
-    },
-    "horizontalOverflow": false,
-    "bodyWidth": 390,
-    "viewportWidth": 390,
-    "railOpen": "true"
-  }
+      "panelScrollHeight": 575,
+      "panelClientHeight": 575,
+      "docClientHeight": 340,
+      "docScrollHeight": 1383,
+      "docWithinPanel": true,
+      "allChildrenContained": true,
+      "children": [
+        {
+          "tag": "div",
+          "className": "artifact-stream-head",
+          "top": 174.7,
+          "bottom": 266.5,
+          "contained": true
+        },
+        {
+          "tag": "div",
+          "className": "docprep-section-control",
+          "top": 278.5,
+          "bottom": 330.5,
+          "contained": true
+        },
+        {
+          "tag": "div",
+          "className": "artifact-stream-document",
+          "top": 342.5,
+          "bottom": 684.5,
+          "contained": true
+        },
+        {
+          "tag": "p",
+          "className": "artifact-stream-shortcut",
+          "top": 696.5,
+          "bottom": 726.1,
+          "contained": true
+        }
+      ],
+      "panelOverflowX": 0,
+      "pageOverflowX": 0,
+      "railOverflowX": 27,
+      "activeSectionCount": 7
+    }
+  ],
+  "pass": true,
+  "cssAssertions": [
+    ".docprep-artifact-stream { --artifact-preview-height: clamp(220px, 38vh, 480px); grid-template-rows: auto auto var(--artifact-preview-height) auto; overflow: hidden; }",
+    ".artifact-stream-document { height: var(--artifact-preview-height); overflow: auto; }",
+    ".rail-card.docprep-artifact-stream { min-height: calc(var(--artifact-preview-height) + 230px); overflow: hidden; }"
+  ]
 }

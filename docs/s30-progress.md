@@ -25,7 +25,8 @@ Make Doc Prep visibly stream real Discovery and Closing Prep packet sections, ad
 - In-app browser proof: Closing Prep streamed, blocked correctly on missing required fields, then completed after the remaining fields were entered through UI controls.
 - Generated packet proof in browser: Discovery reached 7/7 stream sections and 10/10 linked documents; Closing Prep reached 5/5 stream sections and 20/20 linked documents.
 - Post-fix fresh Chrome/DevTools proof loaded the rebuilt app with the corrected stream CSS and captured clean desktop/mobile screenshots: `docs/evidence/s30-docprep-stream-desktop.png`, `docs/evidence/s30-docprep-stream-mobile.png`, and `docs/evidence/s30-docprep-stream-proof.json`.
-- Post-fix metrics: desktop stream panel 535x360 with 509x220 scrollable document pane, mobile stream panel 392x725 with 366x490 scrollable document pane, no horizontal overflow on either viewport.
+- Preview containment polish: renamed the rail header to `Preview`, gave the stream card a real document-pane row, and verified the stream no longer bleeds past its container.
+- Post-fix metrics: desktop stream panel 520x648 with 494x418 scrollable document pane; mobile stream panel 392x577 with 366x342 scrollable document pane; every direct preview child is contained and the page has no horizontal overflow on either viewport.
 
 ## Review Notes
 - Stream card clipping found during screenshot proof and fixed in source plus rebuilt artifact.
