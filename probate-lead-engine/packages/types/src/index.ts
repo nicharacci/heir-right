@@ -8,6 +8,7 @@ export type SourceKey =
   | "idi"
   | "skip_trace"
   | "official_records"
+  | "source_governance"
   | "podio"
   | "intake"
   | "document_packet";

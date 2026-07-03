@@ -20,6 +20,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Official Records and Civil/Family/Probate now have explicit Miami-Dade Clerk Commercial Data Services API clients. They are credential-gated by `MIAMI_DADE_CLERK_AUTH_KEY` and return `commercial_api_key_required` blockers when the paid AuthKey is missing.
 - Marriage/death/obituary/vital indicators now have a configurable workflow API hook. When no workflow is configured, they return `workflow_required` plus `VITAL_RECORDS_WORKFLOW_REQUIRED` instead of blank source facts.
 - Settings/export readiness now exposes `Vital/Obituary Workflow` separately from generic Web Search readiness.
+- Source governance is now route-visible as `Governed manual and paid research`, and explicitly names voter records, professional licenses, business/address associations, social profiles, and deceased-indicator cross-checks as approval-gated review work.
 - Closing Prep cannot auto-complete title, seller approval, or package phases when required evidence or fields are missing.
 - Required Closing fields persist per estate and feed the deterministic field map.
 - Closing export blocks before Google export if required fields are unresolved.
@@ -73,12 +74,13 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Tax Collector browser-workflow hook proof returned a bottom-right receipt link from mocked workflow listing HTML and preserved review flags.
 - Vital/obituary workflow direct proof returned mocked DOB/DOD/obituary/marriage/death-certificate facts and preserved review flags.
 - Vital/obituary route proof returned `workflow_required` and `VITAL_RECORDS_WORKFLOW_REQUIRED`; Settings returned `Vital/Obituary Workflow` as blocked until the workflow URL is configured.
+- Source governance route proof returned 8 source summaries and a blocked `Governed manual and paid research` bucket containing voter, professional-license, business/address, social-profile, and deceased-indicator review codes.
 
 ## Dedicated Final Review Pass
 
 /solvys-heir-audit
 Source checked: `/Users/tifos/Desktop/HRight/HeirRight Workflow. pdf.pdf`, `/Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md`, repo routes, local API proof, and headless Chrome proof.
-Backward: S29 now has a unified external source-run route and a Doc Prep `Run Source Search` control. This supports the workflow steps for owner/property/deed/tax/probate/vital/IDI review by making every bucket visible, preserving source facts, and blocking incomplete buckets instead of filling legal/document blanks from assumptions.
+Backward: S29 now has a unified external source-run route and a Doc Prep `Run Source Search` control. This supports the workflow steps for owner/property/deed/tax/probate/vital/IDI/manual research review by making every bucket visible, preserving source facts, and blocking incomplete buckets instead of filling legal/document blanks from assumptions.
 UX pass: aligned with gaps. The operator can run the source search from Doc Prep and see public-record capture fields in the rail. The remaining gap is that browser-based Tax Collector and court/vital extraction still require production workflows before a non-technical user can complete Discovery without manual source work.
 Forward: S30 must demo Discovery/Closing with the source-run blockers visible, not hidden. S31 must expose source/integration readiness in Settings. S32 must reject shipment unless Tax Collector browser workflow, IDI shared-default proof, and court/vital source workflows are either automated or explicitly accepted as human-required.
 Alignment: aligned with gaps

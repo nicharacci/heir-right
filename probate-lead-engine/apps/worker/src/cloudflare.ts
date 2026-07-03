@@ -841,6 +841,7 @@ const discoverySourceLabels: Array<{ source: SourceFact["source"]; label: string
   { source: "clerk_of_courts", label: "Marriage, death, obituary, and vital review", mode: "browser_workflow_or_source_capture" },
   { source: "idi", label: "IDI Core Asset Search", mode: "paid_api_or_operator_import" },
   { source: "skip_trace", label: "Skip trace/contact enrichment", mode: "paid_manual_approval" },
+  { source: "source_governance", label: "Governed manual and paid research", mode: "approval_gated_source_governance" },
 ];
 
 function sourceRunSeedFromBody(body: Record<string, unknown>, fallback: IntakeSeed): IntakeSeed {

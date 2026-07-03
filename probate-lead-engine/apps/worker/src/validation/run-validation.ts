@@ -184,9 +184,13 @@ async function main(): Promise<void> {
   }
   const paidSource = result.dossier.sourceGovernance.catalog.value?.governedSources.find((source) => source.code === "idi");
   if (paidSource?.automationAllowed) failures.push("Paid source IDI incorrectly marked as automated.");
+  const governedCodes = new Set((result.dossier.sourceGovernance.catalog.value?.governedSources ?? []).map((source) => source.code));
+  for (const code of ["voter_records", "professional_licenses", "business_address_associations", "social_profiles", "deceased_indicator_crosscheck"]) {
+    if (!governedCodes.has(code)) failures.push(`Governed source ${code} missing from source governance catalog.`);
+  }
   if (!result.facts.some((item) => item.factType === "marriage_death_status")) failures.push("Marriage/death status fact missing.");
   if (!result.facts.some((item) => item.factType === "family_tree_hypothesis")) failures.push("Family tree hypothesis fact missing.");
-  if (!result.facts.some((item) => item.factType === "source_governance_catalog")) failures.push("Source governance catalog fact missing.");
+  if (!result.facts.some((item) => item.source === "source_governance" && item.factType === "source_governance_catalog")) failures.push("Source governance catalog fact missing.");
   const podioHeirship = (result.dossier.crm.payload as { appModel?: { fields?: { marriage_death_indicators?: unknown; family_tree?: unknown; source_governance?: unknown } } })?.appModel?.fields;
   if (!podioHeirship?.marriage_death_indicators) failures.push("Podio marriage_death_indicators payload missing.");
   if (!podioHeirship?.family_tree) failures.push("Podio family_tree payload missing.");

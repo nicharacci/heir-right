@@ -57,6 +57,7 @@ type SourceFact = {
 | Probate/Civil/Family Court | Commercial API client by case number when `MIAMI_DADE_CLERK_AUTH_KEY` exists; browser/capture fallback | case number, estate name, owner/decedent | source status, case number, case status, docket refs, affidavit/document availability | `commercial_api_key_required` without AuthKey; `commercial_api_input_required` without case number; human review required |
 | Marriage/death/obituary/vital review | Configurable workflow API hook implemented through `OBITUARY_VITAL_WORKFLOW_URL` / equivalents; real controlled-browser/API endpoint proof remains | estate/owner/decedent names, address, folio, case number, county | source status, obituary link, DOB/DOD, marriage-license signal, obituary snapshot, death-certificate status, incarceration/deceased-indicator status | `workflow_required` and `VITAL_RECORDS_WORKFLOW_REQUIRED` until the workflow is configured; human review required even when facts return |
 | IDI Core / skip trace | Source-run bucket only; paid/API proof requires configured vendor access and approval | owner/address/DOB/DOD | imported or live-run contact/address/family evidence | paid/manual blocker until shared/default key or approved user key run produces readback |
+| Governed manual and paid research | Route-visible source governance bucket; no automation claim | voter records, professional licenses, business/address associations, social profiles, deceased indicators, PI/field tasks | governed-source catalog, manual task list, approval blockers | `PAID_SOURCE_APPROVAL_REQUIRED`, `MANUAL_SOURCE_APPROVAL_REQUIRED`, and source evidence review until operator approval/proof exists |
 | Landing/intake | Local dry-run seed | address, owner, county, folio | intake seed fact | missing fields become review flags |
 | Podio | Dry-run only unless config exists | raw dossier | CRM payload fact | missing credentials block live sync |
 | Document packet | Draft internal summary first | raw dossier | document output fact | `HUMAN_REVIEW_REQUIRED` |
@@ -147,7 +148,8 @@ Stop and report a blocker instead of forcing source extraction when:
 10. Tax Collector browser-workflow API hook via `TAX_COLLECTOR_BROWSER_WORKFLOW_URL`; hook implemented and mock-proven, real Browserbase/Chrome endpoint proof remains.
 11. Miami-Dade Clerk Commercial Data Services clients for Official Records by folio and Civil/Family/Probate by case number; AuthKey-gated client implemented, credentialed proof remains.
 12. Vital/obituary/marriage/death workflow API hook via `OBITUARY_VITAL_WORKFLOW_URL` / `VITAL_OBITUARY_WORKFLOW_URL` / `MARRIAGE_DEATH_WORKFLOW_URL`; hook implemented and mock-proven, real controlled-browser/API source proof remains.
-13. Tax/deed depth adapters.
-14. Probate/heirship research queue.
-15. Paid/manual source governance.
-16. Completed lead report and offer math payload.
+13. Route-visible governed manual/paid research bucket for voter records, professional licenses, business/address associations, social profiles, deceased indicators, PI/field tasks, and paid genealogy/people-search tools.
+14. Tax/deed depth adapters.
+15. Probate/heirship research queue.
+16. Paid/manual source governance.
+17. Completed lead report and offer math payload.

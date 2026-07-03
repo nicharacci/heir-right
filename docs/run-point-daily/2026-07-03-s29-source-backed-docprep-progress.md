@@ -351,6 +351,23 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - `Preview`;
   - old `Live packet preview` wording absent.
 
+## Fourteenth Repair Pass: Route-Visible Governed Research Bucket
+
+- Promoted source governance from an intake-only catalog fact to a route-visible `source_governance` source bucket.
+- Expanded governed/manual research coverage for workflow-packet sources that are not safe to fake as automated:
+  - voter records;
+  - professional licenses;
+  - business and address associations;
+  - social profiles;
+  - deceased-indicator cross-checks.
+- Added manual task rows for voter-record, professional-license, business/address, and social-profile review.
+- `/api/discovery/external-source-run` now returns 8 source summaries, including `Governed manual and paid research`.
+- Local route proof returned:
+  - governance mode `approval_gated_source_governance`;
+  - governance status `blocked`;
+  - review flags `PAID_SOURCE_APPROVAL_REQUIRED`, `MANUAL_SOURCE_APPROVAL_REQUIRED`, `HUMAN_REVIEW_REQUIRED`, `NO_ENRICHMENT_RUN`;
+  - all newly named governed source codes present in the returned `source_governance_catalog`.
+
 ## Next Work
 
 - Point `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` at the real Browserbase or controlled Chrome workflow, run it against GovHub, and store the captured listing/receipt proof.
