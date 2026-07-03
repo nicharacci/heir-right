@@ -24,17 +24,17 @@ Make Doc Prep visibly stream real Discovery and Closing Prep packet sections, ad
 - In-app browser proof: Discovery stream blocked correctly on missing tax evidence, Option+Down/Option+Up cycled sections, then completed after source capture, IDI import, and contact acceptance were entered through UI controls.
 - In-app browser proof: Closing Prep streamed, blocked correctly on missing required fields, then completed after the remaining fields were entered through UI controls.
 - Generated packet proof in browser: Discovery reached 7/7 stream sections and 10/10 linked documents; Closing Prep reached 5/5 stream sections and 20/20 linked documents.
-- Final screenshot retry exposed a cached in-app browser CSS rule; source and rebuilt `dist/index.html` now contain the corrected stream sizing rule. The browser adapter then hung on tab listing/reload, so the last visual refresh could not be repeated in that adapter.
-- Isolated Chrome screenshot fallback did not capture the Chrome window in this environment, so it was not accepted as proof.
+- Post-fix fresh Chrome/DevTools proof loaded the rebuilt app with the corrected stream CSS and captured clean desktop/mobile screenshots: `docs/evidence/s30-docprep-stream-desktop.png`, `docs/evidence/s30-docprep-stream-mobile.png`, and `docs/evidence/s30-docprep-stream-proof.json`.
+- Post-fix metrics: desktop stream panel 535x360 with 509x220 scrollable document pane, mobile stream panel 392x725 with 366x490 scrollable document pane, no horizontal overflow on either viewport.
 
 ## Review Notes
 - Stream card clipping found during screenshot proof and fixed in source plus rebuilt artifact.
-- Hostile review finding: do not claim final post-fix visual screenshot proof; claim build/source proof for the sizing fix and prior browser proof for the completed flows.
+- Hostile review finding resolved: final post-fix proof now exists in fresh Chrome/DevTools screenshots and metrics, not the stale cached in-app browser tab.
 
 ## S30 Plan Check
 - Streaming Discovery and Closing docs in Doc Prep rail: passed in browser; both flows streamed and then completed after real UI evidence entry.
 - Section anchors and Option+Up/Option+Down: passed in browser; active section and rail scroll changed as expected.
 - Help & Demos sidebar tab with concise walkthrough cards: passed in browser; Doc Prep tab rendered 4 cards and Discovery walkthrough launched.
 - No production-breaking wording in S30 surfaces: passed source scan for bad copy terms.
-- Desktop/mobile proof: partial. Desktop/mobile screenshots were captured before the stream-card sizing fix; the fix is proven in source/dist/build, but a fresh post-fix visual screenshot could not be captured because the browser adapter hung and the OS screenshot fallback captured the desktop background.
+- Desktop/mobile proof: passed. Fresh Chrome/DevTools screenshots and metrics prove the post-fix stream panel renders at stable dimensions with no horizontal overflow.
 - Console health: passed during browser checks; no console warnings/errors were reported during Help & Demos, Discovery stream, keyboard navigation, or Closing Prep stream proof.

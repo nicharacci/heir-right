@@ -1,0 +1,98 @@
+{
+  "url": "http://localhost:4173/?s30-clean-proof=1783107343704",
+  "desktopPath": "/tmp/heirright-s30-cdp-desktop-clean.png",
+  "mobilePath": "/tmp/heirright-s30-cdp-mobile-clean.png",
+  "desktop": {
+    "href": "http://localhost:4173/?s30-clean-proof=1783107343704",
+    "activeView": "dossiers",
+    "walkthroughOpen": false,
+    "streamHeading": "Estate Discovery artifact being written",
+    "topStatus": "Tax receipt needs payer, receipt link, or saved source evidence before Discovery can continue.",
+    "cssMatches": [
+      ".docprep-artifact-stream { gap: 12px; min-height: 360px; align-content: start; overflow: visible; }",
+      ".rail-card.docprep-artifact-stream { min-height: 360px; align-content: start; gap: 12px; overflow: visible; }",
+      ".rail-card.docprep-artifact-stream .artifact-stream-document { min-height: 220px; }"
+    ],
+    "panelRect": {
+      "x": 893,
+      "y": 422,
+      "width": 535,
+      "height": 360,
+      "overflow": "visible",
+      "minHeight": "360px"
+    },
+    "documentRect": {
+      "x": 906,
+      "y": 585,
+      "width": 509,
+      "height": 220,
+      "overflow": "auto",
+      "minHeight": "220px"
+    },
+    "chips": [
+      {
+        "text": "Owner details",
+        "state": "complete",
+        "active": "false"
+      },
+      {
+        "text": "Tax receipt",
+        "state": "blocked",
+        "active": "true"
+      },
+      {
+        "text": "Deed",
+        "state": "pending",
+        "active": "false"
+      },
+      {
+        "text": "Obituary",
+        "state": "pending",
+        "active": "false"
+      },
+      {
+        "text": "IDI asset search",
+        "state": "pending",
+        "active": "false"
+      },
+      {
+        "text": "Contact review",
+        "state": "pending",
+        "active": "false"
+      },
+      {
+        "text": "Dossier export",
+        "state": "pending",
+        "active": "false"
+      }
+    ],
+    "horizontalOverflow": false,
+    "bodyWidth": 1440,
+    "viewportWidth": 1440
+  },
+  "mobile": {
+    "activeView": "dossiers",
+    "walkthroughOpen": false,
+    "streamHeading": "Estate Discovery artifact being written",
+    "panelRect": {
+      "x": 13,
+      "y": 328,
+      "width": 392,
+      "height": 725,
+      "overflow": "visible",
+      "minHeight": "360px"
+    },
+    "documentRect": {
+      "x": 26,
+      "y": 509,
+      "width": 366,
+      "height": 490,
+      "overflow": "auto",
+      "minHeight": "220px"
+    },
+    "horizontalOverflow": false,
+    "bodyWidth": 390,
+    "viewportWidth": 390,
+    "railOpen": "true"
+  }
+}
