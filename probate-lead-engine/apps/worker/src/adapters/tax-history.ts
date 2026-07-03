@@ -1,15 +1,75 @@
 import type { IntakeSeed, SourceFact } from "@ple/types";
 import { fact, intakeSubject, nowIso, seedIdentity, slug } from "../lib";
+import { acquireTaxCollectorReceipt } from "./tax-collector-receipt";
 
 const TAX_COLLECTOR_REVIEW_URL = "https://www.miamidade.gov/global/service.page?Mduid_service=ser1499797463762502";
+const TAX_COLLECTOR_PUBLIC_SEARCH_URL = "https://miamidade.county-taxes.com/public";
 const TAX_COLLECTOR_RECEIPT_NOTE = "Open the Tax Collector listing page and capture the receipt link shown in the bottom-right corner.";
 
-export async function fetchTaxHistoryFacts(runId: string, seed: IntakeSeed): Promise<SourceFact[]> {
+type RuntimeEnv = Record<string, string | undefined>;
+
+function acquisitionRequested(seed: IntakeSeed, env: RuntimeEnv): boolean {
+  return Boolean(
+    seed.taxCollectorListingUrl
+      || seed.taxCollectorReceiptUrl
+      || env.TAX_COLLECTOR_LISTING_URL
+      || env.TAX_COLLECTOR_LISTING_URL_TEMPLATE
+      || env.TAX_COLLECTOR_LIVE_ACQUISITION_ENABLED === "true"
+  );
+}
+
+export async function fetchTaxHistoryFacts(runId: string, seed: IntakeSeed, env: RuntimeEnv = {}): Promise<SourceFact[]> {
   const fetchedAt = nowIso();
   const rawId = `tax-history:${slug(seedIdentity(seed))}`;
   const subject = intakeSubject(seed);
+  const acquisition = acquisitionRequested(seed, env)
+    ? await acquireTaxCollectorReceipt({
+        listingUrl: seed.taxCollectorListingUrl,
+        receiptUrl: seed.taxCollectorReceiptUrl,
+        parcelId: seed.parcelId,
+        propertyAddress: seed.propertyAddress,
+        ownerName: seed.ownerName,
+      }, { env })
+    : null;
+  const receipt = acquisition?.discovery;
+  const receiptAttachment = receipt ? {
+    label: "Tax Collector receipt",
+    sourceUrl: receipt.receiptUrl,
+    fileKind: "link" as const,
+    capturedAt: fetchedAt,
+    capturedBy: "tax-collector-acquisition",
+    reviewFlags: receipt.reviewFlags,
+  } : undefined;
+  const acquisitionUrl = receipt?.listingUrl || acquisition?.finalUrl || acquisition?.listingUrl || TAX_COLLECTOR_PUBLIC_SEARCH_URL;
+  const acquisitionFlags = acquisition?.reviewFlags ?? ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"];
+  const acquisitionNote = acquisition
+    ? acquisition.ok
+      ? `Tax Collector listing page was checked and receipt link was captured by ${acquisition.mode}.`
+      : acquisition.blocker || "Tax Collector listing-page acquisition is blocked."
+    : "Tax Collector script acquisition waits for a direct listing URL, listing URL template, or browser workflow capture.";
 
   return [
+    fact({
+      runId,
+      source: "tax_collector",
+      rawId: `${rawId}:acquisition-status`,
+      fetchedAt,
+      county: seed.county,
+      subject,
+      factType: "source_status",
+      value: {
+        mode: acquisition?.mode ?? "not_configured",
+        ok: acquisition?.ok ?? false,
+        listingUrl: acquisition?.listingUrl || seed.taxCollectorListingUrl || null,
+        receiptUrl: receipt?.receiptUrl ?? null,
+        searchUrl: acquisition?.searchUrl ?? TAX_COLLECTOR_PUBLIC_SEARCH_URL,
+        note: acquisitionNote,
+        status: acquisition?.status,
+      },
+      confidence: acquisition?.ok ? 0.8 : 0.35,
+      sourceUrl: acquisitionUrl,
+      reviewFlags: acquisitionFlags,
+    }),
     fact({
       runId,
       source: "tax_collector",
@@ -70,10 +130,10 @@ export async function fetchTaxHistoryFacts(runId: string, seed: IntakeSeed): Pro
       county: seed.county,
       subject,
       factType: "tax_receipt_status",
-      value: null,
-      confidence: 0,
-      sourceUrl: TAX_COLLECTOR_REVIEW_URL,
-      reviewFlags: ["MISSING_TAX_RECEIPT_FACT", "TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+      value: receipt ? "receipt_link_captured" : null,
+      confidence: receipt ? 0.85 : 0,
+      sourceUrl: acquisitionUrl,
+      reviewFlags: receipt ? receipt.reviewFlags : ["MISSING_TAX_RECEIPT_FACT", ...acquisitionFlags],
     }),
     fact({
       runId,
@@ -83,10 +143,10 @@ export async function fetchTaxHistoryFacts(runId: string, seed: IntakeSeed): Pro
       county: seed.county,
       subject,
       factType: "tax_receipt_link",
-      value: null,
-      confidence: 0,
-      sourceUrl: TAX_COLLECTOR_REVIEW_URL,
-      reviewFlags: ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+      value: receipt?.receiptUrl ?? null,
+      confidence: receipt ? 0.9 : 0,
+      sourceUrl: receipt?.receiptUrl || acquisitionUrl,
+      reviewFlags: receipt ? receipt.reviewFlags : ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
     }),
     fact({
       runId,
@@ -122,10 +182,11 @@ export async function fetchTaxHistoryFacts(runId: string, seed: IntakeSeed): Pro
       county: seed.county,
       subject,
       factType: "tax_receipt_attachment",
-      value: null,
-      confidence: 0,
-      sourceUrl: TAX_COLLECTOR_REVIEW_URL,
-      reviewFlags: ["SOURCE_ATTACHMENT_REQUIRED", "TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+      value: receiptAttachment ?? null,
+      confidence: receiptAttachment ? 0.9 : 0,
+      sourceUrl: receipt?.receiptUrl || acquisitionUrl,
+      attachment: receiptAttachment,
+      reviewFlags: receiptAttachment ? receiptAttachment.reviewFlags : ["SOURCE_ATTACHMENT_REQUIRED", "TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
     }),
     fact({
       runId,

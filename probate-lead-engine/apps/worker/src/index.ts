@@ -160,7 +160,7 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
   const [propertyFacts, officialRecordFacts, taxFacts, deedFacts, probateFacts, marriageDeathFacts, familyTreeFacts, governanceFacts, offerProfitFacts, skipTraceFacts] = await Promise.all([
     fetchPropertyFacts(runId, seed),
     fetchOfficialRecordFacts(runId, seed),
-    fetchTaxHistoryFacts(runId, seed),
+    fetchTaxHistoryFacts(runId, seed, options.env),
     fetchDeedEvidenceFacts(runId, seed),
     fetchProbateCourtFacts(runId, seed),
     fetchMarriageDeathIndicatorFacts(runId, seed),

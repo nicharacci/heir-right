@@ -98,6 +98,7 @@ function formatShortDate(value: string | null | undefined): string {
 }
 
 function humanStatus(value: string): string {
+  if (value === "TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED") return "Tax Collector browser workflow required";
   return value
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/_/g, " ")

@@ -612,6 +612,7 @@ export type ReviewFlag =
   | "MISSING_TAX_RECEIPT_FACT"
   | "MISSING_TAX_PAYER_FACT"
   | "TAX_COLLECTOR_LISTING_PAGE_REQUIRED"
+  | "TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED"
   | "TAX_RECEIPT_LINK_REQUIRED"
   | "TAX_RECEIPT_LINK_CAPTURED"
   | "SOURCE_EVIDENCE_REQUIRED"
@@ -1345,6 +1346,8 @@ export interface IntakeSeed {
   caseNumber?: string;
   county: string;
   parcelId?: string;
+  taxCollectorListingUrl?: string;
+  taxCollectorReceiptUrl?: string;
   source: "landing_page" | "operator_cli" | "external_public_source";
   seedBatchId?: string;
   seedSourceLabel?: string;

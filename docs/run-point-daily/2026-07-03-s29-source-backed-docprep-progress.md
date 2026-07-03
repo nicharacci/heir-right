@@ -139,9 +139,30 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
 - Final Chrome proof also confirmed the iframe title is `Preview PDF` and the served page HTML no longer contains `Completed report packet`.
 - Refined S29-S32 briefs, S29 anti-negligence review, S30 progress, IDI configuration, and source-adapter plan so later sprints cannot claim completion without the corrected Tax Collector receipt, source evidence, and IDI API/shared-default proof.
 
+## Sixth Repair Pass: Tax Collector Acquisition Client
+
+- Added a guarded Tax Collector receipt acquisition client in the worker:
+  - accepts explicit receipt links and operator-supplied listing HTML;
+  - fetches a direct listing URL or configured `TAX_COLLECTOR_LISTING_URL_TEMPLATE`;
+  - when `TAX_COLLECTOR_LIVE_ACQUISITION_ENABLED=true` and no listing URL is configured, probes the public GovHub entry;
+  - extracts the bottom-right receipt/payment/print link when the listing page is reachable;
+  - returns `browser_workflow_required` with `TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED` when the public entry is Cloudflare/JavaScript blocked.
+- Added shared seed fields for `taxCollectorListingUrl` and `taxCollectorReceiptUrl`.
+- Threaded the acquisition result into tax-history source facts and the manual receipt task, so the operator-facing blocker now says the Tax Collector public search needs a browser workflow instead of only saying the receipt is missing.
+- Added validation fixtures for:
+  - listing-page HTML with a bottom-right receipt link resolving to `https://miamidade.county-taxes.test/receipts/2025-paid.pdf`;
+  - Cloudflare-style `Just a moment...` response returning `browser_workflow_required` and `TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED`.
+- Live public-entry proof with `TAX_COLLECTOR_LIVE_ACQUISITION_ENABLED=true` returned:
+  - `mode: browser_workflow_required`;
+  - `status: 403`;
+  - `listingUrl/searchUrl: https://miamidade.county-taxes.com/public`;
+  - review flags: `SOURCE_BLOCKED`, `TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED`, `TAX_COLLECTOR_LISTING_PAGE_REQUIRED`, `TAX_RECEIPT_LINK_REQUIRED`, `HUMAN_REVIEW_REQUIRED`, `NO_ENRICHMENT_RUN`.
+- Live pipeline proof preserved that blocker in dossier facts and in `taxHistory.manualReceiptTask.reason`.
+- Completed lead report flag rendering now converts `TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED` to `Tax Collector browser workflow required`.
+
 ## Next Work
 
-- Add live source-run client for the actual Tax Collector search/listing endpoint once endpoint discovery is captured from the browser workflow.
-- Prefer a deterministic script/API client for Tax Collector search/listing extraction first. Use Browserbase only if the public site requires browser session state, JS navigation, or endpoint discovery that cannot be captured safely by a script.
+- Capture the real Tax Collector browser workflow with Browserbase or Playwright/Chrome, then either configure a stable listing URL template or keep the browser-run fallback as the production acquisition method.
+- If browser observation exposes stable API calls behind GovHub, move them into the deterministic script client.
 - Rerun S30 demos against the corrected S29 source contracts before treating S30 as final client acceptance proof.
 - Continue source-backed treatment for marriage/death, offender/professional-license, voter/license, field/neighbor/code-enforcement, and paid/manual research tasks as explicitly human-required or approval-gated.

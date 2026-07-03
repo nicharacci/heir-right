@@ -119,6 +119,10 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
   const payerIdentity = claim<string>(facts, "tax_payer_identity", "MISSING_TAX_PAYER_FACT");
   const receiptAttachment = claim<SourceAttachmentRef>(facts, "tax_receipt_attachment", "SOURCE_ATTACHMENT_REQUIRED");
   const lastPaidBy = claim<string>(facts, "tax_last_paid_by", "MISSING_TAX_PAYER_FACT");
+  const taxCollectorAcquisitionFacts = facts.filter((item) => item.source === "tax_collector" && item.factType === "source_status" && item.reviewFlags.includes("TAX_COLLECTOR_LISTING_PAGE_REQUIRED"));
+  const taxCollectorAcquisitionRefs = taxCollectorAcquisitionFacts.map((item) => sourceRef(item.source, item.rawId, item.fetchedAt));
+  const taxCollectorAcquisitionFlags = Array.from(new Set(taxCollectorAcquisitionFacts.flatMap((item) => item.reviewFlags)));
+  const taxCollectorNeedsBrowserWorkflow = taxCollectorAcquisitionFlags.includes("TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED");
   const taxHistory = {
     sourceStatus: taxSourceStatus,
     unpaidYears,
@@ -208,15 +212,17 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
     ]),
     manualReceiptTask: {
       required: receiptLink.value === null || receiptAttachment.value === null,
-      reason: receiptLink.value === null
-        ? "Tax Collector listing-page receipt link has not been captured yet. Manual override is allowed only after that source path is attempted or blocked."
-        : "Receipt link is captured; attach or review the receipt artifact before closing tax history.",
+      reason: taxCollectorNeedsBrowserWorkflow
+        ? "Tax Collector public search needs a browser workflow before the listing-page receipt link can be captured. Use the guided source run or save the source blocker before any manual override."
+        : receiptLink.value === null
+          ? "Tax Collector listing-page receipt link has not been captured yet. Manual override is allowed only after that source path is attempted or blocked."
+          : "Receipt link is captured; attach or review the receipt artifact before closing tax history.",
       sourceRefs: Array.from(new Map(
-        [...refsFor(facts, "tax_receipt_status"), ...refsFor(facts, "tax_receipt_link"), ...refsFor(facts, "tax_receipt_attachment")]
+        [...taxCollectorAcquisitionRefs, ...refsFor(facts, "tax_receipt_status"), ...refsFor(facts, "tax_receipt_link"), ...refsFor(facts, "tax_receipt_attachment")]
           .map((ref) => [`${ref.source}:${ref.rawId}:${ref.fetchedAt}`, ref]),
       ).values()),
       reviewFlags: receiptLink.value === null
-        ? ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED"] as ReviewFlag[]
+        ? Array.from(new Set([...taxCollectorAcquisitionFlags, "TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED"])) as ReviewFlag[]
         : ["SOURCE_ATTACHMENT_REQUIRED", "HUMAN_REVIEW_REQUIRED"] as ReviewFlag[],
     },
   };

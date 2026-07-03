@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import type { SourceFact, SourceKey, SourceSubject } from "@ple/types";
 import { runDailyProduction } from "../daily/run-daily";
 import { validateSeedBatchInput } from "../daily/seed-batch";
+import { acquireTaxCollectorReceipt } from "../adapters/tax-collector-receipt";
 import { buildRawDossier } from "../dossier/build-raw-dossier";
 import { buildControlledPodioTestSeed } from "../export/controlled-test-lead";
 import { connectionStatuses, exportCompletedReport } from "../export/export-package";
@@ -67,6 +68,30 @@ function buildS5FixtureDossier(input: {
 }
 
 async function main(): Promise<void> {
+  const taxReceiptProof = await acquireTaxCollectorReceipt({
+    listingUrl: "https://miamidade.county-taxes.test/property/3421080072710",
+  }, {
+    fetchImpl: async () => new Response(`
+      <main>
+        <a href="/payments/history">Payment history</a>
+        <aside style="float:right">
+          <a href="/receipts/2025-paid.pdf">Print payment receipt</a>
+        </aside>
+      </main>
+    `, {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    }),
+  });
+  const taxCollectorBlockedProof = await acquireTaxCollectorReceipt({
+    listingUrl: "https://miamidade.county-taxes.test/public",
+  }, {
+    fetchImpl: async () => new Response("<title>Just a moment...</title><script>window._cf_chl_opt={}</script>", {
+      status: 403,
+      headers: { "cf-mitigated": "challenge", "content-type": "text/html" },
+    }),
+  });
+
   const result = await runDryPipeline({
     propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
     ownerName: "Fresh public-source validation lead",
@@ -77,6 +102,11 @@ async function main(): Promise<void> {
 
   const failures: string[] = [];
   if (!result.facts.length) failures.push("No source facts generated.");
+  if (!taxReceiptProof.ok) failures.push("Tax Collector fixture acquisition did not capture receipt link.");
+  if (taxReceiptProof.discovery?.receiptUrl !== "https://miamidade.county-taxes.test/receipts/2025-paid.pdf") failures.push("Tax Collector bottom-right receipt URL resolution failed.");
+  if (taxReceiptProof.mode !== "listing_page_bottom_right") failures.push("Tax Collector receipt acquisition mode missing.");
+  if (taxCollectorBlockedProof.mode !== "browser_workflow_required") failures.push("Tax Collector Cloudflare/browser blocker mode missing.");
+  if (!taxCollectorBlockedProof.reviewFlags.includes("TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED")) failures.push("Tax Collector browser workflow review flag missing.");
   if (!result.dossier.property.address.value) failures.push("Dossier address missing.");
   if (!result.dossier.audit.sourceRefs.length) failures.push("Dossier sourceRefs missing.");
   if (!result.dossier.crm.payload) failures.push("Podio dry-run payload missing.");
@@ -134,6 +164,7 @@ async function main(): Promise<void> {
   if (!result.facts.some((item) => item.factType === "owner_type")) failures.push("Owner-type workflow fact missing.");
   if (!result.dossier.taxHistory.manualReceiptTask.required) failures.push("Tax Collector receipt capture task missing.");
   if (!result.dossier.taxHistory.reviewTasks.some((task) => task.code === "TAX_RECEIPT_LINK")) failures.push("Tax Collector listing-page receipt link task missing.");
+  if (!result.facts.some((item) => item.source === "tax_collector" && item.factType === "source_status" && typeof item.value === "object" && item.value && "mode" in item.value)) failures.push("Tax Collector acquisition status fact missing.");
   if (result.dossier.taxHistory.reviewTasks.length < 5) failures.push("Tax history review tasks missing.");
   if (result.dossier.deedHistory.reviewTasks.length < 7) failures.push("Deed/title review tasks missing.");
   if (!result.dossier.probateDocket.reviewTasks.length) failures.push("Probate docket review tasks missing.");
