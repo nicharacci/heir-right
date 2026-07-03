@@ -70,6 +70,8 @@ Use the smallest reliable path that preserves the workflow packet:
 3. Promote any stable network endpoint observed during browser workflow back into the deterministic script client.
 4. When neither path can capture the bottom-right receipt link, save `source_status.mode = browser_workflow_required` or `listing_page_no_receipt` and keep Discovery blocked. Do not leave payer/receipt fields blank without an operator-visible reason.
 
+July 3 live probe: system Chrome reached `https://miamidade.county-taxes.com/public` but only saw Cloudflare security verification with a hidden Turnstile response input and no search form. That confirms Browserbase/controlled-browser workflow is needed for the public-search entry, while script extraction remains valid once a listing page or stable endpoint is available.
+
 ## SourceRef Rule
 
 Every dossier claim must have at least one source ref or a review flag explaining why it is not source-confirmed.

@@ -108,6 +108,36 @@ function idiCoreApiConfigured(env) {
   return Boolean(api.endpointConfigured && api.sharedDefaultConfigured);
 }
 
+function taxCollectorSourceStatus(env, checkedAt = new Date().toISOString()) {
+  const directListingConfigured = Boolean(env.TAX_COLLECTOR_LISTING_URL || env.TAX_COLLECTOR_LISTING_URL_TEMPLATE);
+  const scriptLiveProbeEnabled = env.TAX_COLLECTOR_LIVE_ACQUISITION_ENABLED === "true";
+  const browserWorkflowConfigured = Boolean(
+    (env.BROWSERBASE_API_KEY && env.BROWSERBASE_PROJECT_ID)
+      || env.TAX_COLLECTOR_BROWSER_WORKFLOW_URL
+      || env.TAX_COLLECTOR_BROWSER_WORKFLOW_ENABLED === "true"
+  );
+  const ok = directListingConfigured || browserWorkflowConfigured;
+  return {
+    name: "Tax Collector Source",
+    ok,
+    mode: ok ? "review" : "blocked",
+    configuredMode: directListingConfigured ? "script_listing" : browserWorkflowConfigured ? "browser_workflow" : "none",
+    message: directListingConfigured
+      ? "Tax Collector listing-page script capture is configured for direct listing/template paths; public GovHub search still uses a saved blocker until browser workflow is proven."
+      : browserWorkflowConfigured
+        ? "Tax Collector browser workflow credentials are configured for GovHub/public-search blockers. Keep receipt/payer fields review-gated until the run captures the listing-page receipt link."
+        : "Tax Collector direct listing capture is available when an operator supplies the listing page, but public GovHub search needs Browserbase or controlled Chrome workflow before it can be automated.",
+    checkedAt,
+    blockers: ok ? [] : ["Configure Tax Collector listing URL template or Browserbase/Chrome workflow before claiming public-search automation."],
+    sourceAutomation: {
+      scriptDirectListingConfigured: directListingConfigured,
+      scriptLiveProbeEnabled,
+      browserWorkflowConfigured,
+      publicSearchUrl: env.TAX_COLLECTOR_SEARCH_URL || "https://miamidade.county-taxes.com/public",
+    },
+  };
+}
+
 function idiCoreStatus(env, checkedAt = new Date().toISOString()) {
   const api = idiCoreApiDetails(env);
   const apiConfigured = idiCoreApiConfigured(env);
@@ -195,6 +225,9 @@ function operatorAccessList(items) {
     .replace(/SMS_GATEWAY_API_KEY/g, "SMS gateway access")
     .replace(/SMS_LIVE_SEND_APPROVED/g, "SMS internal-test approval")
     .replace(/ACTIVEPIECES_WEBHOOK_URL/g, "Activepieces Podio workflow webhook")
+    .replace(/TAX_COLLECTOR_LISTING_URL_TEMPLATE/g, "Tax Collector listing URL template")
+    .replace(/BROWSERBASE_API_KEY/g, "Browserbase access")
+    .replace(/BROWSERBASE_PROJECT_ID/g, "Browserbase project")
     .replace(/IDI_CORE_API_URL/g, "IDI Core endpoint")
     .replace(/IDI_CORE_API_KEY/g, "IDI Core access")
     .replace(/IDI_CORE_PORTAL_URL/g, "idiCORE portal")
@@ -277,6 +310,7 @@ function buildConnectionStatuses(env = process.env, options = {}) {
           : "Public-source status needs a fresh lead packet before validation.",
       checkedAt,
     },
+    taxCollectorSourceStatus(env, checkedAt),
     idiCoreStatus(env, checkedAt),
     {
       name: "Activepieces",

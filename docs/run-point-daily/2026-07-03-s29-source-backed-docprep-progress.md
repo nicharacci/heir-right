@@ -197,6 +197,29 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
 - If browser observation exposes stable API calls behind the listing page, promote those calls into the deterministic script client.
 - Until that is proven, the app must save `browser_workflow_required` as a source blocker and keep Discovery incomplete instead of silently leaving receipt/payer fields blank.
 
+## Eighth Repair Pass: Source Readiness Status And Live Browser Probe
+
+- Added `Tax Collector Source` to connection status outputs so Settings can distinguish generic Web Search from the exact Tax Collector acquisition path.
+- Shared status contract now exposes:
+  - `configuredMode: script_listing`, `browser_workflow`, or `none`;
+  - `sourceAutomation.scriptDirectListingConfigured`;
+  - `sourceAutomation.scriptLiveProbeEnabled`;
+  - `sourceAutomation.browserWorkflowConfigured`;
+  - `sourceAutomation.publicSearchUrl`.
+- Local route proof on `http://localhost:4177/api/connections/status` returned `Tax Collector Source` as:
+  - `ok: false`;
+  - `mode: blocked`;
+  - `configuredMode: none`;
+  - blocker: configure a listing URL template or Browserbase/Chrome workflow before claiming public-search automation.
+- Served UI bundle proof confirmed `Tax Collector Source` and the public-search browser-workflow copy are present.
+- Live system-Chrome probe of `https://miamidade.county-taxes.com/public` returned:
+  - page title: `Just a moment...`;
+  - body copy: security verification / malicious bots / Cloudflare;
+  - hidden `cf-turnstile-response` input;
+  - no searchable Tax Collector form controls;
+  - challenge-platform requests and 401/403 console errors.
+- Conclusion: the public GovHub entry cannot be treated as a deterministic script entry point. Script capture remains correct for direct listing/template/source HTML paths; Browserbase or controlled Chrome is required to acquire listing pages from the public search flow.
+
 ## Next Work
 
 - Capture the real Tax Collector browser workflow with Browserbase or controlled Chrome, then either configure a stable listing URL template or keep the browser-run fallback as the production acquisition method.

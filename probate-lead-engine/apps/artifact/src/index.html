@@ -18947,7 +18947,7 @@ function renderQueueView() {
 }
 
 function adminErrorItems() {
-  const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "IDI Core", "Activepieces", "Linear Support", "Leads Engine Access"];
+  const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "Tax Collector Source", "IDI Core", "Activepieces", "Linear Support", "Leads Engine Access"];
   const actionItems = state.actionErrorLog.map((item) => ({ ...item, ready: false }));
   const loggedActionTitles = new Set(actionItems.map((item) => item.title));
   const blockedEventItems = state.shellEvents
@@ -19400,7 +19400,7 @@ function handleIntegrationOnboarding(kind) {
 }
 
 function integrationStatusRowsHtml() {
-  const names = ["Podio", "Google", "IDI Core", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
+  const names = ["Podio", "Google", "IDI Core", "Tax Collector Source", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
   const items = names.map((name) => {
     const connection = connectionByName(name);
     const connected = Boolean(connection?.ok && connection?.mode === "live");
@@ -21488,6 +21488,7 @@ function operatorConnectionMessage(connection, name) {
     if (name === "Resend") return "Resend fallback is not approved yet. Keep email drafts queued in Podio and use only controlled internal test recipients after approval.";
     if (name === "SMS Gateway") return "SMS delivery is not configured yet. Keep SMS templates in the app-owned queue until a carrier or Podio-native SMS path is approved.";
     if (name === "Web Search") return "Public-source validation needs a fresh checked lead packet before promotion.";
+    if (name === "Tax Collector Source") return "Tax Collector public search needs a browser workflow or a direct listing URL before receipt and payer capture can be called automated.";
     if (name === "IDI Core") return "idiCORE portal access is not confirmed yet. Keep Discovery blocked until an approved operator search is imported or vendor API access is provisioned.";
     if (name === "Activepieces") return "Activepieces is not configured yet. Outreach will use the first-party fallback package and stay queued for Podio review.";
     if (name === "Linear Support") return "Linear support routing is not configured yet. Admin tickets stay local until the Worker has API access and a team route.";
