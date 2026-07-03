@@ -295,9 +295,26 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - `source_status.value.mode: commercial_api_key_required` for both buckets.
 - Local Settings proof on `http://localhost:4178/api/connections/status` returned `Miami-Dade Clerk API` as blocked with endpoint shapes and `MIAMI_DADE_CLERK_AUTH_KEY` blocker.
 
+## Twelfth Repair Pass: Tax Collector Browser Workflow API Hook
+
+- Added a standard `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` contract to the worker Tax Collector receipt client.
+- When no direct listing page URL/source HTML is available, the client can call that workflow endpoint with:
+  - `source: tax_collector`;
+  - public search URL;
+  - folio;
+  - property address;
+  - owner name.
+- The workflow response can return `listingHtml`, `listingUrl`, `receiptUrl`, or `receiptLink`. The worker still runs the deterministic bottom-right receipt extractor over the returned result.
+- Authorization uses `TAX_COLLECTOR_BROWSER_WORKFLOW_TOKEN` or `BROWSERBASE_API_KEY` when present.
+- Direct adapter proof with a mocked browser-workflow response returned:
+  - `ok: true`;
+  - `mode: listing_page_bottom_right`;
+  - `receiptUrl: https://miamidade.county-taxes.test/receipt/2025.pdf`;
+  - review flags: `TAX_RECEIPT_LINK_CAPTURED`, `HUMAN_REVIEW_REQUIRED`.
+
 ## Next Work
 
-- Capture and automate the real Tax Collector browser workflow with Browserbase or controlled Chrome, then either configure a stable listing URL template or keep the browser-run fallback as the production acquisition method.
+- Point `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` at the real Browserbase or controlled Chrome workflow, run it against GovHub, and store the captured listing/receipt proof.
 - If browser observation exposes stable API calls behind GovHub, move them into the deterministic script client.
 - Configure/prove `MIAMI_DADE_CLERK_AUTH_KEY` in the target environment, then run a paid controlled Official Records and Civil/Family/Probate API proof with readback.
 - Add actual extraction adapters or browser workflows for vital/obituary sources. They are currently visible/callable buckets with blockers, not proven end-to-end automations.

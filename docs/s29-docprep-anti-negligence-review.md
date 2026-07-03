@@ -13,6 +13,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Discovery cannot auto-complete tax, deed, obituary, IDI, or contact-review phases without evidence.
 - Tax Collector evidence now has to include the listing page receipt path: the bottom-right receipt link, paid date, payer identity, or an explicit unavailable-after-listing-check blocker.
 - Tax Collector browser-workflow blockers now save as `source_status` facts with `TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED`, so the blocker survives API fallback paths, UI evidence rows, and packet output.
+- Tax Collector has a `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` hook so a Browserbase/controlled Chrome workflow can return listing HTML or the receipt link for deterministic extraction.
 - Public-source acquisition contracts now name the expected Property Appraiser, Tax Collector receipt, Official Records deed/title, Probate Court, and obituary/vital review stages.
 - `/api/discovery/external-source-run` now gives Doc Prep one callable source-run surface across worker, local artifact server, and serverless fallback. It returns all required Discovery source buckets, source facts, and blockers without marking missing sources complete.
 - Doc Prep now has an operator-facing `Run Source Search` control in the public-record capture panel. It writes back returned source facts, Tax Collector browser blockers, receipt links, and source summaries into the estate-scoped capture state.
@@ -40,6 +41,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 
 - A real live IDI Core backend run still requires `IDI_CORE_API_URL`, the shared default `IDI_CORE_API_KEY`, and approval in the target environment. Current proof shows operator portal/import mode only, with user override allowed.
 - A production Browserbase/Chrome Tax Collector workflow still needs to be implemented and proven against the real public-search flow. Current proof preserves the blocker and parses reachable listing pages; it does not claim the GovHub browser run is automated end to end.
+- The Tax Collector browser-workflow hook is mock-proven, but the real Browserbase/controlled Chrome endpoint must still be configured and run against GovHub.
 - Live system-Chrome proof reached Cloudflare security verification at the public GovHub entry, confirming pure script is not enough from the public search URL.
 - Official Records, Probate/Civil/Family Court, marriage/death/obituary/vital sources, and skip trace are represented in the source-run contract but still need extraction/browser workflows or explicit operator-review completion proof before anyone can say the external-source Discovery workflow is fully automated.
 - Official Records and Probate/Civil/Family Court now have official commercial API paths, but they still need a credentialed paid proof run with an enabled Clerk developer account and pre-paid units before anyone can call them production-complete.
@@ -65,6 +67,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
   - `Listing page HTML / source note`.
 - Visual proof saved at `/tmp/heirright-docprep-source.png` shows the public-record capture panel contained in the Doc Prep rail.
 - Clerk API route proof returned explicit `commercial_api_key_required` blockers for Official Records and Probate/Civil/Family Court and added `Miami-Dade Clerk API` to Settings connection status.
+- Tax Collector browser-workflow hook proof returned a bottom-right receipt link from mocked workflow listing HTML and preserved review flags.
 
 ## Dedicated Final Review Pass
 
@@ -78,6 +81,7 @@ Required corrections before complete:
 - Do not claim all external Discovery sources are automated. They are callable/visible buckets with honest blockers.
 - Implement/prove Browserbase or controlled Chrome for the Tax Collector public-search flow.
 - Configure/prove Miami-Dade Clerk Commercial Data Services AuthKey for Official Records and Probate/Civil/Family Court, then inspect returned deed/docket facts against the source packets.
+- Configure/prove the real `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` Browserbase/Chrome endpoint against the public GovHub search flow.
 - Implement/prove vital/obituary extraction or keep it as an explicit operator-review step.
 - Configure/prove real IDI Core shared-default access before calling IDI production-ready.
 

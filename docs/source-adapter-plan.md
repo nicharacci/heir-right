@@ -52,7 +52,7 @@ type SourceFact = {
 | Source | Friday posture | Primary inputs | Output facts | Blocker behavior |
 | --- | --- | --- | --- | --- |
 | Miami-Dade Property Appraiser | Live app reachability + public search URL; structured extraction where feasible | address, owner, folio | source status, search URL, seed address/owner/folio/county facts | `SOURCE_HEALTH_ONLY`, `MISSING_PROPERTY_FACT`, source refs |
-| Miami-Dade Tax Collector | Guarded listing-page receipt client implemented for explicit receipt links, supplied listing HTML, direct listing URLs, and configured listing URL templates; source-capture now saves `browser_workflow_required` blockers; public GovHub entry currently returns a Cloudflare/browser-workflow blocker | folio, address, owner, listing page URL | acquisition/source status, receipt link, receipt artifact/link, paid date, payer identity, unpaid years, amount due, reassessment/status notes | block until bottom-right receipt link is captured or the browser-workflow/source blocker is preserved |
+| Miami-Dade Tax Collector | Guarded listing-page receipt client implemented for explicit receipt links, supplied listing HTML, direct listing URLs, configured listing URL templates, and `TAX_COLLECTOR_BROWSER_WORKFLOW_URL`; public GovHub entry currently returns a Cloudflare/browser-workflow blocker unless the browser workflow API is configured | folio, address, owner, listing page URL, browser workflow response | acquisition/source status, receipt link, receipt artifact/link, paid date, payer identity, unpaid years, amount due, reassessment/status notes | block until bottom-right receipt link is captured or the browser-workflow/source blocker is preserved |
 | Miami-Dade Official Records / Clerk | Commercial API client by folio when `MIAMI_DADE_CLERK_AUTH_KEY` exists; live app reachability + title/deed capture fallback | folio, owner, address, OR book/page | source status, latest record/deed candidate, OR book/page, recorded/document date, parties, title friction | `commercial_api_key_required` without AuthKey; human review required even when API returns records |
 | Probate/Civil/Family Court | Commercial API client by case number when `MIAMI_DADE_CLERK_AUTH_KEY` exists; browser/capture fallback | case number, estate name, owner/decedent | source status, case number, case status, docket refs, affidavit/document availability | `commercial_api_key_required` without AuthKey; `commercial_api_input_required` without case number; human review required |
 | Marriage/death/obituary/vital review | Source-run bucket + capture fields; browser/manual extraction next | decedent/heir names, DOB/DOD, county | obituary link, DOB/DOD, marriage/license signal, death certificate status | human-review blocker until source evidence or reviewed-not-found note is saved |
@@ -84,7 +84,7 @@ The workflow PDF expands the source plan beyond the Friday public-source slice. 
 Use the smallest reliable path that preserves the workflow packet:
 
 1. Script path first when the app already has an explicit receipt link, supplied listing HTML, direct listing URL, configured listing URL template, or stable endpoint discovered from browser observation.
-2. Browserbase or controlled Chrome path when the public GovHub search/listing workflow requires JavaScript, cookies, Cloudflare, or interactive navigation.
+2. Browserbase or controlled Chrome path when the public GovHub search/listing workflow requires JavaScript, cookies, Cloudflare, or interactive navigation. The worker can call `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` and consume returned `listingHtml`, `listingUrl`, `receiptUrl`, or `receiptLink`.
 3. Promote any stable network endpoint observed during browser workflow back into the deterministic script client.
 4. When neither path can capture the bottom-right receipt link, save `source_status.mode = browser_workflow_required` or `listing_page_no_receipt` and keep Discovery blocked. Do not leave payer/receipt fields blank without an operator-visible reason.
 
@@ -144,8 +144,9 @@ Stop and report a blocker instead of forcing source extraction when:
 7. Dashboard/intake and Friday handoff.
 8. Workflow rule engine for disqualifications and review-required states.
 9. Tax Collector search/listing client that lands on the listing page and extracts the bottom-right receipt link; direct listing/template path and saved browser-workflow blockers are implemented, Browserbase/Chrome capture remains for GovHub/Cloudflare.
-10. Miami-Dade Clerk Commercial Data Services clients for Official Records by folio and Civil/Family/Probate by case number; AuthKey-gated client implemented, credentialed proof remains.
-11. Tax/deed depth adapters.
-12. Probate/heirship research queue.
-13. Paid/manual source governance.
-14. Completed lead report and offer math payload.
+10. Tax Collector browser-workflow API hook via `TAX_COLLECTOR_BROWSER_WORKFLOW_URL`; hook implemented and mock-proven, real Browserbase/Chrome endpoint proof remains.
+11. Miami-Dade Clerk Commercial Data Services clients for Official Records by folio and Civil/Family/Probate by case number; AuthKey-gated client implemented, credentialed proof remains.
+12. Tax/deed depth adapters.
+13. Probate/heirship research queue.
+14. Paid/manual source governance.
+15. Completed lead report and offer math payload.

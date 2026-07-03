@@ -125,6 +125,14 @@ function publicSearchUrl(env: RuntimeEnv): string {
   return stringValue(env.TAX_COLLECTOR_SEARCH_URL) || DEFAULT_TAX_COLLECTOR_SEARCH_URL;
 }
 
+function browserWorkflowUrl(env: RuntimeEnv): string {
+  return stringValue(env.TAX_COLLECTOR_BROWSER_WORKFLOW_URL);
+}
+
+function browserWorkflowToken(env: RuntimeEnv): string {
+  return stringValue(env.TAX_COLLECTOR_BROWSER_WORKFLOW_TOKEN) || stringValue(env.BROWSERBASE_API_KEY);
+}
+
 function anchorCandidates(html: string, baseUrl: string): TaxCollectorReceiptCandidate[] {
   const candidates: TaxCollectorReceiptCandidate[] = [];
   const anchorPattern = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>[\s\S]*?<\/a>/gi;
@@ -185,6 +193,7 @@ export async function acquireTaxCollectorReceipt(
 ): Promise<TaxCollectorReceiptAcquisitionResult> {
   const env = options.env ?? {};
   const searchUrl = publicSearchUrl(env);
+  const fetchImpl = options.fetchImpl ?? fetch;
   const suppliedDiscovery = discoverTaxCollectorReceipt(input);
   if (suppliedDiscovery) {
     return {
@@ -196,6 +205,73 @@ export async function acquireTaxCollectorReceipt(
       discovery: suppliedDiscovery,
       reviewFlags: suppliedDiscovery.reviewFlags,
     };
+  }
+
+  const workflowUrl = browserWorkflowUrl(env);
+  if (workflowUrl && !stringValue(input.listingUrl) && !stringValue(input.sourceUrl)) {
+    try {
+      const headers: Record<string, string> = {
+        accept: "application/json",
+        "content-type": "application/json",
+        "user-agent": "HeirRight-TaxCollectorBrowserWorkflow/1.0",
+      };
+      const token = browserWorkflowToken(env);
+      if (token) headers.authorization = `Bearer ${token}`;
+      const response = await fetchImpl(workflowUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          source: "tax_collector",
+          searchUrl,
+          parcelId: stringValue(input.parcelId),
+          propertyAddress: stringValue(input.propertyAddress),
+          ownerName: stringValue(input.ownerName),
+        }),
+      });
+      const data = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const workflowListingUrl = stringValue(data.listingUrl) || stringValue(data.finalUrl) || searchUrl;
+      const workflowDiscovery = discoverTaxCollectorReceipt({
+        ...input,
+        listingUrl: workflowListingUrl,
+        listingHtml: data.listingHtml,
+        receiptUrl: data.receiptUrl,
+        receiptLink: data.receiptLink,
+      });
+      if (response.ok && workflowDiscovery) {
+        return {
+          ok: true,
+          mode: workflowDiscovery.mode,
+          listingUrl: workflowDiscovery.listingUrl || workflowListingUrl,
+          searchUrl,
+          status: response.status,
+          finalUrl: workflowListingUrl,
+          discovery: workflowDiscovery,
+          reviewFlags: workflowDiscovery.reviewFlags,
+        };
+      }
+      return {
+        ok: false,
+        mode: "browser_workflow_required",
+        listingUrl: workflowListingUrl,
+        searchUrl,
+        status: response.status,
+        finalUrl: workflowListingUrl,
+        bodySnippet: stringValue(data.message) || stringValue(data.error),
+        blocker: stringValue(data.message)
+          || stringValue(data.error)
+          || "Tax Collector browser workflow ran but did not return a bottom-right receipt link.",
+        reviewFlags: BROWSER_WORKFLOW_FLAGS,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        mode: "browser_workflow_required",
+        listingUrl: "",
+        searchUrl,
+        blocker: error instanceof Error ? error.message : String(error),
+        reviewFlags: BROWSER_WORKFLOW_FLAGS,
+      };
+    }
   }
 
   const listingUrl = configuredListingUrl(input, env)
@@ -211,7 +287,6 @@ export async function acquireTaxCollectorReceipt(
     };
   }
 
-  const fetchImpl = options.fetchImpl ?? fetch;
   try {
     const response = await fetchImpl(listingUrl, {
       redirect: "follow",
