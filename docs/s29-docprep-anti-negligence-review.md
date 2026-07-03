@@ -106,3 +106,35 @@ Required corrections before complete:
 - In Doc Prep, open `?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture`, click `Run Source Search`, and confirm source summaries show returned facts plus blockers instead of blank fields.
 - In Settings, confirm `Miami-Dade Clerk API` shows blocked until `MIAMI_DADE_CLERK_AUTH_KEY` is configured.
 - In Settings, confirm `Vital/Obituary Workflow` shows blocked until `OBITUARY_VITAL_WORKFLOW_URL` or equivalent is configured.
+
+## Final Dedicated Review After Source Repairs
+
+Evidence rerun:
+
+- `pnpm build`: passed.
+- `pnpm test`: passed.
+- `/api/discovery/external-source-run`: returned 8 source summaries.
+- Vital/obituary route proof: `source_status.value.mode = workflow_required`, `VITAL_RECORDS_WORKFLOW_REQUIRED`.
+- Source-governance route proof: `Governed manual and paid research` returned as blocked with voter records, professional licenses, business/address associations, social profiles, and deceased-indicator cross-checks in the catalog.
+- `/api/connections/status`: `Miami-Dade Clerk API` and `Vital/Obituary Workflow` expose blocked readiness until their credentials/workflows are configured.
+- UI route proof: Doc Prep route includes `Public-record capture`, `Run Source Search`, `Tax Collector listing page`, and `Preview`; stale `Live packet preview` copy is absent.
+
+S29-S32 plan check:
+
+- S29 Doc Prep source architecture: aligned with gaps. Source buckets are callable, visible, persisted, and blocker-safe; real production proof still requires configured IDI API, Clerk AuthKey, Tax Collector browser workflow, and vital/obituary workflow.
+- S30 demo readiness: not accepted as final until the demo shows the blocked/ready source states and generated packet streaming without placeholders. The route/UI hooks needed for the demo exist.
+- S31 readiness: Settings now exposes the key source-readiness blockers, but full Outreach/auth/button audit remains S31 work.
+- S32 final objective audit: must reject any claim that all external Discovery sources are automated until credentialed/live proof is attached or the source is explicitly accepted as human-required.
+
+/solvys-heir-audit
+Source checked: `/Users/tifos/Desktop/HRight/HeirRight Workflow. pdf.pdf`, `/Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md`, source-run API proof, Settings status proof, route-level UI proof, and current git diff/status.
+Backward: The work changed Discovery Doc Prep from a partial UI/source-capture story into a source-run architecture with eight visible buckets: Property Appraiser, Tax Collector, Official Records, Probate/Civil/Family Court, vital/obituary, IDI, skip trace, and governed manual/paid research. It supports the packet's property/deed/tax/probate/vital/IDI/manual-research steps by saving facts or explicit blockers instead of blank implied completion.
+UX pass: aligned with gaps. Operators get a `Run Source Search` control, source summaries, readiness statuses, and plain blocker language. The remaining UX gap is live workflow completion: without real workflow endpoints and credentials, a non-technical operator still has source work to finish manually.
+Forward: S30 must demo the real flow with these blockers visible and document streaming; S31 must complete Settings/Outreach/auth readiness; S32 must audit against live PDF outputs and browser/API proof.
+Alignment: aligned with gaps
+Required corrections before complete:
+- Configure and prove `IDI_CORE_API_URL`, shared `IDI_CORE_API_KEY`, and live approval or keep IDI as import/operator-approved.
+- Configure and prove `MIAMI_DADE_CLERK_AUTH_KEY` against Official Records and Civil/Family/Probate.
+- Configure and prove `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` against the public GovHub listing/receipt flow.
+- Configure and prove `OBITUARY_VITAL_WORKFLOW_URL` or equivalent against obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator pages.
+- Do not tell TP that all external sources are automated; tell them which ones are automated, which are workflow-ready, and which are approval-gated.
