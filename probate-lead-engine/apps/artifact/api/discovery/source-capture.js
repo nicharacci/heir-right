@@ -1,17 +1,38 @@
 const { discoverTaxCollectorReceipt, methodGuard, proxyWorkerJson, readJsonBody, receiptId, sendJson, sendProxied } = require("../_shared");
 
-function localTaxSourceFacts(body) {
+function localSourceFactsFromCapture(body) {
   const facts = [];
   const capturedAt = new Date().toISOString();
   const seed = body.seed || {};
   const taxReceipt = body.taxReceipt || {};
+  const deed = body.deed || {};
+  const propertyAppraiser = body.propertyAppraiser || {};
+  const probate = body.probate || {};
+  const obituary = body.obituary || {};
   const county = seed.county || body.county || "miami-dade";
   const subject = {
     ownerName: seed.ownerName || body.ownerName,
     propertyAddress: seed.propertyAddress || body.propertyAddress || body.address,
     parcelId: seed.parcelId || body.parcelId || body.folio,
+    caseNumber: seed.caseNumber || body.caseNumber,
     estateName: seed.estateName || body.estateName,
     county,
+  };
+  const compactObject = (input) => {
+    const output = Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined && value !== null && value !== ""));
+    return Object.keys(output).length ? output : undefined;
+  };
+  const sourceAttachment = (label, sourceUrl, fileName, fileKind = "link") => {
+    if (!sourceUrl && !fileName) return undefined;
+    return {
+      label,
+      sourceUrl,
+      fileName,
+      fileKind,
+      capturedAt,
+      capturedBy: "source-capture",
+      reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
+    };
   };
   const receiptDiscovery = discoverTaxCollectorReceipt(taxReceipt);
   const receiptUrl = receiptDiscovery?.receiptUrl || taxReceipt.receiptUrl || taxReceipt.receiptLink;
@@ -24,12 +45,14 @@ function localTaxSourceFacts(body) {
     capturedBy: "source-capture",
     reviewFlags: receiptDiscovery?.reviewFlags || ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"],
   } : undefined;
-  const addFact = (factType, value, sourceUrl = listingUrl || receiptUrl, factAttachment = undefined, reviewFlags = undefined) => {
+  const addFact = (source, factType, value, sourceUrl, factAttachment = undefined, reviewFlags = undefined) => {
     if (value === undefined || value === null || value === "") return;
+    if (Array.isArray(value) && !value.length) return;
+    if (typeof value === "object" && !Array.isArray(value) && !Object.keys(value).length) return;
     facts.push({
-      id: `${body.runId || "artifact-source-capture"}:tax_collector:${factType}:${facts.length + 1}`,
+      id: `${body.runId || "artifact-source-capture"}:${source}:${factType}:${facts.length + 1}`,
       runId: body.runId || "artifact-source-capture",
-      source: "tax_collector",
+      source,
       rawId: `operator-source:${factType}:${facts.length + 1}`,
       fetchedAt: capturedAt,
       county,
@@ -42,15 +65,78 @@ function localTaxSourceFacts(body) {
       reviewFlags: reviewFlags || (sourceUrl || factAttachment ? ["HUMAN_REVIEW_REQUIRED"] : ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"]),
     });
   };
-  addFact("tax_last_paid_by", taxReceipt.paidBy);
-  addFact("tax_payer_identity", taxReceipt.paidBy || taxReceipt.payerIdentity);
-  addFact("tax_paid_date", taxReceipt.paidDate);
-  addFact("tax_receipt_status", taxReceipt.status || (receiptUrl ? "receipt_link_captured" : undefined));
-  addFact("tax_receipt_link", receiptUrl, receiptUrl, attachment, receiptDiscovery?.reviewFlags);
-  addFact("tax_receipt_attachment", attachment, receiptUrl, attachment, receiptDiscovery?.reviewFlags);
-  addFact("tax_amount_due", taxReceipt.amountDue);
-  addFact("unpaid_tax_years", taxReceipt.unpaidYears);
-  addFact("tax_reassessment_signal", taxReceipt.reassessment);
+  addFact("tax_collector", "tax_last_paid_by", taxReceipt.paidBy, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_payer_identity", taxReceipt.paidBy || taxReceipt.payerIdentity, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_paid_date", taxReceipt.paidDate, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_receipt_status", taxReceipt.status || (receiptUrl ? "receipt_link_captured" : undefined), listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_receipt_link", receiptUrl, receiptUrl, attachment, receiptDiscovery?.reviewFlags);
+  addFact("tax_collector", "tax_receipt_attachment", attachment, receiptUrl, attachment, receiptDiscovery?.reviewFlags);
+  addFact("tax_collector", "tax_amount_due", taxReceipt.amountDue, listingUrl || receiptUrl);
+  addFact("tax_collector", "unpaid_tax_years", taxReceipt.unpaidYears, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_reassessment_signal", taxReceipt.reassessment, listingUrl || receiptUrl);
+  const deedSourceUrl = deed.documentUrl || deed.sourceUrl || deed.fileName;
+  const orBookPage = compactObject({
+    book: deed.book,
+    page: deed.page,
+    instrumentNumber: deed.instrument || deed.instrumentNumber,
+  });
+  const latestDeed = compactObject({
+    recordingDate: deed.recordingDate,
+    documentType: deed.documentType || deed.status,
+    orBookPage,
+    grantor: deed.grantor,
+    grantee: deed.grantee,
+  });
+  const deedAttachment = sourceAttachment("Official Records deed", deed.documentUrl || deed.sourceUrl, deed.fileName, deedSourceUrl && /\.pdf($|\?)/i.test(String(deedSourceUrl)) ? "pdf" : "link");
+  addFact("official_records", "official_records_status", deed.status || (deedSourceUrl ? "official_records_evidence_captured" : undefined), deedSourceUrl);
+  addFact("official_records", "deed_history_status", deed.status || (deedSourceUrl ? "latest_deed_captured" : undefined), deedSourceUrl);
+  addFact("official_records", "or_book_page", orBookPage || deed.instrument, deedSourceUrl);
+  addFact("official_records", "latest_deed", latestDeed || deed.status || deed.instrument, deedSourceUrl);
+  addFact("official_records", "deed_attachment", deedAttachment, deedSourceUrl, deedAttachment);
+  addFact("official_records", "last_sale_date", deed.lastSaleDate, deedSourceUrl);
+  addFact("official_records", "ownership_activity_note", deed.ownershipActivity || deed.note, deedSourceUrl);
+  addFact("official_records", "mortgage_signal", deed.mortgageSignal, deedSourceUrl);
+  addFact("official_records", "lien_signal", deed.lienSignal, deedSourceUrl);
+  addFact("official_records", "lis_pendens_signal", deed.lisPendensSignal, deedSourceUrl);
+  addFact("official_records", "foreclosure_signal", deed.foreclosureSignal, deedSourceUrl);
+  addFact("official_records", "adverse_possession_signal", deed.adversePossessionSignal, deedSourceUrl);
+  addFact("official_records", "title_signal", deed.titleSignal || deed.note, deedSourceUrl);
+  addFact("property_appraiser", "mailing_address_signal", propertyAppraiser.mailingAddressSignal || propertyAppraiser.mailingAddress, propertyAppraiser.sourceUrl);
+  const probateSourceUrl = probate.docketUrl || probate.sourceUrl || probate.searchUrl;
+  const civilFamilyDocket = compactObject({
+    court: probate.court,
+    division: probate.division,
+    docketNumber: probate.relatedDocketNumber || probate.docketNumber,
+    caseType: probate.caseType,
+  });
+  const officialRecordCrossLink = compactObject({
+    label: probate.officialRecordLabel || "Official Records cross-link",
+    url: probate.officialRecordUrl,
+    orBookPage,
+    note: probate.officialRecordNote,
+  });
+  addFact("probate_court", "probate_docket_status", probate.status || (probateSourceUrl ? "probate_docket_reviewed" : undefined), probateSourceUrl);
+  addFact("probate_court", "case_number", probate.caseNumber, probateSourceUrl);
+  addFact("probate_court", "probate_case_status", probate.caseStatus, probateSourceUrl);
+  addFact("probate_court", "civil_family_docket_ref", civilFamilyDocket, probateSourceUrl);
+  addFact("probate_court", "affidavit_of_heirs_status", probate.affidavitOfHeirsStatus, probateSourceUrl);
+  addFact("probate_court", "probate_document_availability", probate.documentAvailability, probateSourceUrl);
+  addFact("official_records", "official_record_cross_link", officialRecordCrossLink ? [officialRecordCrossLink] : undefined, probate.officialRecordUrl || deedSourceUrl);
+  const obituarySourceUrl = obituary.sourceUrl || obituary.fileName;
+  const obituaryAttachment = sourceAttachment("Obituary snapshot/link", obituary.sourceUrl, obituary.fileName, obituarySourceUrl && /\.(png|jpe?g|webp)($|\?)/i.test(String(obituarySourceUrl)) ? "image" : "link");
+  addFact("clerk_of_courts", "marriage_death_status", obituary.status || (obituarySourceUrl ? "obituary_reviewed" : undefined), obituarySourceUrl);
+  addFact("clerk_of_courts", "marriage_license_signal", obituary.marriageLicenseSignal, obituarySourceUrl);
+  addFact("clerk_of_courts", "date_of_birth", obituary.dateOfBirth, obituarySourceUrl);
+  addFact("clerk_of_courts", "date_of_death", obituary.dateOfDeath, obituarySourceUrl);
+  addFact("clerk_of_courts", "obituary_link", obituary.sourceUrl || (obituary.status === "reviewed-not-found" ? "reviewed_not_found" : undefined), obituary.sourceUrl);
+  addFact("clerk_of_courts", "obituary_snapshot", obituaryAttachment, obituary.sourceUrl, obituaryAttachment);
+  addFact("clerk_of_courts", "memorial_search_tasks", [
+    compactObject({ provider: "findagrave", url: obituary.findagraveUrl, note: obituary.findagraveNote }),
+    compactObject({ provider: "legacy", url: obituary.legacyUrl, note: obituary.legacyNote }),
+    compactObject({ provider: "google", url: obituary.googleUrl, note: obituary.googleNote }),
+  ].filter(Boolean), obituarySourceUrl);
+  addFact("clerk_of_courts", "death_certificate_status", obituary.deathCertificateStatus, obituarySourceUrl);
+  addFact("clerk_of_courts", "incarceration_status_signal", obituary.incarcerationStatus, obituarySourceUrl);
   return facts;
 }
 
@@ -65,10 +151,10 @@ module.exports = async function handler(request, response) {
       return;
     }
 
-    const sourceFacts = localTaxSourceFacts(body);
+    const sourceFacts = localSourceFactsFromCapture(body);
     sendJson(response, 200, {
       ok: true,
-      mode: "review_receipt",
+      mode: "source_review",
       id: body.assetKey || body.id || receiptId("source-capture"),
       capturedAt: new Date().toISOString(),
       artifact: body,

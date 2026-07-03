@@ -11870,8 +11870,11 @@ function assetPhaseComplete(row, phaseId) {
     || capture.taxReceipt?.sourceUrl
     || (capture.taxReceipt?.listingUrl && capture.taxReceipt?.status === "unavailable_after_listing_check")
   );
-  if (phaseId === "deed") return Boolean(capture.deed?.sourceUrl || capture.deed?.fileName || capture.deed?.instrument);
-  if (phaseId === "obituary") return Boolean(capture.obituary?.sourceUrl || capture.obituary?.status === "reviewed-not-found");
+  if (phaseId === "deed") return Boolean(
+    (capture.deed?.sourceUrl || capture.deed?.documentUrl || capture.deed?.fileName)
+    && (capture.deed?.instrument || capture.deed?.instrumentNumber || capture.deed?.book || capture.deed?.page)
+  );
+  if (phaseId === "obituary") return Boolean(capture.obituary?.sourceUrl || capture.obituary?.fileName || capture.obituary?.status === "reviewed-not-found");
   if (phaseId === "idi-asset-search") return Boolean(idiImportForRow(row));
   if (phaseId === "contact-review") return acceptedContactCandidates(row).length > 0;
   if (phaseId === "dossier-export") return docPrepPhaseMarkedComplete(row, "discovery", phaseId);
@@ -14635,12 +14638,16 @@ function docPrepStreamPhaseLines(row = selectedRow(), dossier = dossierForRow(ro
       `Paid date: ${cleanDisplayValue(capture.taxReceipt?.paidDate || "Needs receipt paid date")}`
     ],
     deed: [
-      `Instrument: ${cleanDisplayValue(capture.deed?.instrument || dossier?.deedHistory?.latestInstrument || "Needs OR book/page or instrument")}`,
-      `Deed evidence: ${cleanDisplayValue(capture.deed?.sourceUrl || capture.deed?.fileName || "Not attached yet")}`
+      `Official Records: ${cleanDisplayValue(capture.deed?.sourceUrl || "Needs Official Records source")}`,
+      `Instrument: ${cleanDisplayValue(capture.deed?.instrument || capture.deed?.instrumentNumber || dossier?.deedHistory?.latestInstrument || "Needs OR book/page or instrument")}`,
+      `Deed file: ${cleanDisplayValue(capture.deed?.documentUrl || capture.deed?.fileName || "Not attached yet")}`,
+      `Grantor / grantee: ${cleanDisplayValue([capture.deed?.grantor, capture.deed?.grantee].filter(Boolean).join(" to ") || "Needs source review")}`
     ],
     obituary: [
       `Obituary status: ${cleanDisplayValue(capture.obituary?.status || (capture.obituary?.sourceUrl ? "found" : "Needs obituary source review"))}`,
-      `Obituary evidence: ${cleanDisplayValue(capture.obituary?.sourceUrl || capture.obituary?.fileName || "Not attached yet")}`
+      `Obituary evidence: ${cleanDisplayValue(capture.obituary?.sourceUrl || capture.obituary?.fileName || "Not attached yet")}`,
+      `DOB / DOD: ${cleanDisplayValue([capture.obituary?.dateOfBirth, capture.obituary?.dateOfDeath].filter(Boolean).join(" / ") || "Needs vital source review")}`,
+      `Probate case: ${cleanDisplayValue(capture.probate?.caseNumber || "Needs docket source review")}`
     ],
     "idi-asset-search": [
       `IDI mode: ${idi?.mode || "Needs controlled run or approved import"}`,
@@ -16164,11 +16171,38 @@ function assetCaptureFormHtml(row = selectedRow()) {
         <div class="field"><label>Amount due</label><input data-source-capture-field="taxReceipt.amountDue" value="${escapeHtml(capture.taxReceipt?.amountDue ?? "")}" placeholder="$0.00 or amount from record"></div>
         <div class="field"><label>Unpaid years</label><input data-source-capture-field="taxReceipt.unpaidYears" value="${escapeHtml(capture.taxReceipt?.unpaidYears ?? "")}" placeholder="Example: 2024, 2025"></div>
         <div class="field"><label>Receipt status</label><select data-source-capture-field="taxReceipt.status"><option value="">Needs review</option><option value="receipt_link_captured" ${capture.taxReceipt?.status === "receipt_link_captured" ? "selected" : ""}>Receipt link captured</option><option value="paid_receipt_reviewed" ${capture.taxReceipt?.status === "paid_receipt_reviewed" ? "selected" : ""}>Paid receipt reviewed</option><option value="unavailable_after_listing_check" ${capture.taxReceipt?.status === "unavailable_after_listing_check" ? "selected" : ""}>Unavailable after listing check</option></select></div>
-        <div class="field"><label>Deed OR / instrument</label><input data-source-capture-field="deed.instrument" value="${escapeHtml(capture.deed?.instrument ?? "")}" placeholder="OR book/page or instrument"></div>
-        <div class="field"><label>Deed link or file</label><input data-source-capture-field="deed.sourceUrl" value="${escapeHtml(capture.deed?.sourceUrl ?? capture.deed?.fileName ?? "")}" placeholder="Official Records deed URL or file"></div>
+        <div class="field full"><label>Official Records search page</label><input data-source-capture-field="deed.sourceUrl" value="${escapeHtml(capture.deed?.sourceUrl ?? "")}" placeholder="Official Records search/result URL"></div>
+        <div class="field"><label>Deed OR / instrument</label><input data-source-capture-field="deed.instrument" value="${escapeHtml(capture.deed?.instrument ?? capture.deed?.instrumentNumber ?? "")}" placeholder="OR book/page or instrument"></div>
+        <div class="field"><label>Recorded deed file</label><input data-source-capture-field="deed.documentUrl" value="${escapeHtml(capture.deed?.documentUrl ?? capture.deed?.fileName ?? "")}" placeholder="PDF/link for the latest recorded deed"></div>
+        <div class="field"><label>Book</label><input data-source-capture-field="deed.book" value="${escapeHtml(capture.deed?.book ?? "")}" placeholder="OR book"></div>
+        <div class="field"><label>Page</label><input data-source-capture-field="deed.page" value="${escapeHtml(capture.deed?.page ?? "")}" placeholder="OR page"></div>
+        <div class="field"><label>Recording date</label><input data-source-capture-field="deed.recordingDate" value="${escapeHtml(capture.deed?.recordingDate ?? "")}" placeholder="Date recorded"></div>
+        <div class="field"><label>Document type</label><input data-source-capture-field="deed.documentType" value="${escapeHtml(capture.deed?.documentType ?? "")}" placeholder="Warranty deed, quit claim, etc."></div>
+        <div class="field"><label>Grantor</label><input data-source-capture-field="deed.grantor" value="${escapeHtml(capture.deed?.grantor ?? "")}" placeholder="Seller/grantor shown"></div>
+        <div class="field"><label>Grantee</label><input data-source-capture-field="deed.grantee" value="${escapeHtml(capture.deed?.grantee ?? "")}" placeholder="Buyer/grantee shown"></div>
+        <div class="field"><label>Last sale date</label><input data-source-capture-field="deed.lastSaleDate" value="${escapeHtml(capture.deed?.lastSaleDate ?? "")}" placeholder="Last sale or transfer date"></div>
+        <div class="field"><label>Mortgage signal</label><input data-source-capture-field="deed.mortgageSignal" value="${escapeHtml(capture.deed?.mortgageSignal ?? "")}" placeholder="Present, absent, or needs review"></div>
+        <div class="field"><label>Lien signal</label><input data-source-capture-field="deed.lienSignal" value="${escapeHtml(capture.deed?.lienSignal ?? "")}" placeholder="Present, absent, or needs review"></div>
+        <div class="field"><label>Lis Pendens</label><input data-source-capture-field="deed.lisPendensSignal" value="${escapeHtml(capture.deed?.lisPendensSignal ?? "")}" placeholder="Present, absent, or needs review"></div>
+        <div class="field"><label>Foreclosure signal</label><input data-source-capture-field="deed.foreclosureSignal" value="${escapeHtml(capture.deed?.foreclosureSignal ?? "")}" placeholder="Present, absent, or needs review"></div>
+        <div class="field full"><label>Property Appraiser mailing address</label><input data-source-capture-field="propertyAppraiser.mailingAddress" value="${escapeHtml(capture.propertyAppraiser?.mailingAddress ?? capture.propertyAppraiser?.mailingAddressSignal ?? "")}" placeholder="Mailing address or mismatch note"></div>
+        <div class="field full"><label>Property Appraiser source</label><input data-source-capture-field="propertyAppraiser.sourceUrl" value="${escapeHtml(capture.propertyAppraiser?.sourceUrl ?? "")}" placeholder="Property Appraiser parcel URL"></div>
+        <div class="field full"><label>Probate docket page</label><input data-source-capture-field="probate.docketUrl" value="${escapeHtml(capture.probate?.docketUrl ?? capture.probate?.sourceUrl ?? "")}" placeholder="Clerk/probate docket URL"></div>
+        <div class="field"><label>Probate case number</label><input data-source-capture-field="probate.caseNumber" value="${escapeHtml(capture.probate?.caseNumber ?? "")}" placeholder="Case number from docket"></div>
+        <div class="field"><label>Probate case status</label><input data-source-capture-field="probate.caseStatus" value="${escapeHtml(capture.probate?.caseStatus ?? "")}" placeholder="Open, closed, pending, etc."></div>
+        <div class="field"><label>Affidavit of heirs</label><input data-source-capture-field="probate.affidavitOfHeirsStatus" value="${escapeHtml(capture.probate?.affidavitOfHeirsStatus ?? "")}" placeholder="Available, missing, requested"></div>
+        <div class="field"><label>Probate documents</label><input data-source-capture-field="probate.documentAvailability" value="${escapeHtml(capture.probate?.documentAvailability ?? "")}" placeholder="Available documents or request needed"></div>
+        <div class="field"><label>Related docket</label><input data-source-capture-field="probate.docketNumber" value="${escapeHtml(capture.probate?.docketNumber ?? "")}" placeholder="Civil/family docket if found"></div>
+        <div class="field"><label>Related case type</label><input data-source-capture-field="probate.caseType" value="${escapeHtml(capture.probate?.caseType ?? "")}" placeholder="Civil, family, probate"></div>
         <div class="field"><label>Obituary status</label><select data-source-capture-field="obituary.status"><option value="">Needs review</option><option value="found" ${capture.obituary?.status === "found" ? "selected" : ""}>Found</option><option value="reviewed-not-found" ${capture.obituary?.status === "reviewed-not-found" ? "selected" : ""}>Reviewed not found</option></select></div>
         <div class="field"><label>Obituary link or snapshot</label><input data-source-capture-field="obituary.sourceUrl" value="${escapeHtml(capture.obituary?.sourceUrl ?? capture.obituary?.fileName ?? "")}" placeholder="Obituary URL or screenshot file"></div>
+        <div class="field"><label>Date of birth</label><input data-source-capture-field="obituary.dateOfBirth" value="${escapeHtml(capture.obituary?.dateOfBirth ?? "")}" placeholder="DOB from obituary/vital source"></div>
+        <div class="field"><label>Date of death</label><input data-source-capture-field="obituary.dateOfDeath" value="${escapeHtml(capture.obituary?.dateOfDeath ?? "")}" placeholder="DOD from obituary/vital source"></div>
+        <div class="field"><label>Marriage/license signal</label><input data-source-capture-field="obituary.marriageLicenseSignal" value="${escapeHtml(capture.obituary?.marriageLicenseSignal ?? "")}" placeholder="Spouse/marriage signal or absent"></div>
+        <div class="field"><label>Death certificate</label><input data-source-capture-field="obituary.deathCertificateStatus" value="${escapeHtml(capture.obituary?.deathCertificateStatus ?? "")}" placeholder="Requested, obtained, missing"></div>
         <div class="field full"><label>Listing page HTML / source note</label><textarea data-source-capture-field="taxReceipt.listingHtml" placeholder="Optional: paste the Tax Collector listing page source if browser-to-api discovery needs to parse the receipt link.">${escapeHtml(capture.taxReceipt?.listingHtml ?? "")}</textarea></div>
+        <div class="field full"><label>Official Records notes</label><textarea data-source-capture-field="deed.note" placeholder="Owner-chain, title, mortgage, lien, or filing notes from Official Records.">${escapeHtml(capture.deed?.note ?? "")}</textarea></div>
+        <div class="field full"><label>Obituary / vital notes</label><textarea data-source-capture-field="obituary.googleNote" placeholder="Record obituary, memorial, vital, or reviewed-not-found source notes.">${escapeHtml(capture.obituary?.googleNote ?? "")}</textarea></div>
       </div>
       <div class="discovery-actions">
         <span class="copy">${escapeHtml(capture.updatedAt ? `Saved ${new Date(capture.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Not saved yet")}</span>
@@ -16365,7 +16399,7 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
       const receiptLinkFact = result.sourceFacts?.find?.((fact) => fact.factType === "tax_receipt_link" && fact.value);
       if (receiptLinkFact?.value) setNestedValue(state.sourceCaptures[key], "taxReceipt.receiptLink", receiptLinkFact.value);
       state.sourceCaptures[key].sourceFacts = result.sourceFacts || [];
-      addShellEvent("Source capture saved", "Tax Collector receipt link, deed, and obituary evidence were saved to the dossier review trail.", "ready", false);
+      addShellEvent("Source capture saved", "Tax, deed/title, property appraiser, probate, and obituary/vital evidence were saved to the dossier review trail.", "ready", false);
     } catch (error) {
       addShellEvent("Source capture saved locally", error instanceof Error ? error.message : "Server capture failed; local evidence remains visible.", "blocked", true);
     }
@@ -16736,9 +16770,16 @@ function sourceCaptureEvidenceRows(row) {
     ["Tax receipt link", sourceArtifactLink("Tax Collector receipt", capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName)],
     ["Tax paid by", escapeHtml(capture.taxReceipt?.paidBy || "Needs review")],
     ["Tax paid date", escapeHtml(capture.taxReceipt?.paidDate || "Needs review")],
-    ["Deed OR / instrument", escapeHtml(capture.deed?.instrument || "Needs review")],
-    ["Deed attachment", sourceArtifactLink("Official Records deed", capture.deed?.sourceUrl || capture.deed?.fileName)],
+    ["Official Records source", sourceArtifactLink("Official Records", capture.deed?.sourceUrl)],
+    ["Deed OR / instrument", escapeHtml(capture.deed?.instrument || capture.deed?.instrumentNumber || [capture.deed?.book, capture.deed?.page].filter(Boolean).join("/") || "Needs review")],
+    ["Deed attachment", sourceArtifactLink("Official Records deed", capture.deed?.documentUrl || capture.deed?.fileName)],
+    ["Grantor / grantee", escapeHtml([capture.deed?.grantor, capture.deed?.grantee].filter(Boolean).join(" to ") || "Needs review")],
+    ["Property Appraiser mailing", escapeHtml(capture.propertyAppraiser?.mailingAddress || capture.propertyAppraiser?.mailingAddressSignal || "Needs review")],
+    ["Probate docket", sourceArtifactLink(capture.probate?.caseNumber || "Probate docket", capture.probate?.docketUrl || capture.probate?.sourceUrl)],
+    ["Probate status", escapeHtml(capture.probate?.caseStatus || capture.probate?.status || "Needs review")],
+    ["Probate documents", escapeHtml(capture.probate?.documentAvailability || "Needs review")],
     ["Obituary evidence", capture.obituary?.status === "reviewed-not-found" ? "Reviewed not found" : sourceArtifactLink("Obituary snapshot/link", capture.obituary?.sourceUrl || capture.obituary?.fileName)],
+    ["DOB / DOD", escapeHtml([capture.obituary?.dateOfBirth, capture.obituary?.dateOfDeath].filter(Boolean).join(" / ") || "Needs review")],
     ["IDI asset search", escapeHtml(idi ? `${idi.candidates?.length ?? 0} imported candidate${(idi.candidates?.length ?? 0) === 1 ? "" : "s"}; ${acceptedContactCandidates(row).length} accepted` : "Needs one-time asset search import")]
   ];
   return rows.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${value}</td></tr>`).join("");
@@ -16990,7 +17031,7 @@ function deedTitleNotesHtml(row, dossier) {
       <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? claimValue(property.parcelId, "Needs review"))}</td></tr>
       <tr><th>County</th><td>${escapeHtml(formatCountyName(row?.county ?? claimValue(property.county, "Miami-Dade County, FL")))}</td></tr>
       <tr><th>OR / instrument</th><td>${escapeHtml(capture.deed?.instrument || "Needs review")}</td></tr>
-      <tr><th>Deed attachment</th><td>${sourceArtifactLink("Official Records deed", capture.deed?.sourceUrl || capture.deed?.fileName)}</td></tr>
+      <tr><th>Deed attachment</th><td>${sourceArtifactLink("Official Records deed", capture.deed?.documentUrl || capture.deed?.fileName)}</td></tr>
     </table>
     <h2>Title review tasks</h2>
     <ul>${tasks.map((task) => `<li><strong>${escapeHtml(task.title ?? "Review task")}</strong> - ${escapeHtml(operatorPlainText(task.nextAction ?? task.reason ?? "Record the official-record note."))}</li>`).join("") || "<li>Owner chain is staged for review; no deed blocker is recorded in the current packet.</li>"}</ul>

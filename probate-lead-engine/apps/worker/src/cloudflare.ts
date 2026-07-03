@@ -496,6 +496,8 @@ function sourceFactsFromCapture(runId: string, seed: IntakeSeed, capture: Record
     reviewFlags?: ReviewFlag[],
   ) => {
     if (value === undefined || value === null || value === "") return;
+    if (Array.isArray(value) && !value.length) return;
+    if (typeof value === "object" && !Array.isArray(value) && !Object.keys(value).length) return;
     out.push(fact({
       runId,
       source,
@@ -515,7 +517,25 @@ function sourceFactsFromCapture(runId: string, seed: IntakeSeed, capture: Record
   };
   const taxReceipt = (capture.taxReceipt && typeof capture.taxReceipt === "object") ? capture.taxReceipt as Record<string, unknown> : {};
   const deed = (capture.deed && typeof capture.deed === "object") ? capture.deed as Record<string, unknown> : {};
+  const propertyAppraiser = (capture.propertyAppraiser && typeof capture.propertyAppraiser === "object") ? capture.propertyAppraiser as Record<string, unknown> : {};
+  const probate = (capture.probate && typeof capture.probate === "object") ? capture.probate as Record<string, unknown> : {};
   const obituary = (capture.obituary && typeof capture.obituary === "object") ? capture.obituary as Record<string, unknown> : {};
+  const compactObject = (input: Record<string, unknown>) => {
+    const output = Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined && value !== null && value !== ""));
+    return Object.keys(output).length ? output : undefined;
+  };
+  const sourceAttachment = (label: string, sourceUrl?: string, fileName?: string, fileKind: SourceAttachmentRef["fileKind"] = "link"): SourceAttachmentRef | undefined => {
+    if (!sourceUrl && !fileName) return undefined;
+    return {
+      label,
+      sourceUrl,
+      fileName,
+      fileKind,
+      capturedAt: fetchedAt,
+      capturedBy: "source-capture",
+      reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
+    };
+  };
   const receiptDiscovery = discoverTaxCollectorReceipt(taxReceipt);
   const receiptUrl = receiptDiscovery?.receiptUrl || stringValue(taxReceipt.receiptUrl) || stringValue(taxReceipt.receiptLink);
   const listingUrl = receiptDiscovery?.listingUrl || stringValue(taxReceipt.listingUrl) || stringValue(taxReceipt.sourceUrl);
@@ -536,11 +556,69 @@ function sourceFactsFromCapture(runId: string, seed: IntakeSeed, capture: Record
   addFact("tax_collector", "tax_amount_due", taxReceipt.amountDue, listingUrl || receiptUrl);
   addFact("tax_collector", "unpaid_tax_years", taxReceipt.unpaidYears, listingUrl || receiptUrl);
   addFact("tax_collector", "tax_reassessment_signal", taxReceipt.reassessment, listingUrl || receiptUrl);
-  addFact("official_records", "or_book_page", deed.instrument, stringValue(deed.sourceUrl));
-  addFact("official_records", "latest_deed", deed.status || deed.instrument, stringValue(deed.sourceUrl));
-  addFact("official_records", "title_signal", deed.note, stringValue(deed.sourceUrl));
-  addFact("probate_court", "obituary_link", obituary.status, stringValue(obituary.sourceUrl));
-  addFact("probate_court", "obituary_snapshot", obituary.sourceUrl || obituary.fileName, stringValue(obituary.sourceUrl));
+  const deedSourceUrl = stringValue(deed.documentUrl) || stringValue(deed.sourceUrl) || stringValue(deed.fileName);
+  const orBookPage = compactObject({
+    book: deed.book,
+    page: deed.page,
+    instrumentNumber: deed.instrument || deed.instrumentNumber,
+  });
+  const latestDeed = compactObject({
+    recordingDate: deed.recordingDate,
+    documentType: deed.documentType || deed.status,
+    orBookPage,
+    grantor: deed.grantor,
+    grantee: deed.grantee,
+  });
+  const deedAttachment = sourceAttachment("Official Records deed", stringValue(deed.documentUrl) || stringValue(deed.sourceUrl), stringValue(deed.fileName), deedSourceUrl && /\.pdf($|\?)/i.test(deedSourceUrl) ? "pdf" : "link");
+  addFact("official_records", "official_records_status", deed.status || (deedSourceUrl ? "official_records_evidence_captured" : undefined), deedSourceUrl);
+  addFact("official_records", "deed_history_status", deed.status || (deedSourceUrl ? "latest_deed_captured" : undefined), deedSourceUrl);
+  addFact("official_records", "or_book_page", orBookPage || deed.instrument, deedSourceUrl);
+  addFact("official_records", "latest_deed", latestDeed || deed.status || deed.instrument, deedSourceUrl);
+  addFact("official_records", "deed_attachment", deedAttachment, deedSourceUrl, deedAttachment);
+  addFact("official_records", "last_sale_date", deed.lastSaleDate, deedSourceUrl);
+  addFact("official_records", "ownership_activity_note", deed.ownershipActivity || deed.note, deedSourceUrl);
+  addFact("official_records", "mortgage_signal", deed.mortgageSignal, deedSourceUrl);
+  addFact("official_records", "lien_signal", deed.lienSignal, deedSourceUrl);
+  addFact("official_records", "lis_pendens_signal", deed.lisPendensSignal, deedSourceUrl);
+  addFact("official_records", "foreclosure_signal", deed.foreclosureSignal, deedSourceUrl);
+  addFact("official_records", "adverse_possession_signal", deed.adversePossessionSignal, deedSourceUrl);
+  addFact("official_records", "title_signal", deed.titleSignal || deed.note, deedSourceUrl);
+  addFact("property_appraiser", "mailing_address_signal", propertyAppraiser.mailingAddressSignal || propertyAppraiser.mailingAddress, stringValue(propertyAppraiser.sourceUrl));
+  const probateSourceUrl = stringValue(probate.docketUrl) || stringValue(probate.sourceUrl) || stringValue(probate.searchUrl);
+  const civilFamilyDocket = compactObject({
+    court: probate.court,
+    division: probate.division,
+    docketNumber: probate.relatedDocketNumber || probate.docketNumber,
+    caseType: probate.caseType,
+  });
+  const officialRecordCrossLink = compactObject({
+    label: probate.officialRecordLabel || "Official Records cross-link",
+    url: probate.officialRecordUrl,
+    orBookPage,
+    note: probate.officialRecordNote,
+  });
+  addFact("probate_court", "probate_docket_status", probate.status || (probateSourceUrl ? "probate_docket_reviewed" : undefined), probateSourceUrl);
+  addFact("probate_court", "case_number", probate.caseNumber, probateSourceUrl);
+  addFact("probate_court", "probate_case_status", probate.caseStatus, probateSourceUrl);
+  addFact("probate_court", "civil_family_docket_ref", civilFamilyDocket, probateSourceUrl);
+  addFact("probate_court", "affidavit_of_heirs_status", probate.affidavitOfHeirsStatus, probateSourceUrl);
+  addFact("probate_court", "probate_document_availability", probate.documentAvailability, probateSourceUrl);
+  addFact("official_records", "official_record_cross_link", officialRecordCrossLink ? [officialRecordCrossLink] : undefined, stringValue(probate.officialRecordUrl) || deedSourceUrl);
+  const obituarySourceUrl = stringValue(obituary.sourceUrl) || stringValue(obituary.fileName);
+  const obituaryAttachment = sourceAttachment("Obituary snapshot/link", stringValue(obituary.sourceUrl), stringValue(obituary.fileName), obituarySourceUrl && /\.(png|jpe?g|webp)($|\?)/i.test(obituarySourceUrl) ? "image" : "link");
+  addFact("clerk_of_courts", "marriage_death_status", obituary.status || (obituarySourceUrl ? "obituary_reviewed" : undefined), obituarySourceUrl);
+  addFact("clerk_of_courts", "marriage_license_signal", obituary.marriageLicenseSignal, obituarySourceUrl);
+  addFact("clerk_of_courts", "date_of_birth", obituary.dateOfBirth, obituarySourceUrl);
+  addFact("clerk_of_courts", "date_of_death", obituary.dateOfDeath, obituarySourceUrl);
+  addFact("clerk_of_courts", "obituary_link", obituary.sourceUrl || (obituary.status === "reviewed-not-found" ? "reviewed_not_found" : undefined), stringValue(obituary.sourceUrl));
+  addFact("clerk_of_courts", "obituary_snapshot", obituaryAttachment, stringValue(obituary.sourceUrl), obituaryAttachment);
+  addFact("clerk_of_courts", "memorial_search_tasks", [
+    compactObject({ provider: "findagrave", url: obituary.findagraveUrl, note: obituary.findagraveNote }),
+    compactObject({ provider: "legacy", url: obituary.legacyUrl, note: obituary.legacyNote }),
+    compactObject({ provider: "google", url: obituary.googleUrl, note: obituary.googleNote }),
+  ].filter(Boolean), obituarySourceUrl);
+  addFact("clerk_of_courts", "death_certificate_status", obituary.deathCertificateStatus, obituarySourceUrl);
+  addFact("clerk_of_courts", "incarceration_status_signal", obituary.incarcerationStatus, obituarySourceUrl);
   return out;
 }
 
@@ -696,7 +774,7 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
   const sourceFacts = sourceFactsFromCapture(runId, seed, body);
   return json({
     ok: true,
-    mode: "review_receipt",
+    mode: "source_review",
     id: body.assetKey || body.id || receiptId("source-capture"),
     capturedAt: nowIso(),
     seed,
