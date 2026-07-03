@@ -1,7 +1,20 @@
 # HeirRight Source Adapter Plan
 
-Status: Friday implementation v1  
+Status: Friday implementation v2
 Purpose: define how planned public sources feed the raw dossier engine.
+
+## Current Source-Run Surface
+
+`/api/discovery/external-source-run` is now the unified Doc Prep source-run route for worker, local artifact server, and serverless artifact fallback.
+
+The route is intentionally proof-or-blocker:
+
+- it returns `mode: external_source_run`, `runId`, `estateId`, `sourceSummaries`, `sourceFacts`, `dossier`, and `blockers`;
+- it includes all Discovery source buckets so the operator can see what was checked or still blocked;
+- it returns `ok: false` when a bucket is blocked or still needs review;
+- it does not convert source-health checks or missing paid/manual sources into completed facts.
+
+Current route proof returned all seven buckets with 49 source facts: Property Appraiser `partial`, Tax Collector `blocked`, and Official Records / Probate Court / vital review / IDI / skip trace as review or blocker states. That means the buckets are callable and visible, not that every external source is fully automated end to end.
 
 ## Adapter Output Principle
 
@@ -38,7 +51,10 @@ type SourceFact = {
 | --- | --- | --- | --- | --- |
 | Miami-Dade Property Appraiser | Live app reachability + public search URL; structured extraction where feasible | address, owner, folio | source status, search URL, seed address/owner/folio/county facts | `SOURCE_HEALTH_ONLY`, `MISSING_PROPERTY_FACT`, source refs |
 | Miami-Dade Tax Collector | Guarded listing-page receipt client implemented for explicit receipt links, supplied listing HTML, direct listing URLs, and configured listing URL templates; source-capture now saves `browser_workflow_required` blockers; public GovHub entry currently returns a Cloudflare/browser-workflow blocker | folio, address, owner, listing page URL | acquisition/source status, receipt link, receipt artifact/link, paid date, payer identity, unpaid years, amount due, reassessment/status notes | block until bottom-right receipt link is captured or the browser-workflow/source blocker is preserved |
-| Miami-Dade Official Records / Clerk | Live app reachability + title/deed source capture; browser/API extraction next | owner, address, folio, OR book/page | official-record source, deed attachment/link, OR book/page, recording date, grantor/grantee, title friction | `MISSING_TITLE_FACT`, source refs |
+| Miami-Dade Official Records / Clerk | Source-run bucket + live app reachability + title/deed source capture; browser/API extraction next | owner, address, folio, OR book/page | official-record source, deed attachment/link, OR book/page, recording date, grantor/grantee, title friction | `MISSING_TITLE_FACT`, source refs, needs-review blocker until exact deed/title evidence is captured |
+| Probate/Civil/Family Court | Source-run bucket + capture fields; browser/API extraction next | estate name, owner/decedent, case number | docket URL, case number, case status, affidavit/document availability | needs-review blocker until docket/document evidence is captured |
+| Marriage/death/obituary/vital review | Source-run bucket + capture fields; browser/manual extraction next | decedent/heir names, DOB/DOD, county | obituary link, DOB/DOD, marriage/license signal, death certificate status | human-review blocker until source evidence or reviewed-not-found note is saved |
+| IDI Core / skip trace | Source-run bucket only; paid/API proof requires configured vendor access and approval | owner/address/DOB/DOD | imported or live-run contact/address/family evidence | paid/manual blocker until shared/default key or approved user key run produces readback |
 | Landing/intake | Local dry-run seed | address, owner, county, folio | intake seed fact | missing fields become review flags |
 | Podio | Dry-run only unless config exists | raw dossier | CRM payload fact | missing credentials block live sync |
 | Document packet | Draft internal summary first | raw dossier | document output fact | `HUMAN_REVIEW_REQUIRED` |

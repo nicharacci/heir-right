@@ -220,9 +220,60 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - challenge-platform requests and 401/403 console errors.
 - Conclusion: the public GovHub entry cannot be treated as a deterministic script entry point. Script capture remains correct for direct listing/template/source HTML paths; Browserbase or controlled Chrome is required to acquire listing pages from the public search flow.
 
+## Ninth Repair Pass: Unified Discovery Source Run
+
+- Added `/api/discovery/external-source-run` in all served runtimes:
+  - Cloudflare worker route;
+  - local artifact server route;
+  - serverless artifact fallback.
+- The route runs the existing dry pipeline from an estate seed and returns a single estate-scoped source run with:
+  - `mode: external_source_run`;
+  - `runId`;
+  - `estateId`;
+  - `sourceSummaries`;
+  - `sourceFacts`;
+  - `blockers`;
+  - dossier readback.
+- Source summaries now cover the Discovery buckets explicitly:
+  - Property Appraiser;
+  - Tax Collector;
+  - Official Records;
+  - Probate/Civil/Family Court;
+  - marriage/death/obituary/vital review;
+  - IDI Core Asset Search;
+  - skip trace/contact enrichment.
+- The route does not fake completion. It returns `ok: false` when any required source remains blocked or needs review.
+- Local route proof on `http://localhost:4178/api/discovery/external-source-run` with a Miami-Dade estate seed returned:
+  - `mode: external_source_run`;
+  - all seven source buckets present;
+  - `sourceFacts: 49`;
+  - Property Appraiser status: `partial`;
+  - Tax Collector status: `blocked`;
+  - `blockers: 7`.
+
+## Tenth Repair Pass: Source Search In Doc Prep
+
+- Added an operator-facing `Run Source Search` control to the Doc Prep public-record capture panel.
+- The control saves the current capture fields, runs `/api/discovery/external-source-run`, and writes the returned source facts, source summaries, blockers, and tax receipt status back into the estate-scoped source-capture state.
+- Tax Collector source-run results now write back:
+  - `browser_workflow_required` status when the source run sees the GovHub/browser blocker;
+  - the plain-language blocker note;
+  - receipt link/status when a receipt URL is actually returned.
+- Property Appraiser results write back source URL and mailing-address signal when present.
+- Added source-run summary rendering above the capture fields so an operator sees which sources returned facts and which still need review.
+- Added QA/demo deep links for the actual Doc Prep rail:
+  - `?view=dossiers&docprep=estate&rail=open&walkthrough=off`;
+  - `section=source-capture` / `section=source-search`.
+- Full proof after this pass:
+  - `pnpm build`: passed.
+  - `pnpm test`: passed.
+  - Headless Chrome DOM proof for `?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` found `Public-record capture`, `Run Source Search`, `Tax Collector listing page`, `Bottom-right receipt link`, `Tax source blocker note`, and `Listing page HTML / source note`.
+  - Visual proof saved at `/tmp/heirright-docprep-source.png` showed the Doc Prep rail on the public-record capture panel with tax receipt fields contained inside the rail.
+
 ## Next Work
 
-- Capture the real Tax Collector browser workflow with Browserbase or controlled Chrome, then either configure a stable listing URL template or keep the browser-run fallback as the production acquisition method.
+- Capture and automate the real Tax Collector browser workflow with Browserbase or controlled Chrome, then either configure a stable listing URL template or keep the browser-run fallback as the production acquisition method.
 - If browser observation exposes stable API calls behind GovHub, move them into the deterministic script client.
+- Add actual extraction adapters or browser workflows for Official Records, Probate/Civil/Family Court, and vital/obituary sources. They are currently visible/callable buckets with blockers, not proven end-to-end automations.
 - Rerun S30 demos against the corrected S29 source contracts before treating S30 as final client acceptance proof.
 - Continue source-backed treatment for marriage/death, offender/professional-license, voter/license, field/neighbor/code-enforcement, and paid/manual research tasks as explicitly human-required or approval-gated.

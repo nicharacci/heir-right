@@ -16174,12 +16174,54 @@ function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(r
   `;
 }
 
+function sourceRunTone(status = "") {
+  if (status === "partial") return "review";
+  if (status === "blocked" || status === "needs_review") return "blocked";
+  if (status === "ready") return "ready";
+  return "neutral";
+}
+
+function sourceRunStatusLabel(status = "") {
+  if (status === "partial") return "Facts found";
+  if (status === "blocked") return "Blocked";
+  if (status === "needs_review") return "Needs review";
+  if (status === "ready") return "Ready";
+  return "Not checked";
+}
+
+function sourceRunSummaryHtml(capture = {}) {
+  const run = capture.sourceApiRun;
+  if (!run) {
+    return `
+      <p class="copy">Run the source search to check county/property sources from this estate record. The app will keep public-source blockers visible instead of filling blanks.</p>
+    `;
+  }
+  const summaries = Array.isArray(run.sourceSummaries) ? run.sourceSummaries : [];
+  const blockers = Array.isArray(run.blockers) ? run.blockers : [];
+  const checked = summaries.filter((item) => Number(item.factCount) > 0).length;
+  const blocked = summaries.filter((item) => item.status === "blocked" || item.status === "needs_review").length;
+  const runTime = run.generatedAt ? new Date(run.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "just now";
+  return `
+    <p class="copy">${escapeHtml(run.message || `Source search checked ${checked} source${checked === 1 ? "" : "s"}. ${blocked ? `${blocked} still need review.` : "No source blockers returned."}`)} Last checked ${escapeHtml(runTime)}.</p>
+    <ul class="mini-list source-run-list">
+      ${summaries.map((summary) => `
+        <li>
+          <strong>${escapeHtml(summary.label || displayStatus(summary.source, "Source"))} ${statusPill(sourceRunTone(summary.status), sourceRunStatusLabel(summary.status))}</strong>
+          <span>${escapeHtml(summary.nextAction || "Review this source before completing Discovery.")}</span>
+        </li>
+      `).join("") || `<li><strong>Source search</strong><span>No source checks returned yet.</span></li>`}
+      ${blockers.length ? `<li><strong>Open review items</strong><span>${escapeHtml(blockers.slice(0, 3).join(" "))}</span></li>` : ""}
+    </ul>
+  `;
+}
+
 function assetCaptureFormHtml(row = selectedRow()) {
   const capture = sourceCaptureForRow(row);
   return `
     <section class="glass-card rail-card">
       <h3>Public-record capture</h3>
       <p class="copy">Attach the evidence that makes the dossier real. For tax, start from the Tax Collector listing page and capture the receipt link shown in the bottom-right corner.</p>
+      ${sourceRunSummaryHtml(capture)}
       <div class="asset-capture-grid">
         <div class="field full"><label>Tax Collector listing page</label><input data-source-capture-field="taxReceipt.listingUrl" value="${escapeHtml(capture.taxReceipt?.listingUrl ?? "")}" placeholder="Tax Collector parcel/listing page URL"></div>
         <div class="field full"><label>Bottom-right receipt link</label><input data-source-capture-field="taxReceipt.receiptLink" value="${escapeHtml(capture.taxReceipt?.receiptLink ?? capture.taxReceipt?.sourceUrl ?? "")}" placeholder="Receipt link from the listing page"></div>
@@ -16224,7 +16266,10 @@ function assetCaptureFormHtml(row = selectedRow()) {
       </div>
       <div class="discovery-actions">
         <span class="copy">${escapeHtml(capture.updatedAt ? `Saved ${new Date(capture.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Not saved yet")}</span>
-        <button class="btn primary solvys-liquid-glass" type="button" data-save-source-capture>Save Capture</button>
+        <div>
+          <button class="btn" type="button" data-run-source-search>Run Source Search</button>
+          <button class="btn primary solvys-liquid-glass" type="button" data-save-source-capture>Save Capture</button>
+        </div>
       </div>
     </section>
   `;
@@ -16344,6 +16389,74 @@ function collectSourceCapturePayload(root, row) {
   return payload;
 }
 
+function externalSourceRunPayload(row, capture, key) {
+  return {
+    assetKey: key,
+    leadId: row?.id,
+    seed: {
+      ownerName: row?.owner || row?.title || capture.owner,
+      estateName: row?.leadName || row?.title || capture.owner,
+      propertyAddress: row?.address || capture.address,
+      parcelId: row?.parcel || capture.propertyAppraiser?.folio,
+      county: row?.county || capture.county || "miami-dade",
+      taxCollectorListingUrl: capture.taxReceipt?.listingUrl,
+      taxCollectorReceiptUrl: capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl,
+    },
+    capture,
+    includeSkipTrace: false
+  };
+}
+
+function sourceFactByType(facts = [], source, factTypes = []) {
+  const types = new Set(factTypes);
+  return facts.find((fact) => fact?.source === source && types.has(fact.factType));
+}
+
+function sourceFactHasFlag(fact, flag) {
+  return Array.isArray(fact?.reviewFlags) && fact.reviewFlags.includes(flag);
+}
+
+function applyExternalSourceRunResult(row, capture, result) {
+  const key = assetDiscoveryKey(row);
+  const sourceFacts = Array.isArray(result.sourceFacts) ? result.sourceFacts : [];
+  const stored = {
+    ...(state.sourceCaptures[key] ?? {}),
+    ...capture,
+    updatedAt: Date.now(),
+    sourceFacts,
+    sourceApiRun: {
+      ok: Boolean(result.ok),
+      mode: result.mode || "external_source_run",
+      runId: result.runId || "",
+      generatedAt: result.generatedAt || new Date().toISOString(),
+      sourceSummaries: Array.isArray(result.sourceSummaries) ? result.sourceSummaries : [],
+      blockers: Array.isArray(result.blockers) ? result.blockers : [],
+      message: result.message || ""
+    }
+  };
+  const taxStatus = sourceFactByType(sourceFacts, "tax_collector", ["source_status"]);
+  const taxStatusValue = taxStatus?.value && typeof taxStatus.value === "object" ? taxStatus.value : {};
+  if (sourceFactHasFlag(taxStatus, "TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED") || taxStatusValue.mode === "browser_workflow_required") {
+    setNestedValue(stored, "taxReceipt.status", "browser_workflow_required");
+    setNestedValue(stored, "taxReceipt.sourceBlockedReason", taxStatusValue.note || "Open the Tax Collector listing page and capture the receipt link shown in the bottom-right corner.");
+  }
+  if (taxStatusValue.listingUrl && !stored.taxReceipt?.listingUrl) setNestedValue(stored, "taxReceipt.listingUrl", taxStatusValue.listingUrl);
+  if (taxStatusValue.receiptUrl) {
+    setNestedValue(stored, "taxReceipt.receiptLink", taxStatusValue.receiptUrl);
+    setNestedValue(stored, "taxReceipt.status", "receipt_link_captured");
+  }
+  const receiptLinkFact = sourceFactByType(sourceFacts, "tax_collector", ["tax_receipt_link"]);
+  if (receiptLinkFact?.value) {
+    setNestedValue(stored, "taxReceipt.receiptLink", receiptLinkFact.value);
+    setNestedValue(stored, "taxReceipt.status", "receipt_link_captured");
+  }
+  const propertySourceFact = sourceFactByType(sourceFacts, "property_appraiser", ["source_search_url"]);
+  if (propertySourceFact?.value && !stored.propertyAppraiser?.sourceUrl) setNestedValue(stored, "propertyAppraiser.sourceUrl", propertySourceFact.value);
+  const mailingFact = sourceFactByType(sourceFacts, "property_appraiser", ["mailing_address", "mailing_address_signal"]);
+  if (mailingFact?.value && !stored.propertyAppraiser?.mailingAddress) setNestedValue(stored, "propertyAppraiser.mailingAddress", mailingFact.value);
+  state.sourceCaptures[key] = stored;
+}
+
 function idiCoreCredentialStatus(connection = connectionByName("IDI Core")) {
   const api = connection?.api || {};
   if (state.idiCoreUserApiKey) {
@@ -16422,6 +16535,52 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
       addShellEvent("Source capture saved locally", error instanceof Error ? error.message : "Server capture failed; local evidence remains visible.", "blocked", true);
     }
     rerenderAssetDiscoverySurface();
+  });
+
+  content.querySelector("[data-run-source-search]")?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    const button = event.currentTarget;
+    const payload = collectSourceCapturePayload(content, row);
+    const key = assetDiscoveryKey(row);
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    state.sourceCaptures[key] = {
+      ...(state.sourceCaptures[key] ?? {}),
+      ...payload,
+      updatedAt: Date.now()
+    };
+    try {
+      const result = await postJson("/api/discovery/external-source-run", externalSourceRunPayload(row, payload, key));
+      applyExternalSourceRunResult(row, payload, result);
+      const summaries = Array.isArray(result.sourceSummaries) ? result.sourceSummaries : [];
+      const factSources = summaries.filter((summary) => Number(summary.factCount) > 0).length;
+      const blockers = Array.isArray(result.blockers) ? result.blockers.length : 0;
+      addShellEvent(
+        "Source search ran",
+        `${factSources} county/source check${factSources === 1 ? "" : "s"} returned evidence. ${blockers ? `${blockers} review item${blockers === 1 ? "" : "s"} remain visible in Doc Prep.` : "No source blockers returned."}`,
+        blockers ? "blocked" : "ready",
+        true
+      );
+    } catch (error) {
+      state.sourceCaptures[key] = {
+        ...(state.sourceCaptures[key] ?? {}),
+        sourceApiRun: {
+          ok: false,
+          mode: "external_source_run",
+          runId: "",
+          generatedAt: new Date().toISOString(),
+          sourceSummaries: [],
+          blockers: [error instanceof Error ? error.message : "Source search could not run."],
+          message: "Source search could not run. Keep Discovery blocked until the county source checks are reviewed."
+        },
+        updatedAt: Date.now()
+      };
+      addShellEvent("Source search blocked", error instanceof Error ? error.message : "The source search could not run.", "blocked", true);
+    } finally {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      rerenderAssetDiscoverySurface();
+    }
   });
 
   content.querySelector("[data-import-idi]")?.addEventListener("click", async (event) => {
@@ -20105,6 +20264,16 @@ function syncRailTabs() {
   });
 }
 
+function scrollDocPrepDeepLinkSection(section = "") {
+  const target = section === "source-capture"
+    ? document.querySelector(".asset-capture-grid")?.closest(".rail-card")
+    : section === "source-search"
+      ? document.querySelector("[data-run-source-search]")?.closest(".rail-card")
+      : null;
+  if (!target) return;
+  target.scrollIntoView({ block: "start", behavior: "auto" });
+}
+
 function setRailOpen(open, source = null) {
   state.railOpen = open;
   const rail = document.getElementById("researchRail");
@@ -22604,7 +22773,8 @@ loadSavedState();
 applyNucleoIcons();
 wireEvents();
 setRailOpen(false);
-const initialViewParam = new URLSearchParams(window.location.search).get("view");
+const initialUrlParams = new URLSearchParams(window.location.search);
+const initialViewParam = initialUrlParams.get("view");
 const initialView = productViews.includes(initialViewParam) ? initialViewParam : "dossiers";
 document.querySelectorAll("[data-shell-nav]").forEach((item) => {
   const isSelected = item.dataset.shellNav === initialView;
@@ -22613,12 +22783,26 @@ document.querySelectorAll("[data-shell-nav]").forEach((item) => {
   item.classList.toggle("sidebar-selected-glass", isSelected);
 });
 setActiveShellView(initialView, activeViewLabel(initialView));
+if (initialView === "dossiers" && initialUrlParams.get("docprep") === "estate") {
+  state.docPrepListOpen = false;
+  state.discoveryOpen = false;
+  state.railMode = "dossier";
+  state.railTab = ["flow", "timeline", "docs"].includes(initialUrlParams.get("railTab")) ? initialUrlParams.get("railTab") : "flow";
+  renderCurrentLoopView();
+  renderRail();
+  setRailOpen(initialUrlParams.get("rail") !== "closed");
+  if (initialUrlParams.get("section")) {
+    window.setTimeout(() => scrollDocPrepDeepLinkSection(initialUrlParams.get("section")), 200);
+  }
+}
 loadSession();
 loadRun();
-walkthroughAutoTimer = window.setTimeout(() => {
-  walkthroughAutoTimer = null;
-  if (storageGetItem(walkthroughStateKey) !== "true") openWalkthrough(0);
-}, 700);
+if (initialUrlParams.get("walkthrough") !== "off") {
+  walkthroughAutoTimer = window.setTimeout(() => {
+    walkthroughAutoTimer = null;
+    if (storageGetItem(walkthroughStateKey) !== "true") openWalkthrough(0);
+  }, 700);
+}
 </script>
 </body>
 </html>
