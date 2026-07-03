@@ -37,7 +37,7 @@ type SourceFact = {
 | Source | Friday posture | Primary inputs | Output facts | Blocker behavior |
 | --- | --- | --- | --- | --- |
 | Miami-Dade Property Appraiser | Live app reachability + public search URL; structured extraction where feasible | address, owner, folio | source status, search URL, seed address/owner/folio/county facts | `SOURCE_HEALTH_ONLY`, `MISSING_PROPERTY_FACT`, source refs |
-| Miami-Dade Tax Collector | Guarded listing-page receipt client implemented for explicit receipt links, supplied listing HTML, direct listing URLs, and configured listing URL templates; public GovHub entry currently returns a Cloudflare/browser-workflow blocker | folio, address, owner, listing page URL | acquisition status, receipt link, receipt artifact/link, paid date, payer identity, unpaid years, amount due, reassessment/status notes | block until bottom-right receipt link is captured or the browser-workflow/source blocker is preserved |
+| Miami-Dade Tax Collector | Guarded listing-page receipt client implemented for explicit receipt links, supplied listing HTML, direct listing URLs, and configured listing URL templates; source-capture now saves `browser_workflow_required` blockers; public GovHub entry currently returns a Cloudflare/browser-workflow blocker | folio, address, owner, listing page URL | acquisition/source status, receipt link, receipt artifact/link, paid date, payer identity, unpaid years, amount due, reassessment/status notes | block until bottom-right receipt link is captured or the browser-workflow/source blocker is preserved |
 | Miami-Dade Official Records / Clerk | Live app reachability + title/deed source capture; browser/API extraction next | owner, address, folio, OR book/page | official-record source, deed attachment/link, OR book/page, recording date, grantor/grantee, title friction | `MISSING_TITLE_FACT`, source refs |
 | Landing/intake | Local dry-run seed | address, owner, county, folio | intake seed fact | missing fields become review flags |
 | Podio | Dry-run only unless config exists | raw dossier | CRM payload fact | missing credentials block live sync |
@@ -60,6 +60,15 @@ The workflow PDF expands the source plan beyond the Friday public-source slice. 
 | Voter/professional/license/incarceration records | Manual/public target | name, DOB, address | possible address/status signal | Do not use without source policy review |
 | Code enforcement / door knock / neighbor research | Manual-only | property address, case details | manual task, photos/notes, officer contact | Never automate external contact by default |
 | IDI / Intelius / Ancestry / ForeWarn / VitalChek / PI | Paid/manual source | identity, address, DOB/DOD | contact/address/family tree evidence | Requires client credentials and storage approval |
+
+## Tax Collector Automation Decision
+
+Use the smallest reliable path that preserves the workflow packet:
+
+1. Script path first when the app already has an explicit receipt link, supplied listing HTML, direct listing URL, configured listing URL template, or stable endpoint discovered from browser observation.
+2. Browserbase or controlled Chrome path when the public GovHub search/listing workflow requires JavaScript, cookies, Cloudflare, or interactive navigation.
+3. Promote any stable network endpoint observed during browser workflow back into the deterministic script client.
+4. When neither path can capture the bottom-right receipt link, save `source_status.mode = browser_workflow_required` or `listing_page_no_receipt` and keep Discovery blocked. Do not leave payer/receipt fields blank without an operator-visible reason.
 
 ## SourceRef Rule
 
@@ -114,7 +123,7 @@ Stop and report a blocker instead of forcing source extraction when:
 6. Internal summary document packet.
 7. Dashboard/intake and Friday handoff.
 8. Workflow rule engine for disqualifications and review-required states.
-9. Tax Collector search/listing client that lands on the listing page and extracts the bottom-right receipt link; direct listing/template path is implemented, browser-workflow capture remains for GovHub/Cloudflare.
+9. Tax Collector search/listing client that lands on the listing page and extracts the bottom-right receipt link; direct listing/template path and saved browser-workflow blockers are implemented, Browserbase/Chrome capture remains for GovHub/Cloudflare.
 10. Tax/deed depth adapters.
 11. Probate/heirship research queue.
 12. Paid/manual source governance.

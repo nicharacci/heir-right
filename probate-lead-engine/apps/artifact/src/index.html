@@ -11886,7 +11886,7 @@ function assetPhaseComplete(row, phaseId) {
     capture.taxReceipt?.receiptLink
     || capture.taxReceipt?.sourceUrl
     || (capture.taxReceipt?.listingUrl && capture.taxReceipt?.status === "unavailable_after_listing_check")
-  );
+  ) && capture.taxReceipt?.status !== "browser_workflow_required";
   if (phaseId === "deed") return Boolean(
     (capture.deed?.sourceUrl || capture.deed?.documentUrl || capture.deed?.fileName)
     && (capture.deed?.instrument || capture.deed?.instrumentNumber || capture.deed?.book || capture.deed?.page)
@@ -16187,7 +16187,7 @@ function assetCaptureFormHtml(row = selectedRow()) {
         <div class="field"><label>Paid date</label><input data-source-capture-field="taxReceipt.paidDate" value="${escapeHtml(capture.taxReceipt?.paidDate ?? "")}" placeholder="Date shown on receipt"></div>
         <div class="field"><label>Amount due</label><input data-source-capture-field="taxReceipt.amountDue" value="${escapeHtml(capture.taxReceipt?.amountDue ?? "")}" placeholder="$0.00 or amount from record"></div>
         <div class="field"><label>Unpaid years</label><input data-source-capture-field="taxReceipt.unpaidYears" value="${escapeHtml(capture.taxReceipt?.unpaidYears ?? "")}" placeholder="Example: 2024, 2025"></div>
-        <div class="field"><label>Receipt status</label><select data-source-capture-field="taxReceipt.status"><option value="">Needs review</option><option value="receipt_link_captured" ${capture.taxReceipt?.status === "receipt_link_captured" ? "selected" : ""}>Receipt link captured</option><option value="paid_receipt_reviewed" ${capture.taxReceipt?.status === "paid_receipt_reviewed" ? "selected" : ""}>Paid receipt reviewed</option><option value="unavailable_after_listing_check" ${capture.taxReceipt?.status === "unavailable_after_listing_check" ? "selected" : ""}>Unavailable after listing check</option></select></div>
+        <div class="field"><label>Receipt status</label><select data-source-capture-field="taxReceipt.status"><option value="">Needs review</option><option value="receipt_link_captured" ${capture.taxReceipt?.status === "receipt_link_captured" ? "selected" : ""}>Receipt link captured</option><option value="paid_receipt_reviewed" ${capture.taxReceipt?.status === "paid_receipt_reviewed" ? "selected" : ""}>Paid receipt reviewed</option><option value="browser_workflow_required" ${capture.taxReceipt?.status === "browser_workflow_required" ? "selected" : ""}>Browser workflow blocked</option><option value="unavailable_after_listing_check" ${capture.taxReceipt?.status === "unavailable_after_listing_check" ? "selected" : ""}>Unavailable after listing check</option></select></div>
         <div class="field full"><label>Official Records search page</label><input data-source-capture-field="deed.sourceUrl" value="${escapeHtml(capture.deed?.sourceUrl ?? "")}" placeholder="Official Records search/result URL"></div>
         <div class="field"><label>Deed OR / instrument</label><input data-source-capture-field="deed.instrument" value="${escapeHtml(capture.deed?.instrument ?? capture.deed?.instrumentNumber ?? "")}" placeholder="OR book/page or instrument"></div>
         <div class="field"><label>Recorded deed file</label><input data-source-capture-field="deed.documentUrl" value="${escapeHtml(capture.deed?.documentUrl ?? capture.deed?.fileName ?? "")}" placeholder="PDF/link for the latest recorded deed"></div>
@@ -16217,6 +16217,7 @@ function assetCaptureFormHtml(row = selectedRow()) {
         <div class="field"><label>Date of death</label><input data-source-capture-field="obituary.dateOfDeath" value="${escapeHtml(capture.obituary?.dateOfDeath ?? "")}" placeholder="DOD from obituary/vital source"></div>
         <div class="field"><label>Marriage/license signal</label><input data-source-capture-field="obituary.marriageLicenseSignal" value="${escapeHtml(capture.obituary?.marriageLicenseSignal ?? "")}" placeholder="Spouse/marriage signal or absent"></div>
         <div class="field"><label>Death certificate</label><input data-source-capture-field="obituary.deathCertificateStatus" value="${escapeHtml(capture.obituary?.deathCertificateStatus ?? "")}" placeholder="Requested, obtained, missing"></div>
+        <div class="field full"><label>Tax source blocker note</label><textarea data-source-capture-field="taxReceipt.sourceBlockedReason" placeholder="Use when the Tax Collector listing page needs a browser workflow, is blocked, or the receipt link cannot be reached from the public result.">${escapeHtml(capture.taxReceipt?.sourceBlockedReason ?? capture.taxReceipt?.blocker ?? "")}</textarea></div>
         <div class="field full"><label>Listing page HTML / source note</label><textarea data-source-capture-field="taxReceipt.listingHtml" placeholder="Optional: paste the Tax Collector listing page source if browser-to-api discovery needs to parse the receipt link.">${escapeHtml(capture.taxReceipt?.listingHtml ?? "")}</textarea></div>
         <div class="field full"><label>Official Records notes</label><textarea data-source-capture-field="deed.note" placeholder="Owner-chain, title, mortgage, lien, or filing notes from Official Records.">${escapeHtml(capture.deed?.note ?? "")}</textarea></div>
         <div class="field full"><label>Obituary / vital notes</label><textarea data-source-capture-field="obituary.googleNote" placeholder="Record obituary, memorial, vital, or reviewed-not-found source notes.">${escapeHtml(capture.obituary?.googleNote ?? "")}</textarea></div>
@@ -16784,6 +16785,8 @@ function sourceCaptureEvidenceRows(row) {
   const idi = idiImportForRow(row);
   const rows = [
     ["Tax Collector listing page", sourceArtifactLink("Listing page", capture.taxReceipt?.listingUrl)],
+    ["Tax Collector source status", escapeHtml(capture.taxReceipt?.status === "browser_workflow_required" ? "Browser workflow blocked" : capture.taxReceipt?.status || "Needs review")],
+    ["Tax Collector blocker", escapeHtml(capture.taxReceipt?.sourceBlockedReason || capture.taxReceipt?.blocker || "None recorded")],
     ["Tax receipt link", sourceArtifactLink("Tax Collector receipt", capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName)],
     ["Tax paid by", escapeHtml(capture.taxReceipt?.paidBy || "Needs review")],
     ["Tax paid date", escapeHtml(capture.taxReceipt?.paidDate || "Needs review")],
@@ -17073,6 +17076,8 @@ function taxHistoryHtml(row, dossier) {
       <tr><th>Property</th><td>${escapeHtml(row?.address ?? "Needs review")}</td></tr>
       <tr><th>Folio / parcel</th><td>${escapeHtml(row?.parcel ?? "Needs review")}</td></tr>
       <tr><th>Listing page</th><td>${sourceArtifactLink("Tax Collector listing", capture.taxReceipt?.listingUrl)}</td></tr>
+      <tr><th>Source status</th><td>${escapeHtml(capture.taxReceipt?.status === "browser_workflow_required" ? "Browser workflow blocked" : capture.taxReceipt?.status || "Needs review")}</td></tr>
+      <tr><th>Source blocker</th><td>${escapeHtml(capture.taxReceipt?.sourceBlockedReason || capture.taxReceipt?.blocker || "None recorded")}</td></tr>
       <tr><th>Receipt link</th><td>${sourceArtifactLink("Tax Collector receipt", capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl || capture.taxReceipt?.fileName)}</td></tr>
       <tr><th>Last paid by</th><td>${escapeHtml(capture.taxReceipt?.paidBy || "Needs review")}</td></tr>
       <tr><th>Paid date</th><td>${escapeHtml(capture.taxReceipt?.paidDate || "Needs review")}</td></tr>

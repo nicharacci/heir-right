@@ -15,7 +15,8 @@ Prepare the non-Doc Prep surfaces for team shipping after S29 and S30 prove the 
 
 - [ ] Settings covers team access, allowed domains, integration status/reconnect, API/webhook controls, activity/audit log, templates, and source/enrichment controls.
 - [ ] Settings clearly separates IDI operator portal access from backend API access, shows whether the shared default IDI API endpoint/key is configured, and keeps personal pasted keys as per-user overrides only.
-- [ ] Settings exposes source automation readiness for Property Appraiser, Tax Collector receipt, Official Records, Probate Court, obituary/vital review, and any Browserbase fallback credentials without implying unproven automation.
+- [ ] Settings exposes source automation readiness for Property Appraiser, Tax Collector receipt, Official Records, Probate Court, obituary/vital review, and Browserbase/Chrome fallback credentials without implying unproven automation.
+- [ ] Settings explains that Tax Collector uses script capture for direct listing/template paths and browser workflow for GovHub/Cloudflare/public-search blockers.
 - [ ] Outreach does not expose the ActivePieces builder as the user-facing UX.
 - [ ] Outreach shows stage/review/approve/sync/send states with no-send guardrails.
 - [ ] Every Outreach button either works or clearly explains the blocker.

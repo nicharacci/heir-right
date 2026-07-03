@@ -160,9 +160,46 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
 - Live pipeline proof preserved that blocker in dossier facts and in `taxHistory.manualReceiptTask.reason`.
 - Completed lead report flag rendering now converts `TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED` to `Tax Collector browser workflow required`.
 
+## Seventh Repair Pass: Saved Browser-Workflow Blocker
+
+- Upgraded every `/api/discovery/source-capture` fallback path so Tax Collector source status is saved as a first-class `source_status` fact, not only implied by a missing receipt link:
+  - local artifact server fallback;
+  - serverless artifact API fallback;
+  - Cloudflare worker route.
+- Added a Doc Prep receipt status option for `Browser workflow blocked` and a plain-language `Tax source blocker note` field.
+- Kept the Tax Collector phase incomplete when `browser_workflow_required` is selected, even if a listing URL is present.
+- Added Tax Collector source status/blocker rows to the Discovery evidence table and Tax History packet.
+- Route proof on `http://localhost:4176/api/discovery/source-capture` with a browser-blocked GovHub payload returned:
+  - `mode: source_review`;
+  - `source_status.value.mode: browser_workflow_required`;
+  - `source_status.value.ok: false`;
+  - `SOURCE_BLOCKED`, `TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED`, `TAX_COLLECTOR_LISTING_PAGE_REQUIRED`, `TAX_RECEIPT_LINK_REQUIRED`, `HUMAN_REVIEW_REQUIRED`, `NO_ENRICHMENT_RUN`.
+- Route proof with a listing-page HTML fixture still returned:
+  - `source_status.value.mode: listing_page_bottom_right`;
+  - `source_status.value.ok: true`;
+  - `receiptUrl: https://miamidade.county-taxes.test/receipts/2025-paid.pdf`;
+  - `tax_receipt_link` with `TAX_RECEIPT_LINK_CAPTURED`.
+- Chrome proof through system Chrome confirmed the rendered Doc Prep controls include:
+  - the `browser_workflow_required` receipt status option;
+  - the `taxReceipt.sourceBlockedReason` blocker field;
+  - the `taxReceipt.status` select;
+  - no console/page errors.
+- Served bundle proof confirmed:
+  - `Preview` present;
+  - `Live packet preview` absent;
+  - `pdf-packet-card` and `pdf-packet-frame` present;
+  - Tax Collector blocker/receipt copy present.
+
+## Automation Decision: Script First, Browser Workflow When Required
+
+- Deterministic script remains the right path when the app has a direct Tax Collector listing URL, supplied listing HTML, explicit receipt link, or a stable discovered endpoint.
+- Browserbase or controlled Chrome workflow is required for GovHub/public-search navigation when the public entry returns JavaScript/Cloudflare/browser challenges.
+- If browser observation exposes stable API calls behind the listing page, promote those calls into the deterministic script client.
+- Until that is proven, the app must save `browser_workflow_required` as a source blocker and keep Discovery incomplete instead of silently leaving receipt/payer fields blank.
+
 ## Next Work
 
-- Capture the real Tax Collector browser workflow with Browserbase or Playwright/Chrome, then either configure a stable listing URL template or keep the browser-run fallback as the production acquisition method.
+- Capture the real Tax Collector browser workflow with Browserbase or controlled Chrome, then either configure a stable listing URL template or keep the browser-run fallback as the production acquisition method.
 - If browser observation exposes stable API calls behind GovHub, move them into the deterministic script client.
 - Rerun S30 demos against the corrected S29 source contracts before treating S30 as final client acceptance proof.
 - Continue source-backed treatment for marriage/death, offender/professional-license, voter/license, field/neighbor/code-enforcement, and paid/manual research tasks as explicitly human-required or approval-gated.

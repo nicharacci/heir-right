@@ -14,7 +14,7 @@ Show both Doc Prep flows end to end after the corrected S29 source contracts pas
 ## Acceptance Criteria
 
 - [ ] Discovery and Closing Prep stream visibly in the rail from the corrected S29 artifact state.
-- [ ] Discovery demo exercises the Tax Collector listing-page receipt capture, including the bottom-right receipt link or explicit unavailable-after-check blocker.
+- [ ] Discovery demo exercises the Tax Collector listing-page receipt capture, including the bottom-right receipt link, saved browser-workflow blocker, or explicit unavailable-after-check blocker.
 - [ ] Discovery demo shows the IDI API state honestly: live paid proof only when backend API is configured; otherwise operator-import or exact blocker.
 - [ ] Section jump control scrolls smoothly to packet sections.
 - [ ] `Option+Up` and `Option+Down` cycle sections without moving focus unpredictably.
@@ -30,7 +30,7 @@ Show both Doc Prep flows end to end after the corrected S29 source contracts pas
 - Run the Discovery Doc Prep demo.
 - Run the Closing Prep demo.
 - Watch a document stream into the rail.
-- Confirm Tax Collector receipt, deed/title, probate/court, and IDI sections visibly stream or block for source evidence.
+- Confirm Tax Collector receipt, saved browser-workflow blocker, deed/title, probate/court, and IDI sections visibly stream or block for source evidence.
 - Jump sections with the quick access control.
 - Cycle sections with `Option+Up` and `Option+Down`.
 - Confirm no placeholder text or fake-file proof is visible.

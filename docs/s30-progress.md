@@ -43,5 +43,6 @@ Make Doc Prep visibly stream real Discovery and Closing Prep packet sections, ad
 
 ## Required Rerun Before Final Acceptance
 - Discovery streaming must show Tax Collector listing-page receipt capture, bottom-right receipt link preservation, deed/title source evidence, probate/court source evidence, obituary/vital review, IDI operator import or exact API blocker, and contact review.
+- If the Tax Collector public-search route is browser-blocked, the S30 demo must show the saved `Browser workflow blocked` status and blocker note streaming into the preview instead of presenting blank receipt/payer fields as incomplete-but-unexplained.
 - Closing Prep streaming must start from the reviewed Discovery File and block on missing required seller/client/template fields without editing legal template language.
 - Preview proof must confirm the header says `Preview`, no `Live packet preview` wording remains, and the PDF/stream preview is visually contained inside its rail card on desktop and mobile.

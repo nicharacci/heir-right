@@ -539,6 +539,33 @@ function sourceFactsFromCapture(runId: string, seed: IntakeSeed, capture: Record
   const receiptDiscovery = discoverTaxCollectorReceipt(taxReceipt);
   const receiptUrl = receiptDiscovery?.receiptUrl || stringValue(taxReceipt.receiptUrl) || stringValue(taxReceipt.receiptLink);
   const listingUrl = receiptDiscovery?.listingUrl || stringValue(taxReceipt.listingUrl) || stringValue(taxReceipt.sourceUrl);
+  const taxReceiptStatus = stringValue(taxReceipt.status);
+  const browserWorkflowRequired = taxReceipt.browserWorkflowRequired === true || taxReceiptStatus === "browser_workflow_required";
+  const taxSourceBlockedReason = stringValue(taxReceipt.sourceBlockedReason) || stringValue(taxReceipt.blocker) || stringValue(taxReceipt.browserWorkflowReason);
+  const taxSourceStatus = compactObject({
+    mode: browserWorkflowRequired
+      ? "browser_workflow_required"
+      : receiptUrl
+        ? receiptDiscovery?.mode || "receipt_link_captured"
+        : taxReceiptStatus === "unavailable_after_listing_check"
+          ? "listing_page_no_receipt"
+          : listingUrl
+            ? "listing_page_review"
+            : undefined,
+    ok: Boolean(receiptUrl),
+    listingUrl,
+    receiptUrl,
+    note: browserWorkflowRequired
+      ? taxSourceBlockedReason || "Tax Collector public search needs a browser workflow before the listing-page receipt link can be captured."
+      : taxReceiptStatus === "unavailable_after_listing_check"
+        ? taxSourceBlockedReason || "Tax Collector listing page was checked and no bottom-right receipt link was available."
+        : undefined,
+  });
+  const taxSourceStatusFlags = browserWorkflowRequired
+    ? ["SOURCE_BLOCKED", "TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED", "TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"] as ReviewFlag[]
+    : receiptUrl
+      ? receiptDiscovery?.reviewFlags ?? ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"] as ReviewFlag[]
+      : ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"] as ReviewFlag[];
   const receiptAttachment = receiptUrl ? {
     label: "Tax Collector receipt",
     sourceUrl: receiptUrl,
@@ -547,6 +574,7 @@ function sourceFactsFromCapture(runId: string, seed: IntakeSeed, capture: Record
     capturedBy: "source-capture",
     reviewFlags: receiptDiscovery?.reviewFlags ?? ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"],
   } satisfies SourceAttachmentRef : undefined;
+  addFact("tax_collector", "source_status", taxSourceStatus, listingUrl || receiptUrl, undefined, taxSourceStatusFlags);
   addFact("tax_collector", "tax_last_paid_by", taxReceipt.paidBy, listingUrl || receiptUrl);
   addFact("tax_collector", "tax_payer_identity", taxReceipt.paidBy || taxReceipt.payerIdentity, listingUrl || receiptUrl);
   addFact("tax_collector", "tax_paid_date", taxReceipt.paidDate, listingUrl || receiptUrl);

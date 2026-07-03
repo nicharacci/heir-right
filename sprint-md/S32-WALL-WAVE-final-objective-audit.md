@@ -15,7 +15,7 @@ Audit the full HeirRight project against the hired workflow packets, sprint brie
 
 - [ ] Every hired workflow objective is marked automated, human-required, blocked, or intentionally out of scope.
 - [ ] Every completion claim has a route output, browser proof, PDF inspection, or explicit blocker.
-- [ ] Tax Collector listing-page receipt capture is verified with a visible receipt link or exact unavailable-after-check blocker.
+- [ ] Tax Collector listing-page receipt capture is verified with a visible receipt link, exact saved browser-workflow blocker, or exact unavailable-after-check blocker.
 - [ ] IDI proof distinguishes shared backend API, personal override, operator portal import, and missing-vendor blocker.
 - [ ] Discovery and Closing Prep PDFs open as single artifacts.
 - [ ] Outreach safety gates are verified.
