@@ -850,6 +850,26 @@ function sourceFactValuePresent(value) {
   return true;
 }
 
+function sourceFactHasBlockingFlag(fact) {
+  return (fact.reviewFlags || []).some((flag) =>
+    flag === "SOURCE_HEALTH_ONLY"
+      || flag === "SOURCE_BLOCKED"
+      || flag === "PAID_SOURCE_APPROVAL_REQUIRED"
+      || flag === "TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED"
+      || flag === "MISSING_SKIPTRACE_CONFIG"
+      || String(flag).startsWith("MISSING_")
+  );
+}
+
+function sourceEvidenceFacts(facts = []) {
+  return facts.filter((fact) =>
+    sourceFactValuePresent(fact.value)
+      && fact.factType !== "source_status"
+      && fact.factType !== "source_search_url"
+      && !sourceFactHasBlockingFlag(fact)
+  );
+}
+
 function sourceRunSeedFromBody(body = {}) {
   const seed = body.seed && typeof body.seed === "object" ? body.seed : {};
   const capture = body.capture && typeof body.capture === "object" ? body.capture : body;
@@ -876,16 +896,12 @@ function summarizeSourceRunFacts(sourceFacts) {
     const flags = [...new Set(facts.flatMap((fact) => fact.reviewFlags || []))];
     const sourceStatusFact = facts.find((fact) => fact.factType === "source_status")
       || facts.find((fact) => String(fact.factType || "").endsWith("_status"));
-    const extractedFacts = facts.filter((fact) =>
-      sourceFactValuePresent(fact.value)
-      && !(fact.reviewFlags || []).includes("SOURCE_HEALTH_ONLY")
-      && !(fact.reviewFlags || []).some((flag) => String(flag).startsWith("MISSING_"))
-    );
+    const extractedFacts = sourceEvidenceFacts(facts);
     const blocked = flags.includes("SOURCE_BLOCKED")
       || flags.includes("TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED")
       || flags.includes("PAID_SOURCE_APPROVAL_REQUIRED")
       || flags.includes("MISSING_SKIPTRACE_CONFIG");
-    const status = blocked ? "blocked" : extractedFacts.length ? "partial" : "needs_review";
+    const status = blocked && !extractedFacts.length ? "blocked" : extractedFacts.length ? "partial" : "needs_review";
     return {
       source: item.source,
       label: item.label,
@@ -1085,6 +1101,74 @@ function sourceDetailChecks(source, sourceFacts = []) {
   return checks;
 }
 
+const detailEvidenceFactTypes = {
+  owner_type: ["owner_type", "property_owner", "property_folio"],
+  mailing_address: ["mailing_address", "mailing_address_signal"],
+  tax_search: ["tax_history_status", "tax_receipt_status", "tax_receipt_link"],
+  listing_page: ["tax_receipt_status", "tax_receipt_link"],
+  bottom_right_receipt: ["tax_receipt_link", "tax_receipt_attachment"],
+  payer_review: ["tax_last_paid_by", "tax_payer_identity", "tax_paid_date", "tax_amount_due", "unpaid_tax_years", "tax_reassessment_signal"],
+  latest_deed: ["latest_deed", "deed_attachment", "or_book_page"],
+  title_friction: ["title_signal", "ownership_activity_note", "mortgage_signal", "lien_signal", "lis_pendens_signal", "foreclosure_signal", "adverse_possession_signal"],
+  recent_sale_stop: ["last_sale_date"],
+  case_lookup: ["case_number", "probate_case_status", "civil_family_docket_ref", "probate_docket_status"],
+  affidavit_documents: ["affidavit_of_heirs_status", "probate_document_availability"],
+  or_cross_link: ["official_record_cross_link"],
+  obituary_search: ["obituary_link", "obituary_snapshot", "marriage_death_status", "memorial_search_tasks"],
+  vital_indicators: ["date_of_birth", "date_of_death", "marriage_license_signal", "death_certificate_status", "incarceration_status_signal"],
+  idi_access_mode: ["idi_asset_search_status", "idi_asset_report_attachment"],
+  idi_paid_run_approval: ["idi_asset_search_status"],
+  idi_duplicate_guard: ["idi_asset_search_status"],
+  idi_report_import: ["idi_asset_search_status", "idi_asset_report_attachment"],
+  idi_contact_review: ["primary_contact_profile", "alternative_contact_profile"],
+  skiptrace_provider_access: ["skip_trace_status"],
+  skiptrace_contact_review: ["enriched_contact_profile"],
+};
+
+function sourceStatusEvidence(source, code, facts = []) {
+  const statuses = facts.filter((fact) =>
+    fact.source === source
+      && fact.factType === "source_status"
+      && sourceFactValuePresent(fact.value)
+  );
+  return statuses.filter((fact) => {
+    if (sourceFactHasBlockingFlag(fact)) return false;
+    const value = fact.value && typeof fact.value === "object" ? fact.value : {};
+    if (code === "tax_search" || code === "listing_page") return Boolean(value.listingUrl || value.receiptUrl || value.ok);
+    if (code === "case_lookup") return Boolean(value.caseStatus || value.caseType || value.docketCount || value.ok);
+    return Boolean(value.ok);
+  });
+}
+
+function satisfiedEvidenceForCheck(source, check, sourceFacts = []) {
+  const codes = detailEvidenceFactTypes[check.code] || [];
+  const facts = sourceFacts.filter((fact) => fact.source === source);
+  const byFactType = facts.filter((fact) =>
+    codes.includes(fact.factType)
+      && sourceFactValuePresent(fact.value)
+      && !sourceFactHasBlockingFlag(fact)
+  );
+  const statusFacts = sourceStatusEvidence(source, check.code, facts);
+  return [...byFactType, ...statusFacts].map((fact) => ({
+    factType: fact.factType,
+    sourceUrl: fact.sourceUrl || fact.attachment?.sourceUrl || undefined,
+    rawId: fact.rawId,
+  }));
+}
+
+function applySourceDetailEvidence(source, check, sourceFacts = []) {
+  const satisfiedBy = satisfiedEvidenceForCheck(source, check, sourceFacts);
+  if (!satisfiedBy.length) return check;
+  return {
+    ...check,
+    status: "evidence_returned_review_required",
+    resolved: true,
+    satisfiedFactTypes: [...new Set(satisfiedBy.map((fact) => fact.factType))],
+    satisfiedBy,
+    legalTemplateAutofillAllowed: false,
+  };
+}
+
 function detailCheckBlocks(check) {
   const status = String(check?.status || "");
   return Boolean(check?.blocksUntilCaptured)
@@ -1109,7 +1193,7 @@ function sourceRunProofLedger(sourceSummaries, sourceFacts = []) {
       extractedFactTypes: summary.extractedFactTypes,
       reviewFlags: summary.reviewFlags,
       nextAction: summary.nextAction,
-      detailChecks: sourceDetailChecks(source, sourceFacts),
+      detailChecks: sourceDetailChecks(source, sourceFacts).map((check) => applySourceDetailEvidence(source, check, sourceFacts)),
       legalTemplateAutofillAllowed: false,
     };
   });
@@ -1149,7 +1233,12 @@ async function handleExternalSourceRun(req, res) {
   const seed = sourceRunSeedFromBody(body);
   const { runDryPipeline } = require("../worker/dist/index");
   const pipeline = await runDryPipeline(seed, { env: process.env });
-  const sourceFacts = pipeline.facts.filter((fact) => discoverySourceLabels.some((item) => item.source === fact.source));
+  const capture = body.capture && typeof body.capture === "object" ? body.capture : body;
+  const capturedSourceFacts = localSourceFactsFromCapture({ ...capture, seed, runId: pipeline.runId });
+  const sourceFacts = [
+    ...pipeline.facts,
+    ...capturedSourceFacts,
+  ].filter((fact) => discoverySourceLabels.some((item) => item.source === fact.source));
   const sourceSummaries = summarizeSourceRunFacts(sourceFacts);
   const sourceRunProof = sourceRunProofLedger(sourceSummaries, sourceFacts);
   const blockers = [...new Set([

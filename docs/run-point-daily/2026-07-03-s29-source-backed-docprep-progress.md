@@ -693,6 +693,34 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Corrected DOM proof found 40 actual `[data-source-proof-detail]` rows and confirmed required rows for `bottom_right_receipt`, `idi_contact_review`, `skiptrace_contact_review`, and `voter_records`.
   - Browser proof found no raw env names, no fake API claim, no console errors, and no failed requests.
 
+## Thirty-First Repair Pass: Captured Evidence Resolves Source Detail Rows
+
+- Fixed the source-run proof ledger so operator-captured public-source facts are merged into the external-source run instead of living only in `/api/discovery/source-capture`.
+- Added a source-fact-to-check satisfaction layer across the artifact route, Cloudflare worker route, and local dev server route.
+- Captured evidence now resolves the specific checklist row to `evidence_returned_review_required` / visible `Evidence found` without marking Discovery complete or allowing legal-template autofill.
+- Confirmed examples:
+  - Tax Collector `tax_receipt_link` resolves `bottom_right_receipt`;
+  - Tax Collector payer/date/amount/unpaid-year facts resolve `payer_review`;
+  - Official Records deed facts resolve `latest_deed`;
+  - probate docket facts resolve `case_lookup`;
+  - obituary/vital facts resolve `vital_indicators`;
+  - IDI contact review still remains manual until accepted contacts exist.
+- Proof:
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed and reported `captured_source_facts_reduce_detail_blockers`.
+  - `pnpm --dir probate-lead-engine test`: passed.
+  - `node -c probate-lead-engine/apps/artifact/server.js`: passed.
+  - Local route proof on `http://localhost:4191/api/discovery/external-source-run` with captured tax/deed/probate/obituary evidence returned:
+    - `detailCheckCount: 40`;
+    - `blockingDetailCheckCount: 7`;
+    - `unresolvedDetailCheckCount: 7`;
+    - Tax Collector, Official Records, Probate Court, and Clerk/Vital source states as `facts_returned_review_required`;
+    - IDI and skip trace as `evidence_required`;
+    - governed manual/paid research as `blocked`;
+    - `legalTemplateAutofillAllowed: false`.
+  - Chrome DevTools proof clicked the real `Run Source Search` button on `http://localhost:4191/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture`, rendered 8 source rows and 40 detail rows, showed `Evidence found` for `bottom_right_receipt`, `latest_deed`, `case_lookup`, and `vital_indicators`, and left `idi_contact_review` as `Manual`.
+  - Browser proof found no console errors and no failed network requests.
+  - Screenshot evidence: `docs/run-point-daily/2026-07-03-s29-source-detail-browser-proof.png`.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

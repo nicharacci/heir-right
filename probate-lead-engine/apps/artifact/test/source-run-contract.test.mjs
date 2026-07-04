@@ -55,6 +55,48 @@ try {
       taxReceipt: {
         listingUrl: "https://miamidade.county-taxes.test/listing/3411330360010",
         receiptLink: "https://miamidade.county-taxes.test/receipt/2025-paid.pdf",
+        paidBy: "Estate representative",
+        paidDate: "2025-03-14",
+        amountDue: "$0.00",
+        unpaidYears: "None shown",
+      },
+      propertyAppraiser: {
+        sourceUrl: "https://www.miamidade.gov/Apps/PA/property/3411330360010",
+        mailingAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+      },
+      deed: {
+        sourceUrl: "https://onlineservices.miamidadeclerk.gov/officialrecords/deed-proof",
+        documentUrl: "https://onlineservices.miamidadeclerk.gov/officialrecords/deed-proof.pdf",
+        instrument: "2025-0012345",
+        book: "34113",
+        page: "360",
+        recordingDate: "2020-05-11",
+        documentType: "Warranty deed",
+        grantor: "Prior owner",
+        grantee: "Estate of Contract Proof",
+        lastSaleDate: "2020-05-11",
+        mortgageSignal: "No open mortgage signal in reviewed deed search.",
+        lienSignal: "No lien signal in reviewed deed search.",
+        lisPendensSignal: "No Lis Pendens signal in reviewed deed search.",
+        foreclosureSignal: "No foreclosure signal in reviewed deed search.",
+      },
+      probate: {
+        docketUrl: "https://www2.miamidadeclerk.gov/ocs/case-proof",
+        caseNumber: "2025-CP-001234",
+        caseStatus: "Open",
+        affidavitOfHeirsStatus: "Available for review",
+        documentAvailability: "Docket images available",
+        docketNumber: "2025-CP-001234",
+        caseType: "Probate",
+        officialRecordUrl: "https://onlineservices.miamidadeclerk.gov/officialrecords/deed-proof",
+      },
+      obituary: {
+        status: "found",
+        sourceUrl: "https://legacy.test/contract-proof-obituary",
+        dateOfBirth: "1942-04-10",
+        dateOfDeath: "2024-01-02",
+        marriageLicenseSignal: "Possible spouse listed in obituary.",
+        deathCertificateStatus: "Requested",
       },
     },
   });
@@ -100,8 +142,35 @@ try {
     "Tax Collector proof must expose the bottom-right receipt checklist step"
   );
   assert.ok(
+    proofBySource.get("tax_collector").detailChecks.some((check) =>
+      check.code === "bottom_right_receipt"
+        && check.status === "evidence_returned_review_required"
+        && check.satisfiedFactTypes.includes("tax_receipt_link")
+    ),
+    "Tax Collector bottom-right receipt checklist step must resolve from the captured receipt fact"
+  );
+  assert.ok(
     proofBySource.get("tax_collector").extractedFactTypes.includes("tax_receipt_link"),
     "Tax Collector proof must preserve the bottom-right receipt link fact"
+  );
+  assert.equal(proofBySource.get("official_records").proofState, "facts_returned_review_required");
+  assert.ok(
+    proofBySource.get("official_records").detailChecks.some((check) => check.code === "latest_deed" && check.status === "evidence_returned_review_required"),
+    "Official Records latest deed checklist step must resolve from captured deed evidence"
+  );
+  assert.equal(proofBySource.get("probate_court").proofState, "facts_returned_review_required");
+  assert.ok(
+    proofBySource.get("probate_court").detailChecks.some((check) => check.code === "case_lookup" && check.status === "evidence_returned_review_required"),
+    "Probate case lookup checklist step must resolve from captured docket evidence"
+  );
+  assert.equal(proofBySource.get("clerk_of_courts").proofState, "facts_returned_review_required");
+  assert.ok(
+    proofBySource.get("clerk_of_courts").detailChecks.some((check) => check.code === "vital_indicators" && check.status === "evidence_returned_review_required"),
+    "Vital indicator checklist step must resolve from captured obituary/vital evidence"
+  );
+  assert.ok(
+    result.json.sourceRunProof.unresolvedDetailCheckCount < result.json.sourceRunProof.detailCheckCount,
+    "Captured source evidence must reduce unresolved checklist items without clearing the remaining blockers"
   );
   assert.match(
     proofBySource.get("official_records").credentialGate,
@@ -234,6 +303,7 @@ try {
       "no_discovery_completion_without_blockers_cleared",
       "no_legal_template_autofill",
       "tax_receipt_link_preserved",
+      "captured_source_facts_reduce_detail_blockers",
       "source_proof_detail_checks",
       "blocking_detail_checks_gate_readiness",
       "idi_core_guardrail_detail_checks",

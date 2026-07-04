@@ -169,7 +169,7 @@ function localSourceFactsFromCapture(body) {
   return facts;
 }
 
-module.exports = async function handler(request, response) {
+async function handler(request, response) {
   if (methodGuard(request, response)) return;
 
   try {
@@ -198,4 +198,7 @@ module.exports = async function handler(request, response) {
       message: error instanceof Error ? error.message : "Source capture failed before any external write.",
     });
   }
-};
+}
+
+module.exports = handler;
+module.exports.localSourceFactsFromCapture = localSourceFactsFromCapture;

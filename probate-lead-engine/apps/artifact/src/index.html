@@ -16218,6 +16218,23 @@ function sourceProofLabel(proofState = "") {
   return "Not checked";
 }
 
+function sourceDetailTone(status = "") {
+  if (status === "evidence_returned_review_required" || status === "ready_for_review") return "review";
+  if (status === "complete" || status === "completed") return "ready";
+  if (status === "evidence_required" || status === "approval_required" || status === "manual_review_required") return "blocked";
+  return "neutral";
+}
+
+function sourceDetailLabel(status = "") {
+  if (status === "evidence_returned_review_required") return "Evidence found";
+  if (status === "ready_for_review") return "Review";
+  if (status === "complete" || status === "completed") return "Done";
+  if (status === "approval_required") return "Approval";
+  if (status === "manual_review_required") return "Manual";
+  if (status === "evidence_required") return "Needs evidence";
+  return "Check";
+}
+
 function sourceProofOperatorAction(item = {}) {
   const source = item.source || "";
   if (source === "property_appraiser") return "Review owner name, folio, mailing address, recent sale, and stop-rule signals before moving the lead forward.";
@@ -16269,7 +16286,7 @@ function sourceProofDetailChecksHtml(item = {}) {
     <ul class="source-proof-detail-list">
       ${visibleChecks.map((check) => `
         <li data-source-proof-detail="${escapeHtml(check.code || check.label || "check")}">
-          <span>${escapeHtml(check.label || displayStatus(check.code, "Check"))}</span>
+          <span>${escapeHtml(check.label || displayStatus(check.code, "Check"))} ${statusPill(sourceDetailTone(check.status), sourceDetailLabel(check.status))}</span>
           <small>${escapeHtml(check.operatorAction || "Review this source step before Discovery completion.")}</small>
         </li>
       `).join("")}

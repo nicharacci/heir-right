@@ -144,6 +144,7 @@ Stop and report a blocker instead of forcing source extraction when:
 
 - One blocked source must not fail the whole run.
 - Missing facts create visible `reviewFlags`.
+- Source-capture facts must be folded back into the external-source run proof. A captured source fact may resolve only its matching source checklist row to `Evidence found`; it must not mark Discovery complete, suppress unrelated blockers, or enable legal-template autofill.
 - Friday mode must not synthesize tax, probate, death, lien, or heirship facts.
 - Friday mode must not use enrichment or skip trace.
 - Friday mode can produce source-health facts while marking unverified property/title claims for review.
@@ -165,7 +166,8 @@ Stop and report a blocker instead of forcing source extraction when:
 11. Miami-Dade Clerk Commercial Data Services clients for Official Records by folio and Civil/Family/Probate by case number; AuthKey-gated client implemented, credentialed proof remains.
 12. Vital/obituary/marriage/death workflow API hook and direct Browserbase Function invocation via `OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID`; deployable function source exists and the hook is route-proven with a mocked Browserbase API, real controlled-browser/API source proof remains.
 13. Route-visible governed manual/paid research bucket for voter records, professional licenses, business/address associations, social profiles, deceased indicators, PI/field tasks, and paid genealogy/people-search tools.
-14. Tax/deed depth adapters.
-15. Probate/heirship research queue.
-16. Paid/manual source governance.
-17. Completed lead report and offer math payload.
+14. Source-run proof ledger satisfaction rules: captured Tax Collector receipt/payer, Property Appraiser mailing, Official Records deed/title, probate docket, and obituary/vital facts resolve only their matching checklist rows while IDI/skip/manual governance remain blocked until reviewed or approved.
+15. Tax/deed depth adapters.
+16. Probate/heirship research queue.
+17. Paid/manual source governance.
+18. Completed lead report and offer math payload.
