@@ -3768,8 +3768,8 @@
     .docprep-artifact-stream {
       --artifact-preview-height: clamp(220px, 38vh, 480px);
       gap: 12px;
-      grid-template-rows: auto auto var(--artifact-preview-height) auto;
-      min-height: calc(var(--artifact-preview-height) + 230px);
+      grid-template-rows: auto auto minmax(220px, var(--artifact-preview-height)) auto;
+      min-height: 0;
       align-content: start;
       overflow: hidden;
     }
@@ -3879,7 +3879,7 @@
     .artifact-stream-document {
       min-height: 220px;
       height: var(--artifact-preview-height);
-      max-height: none;
+      max-height: var(--artifact-preview-height);
       overflow: auto;
       display: grid;
       gap: 10px;
@@ -6701,6 +6701,7 @@
     }
 
     .source-readiness-list strong,
+    .source-proof-list strong,
     .source-run-list strong {
       display: flex;
       align-items: center;
@@ -6709,6 +6710,7 @@
     }
 
     .source-readiness-list .pill,
+    .source-proof-list .pill,
     .source-run-list .pill {
       flex: 0 0 auto;
     }
@@ -7014,7 +7016,7 @@
     }
 
     .rail-card.docprep-artifact-stream {
-      min-height: calc(var(--artifact-preview-height) + 230px);
+      min-height: 0;
       align-content: start;
       gap: 12px;
       overflow: hidden;
@@ -7022,6 +7024,7 @@
 
     .rail-card.docprep-artifact-stream .artifact-stream-document {
       min-height: 220px;
+      max-height: var(--artifact-preview-height);
     }
 
     .rail-item {
@@ -16202,6 +16205,54 @@ function sourceRunStatusLabel(status = "") {
   return "Not checked";
 }
 
+function sourceProofTone(proofState = "") {
+  if (proofState === "facts_returned_review_required") return "review";
+  if (proofState === "blocked" || proofState === "evidence_required") return "blocked";
+  return "neutral";
+}
+
+function sourceProofLabel(proofState = "") {
+  if (proofState === "facts_returned_review_required") return "Review facts";
+  if (proofState === "evidence_required") return "Needs evidence";
+  if (proofState === "blocked") return "Blocked";
+  return "Not checked";
+}
+
+function sourceProofOperatorAction(item = {}) {
+  const source = item.source || "";
+  if (source === "property_appraiser") return "Review owner name, folio, mailing address, recent sale, and stop-rule signals before moving the lead forward.";
+  if (source === "tax_collector") return item.proofState === "facts_returned_review_required"
+    ? "Confirm the Tax Collector listing and capture the bottom-right receipt link, payer, paid date, unpaid years, and reassessment notes."
+    : "Paste the Tax Collector listing page or connect the browser workflow before receipt and payer fields can count.";
+  if (source === "official_records") return "Attach the latest deed or connect Clerk commercial access before OR book/page, instrument, grantor, grantee, lien, or mortgage facts count.";
+  if (source === "probate_court") return "Attach or connect the probate, civil, or family docket before case status, affidavits of heirs, and court documents count.";
+  if (source === "clerk_of_courts") return "Review obituary, marriage-license, death-certificate, memorial, and deceased-indicator sources before DOB/DOD or spouse signals count.";
+  if (source === "idi") return "Run one approved IDI asset search or import the approved report; keep contacts review-only until accepted.";
+  if (source === "skip_trace") return "Leave skip trace off until provider access and approval are present.";
+  if (source === "source_governance") return "Review manual and paid research policy before using voter, social, license, business/address, or field findings.";
+  return item.nextAction || "Review this source before completing Discovery.";
+}
+
+function sourceRunProofHtml(run = {}) {
+  const proof = run.sourceRunProof && typeof run.sourceRunProof === "object" ? run.sourceRunProof : null;
+  const sources = Array.isArray(proof?.sources) ? proof.sources : [];
+  if (!sources.length) return "";
+  const completionCopy = proof.readyForOperatorReview
+    ? "All source buckets returned evidence for operator review. Closing Prep still waits for reviewed Discovery facts."
+    : "This run is not complete. Review the blocked and missing evidence rows before Discovery can move forward.";
+  return `
+    <p class="copy">What this run proved: ${escapeHtml(completionCopy)}</p>
+    <ul class="mini-list source-proof-list">
+      ${sources.map((item) => `
+        <li data-source-proof-row="${escapeHtml(item.source || item.label || "source")}">
+          <strong>${escapeHtml(item.label || displayStatus(item.source, "Source"))} ${statusPill(sourceProofTone(item.proofState), sourceProofLabel(item.proofState))}</strong>
+          <span>${escapeHtml(sourceProofOperatorAction(item))}</span>
+        </li>
+      `).join("")}
+    </ul>
+  `;
+}
+
 function sourceRunSummaryHtml(capture = {}) {
   const run = capture.sourceApiRun;
   if (!run) {
@@ -16225,6 +16276,7 @@ function sourceRunSummaryHtml(capture = {}) {
       `).join("") || `<li><strong>Source search</strong><span>No source checks returned yet.</span></li>`}
       ${blockers.length ? `<li><strong>Open review items</strong><span>${escapeHtml(blockers.slice(0, 3).join(" "))}</span></li>` : ""}
     </ul>
+    ${sourceRunProofHtml(run)}
   `;
 }
 

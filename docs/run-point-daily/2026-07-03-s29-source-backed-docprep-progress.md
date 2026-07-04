@@ -467,6 +467,24 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - `node --check probate-lead-engine/apps/artifact/server.js`: passed.
   - Local route proof on `http://localhost:4181/api/discovery/external-source-run` returned `sourceRunProof` with 8 sources, `allRequiredSourcesAccountedFor: true`, `readyForDiscoveryCompletion: false`, `legalTemplateAutofillAllowed: false`, `blockedCount: 3`, and `evidenceRequiredCount: 3`.
 
+## Twentieth Repair Pass: Operator-Visible Source Proof And Preview Fit
+
+- Rendered the `sourceRunProof` ledger directly inside the Doc Prep source-run result as an operator-language `What this run proved` section.
+- The proof rows now tell the operator what each source requires instead of exposing raw credential names:
+  - Property Appraiser: review owner, folio, mailing address, recent sale, and stop-rule signals.
+  - Tax Collector: confirm the listing and capture the bottom-right receipt link, payer, paid date, unpaid years, and reassessment notes.
+  - Official Records: attach the latest deed or connect Clerk commercial access before OR book/page, instrument, grantor/grantee, lien, or mortgage facts count.
+  - Probate/Civil/Family Court, vital/obituary, IDI, skip trace, and governed manual research stay review/blocker rows until evidence exists.
+- Fixed the Doc Prep artifact preview sizing so the stream card no longer forces `calc(var(--artifact-preview-height) + 230px)` and the scrollable document stays bounded by `max-height: var(--artifact-preview-height)`.
+- Confirmed the artifact preview header source text is exactly `Preview`; CSS renders it uppercase as an eyebrow, but the stale `Live packet preview` copy is absent.
+- Proof:
+  - `pnpm build`: passed.
+  - Local route proof on `http://localhost:4182/api/discovery/external-source-run` returned `sourceRunProof` with `allRequiredSourcesAccountedFor: true`, `readyForOperatorReview: false`, `blockedCount: 3`, and `evidenceRequiredCount: 3`.
+  - Served page proof found `What this run proved`, `bottom-right receipt link`, `Review owner name, folio`, `Attach the latest deed`, `Run Source Search`, and `Preview`.
+  - Headless Chromium DevTools proof loaded `http://localhost:4182/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture`, clicked the real `Run Source Search` button, and rendered 8 `source-proof-row` entries without exposing `IDI_CORE_API_KEY`, `MIAMI_DADE_CLERK_AUTH_KEY`, or `TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID` in operator copy.
+  - Headless Chromium Doc Prep preview proof clicked `Run Full Discovery`; `.docprep-artifact-stream` rendered with `minHeight: 0px`, document `height: 228px`, `maxHeight: 228px`, `overflowY: auto`, and `previewFitsCard: true`.
+  - Computer Use and Chrome AppleScript execution were not usable in this resumed session: Computer Use returned `cgWindowNotFound`, and Chrome had JavaScript-from-Apple-Events disabled. The fallback proof used the same local browser route through headless Chromium/CDP instead of code-only inspection.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.
