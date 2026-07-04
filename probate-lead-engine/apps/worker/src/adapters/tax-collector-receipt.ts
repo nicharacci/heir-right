@@ -19,6 +19,7 @@ export interface TaxCollectorReceiptCandidate {
   href: string;
   url: string;
   text: string;
+  html?: string;
   index: number;
 }
 
@@ -159,16 +160,30 @@ function anchorCandidates(html: string, baseUrl: string): TaxCollectorReceiptCan
     const fullAnchor = match[0] || "";
     const href = stringValue(match[1]);
     const text = stripTags(fullAnchor);
-    const searchable = `${href} ${text}`.toLowerCase();
-    if (!href || !/(receipt|taxbill|tax-bill|print|payment)/i.test(searchable)) continue;
+    if (!href) continue;
     candidates.push({
       href,
       url: resolveUrl(href, baseUrl),
       text: text || "Tax receipt",
+      html: fullAnchor,
       index: candidates.length,
     });
   }
   return candidates;
+}
+
+function taxReceiptCandidateScore(candidate: TaxCollectorReceiptCandidate): number {
+  const haystack = `${candidate.href} ${candidate.url} ${candidate.text}`.toLowerCase();
+  const anchorHtml = stringValue((candidate as TaxCollectorReceiptCandidate & { html?: string }).html).toLowerCase();
+  let score = 0;
+  if (/receipt|receipts/.test(haystack)) score += 12;
+  if (/tax\s*-?\s*bill|taxbill/.test(haystack)) score += 8;
+  if (/print/.test(haystack) && /(receipt|bill)/.test(haystack)) score += 6;
+  if (/payment/.test(haystack) && /(receipt|tax\s*-?\s*bill|taxbill)/.test(haystack)) score += 4;
+  if (/class=["'][^"']*(receipt|print|tax|bill|payment)[^"']*["']/.test(anchorHtml)) score += 3;
+  if (/(bottom|right|float\s*:\s*right|text-align\s*:\s*right|pull-right|align-right|justify-content\s*:\s*end|justify-content\s*:\s*flex-end)/.test(anchorHtml)) score += 5;
+  if (/history|account|login|search|privacy|terms|contact|help|faq/.test(haystack)) score -= 10;
+  return score + candidate.index / 1000;
 }
 
 export function discoverTaxCollectorReceipt(input: TaxCollectorReceiptInput): TaxCollectorReceiptDiscovery | null {
@@ -192,8 +207,11 @@ export function discoverTaxCollectorReceipt(input: TaxCollectorReceiptInput): Ta
   const html = stringValue(input.listingHtml);
   if (!html) return null;
 
-  const candidates = anchorCandidates(html, listingUrl);
-  const bottomRightCandidate = candidates.at(-1);
+  const candidates = anchorCandidates(html, listingUrl)
+    .map((candidate) => ({ ...candidate, score: taxReceiptCandidateScore(candidate) }))
+    .filter((candidate) => candidate.score > 0)
+    .sort((a, b) => b.score - a.score);
+  const bottomRightCandidate = candidates[0];
   if (!bottomRightCandidate) return null;
 
   return {

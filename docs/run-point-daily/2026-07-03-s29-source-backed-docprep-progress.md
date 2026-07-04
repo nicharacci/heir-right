@@ -539,6 +539,22 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Direct `turbo.json` proof confirmed `IDI_CORE_API_URL`, `IDI_CORE_API_KEY`, `BROWSERBASE_API_KEY`, `TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID`, `MIAMI_DADE_CLERK_AUTH_KEY`, and `OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID` are tracked.
   - `git diff --check`: passed.
 
+## Twenty-Fourth Repair Pass: Tax Collector Receipt Link Selection
+
+- Hardened the Tax Collector listing-page receipt picker across all active paths:
+  - Browserbase function helper;
+  - worker Tax Collector adapter;
+  - artifact/serverless source-capture helper.
+- The picker now scores receipt/tax-bill/print-receipt anchors and de-prioritizes footer/account/history/help links, instead of blindly taking the last payment-like link in the DOM.
+- Added fixtures where the correct bottom-right receipt link appears before a later footer `Payment history` link. This would have been brittle under the old last-candidate behavior.
+- Proof:
+  - `pnpm --dir probate-lead-engine/browserbase-functions run check`: passed.
+  - `pnpm --filter @ple/worker test`: passed.
+  - `pnpm --filter @ple/artifact test`: passed.
+  - `pnpm test`: passed after rebuilding worker TypeScript.
+  - Live `POST http://localhost:4184/api/discovery/source-capture` with a listing page containing the bottom-right receipt link plus a later footer `Payment history` link returned `mode: source_review`, `source_status.value.mode: listing_page_bottom_right`, `tax_receipt_link: https://miamidade.county-taxes.test/receipts/2025-live.pdf`, and matching receipt attachment URL.
+  - Served page proof on `localhost:4184` still found `Bottom-right receipt link`, `Tax Collector listing page`, `What this run proved`, and `Preview`; `Live packet preview` remained absent.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

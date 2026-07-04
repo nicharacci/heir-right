@@ -143,13 +143,16 @@ function discoverTaxCollectorReceipt(input = {}) {
   const anchorPattern = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>[\s\S]*?<\/a>/gi;
   let match;
   while ((match = anchorPattern.exec(html)) !== null) {
+    const fullAnchor = match[0] || "";
     const href = String(match[1] || "").trim();
-    const text = stripTags(match[0]);
-    const searchable = `${href} ${text}`.toLowerCase();
-    if (!href || !/(receipt|taxbill|tax-bill|print|payment)/i.test(searchable)) continue;
-    candidates.push({ href, url: resolveUrl(href, listingUrl), text: text || "Tax receipt", index: candidates.length });
+    const text = stripTags(fullAnchor);
+    if (!href) continue;
+    candidates.push({ href, url: resolveUrl(href, listingUrl), text: text || "Tax receipt", html: fullAnchor, index: candidates.length });
   }
-  const receipt = candidates.at(-1);
+  const receipt = candidates
+    .map((candidate) => ({ ...candidate, score: taxReceiptCandidateScore(candidate) }))
+    .filter((candidate) => candidate.score > 0)
+    .sort((a, b) => b.score - a.score)[0];
   if (!receipt) return null;
   return {
     listingUrl,
@@ -158,6 +161,20 @@ function discoverTaxCollectorReceipt(input = {}) {
     candidates,
     reviewFlags: ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"],
   };
+}
+
+function taxReceiptCandidateScore(candidate = {}) {
+  const haystack = `${candidate.href || ""} ${candidate.url || ""} ${candidate.text || ""}`.toLowerCase();
+  const anchorHtml = String(candidate.html || "").toLowerCase();
+  let score = 0;
+  if (/receipt|receipts/.test(haystack)) score += 12;
+  if (/tax\s*-?\s*bill|taxbill/.test(haystack)) score += 8;
+  if (/print/.test(haystack) && /(receipt|bill)/.test(haystack)) score += 6;
+  if (/payment/.test(haystack) && /(receipt|tax\s*-?\s*bill|taxbill)/.test(haystack)) score += 4;
+  if (/class=["'][^"']*(receipt|print|tax|bill|payment)[^"']*["']/.test(anchorHtml)) score += 3;
+  if (/(bottom|right|float\s*:\s*right|text-align\s*:\s*right|pull-right|align-right|justify-content\s*:\s*end|justify-content\s*:\s*flex-end)/.test(anchorHtml)) score += 5;
+  if (/history|account|login|search|privacy|terms|contact|help|faq/.test(haystack)) score -= 10;
+  return score + Number(candidate.index || 0) / 1000;
 }
 
 module.exports = {

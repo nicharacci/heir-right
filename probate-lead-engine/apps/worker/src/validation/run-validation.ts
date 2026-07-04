@@ -79,6 +79,7 @@ async function main(): Promise<void> {
           <a href="/receipts/2025-paid.pdf">Print payment receipt</a>
         </aside>
       </main>
+      <footer><a href="/payments/history?from=footer">Payment history</a></footer>
     `, {
       status: 200,
       headers: { "content-type": "text/html" },

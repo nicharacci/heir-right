@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 const require = createRequire(import.meta.url);
 const externalSourceRun = require("../api/discovery/external-source-run.js");
+const { discoverTaxCollectorReceipt } = require("../api/_shared.js");
 
 function callHandler(handler, body) {
   return new Promise((resolve, reject) => {
@@ -100,6 +101,24 @@ try {
   assert.ok(
     sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "tax_receipt_link"),
     "source facts must include the Tax Collector receipt link"
+  );
+  const artifactReceipt = discoverTaxCollectorReceipt({
+    listingUrl: "https://miamidade.county-taxes.test/listing/3411330360010",
+    listingHtml: `
+      <main>
+        <a href="/payments/history">Payment history</a>
+        <aside style="float:right">
+          <a class="receipt-link" href="/receipts/2025-artifact.pdf">Print receipt</a>
+        </aside>
+      </main>
+      <footer><a href="/payments/history?footer=1">Payment history</a></footer>
+    `,
+  });
+  assert.equal(artifactReceipt?.mode, "listing_page_bottom_right");
+  assert.equal(
+    artifactReceipt?.receiptUrl,
+    "https://miamidade.county-taxes.test/receipts/2025-artifact.pdf",
+    "artifact source-capture helper must prefer the listing-card receipt over footer payment links"
   );
 
   const bundle = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");

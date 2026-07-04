@@ -6,8 +6,11 @@ const receipt = discoverTaxCollectorReceipt({
   listingHtml: `
     <main>
       <a href="/account">Account</a>
-      <a href="/receipts/2025-paid.pdf">Print receipt</a>
+      <aside style="float:right">
+        <a class="receipt-link" href="/receipts/2025-paid.pdf">Print receipt</a>
+      </aside>
     </main>
+    <footer><a href="/payments/history">Payment history</a></footer>
   `,
 });
 assert.equal(receipt.mode, "listing_page_bottom_right");
