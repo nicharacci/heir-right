@@ -1902,14 +1902,16 @@
 
   .hero-proof div {
     display: grid;
-    grid-template-columns: 4.5rem minmax(0, 1fr);
+    grid-template-columns: minmax(5.7rem, 7.2rem) minmax(0, 1fr);
     align-items: center;
+    column-gap: 0.75rem;
     min-height: 4.5rem;
     padding: 0.78rem 0.85rem;
   }
 
   .hero-proof dt {
     font-size: 1.28rem;
+    overflow-wrap: anywhere;
   }
 
   .hero-proof dd {

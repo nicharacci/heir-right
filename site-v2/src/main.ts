@@ -159,6 +159,29 @@ function setupContactForm(): void {
   const status = document.querySelector<HTMLElement>("[data-form-status]");
   if (!form || !status) return;
 
+  const isSpanish = document.documentElement.lang.toLowerCase().startsWith("es");
+  const messages = isSpanish
+    ? {
+        submitting: "Enviando su solicitud de consulta gratis...",
+        submitAria: "Enviando solicitud de consulta gratis",
+        submitButton: "Enviando...",
+        fallback:
+          "No se pudo enviar la solicitud. Comuníquese con HeirRight o intente nuevamente en breve.",
+        received: (receiptId?: string) =>
+          `Gracias. Hemos recibido su mensaje.${receiptId ? ` Confirmación ${receiptId}.` : ""}`,
+        unknownError: "No se pudo enviar la solicitud.",
+      }
+    : {
+        submitting: "Submitting your free consultation request...",
+        submitAria: "Submitting free consultation request",
+        submitButton: "Submitting...",
+        fallback:
+          "The request could not be submitted. Please contact HeirRight or try again shortly.",
+        received: (receiptId?: string) =>
+          `Thank you. Your message has been received.${receiptId ? ` Confirmation ${receiptId}.` : ""}`,
+        unknownError: "The request could not be submitted.",
+      };
+
   const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
   const originalSubmit = submit?.innerHTML ?? "";
 
@@ -178,10 +201,10 @@ function setupContactForm(): void {
     form.setAttribute("aria-busy", "true");
     if (submit) {
       submit.disabled = true;
-      submit.textContent = "Submitting...";
-      submit.setAttribute("aria-label", "Submitting free consultation request");
+      submit.textContent = messages.submitButton;
+      submit.setAttribute("aria-label", messages.submitAria);
     }
-    setStatus("Submitting your free consultation request...", "loading");
+    setStatus(messages.submitting, "loading");
 
     try {
       const response = await fetch("/api/review-request", {
@@ -202,15 +225,13 @@ function setupContactForm(): void {
         : null;
 
       if (!response.ok || !result?.ok) {
-        throw new Error(
-          result?.message ?? "The request could not be submitted. Please contact HeirRight or try again shortly."
-        );
+        throw new Error(result?.message ?? messages.fallback);
       }
 
       form.reset();
-      setStatus(`Thank you. Your message has been received. Confirmation ${result.receiptId}.`, "success");
+      setStatus(messages.received(result.receiptId), "success");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "The request could not be submitted.", "error");
+      setStatus(error instanceof Error ? error.message : messages.unknownError, "error");
     } finally {
       form.removeAttribute("aria-busy");
       if (submit) {
