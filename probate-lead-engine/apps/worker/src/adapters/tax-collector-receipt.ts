@@ -2,6 +2,7 @@ import type { ReviewFlag } from "@ple/types";
 
 type FetchImpl = typeof fetch;
 type RuntimeEnv = Record<string, string | undefined>;
+type JsonRecord = Record<string, unknown>;
 
 export interface TaxCollectorReceiptInput {
   listingHtml?: unknown;
@@ -133,6 +134,23 @@ function browserWorkflowToken(env: RuntimeEnv): string {
   return stringValue(env.TAX_COLLECTOR_BROWSER_WORKFLOW_TOKEN) || stringValue(env.BROWSERBASE_API_KEY);
 }
 
+function browserbaseFunctionId(env: RuntimeEnv): string {
+  return stringValue(env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID)
+    || stringValue(env.BROWSERBASE_TAX_COLLECTOR_FUNCTION_ID);
+}
+
+function browserbaseApiBase(env: RuntimeEnv): string {
+  return stringValue(env.BROWSERBASE_API_BASE) || "https://api.browserbase.com";
+}
+
+function browserbaseApiKey(env: RuntimeEnv): string {
+  return stringValue(env.BROWSERBASE_API_KEY);
+}
+
+function asRecord(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : {};
+}
+
 function anchorCandidates(html: string, baseUrl: string): TaxCollectorReceiptCandidate[] {
   const candidates: TaxCollectorReceiptCandidate[] = [];
   const anchorPattern = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>[\s\S]*?<\/a>/gi;
@@ -260,6 +278,88 @@ export async function acquireTaxCollectorReceipt(
         blocker: stringValue(data.message)
           || stringValue(data.error)
           || "Tax Collector browser workflow ran but did not return a bottom-right receipt link.",
+        reviewFlags: BROWSER_WORKFLOW_FLAGS,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        mode: "browser_workflow_required",
+        listingUrl: "",
+        searchUrl,
+        blocker: error instanceof Error ? error.message : String(error),
+        reviewFlags: BROWSER_WORKFLOW_FLAGS,
+      };
+    }
+  }
+
+  const functionId = browserbaseFunctionId(env);
+  const apiKey = browserbaseApiKey(env);
+  if (functionId && apiKey && !stringValue(input.listingUrl) && !stringValue(input.sourceUrl)) {
+    try {
+      const response = await fetchImpl(`${browserbaseApiBase(env).replace(/\/$/, "")}/v1/functions/${encodeURIComponent(functionId)}/invoke`, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+          "x-bb-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          params: {
+            source: "tax_collector",
+            searchUrl,
+            parcelId: stringValue(input.parcelId),
+            propertyAddress: stringValue(input.propertyAddress),
+            ownerName: stringValue(input.ownerName),
+          },
+          sessionCreateParams: {
+            browserSettings: {
+              viewport: { width: 1365, height: 900 },
+              recordSession: true,
+              logSession: true,
+              advancedStealth: true,
+              enablePdfViewer: true,
+              allowedDomains: ["miamidade.county-taxes.com", "county-taxes.com"],
+            },
+            timeout: 900,
+          },
+        }),
+      });
+      const invocation = await response.json().catch(() => ({})) as JsonRecord;
+      const result = asRecord(invocation.results);
+      const workflowListingUrl = stringValue(result.listingUrl) || stringValue(result.finalUrl) || searchUrl;
+      const workflowDiscovery = discoverTaxCollectorReceipt({
+        ...input,
+        listingUrl: workflowListingUrl,
+        listingHtml: result.listingHtml,
+        receiptUrl: result.receiptUrl,
+        receiptLink: result.receiptLink,
+      });
+      if (response.ok && workflowDiscovery) {
+        return {
+          ok: true,
+          mode: workflowDiscovery.mode,
+          listingUrl: workflowDiscovery.listingUrl || workflowListingUrl,
+          searchUrl,
+          status: response.status,
+          finalUrl: workflowListingUrl,
+          discovery: workflowDiscovery,
+          bodySnippet: JSON.stringify({ invocationId: invocation.id, sessionId: invocation.sessionId, status: invocation.status }).slice(0, 500),
+          reviewFlags: workflowDiscovery.reviewFlags,
+        };
+      }
+      return {
+        ok: false,
+        mode: "browser_workflow_required",
+        listingUrl: workflowListingUrl,
+        searchUrl,
+        status: response.status,
+        finalUrl: workflowListingUrl,
+        bodySnippet: stringValue(result.message) || stringValue(result.error) || JSON.stringify({ invocationId: invocation.id, sessionId: invocation.sessionId, status: invocation.status }).slice(0, 500),
+        blocker: stringValue(result.message)
+          || stringValue(result.error)
+          || (response.ok
+            ? "Browserbase Tax Collector function did not return a bottom-right receipt link yet."
+            : `Browserbase Tax Collector function invocation failed with HTTP ${response.status}.`),
         reviewFlags: BROWSER_WORKFLOW_FLAGS,
       };
     } catch (error) {

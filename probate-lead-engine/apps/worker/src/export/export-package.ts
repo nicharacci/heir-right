@@ -64,9 +64,14 @@ function idiCoreApiConfigured(env: RuntimeEnv): boolean {
 function taxCollectorSourceConnectionStatus(env: RuntimeEnv, checkedAt: string): ConnectionStatus {
   const directListingConfigured = Boolean(env.TAX_COLLECTOR_LISTING_URL || env.TAX_COLLECTOR_LISTING_URL_TEMPLATE);
   const scriptLiveProbeEnabled = env.TAX_COLLECTOR_LIVE_ACQUISITION_ENABLED === "true";
+  const browserbaseFunctionConfigured = Boolean(
+    env.BROWSERBASE_API_KEY
+      && (env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID || env.BROWSERBASE_TAX_COLLECTOR_FUNCTION_ID)
+  );
   const browserWorkflowConfigured = Boolean(
     (env.BROWSERBASE_API_KEY && env.BROWSERBASE_PROJECT_ID)
       || env.TAX_COLLECTOR_BROWSER_WORKFLOW_URL
+      || browserbaseFunctionConfigured
       || env.TAX_COLLECTOR_BROWSER_WORKFLOW_ENABLED === "true"
   );
   const ok = directListingConfigured || browserWorkflowConfigured;
@@ -86,6 +91,7 @@ function taxCollectorSourceConnectionStatus(env: RuntimeEnv, checkedAt: string):
       scriptDirectListingConfigured: directListingConfigured,
       scriptLiveProbeEnabled,
       browserWorkflowConfigured,
+      browserbaseFunctionConfigured,
       publicSearchUrl: env.TAX_COLLECTOR_SEARCH_URL || "https://miamidade.county-taxes.com/public",
     },
   };
@@ -117,7 +123,14 @@ function vitalObituaryWorkflowConnectionStatus(env: RuntimeEnv, checkedAt: strin
   const workflowUrl = env.OBITUARY_VITAL_WORKFLOW_URL
     || env.VITAL_OBITUARY_WORKFLOW_URL
     || env.MARRIAGE_DEATH_WORKFLOW_URL;
-  const configured = Boolean(workflowUrl);
+  const browserbaseFunctionConfigured = Boolean(
+    env.BROWSERBASE_API_KEY
+      && (env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID
+        || env.VITAL_OBITUARY_BROWSERBASE_FUNCTION_ID
+        || env.MARRIAGE_DEATH_BROWSERBASE_FUNCTION_ID
+        || env.BROWSERBASE_VITAL_OBITUARY_FUNCTION_ID)
+  );
+  const configured = Boolean(workflowUrl || browserbaseFunctionConfigured);
   return {
     name: "Vital/Obituary Workflow",
     ok: configured,
@@ -130,6 +143,7 @@ function vitalObituaryWorkflowConnectionStatus(env: RuntimeEnv, checkedAt: strin
     blockers: configured ? [] : ["Configure OBITUARY_VITAL_WORKFLOW_URL or equivalent before claiming vital/obituary source automation."],
     sourceAutomation: {
       workflowConfigured: configured,
+      browserbaseFunctionConfigured,
       supports: ["obituary", "marriageLicense", "dateOfBirth", "dateOfDeath", "deathCertificateStatus", "incarcerationStatus"],
     },
   };

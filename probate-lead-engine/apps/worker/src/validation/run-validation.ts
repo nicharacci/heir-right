@@ -3,6 +3,7 @@ import type { SourceFact, SourceKey, SourceSubject } from "@ple/types";
 import { runDailyProduction } from "../daily/run-daily";
 import { validateSeedBatchInput } from "../daily/seed-batch";
 import { acquireTaxCollectorReceipt } from "../adapters/tax-collector-receipt";
+import { fetchMarriageDeathIndicatorFacts } from "../adapters/marriage-death-indicators";
 import { buildRawDossier } from "../dossier/build-raw-dossier";
 import { buildControlledPodioTestSeed } from "../export/controlled-test-lead";
 import { connectionStatuses, exportCompletedReport } from "../export/export-package";
@@ -91,6 +92,56 @@ async function main(): Promise<void> {
       headers: { "cf-mitigated": "challenge", "content-type": "text/html" },
     }),
   });
+  const taxCollectorBrowserbaseProof = await acquireTaxCollectorReceipt({
+    parcelId: "3031030000010",
+    propertyAddress: "2325 NW 88th St, Miami, FL",
+    ownerName: "Example Owner",
+  }, {
+    env: {
+      BROWSERBASE_API_KEY: "validation-key",
+      TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID: "tax-function",
+    },
+    fetchImpl: async () => new Response(JSON.stringify({
+      id: "inv-tax-validation",
+      sessionId: "sess-tax-validation",
+      status: "COMPLETED",
+      results: {
+        listingUrl: "https://miamidade.county-taxes.test/listing/3031030000010",
+        listingHtml: "<a href=\"/x\">Other</a><a class=\"receipt\" href=\"/receipts/2025-browserbase.pdf\">Print receipt</a>",
+      },
+    }), {
+      status: 202,
+      headers: { "content-type": "application/json" },
+    }),
+  });
+  const vitalOriginalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    id: "inv-vital-validation",
+    sessionId: "sess-vital-validation",
+    status: "COMPLETED",
+    results: {
+      ok: true,
+      status: "reviewed-with-source",
+      dateOfDeath: "2024-01-02",
+      obituaryLink: "https://legacy.test/example-obituary",
+      marriageLicenseSignal: "reviewed-no-hit",
+      deathCertificateStatus: "requested-not-attached",
+    },
+  }), {
+    status: 202,
+    headers: { "content-type": "application/json" },
+  });
+  const vitalBrowserbaseFacts = await fetchMarriageDeathIndicatorFacts("run-vital-validation", {
+    estateName: "Estate of Example Owner",
+    ownerName: "Example Owner",
+    propertyAddress: "2325 NW 88th St, Miami, FL",
+    county: "miami-dade",
+    source: "operator_cli",
+  }, {
+    BROWSERBASE_API_KEY: "validation-key",
+    OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID: "vital-function",
+  });
+  globalThis.fetch = vitalOriginalFetch;
 
   const result = await runDryPipeline({
     propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
@@ -107,6 +158,8 @@ async function main(): Promise<void> {
   if (taxReceiptProof.mode !== "listing_page_bottom_right") failures.push("Tax Collector receipt acquisition mode missing.");
   if (taxCollectorBlockedProof.mode !== "browser_workflow_required") failures.push("Tax Collector Cloudflare/browser blocker mode missing.");
   if (!taxCollectorBlockedProof.reviewFlags.includes("TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED")) failures.push("Tax Collector browser workflow review flag missing.");
+  if (!taxCollectorBrowserbaseProof.ok || taxCollectorBrowserbaseProof.discovery?.receiptUrl !== "https://miamidade.county-taxes.test/receipts/2025-browserbase.pdf") failures.push("Tax Collector Browserbase function receipt proof failed.");
+  if (!vitalBrowserbaseFacts.some((item) => item.factType === "date_of_death" && item.value === "2024-01-02")) failures.push("Vital/obituary Browserbase function proof failed.");
   if (!result.dossier.property.address.value) failures.push("Dossier address missing.");
   if (!result.dossier.audit.sourceRefs.length) failures.push("Dossier sourceRefs missing.");
   if (!result.dossier.crm.payload) failures.push("Podio dry-run payload missing.");

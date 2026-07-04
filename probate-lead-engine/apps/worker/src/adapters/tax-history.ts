@@ -14,6 +14,8 @@ function acquisitionRequested(seed: IntakeSeed, env: RuntimeEnv): boolean {
       || seed.taxCollectorReceiptUrl
       || env.TAX_COLLECTOR_LISTING_URL
       || env.TAX_COLLECTOR_LISTING_URL_TEMPLATE
+      || env.TAX_COLLECTOR_BROWSER_WORKFLOW_URL
+      || (env.BROWSERBASE_API_KEY && (env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID || env.BROWSERBASE_TAX_COLLECTOR_FUNCTION_ID))
       || env.TAX_COLLECTOR_LIVE_ACQUISITION_ENABLED === "true"
   );
 }

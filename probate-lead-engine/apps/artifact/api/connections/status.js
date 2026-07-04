@@ -111,9 +111,14 @@ function idiCoreApiConfigured(env) {
 function taxCollectorSourceStatus(env, checkedAt = new Date().toISOString()) {
   const directListingConfigured = Boolean(env.TAX_COLLECTOR_LISTING_URL || env.TAX_COLLECTOR_LISTING_URL_TEMPLATE);
   const scriptLiveProbeEnabled = env.TAX_COLLECTOR_LIVE_ACQUISITION_ENABLED === "true";
+  const browserbaseFunctionConfigured = Boolean(
+    env.BROWSERBASE_API_KEY
+      && (env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID || env.BROWSERBASE_TAX_COLLECTOR_FUNCTION_ID)
+  );
   const browserWorkflowConfigured = Boolean(
     (env.BROWSERBASE_API_KEY && env.BROWSERBASE_PROJECT_ID)
       || env.TAX_COLLECTOR_BROWSER_WORKFLOW_URL
+      || browserbaseFunctionConfigured
       || env.TAX_COLLECTOR_BROWSER_WORKFLOW_ENABLED === "true"
   );
   const ok = directListingConfigured || browserWorkflowConfigured;
@@ -133,6 +138,7 @@ function taxCollectorSourceStatus(env, checkedAt = new Date().toISOString()) {
       scriptDirectListingConfigured: directListingConfigured,
       scriptLiveProbeEnabled,
       browserWorkflowConfigured,
+      browserbaseFunctionConfigured,
       publicSearchUrl: env.TAX_COLLECTOR_SEARCH_URL || "https://miamidade.county-taxes.com/public",
     },
   };
@@ -164,7 +170,14 @@ function vitalObituaryWorkflowStatus(env, checkedAt = new Date().toISOString()) 
   const workflowUrl = env.OBITUARY_VITAL_WORKFLOW_URL
     || env.VITAL_OBITUARY_WORKFLOW_URL
     || env.MARRIAGE_DEATH_WORKFLOW_URL;
-  const configured = Boolean(workflowUrl);
+  const browserbaseFunctionConfigured = Boolean(
+    env.BROWSERBASE_API_KEY
+      && (env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID
+        || env.VITAL_OBITUARY_BROWSERBASE_FUNCTION_ID
+        || env.MARRIAGE_DEATH_BROWSERBASE_FUNCTION_ID
+        || env.BROWSERBASE_VITAL_OBITUARY_FUNCTION_ID)
+  );
+  const configured = Boolean(workflowUrl || browserbaseFunctionConfigured);
   return {
     name: "Vital/Obituary Workflow",
     ok: configured,
@@ -177,6 +190,7 @@ function vitalObituaryWorkflowStatus(env, checkedAt = new Date().toISOString()) 
     blockers: configured ? [] : ["Configure OBITUARY_VITAL_WORKFLOW_URL or equivalent before claiming vital/obituary source automation."],
     sourceAutomation: {
       workflowConfigured: configured,
+      browserbaseFunctionConfigured,
       supports: ["obituary", "marriageLicense", "dateOfBirth", "dateOfDeath", "deathCertificateStatus", "incarcerationStatus"],
     },
   };
@@ -272,6 +286,8 @@ function operatorAccessList(items) {
     .replace(/TAX_COLLECTOR_LISTING_URL_TEMPLATE/g, "Tax Collector listing URL template")
     .replace(/BROWSERBASE_API_KEY/g, "Browserbase access")
     .replace(/BROWSERBASE_PROJECT_ID/g, "Browserbase project")
+    .replace(/TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID/g, "Tax Collector Browserbase function")
+    .replace(/OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID/g, "vital/obituary Browserbase function")
     .replace(/MIAMI_DADE_CLERK_AUTH_KEY/g, "Miami-Dade Clerk API access")
     .replace(/MIAMI_DADE_COMMERCIAL_AUTH_KEY/g, "Miami-Dade Clerk API access")
     .replace(/CLERK_COMMERCIAL_AUTH_KEY/g, "Miami-Dade Clerk API access")

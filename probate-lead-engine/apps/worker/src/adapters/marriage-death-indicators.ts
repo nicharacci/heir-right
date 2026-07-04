@@ -27,46 +27,124 @@ function workflowToken(env: RuntimeEnv): string {
     || stringValue(env.BROWSERBASE_API_KEY);
 }
 
+function browserbaseFunctionId(env: RuntimeEnv): string {
+  return stringValue(env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID)
+    || stringValue(env.VITAL_OBITUARY_BROWSERBASE_FUNCTION_ID)
+    || stringValue(env.MARRIAGE_DEATH_BROWSERBASE_FUNCTION_ID)
+    || stringValue(env.BROWSERBASE_VITAL_OBITUARY_FUNCTION_ID);
+}
+
+function browserbaseApiBase(env: RuntimeEnv): string {
+  return stringValue(env.BROWSERBASE_API_BASE) || "https://api.browserbase.com";
+}
+
+function browserbaseApiKey(env: RuntimeEnv): string {
+  return stringValue(env.BROWSERBASE_API_KEY);
+}
+
 async function fetchVitalWorkflow(seed: IntakeSeed, env: RuntimeEnv): Promise<{ ok: boolean; status: number; url: string; data: JsonRecord; error?: string } | null> {
   const url = workflowUrl(env);
-  if (!url) return null;
+  const params = {
+    source: "vital_obituary_review",
+    estateName: seed.estateName ?? "",
+    ownerName: seed.ownerName ?? "",
+    propertyAddress: seed.propertyAddress ?? "",
+    parcelId: seed.parcelId ?? "",
+    caseNumber: seed.caseNumber ?? "",
+    county: seed.county,
+    clerkSearchUrl: CLERK_RECORDS_URL,
+  };
 
+  if (url) {
+    try {
+      const headers: Record<string, string> = {
+        accept: "application/json",
+        "content-type": "application/json",
+        "user-agent": "HeirRight-VitalObituaryWorkflow/1.0",
+      };
+      const token = workflowToken(env);
+      if (token) headers.authorization = `Bearer ${token}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(params),
+      });
+      const data = await response.json().catch(() => ({})) as JsonRecord;
+      return {
+        ok: response.ok && data.ok !== false,
+        status: response.status,
+        url,
+        data,
+        error: stringValue(data.error) || stringValue(data.message),
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        status: 0,
+        url,
+        data: {},
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  const functionId = browserbaseFunctionId(env);
+  const apiKey = browserbaseApiKey(env);
+  if (!functionId || !apiKey) return null;
+
+  const invokeUrl = `${browserbaseApiBase(env).replace(/\/$/, "")}/v1/functions/${encodeURIComponent(functionId)}/invoke`;
   try {
-    const headers: Record<string, string> = {
-      accept: "application/json",
-      "content-type": "application/json",
-      "user-agent": "HeirRight-VitalObituaryWorkflow/1.0",
-    };
-    const token = workflowToken(env);
-    if (token) headers.authorization = `Bearer ${token}`;
-
-    const response = await fetch(url, {
+    const response = await fetch(invokeUrl, {
       method: "POST",
-      headers,
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "x-bb-api-key": apiKey,
+      },
       body: JSON.stringify({
-        source: "vital_obituary_review",
-        estateName: seed.estateName ?? "",
-        ownerName: seed.ownerName ?? "",
-        propertyAddress: seed.propertyAddress ?? "",
-        parcelId: seed.parcelId ?? "",
-        caseNumber: seed.caseNumber ?? "",
-        county: seed.county,
-        clerkSearchUrl: CLERK_RECORDS_URL,
+        params,
+        sessionCreateParams: {
+          browserSettings: {
+            viewport: { width: 1365, height: 900 },
+            recordSession: true,
+            logSession: true,
+            advancedStealth: true,
+            enablePdfViewer: true,
+            allowedDomains: [
+              "www2.miamidadeclerk.gov",
+              "miamidadeclerk.gov",
+              "legacy.com",
+              "www.legacy.com",
+              "findagrave.com",
+              "www.findagrave.com",
+            ],
+          },
+          timeout: 900,
+        },
       }),
     });
-    const data = await response.json().catch(() => ({})) as JsonRecord;
+    const invocation = await response.json().catch(() => ({})) as JsonRecord;
+    const data = invocation.results && typeof invocation.results === "object" && !Array.isArray(invocation.results)
+      ? invocation.results as JsonRecord
+      : {};
     return {
-      ok: response.ok && data.ok !== false,
+      ok: response.ok && invocation.status !== "FAILED" && data.ok !== false,
       status: response.status,
-      url,
-      data,
-      error: stringValue(data.error) || stringValue(data.message),
+      url: `browserbase:function:${functionId}`,
+      data: {
+        ...data,
+        browserbaseInvocationId: invocation.id ?? null,
+        browserbaseSessionId: invocation.sessionId ?? null,
+        browserbaseStatus: invocation.status ?? null,
+      },
+      error: stringValue(data.error) || stringValue(data.message) || (response.ok ? "" : `HTTP ${response.status}`),
     };
   } catch (error) {
     return {
       ok: false,
       status: 0,
-      url,
+      url: `browserbase:function:${functionId}`,
       data: {},
       error: error instanceof Error ? error.message : String(error),
     };

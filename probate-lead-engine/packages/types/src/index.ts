@@ -516,6 +516,7 @@ export interface ConnectionStatus {
     scriptDirectListingConfigured?: boolean;
     scriptLiveProbeEnabled?: boolean;
     browserWorkflowConfigured?: boolean;
+    browserbaseFunctionConfigured?: boolean;
     publicSearchUrl?: string;
     officialRecordsApi?: string;
     civilCaseApi?: string;

@@ -368,11 +368,35 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - review flags `PAID_SOURCE_APPROVAL_REQUIRED`, `MANUAL_SOURCE_APPROVAL_REQUIRED`, `HUMAN_REVIEW_REQUIRED`, `NO_ENRICHMENT_RUN`;
   - all newly named governed source codes present in the returned `source_governance_catalog`.
 
+## Fifteenth Repair Pass: Direct Browserbase Function Acquisition Paths
+
+- Added direct Browserbase Function invocation to the worker Tax Collector receipt acquisition path.
+- Added direct Browserbase Function invocation to the worker vital/obituary/marriage/death indicator path.
+- Added deployment env contract:
+  - `BROWSERBASE_API_KEY`;
+  - `BROWSERBASE_API_BASE`;
+  - `TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID`;
+  - `OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID`.
+- Fixed the actual Tax Collector source-run gate so function credentials trigger acquisition. The previous direct adapter proof was not enough because `fetchTaxHistoryFacts` did not request acquisition for Browserbase-only config.
+- Settings/export readiness now marks:
+  - `Tax Collector Source.sourceAutomation.browserbaseFunctionConfigured`;
+  - `Vital/Obituary Workflow.sourceAutomation.browserbaseFunctionConfigured`.
+- Validation now includes mocked Browserbase Function proof for:
+  - Tax Collector bottom-right receipt extraction;
+  - vital/obituary DOB/DOD/obituary/marriage/death-certificate facts.
+- Full local route proof with a mocked Browserbase API and actual `http://localhost:4178/api/discovery/external-source-run` returned:
+  - Tax Collector `tax_receipt_link: https://miamidade.county-taxes.test/receipt/2025-paid.pdf`;
+  - Tax Collector `source_status.value.mode: listing_page_bottom_right`;
+  - vital `date_of_death: 2024-01-02`;
+  - vital `source_status.value.mode: workflow_reviewed`;
+  - Settings showed both Browserbase function paths configured;
+  - route still returned `ok: false` because Official Records, Probate/Civil/Family, IDI, skip trace, and governed manual/paid research were still honestly blocked or review-gated.
+
 ## Next Work
 
-- Point `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` at the real Browserbase or controlled Chrome workflow, run it against GovHub, and store the captured listing/receipt proof.
+- Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.
 - If browser observation exposes stable API calls behind GovHub, move them into the deterministic script client.
 - Configure/prove `MIAMI_DADE_CLERK_AUTH_KEY` in the target environment, then run a paid controlled Official Records and Civil/Family/Probate API proof with readback.
-- Point `OBITUARY_VITAL_WORKFLOW_URL` or equivalent at the real controlled browser/API workflow and prove obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator capture against a real estate packet.
+- Configure/prove `IDI_CORE_API_URL`, the shared default `IDI_CORE_API_KEY`, and explicit live-run approval or keep IDI in operator-import mode.
 - Rerun S30 demos against the corrected S29 source contracts before treating S30 as final client acceptance proof.
 - Continue source-backed treatment for marriage/death, offender/professional-license, voter/license, field/neighbor/code-enforcement, and paid/manual research tasks as explicitly human-required or approval-gated.

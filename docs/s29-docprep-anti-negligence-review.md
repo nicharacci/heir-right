@@ -21,6 +21,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Marriage/death/obituary/vital indicators now have a configurable workflow API hook. When no workflow is configured, they return `workflow_required` plus `VITAL_RECORDS_WORKFLOW_REQUIRED` instead of blank source facts.
 - Settings/export readiness now exposes `Vital/Obituary Workflow` separately from generic Web Search readiness.
 - Source governance is now route-visible as `Governed manual and paid research`, and explicitly names voter records, professional licenses, business/address associations, social profiles, and deceased-indicator cross-checks as approval-gated review work.
+- Tax Collector and vital/obituary adapters now invoke Browserbase Functions directly when function IDs and `BROWSERBASE_API_KEY` are configured, instead of requiring a separate custom workflow URL.
 - Closing Prep cannot auto-complete title, seller approval, or package phases when required evidence or fields are missing.
 - Required Closing fields persist per estate and feed the deterministic field map.
 - Closing export blocks before Google export if required fields are unresolved.
@@ -43,12 +44,12 @@ Assume every AI-built completion claim is false until the app proves it with sou
 ## Remaining Proof Required
 
 - A real live IDI Core backend run still requires `IDI_CORE_API_URL`, the shared default `IDI_CORE_API_KEY`, and approval in the target environment. Current proof shows operator portal/import mode only, with user override allowed.
-- A production Browserbase/Chrome Tax Collector workflow still needs to be implemented and proven against the real public-search flow. Current proof preserves the blocker and parses reachable listing pages; it does not claim the GovHub browser run is automated end to end.
-- The Tax Collector browser-workflow hook is mock-proven, but the real Browserbase/controlled Chrome endpoint must still be configured and run against GovHub.
+- A production Browserbase/Chrome Tax Collector workflow still needs to be deployed and proven against the real public-search flow. Current proof includes a Browserbase API mock and parser proof; it does not claim the GovHub browser run is automated end to end.
+- The Tax Collector Browserbase Function path is mock-proven through the actual source-run route, but the real deployed function must still be configured and run against GovHub.
 - Live system-Chrome proof reached Cloudflare security verification at the public GovHub entry, confirming pure script is not enough from the public search URL.
 - Official Records, Probate/Civil/Family Court, Tax Collector public search, marriage/death/obituary/vital sources, and skip trace are represented in the source-run contract but still need credentialed workflow proof or explicit operator-review completion proof before anyone can say the external-source Discovery workflow is fully automated.
 - Official Records and Probate/Civil/Family Court now have official commercial API paths, but they still need a credentialed paid proof run with an enabled Clerk developer account and pre-paid units before anyone can call them production-complete.
-- Vital/obituary workflow hook is mock-proven, but the real controlled browser/API endpoint must still be configured and run against source pages before anyone can call those fields production-complete.
+- Vital/obituary Browserbase Function path is mock-proven through the actual source-run route, but the real deployed function must still be configured and run against source pages before anyone can call those fields production-complete.
 - Google/Podio live write and readback still require configured credentials and approval.
 - Browser E2E and PDF inspection must be rerun after any additional source-flow or preview changes.
 
@@ -75,6 +76,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Vital/obituary workflow direct proof returned mocked DOB/DOD/obituary/marriage/death-certificate facts and preserved review flags.
 - Vital/obituary route proof returned `workflow_required` and `VITAL_RECORDS_WORKFLOW_REQUIRED`; Settings returned `Vital/Obituary Workflow` as blocked until the workflow URL is configured.
 - Source governance route proof returned 8 source summaries and a blocked `Governed manual and paid research` bucket containing voter, professional-license, business/address, social-profile, and deceased-indicator review codes.
+- Browserbase route proof with mocked Browserbase Function API returned Tax Collector receipt link and vital date-of-death facts through the actual `/api/discovery/external-source-run` route, while leaving Clerk/IDI/skip/governed sources blocked.
 
 ## Dedicated Final Review Pass
 
@@ -114,6 +116,7 @@ Evidence rerun:
 - `pnpm build`: passed.
 - `pnpm test`: passed.
 - `/api/discovery/external-source-run`: returned 8 source summaries.
+- `/api/discovery/external-source-run` with Browserbase Function env and mocked Browserbase API: returned Tax Collector `listing_page_bottom_right`, a receipt link, vital `workflow_reviewed`, and date of death.
 - Vital/obituary route proof: `source_status.value.mode = workflow_required`, `VITAL_RECORDS_WORKFLOW_REQUIRED`.
 - Source-governance route proof: `Governed manual and paid research` returned as blocked with voter records, professional licenses, business/address associations, social profiles, and deceased-indicator cross-checks in the catalog.
 - `/api/connections/status`: `Miami-Dade Clerk API` and `Vital/Obituary Workflow` expose blocked readiness until their credentials/workflows are configured.
@@ -127,14 +130,14 @@ S29-S32 plan check:
 - S32 final objective audit: must reject any claim that all external Discovery sources are automated until credentialed/live proof is attached or the source is explicitly accepted as human-required.
 
 /solvys-heir-audit
-Source checked: `/Users/tifos/Desktop/HRight/HeirRight Workflow. pdf.pdf`, `/Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md`, source-run API proof, Settings status proof, route-level UI proof, and current git diff/status.
-Backward: The work changed Discovery Doc Prep from a partial UI/source-capture story into a source-run architecture with eight visible buckets: Property Appraiser, Tax Collector, Official Records, Probate/Civil/Family Court, vital/obituary, IDI, skip trace, and governed manual/paid research. It supports the packet's property/deed/tax/probate/vital/IDI/manual-research steps by saving facts or explicit blockers instead of blank implied completion.
+Source checked: `/Users/tifos/Desktop/HRight/HeirRight Workflow. pdf.pdf`, `/Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md`, source-run API proof, Browserbase mock route proof, Settings status proof, route-level UI proof, and current git diff/status.
+Backward: The work changed Discovery Doc Prep from a partial UI/source-capture story into a source-run architecture with eight visible buckets: Property Appraiser, Tax Collector, Official Records, Probate/Civil/Family Court, vital/obituary, IDI, skip trace, and governed manual/paid research. It now includes direct Browserbase Function paths for Tax Collector and vital/obituary, supports the packet's property/deed/tax/probate/vital/IDI/manual-research steps by saving facts or explicit blockers instead of blank implied completion.
 UX pass: aligned with gaps. Operators get a `Run Source Search` control, source summaries, readiness statuses, and plain blocker language. The remaining UX gap is live workflow completion: without real workflow endpoints and credentials, a non-technical operator still has source work to finish manually.
 Forward: S30 must demo the real flow with these blockers visible and document streaming; S31 must complete Settings/Outreach/auth readiness; S32 must audit against live PDF outputs and browser/API proof.
 Alignment: aligned with gaps
 Required corrections before complete:
 - Configure and prove `IDI_CORE_API_URL`, shared `IDI_CORE_API_KEY`, and live approval or keep IDI as import/operator-approved.
 - Configure and prove `MIAMI_DADE_CLERK_AUTH_KEY` against Official Records and Civil/Family/Probate.
-- Configure and prove `TAX_COLLECTOR_BROWSER_WORKFLOW_URL` against the public GovHub listing/receipt flow.
-- Configure and prove `OBITUARY_VITAL_WORKFLOW_URL` or equivalent against obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator pages.
+- Deploy/configure and prove the real Tax Collector Browserbase Function against the public GovHub listing/receipt flow.
+- Deploy/configure and prove the real vital/obituary Browserbase Function against obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator pages.
 - Do not tell TP that all external sources are automated; tell them which ones are automated, which are workflow-ready, and which are approval-gated.
