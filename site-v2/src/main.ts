@@ -159,6 +159,14 @@ function setupContactForm(): void {
   const status = document.querySelector<HTMLElement>("[data-form-status]");
   if (!form || !status) return;
 
+  type FlowField = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+
+  const screens = Array.from(form.querySelectorAll<HTMLElement>("[data-contact-screen]"));
+  const indicators = Array.from(document.querySelectorAll<HTMLElement>("[data-contact-step]"));
+  const successPanel = form.querySelector<HTMLElement>("[data-form-success]");
+  let activeStep = 0;
+  let advanceLocked = false;
+
   const isSpanish = document.documentElement.lang.toLowerCase().startsWith("es");
   const messages = isSpanish
     ? {
@@ -167,8 +175,6 @@ function setupContactForm(): void {
         submitButton: "Enviando...",
         fallback:
           "No se pudo enviar la solicitud. Comuníquese con HeirRight o intente nuevamente en breve.",
-        received: (receiptId?: string) =>
-          `Gracias. Hemos recibido su mensaje.${receiptId ? ` Confirmación ${receiptId}.` : ""}`,
         unknownError: "No se pudo enviar la solicitud.",
       }
     : {
@@ -177,13 +183,17 @@ function setupContactForm(): void {
         submitButton: "Submitting...",
         fallback:
           "The request could not be submitted. Please contact HeirRight or try again shortly.",
-        received: (receiptId?: string) =>
-          `Thank you. Your message has been received.${receiptId ? ` Confirmation ${receiptId}.` : ""}`,
         unknownError: "The request could not be submitted.",
       };
 
   const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
   const originalSubmit = submit?.innerHTML ?? "";
+
+  const clearStatus = () => {
+    status.textContent = "";
+    status.hidden = true;
+    delete status.dataset.state;
+  };
 
   const setStatus = (message: string, state: "success" | "error" | "loading") => {
     status.textContent = message;
@@ -192,8 +202,92 @@ function setupContactForm(): void {
     status.focus({ preventScroll: true });
   };
 
+  const syncFlow = (isSuccess = false) => {
+    form.dataset.flowStep = String(activeStep + 1);
+    form.classList.toggle("is-success", isSuccess);
+
+    screens.forEach((screen, index) => {
+      const isActive = !isSuccess && index === activeStep;
+      screen.hidden = !isActive;
+      screen.classList.toggle("is-active", isActive);
+    });
+
+    indicators.forEach((indicator, index) => {
+      const isComplete = isSuccess || index < activeStep;
+      const isActive = !isSuccess && index === activeStep;
+      indicator.classList.toggle("is-complete", isComplete);
+      indicator.classList.toggle("is-active", isActive);
+      if (isActive) {
+        indicator.setAttribute("aria-current", "step");
+      } else {
+        indicator.removeAttribute("aria-current");
+      }
+    });
+
+    if (successPanel) {
+      successPanel.hidden = !isSuccess;
+      successPanel.classList.toggle("is-visible", isSuccess);
+    }
+  };
+
+  const setStep = (step: number) => {
+    activeStep = Math.max(0, Math.min(step, Math.max(0, screens.length - 1)));
+    clearStatus();
+    syncFlow(false);
+
+    const firstField = screens[activeStep]?.querySelector<FlowField>("input, textarea, select");
+    firstField?.focus({ preventScroll: true });
+  };
+
+  const validateScreen = (screen: HTMLElement | undefined) => {
+    if (!screen) return true;
+    const fields = Array.from(screen.querySelectorAll<FlowField>("input, textarea, select"));
+    for (const field of fields) {
+      if (!field.checkValidity()) {
+        field.reportValidity();
+        field.focus({ preventScroll: true });
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const getFlowNextTarget = (target: EventTarget | null) => {
+    const element = target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+    return element?.closest<HTMLButtonElement>("[data-flow-next]") ?? null;
+  };
+
+  const advanceFromEvent = (event: Event) => {
+    const target = getFlowNextTarget(event.target);
+    if (!target || !form.contains(target)) return;
+    event.preventDefault();
+    if (advanceLocked) return;
+    advanceLocked = true;
+    window.setTimeout(() => {
+      advanceLocked = false;
+    }, 0);
+    if (!validateScreen(screens[activeStep])) return;
+    setStep(activeStep + 1);
+  };
+
+  form.addEventListener("pointerup", advanceFromEvent);
+  form.addEventListener("click", advanceFromEvent);
+  form.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    advanceFromEvent(event);
+  });
+
+  syncFlow(false);
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+
+    if (activeStep < screens.length - 1) {
+      if (validateScreen(screens[activeStep])) setStep(activeStep + 1);
+      return;
+    }
+
+    if (!validateScreen(screens[activeStep])) return;
 
     const formData = new FormData(form);
     const payload = Object.fromEntries(formData.entries());
@@ -229,7 +323,9 @@ function setupContactForm(): void {
       }
 
       form.reset();
-      setStatus(messages.received(result.receiptId), "success");
+      clearStatus();
+      syncFlow(true);
+      successPanel?.focus({ preventScroll: true });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : messages.unknownError, "error");
     } finally {

@@ -3459,3 +3459,240 @@ main {
     gap: 0.7rem;
   }
 }
+
+/* Guided contact walkthrough */
+.contact-steps {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.contact-step {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition:
+    border-color 220ms ease,
+    background 220ms ease,
+    color 220ms ease,
+    transform 220ms ease;
+}
+
+.landing-page .contact-step {
+  border-color: var(--border-soft);
+}
+
+.contact-step.is-active {
+  border-color: rgba(205, 168, 92, 0.58);
+}
+
+.contact-step i,
+.landing-page .contact-step i {
+  border: 1.5px solid rgba(205, 168, 92, 0.62);
+  background: transparent;
+  color: transparent;
+  box-shadow: none;
+  transition:
+    background 280ms ease,
+    border-color 280ms ease,
+    color 220ms ease,
+    box-shadow 320ms ease,
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.contact-step i svg {
+  opacity: 0;
+  transform: scale(0.68);
+  transition:
+    opacity 180ms ease 90ms,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1) 90ms;
+}
+
+.contact-step.is-complete i,
+.landing-page .contact-step.is-complete i {
+  border-color: transparent;
+  background: linear-gradient(135deg, #f0c66d 0%, #d7a34a 48%, #b8862d 100%);
+  color: var(--ink);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 10px 24px rgba(167, 121, 35, 0.2);
+}
+
+.contact-step.is-complete i svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.contact-screen {
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  animation: flow-screen-in 260ms ease both;
+}
+
+.contact-screen[hidden],
+.form-success[hidden] {
+  display: none;
+}
+
+.flow-question {
+  margin: 0.45rem 0 0.12rem;
+}
+
+.flow-question h3 {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+  font-weight: 680;
+  line-height: 1.16;
+  text-wrap: balance;
+}
+
+.form-grid.is-single-field {
+  align-content: start;
+  max-width: 38rem;
+}
+
+.form-success {
+  min-height: 25rem;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1rem;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(0.65rem);
+  animation: success-message-in 520ms ease 180ms forwards;
+}
+
+.form-success h2 {
+  margin: 0.3rem 0 0;
+  color: var(--ink);
+  font-size: clamp(2.25rem, 5vw, 4.5rem);
+  font-weight: 760;
+  line-height: 0.96;
+}
+
+.form-success p {
+  max-width: 38rem;
+  margin: 0;
+  color: rgba(16, 19, 26, 0.64);
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  line-height: 1.58;
+}
+
+.success-check {
+  position: relative;
+  width: clamp(5.8rem, 16vw, 8rem);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.success-check::after {
+  content: "";
+  position: absolute;
+  inset: 0.32rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 rgba(31, 122, 77, 0);
+  animation: success-edge-glow 620ms ease 1.05s forwards;
+}
+
+.success-check svg {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.success-check circle,
+.success-check path {
+  fill: none;
+  stroke: #1f7a4d;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.success-check circle {
+  transform: rotate(-90deg) scaleX(-1);
+  transform-origin: center;
+  animation: draw-success-stroke 680ms ease forwards;
+}
+
+.success-check path {
+  animation: draw-success-stroke 420ms ease 680ms forwards;
+}
+
+.contact-panel.is-success {
+  grid-template-rows: 1fr;
+}
+
+@keyframes flow-screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.4rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes success-message-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes draw-success-stroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes success-edge-glow {
+  to {
+    box-shadow:
+      0 0 0 0.65rem rgba(31, 122, 77, 0.1),
+      0 0 2.6rem rgba(31, 122, 77, 0.32);
+  }
+}
+
+@media (max-width: 760px) {
+  .contact-screen {
+    min-height: 28rem;
+  }
+
+  .contact-title-row {
+    margin-bottom: 1.35rem;
+  }
+
+  .form-success {
+    min-height: 28rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-screen,
+  .form-success,
+  .success-check::after,
+  .success-check circle,
+  .success-check path {
+    animation: none;
+  }
+
+  .form-success {
+    opacity: 1;
+    transform: none;
+  }
+
+  .success-check circle,
+  .success-check path {
+    stroke-dashoffset: 0;
+  }
+}

@@ -726,23 +726,23 @@
           </p>
         </div>
         <div class="contact-shell">
-          <div class="contact-steps" aria-hidden="true">
-            <div class="contact-step is-complete">
+          <ol class="contact-steps" aria-label="Consultation progress">
+            <li class="contact-step is-active" data-contact-step="1">
               <span>01</span>
-              <i><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></i>
+              <i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></i>
               <b>Your Profile</b>
-            </div>
-            <div class="contact-step is-complete">
+            </li>
+            <li class="contact-step" data-contact-step="2">
               <span>02</span>
-              <i><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></i>
+              <i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></i>
               <b>Property Details</b>
-            </div>
-            <div class="contact-step is-complete">
+            </li>
+            <li class="contact-step" data-contact-step="3">
               <span>03</span>
-              <i><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></i>
+              <i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg></i>
               <b>Your Message</b>
-            </div>
-          </div>
+            </li>
+          </ol>
 
           <form class="contact-panel" data-contact-form>
             <input type="hidden" name="source" value="heirright-landing-form" />
@@ -751,65 +751,122 @@
               <input name="companyWebsite" tabindex="-1" autocomplete="off" />
             </label>
 
-            <div class="contact-title-row">
-              <p>03.</p>
-              <h2>Get My Free Offer</h2>
-            </div>
+            <section class="contact-screen is-active" data-contact-screen="1" aria-label="Your profile">
+              <div class="contact-title-row">
+                <p>01.</p>
+                <h2>Hi, thanks for choosing HeirRight!</h2>
+              </div>
+              <div class="form-grid is-single-field">
+                <label>
+                  <span>What's your Name?</span>
+                  <input name="name" autocomplete="name" placeholder="Alex Morgan" required />
+                </label>
+              </div>
+              <div class="form-footer">
+                <p>Start with your name and we will walk you through the rest.</p>
+                <button type="button" data-flow-next>
+                  Continue
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h13M13 6l6 6-6 6" />
+                  </svg>
+                </button>
+              </div>
+            </section>
 
-            <div class="form-grid">
-              <label>
-                <span>Your home address</span>
-                <input name="address" autocomplete="street-address" placeholder="123 Estate Lane" required />
-              </label>
-              <label>
-                <span>Name</span>
-                <input name="name" autocomplete="name" placeholder="Alex Morgan" required />
-              </label>
-              <label>
-                <span>Email</span>
-                <input
-                  name="email"
-                  type="email"
-                  inputmode="email"
-                  autocomplete="email"
-                  spellcheck="false"
-                  placeholder="alex.morgan@example.com"
-                  required
-                />
-              </label>
-              <label>
-                <span>Phone</span>
-                <input
-                  name="phone"
-                  type="tel"
-                  inputmode="tel"
-                  autocomplete="tel"
-                  placeholder="+1 (212) 555-0187"
-                  required
-                />
-              </label>
-              <label class="message-field">
-                <span>Tell us about your home</span>
-                <textarea
-                  name="notes"
-                  rows="4"
-                  placeholder="Tell us about the inherited home, liens, repairs, heirs, or timing."
-                ></textarea>
-              </label>
-            </div>
+            <section class="contact-screen" data-contact-screen="2" aria-label="Property details" hidden>
+              <div class="contact-title-row">
+                <p>02.</p>
+                <h2>Pleasure to meet with you!</h2>
+              </div>
+              <div class="form-grid">
+                <div class="flow-question">
+                  <h3>How do we contact you?</h3>
+                </div>
+                <label>
+                  <span>Email</span>
+                  <input
+                    name="email"
+                    type="email"
+                    inputmode="email"
+                    autocomplete="email"
+                    spellcheck="false"
+                    placeholder="alex.morgan@example.com"
+                    required
+                  />
+                </label>
+                <label>
+                  <span>Phone</span>
+                  <input
+                    name="phone"
+                    type="tel"
+                    inputmode="tel"
+                    autocomplete="tel"
+                    placeholder="+1 (212) 555-0187"
+                    required
+                  />
+                </label>
+                <div class="flow-question">
+                  <h3>What's the address of the property you want more information on?</h3>
+                </div>
+                <label>
+                  <span>Your home address</span>
+                  <input name="address" autocomplete="street-address" placeholder="123 Estate Lane" required />
+                </label>
+              </div>
+              <div class="form-footer">
+                <p>We will use this to understand the property and the best way to reach you.</p>
+                <button type="button" data-flow-next>
+                  Next
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h13M13 6l6 6-6 6" />
+                  </svg>
+                </button>
+              </div>
+            </section>
 
-            <div class="form-footer">
-              <p>
-                Please contact us today at 786-962-3457. We will break the
-                process down for you, answer any questions, and if it makes
-                sense, make it a hassle free sale.
-              </p>
-              <button type="submit">
-                Submit
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M5 12h13M13 6l6 6-6 6" />
+            <section class="contact-screen" data-contact-screen="3" aria-label="Your message" hidden>
+              <div class="contact-title-row">
+                <p>03.</p>
+                <h2>Anything we should know?</h2>
+              </div>
+              <div class="form-grid">
+                <label class="message-field">
+                  <span>Add notes, requests, etc.</span>
+                  <textarea
+                    name="notes"
+                    rows="4"
+                    placeholder="Tell us about the inherited home, liens, repairs, heirs, or timing."
+                  ></textarea>
+                </label>
+              </div>
+
+              <div class="form-footer">
+                <p>
+                  Please contact us today at 786-962-3457. We will break the
+                  process down for you, answer any questions, and if it makes
+                  sense, make it a hassle free sale.
+                </p>
+                <button type="submit">
+                  Submit
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h13M13 6l6 6-6 6" />
+                  </svg>
+                </button>
+              </div>
+            </section>
+
+            <div class="form-success" data-form-success hidden tabindex="-1" role="status" aria-live="polite">
+              <div class="success-check" aria-hidden="true">
+                <svg viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="43" pathLength="1" />
+                  <path d="M39 61.5 53 75l30-34" pathLength="1" />
                 </svg>
-              </button>
+              </div>
+              <h2>Request Received</h2>
+              <p>
+                You're officially one step closer to closing. A member of our team
+                will contact you shortly; thanks for choosing HeirRight!
+              </p>
             </div>
           </form>
 
