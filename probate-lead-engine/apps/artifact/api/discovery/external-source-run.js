@@ -139,7 +139,7 @@ function fallbackSummaries() {
     factCount: 0,
     extractedFactTypes: [],
     reviewFlags: ["SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
-    nextAction: `${item.label} source API worker is not configured in this runtime. Keep Discovery blocked until the source run is executed or the operator captures source evidence.`,
+    nextAction: `${item.label} source-run worker is not configured in this runtime. Keep Discovery blocked until the source run is executed or the operator captures source evidence.`,
   }));
 }
 
@@ -171,8 +171,8 @@ async function localWorkerRun(body) {
     dossier: pipeline.dossier,
     blockers,
     message: blockers.length
-      ? "Discovery source APIs ran and returned review blockers. The app did not assume missing public or paid-source facts."
-      : "Discovery source APIs returned structured source facts for review.",
+      ? "Discovery source checks ran and returned review blockers. The app did not assume missing public or paid-source facts."
+      : "Discovery source checks returned structured source facts for review.",
   };
 }
 
@@ -203,7 +203,7 @@ module.exports = async function handler(request, response) {
         sourceRunProof,
         sourceFacts: [],
         blockers: sourceSummaries.map((summary) => summary.nextAction),
-        message: "Discovery source API worker is not available in this runtime. The app returned blockers instead of treating external source data as complete.",
+        message: "Discovery source-run worker is not available in this runtime. The app returned blockers instead of treating external source data as complete.",
         error: error instanceof Error ? error.message : String(error),
       });
     }

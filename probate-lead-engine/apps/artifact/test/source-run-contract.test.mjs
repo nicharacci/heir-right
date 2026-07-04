@@ -68,6 +68,11 @@ try {
   assert.equal(result.json.sourceRunProof.legalTemplateAutofillAllowed, false);
   assert.ok(result.json.sourceRunProof.blockedCount > 0 || result.json.sourceRunProof.evidenceRequiredCount > 0);
   assert.ok(Array.isArray(result.json.blockers) && result.json.blockers.length > 0);
+  assert.doesNotMatch(
+    result.json.message,
+    /source APIs/i,
+    "Source-run response must not imply every Discovery source is an API."
+  );
 
   const requiredSources = [
     "property_appraiser",

@@ -593,6 +593,19 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Headless browser proof on `http://localhost:4185/?view=settings&walkthrough=off` rendered `Tax Collector`, `Clerk Records`, `Vital Sources`, and the status rows `Tax Collector Source`, `Miami-Dade Clerk API`, and `Vital/Obituary Workflow`.
   - Browser proof found no raw env names, no console errors, and no failed requests.
 
+## Twenty-Seventh Repair Pass: No Fake API Claim
+
+- Removed the bad "Discovery source APIs ran" wording from the artifact serverless route, local artifact server, and worker source-run response.
+- The source-run response now says `Discovery source checks ran` / `Discovery source checks returned`, because Tax Collector, vital/obituary, IDI, and governed research are not all API integrations.
+- The fallback response now says `source-run worker` instead of `source API worker`.
+- Added a source-run contract assertion that fails if the response message implies every Discovery source is an API.
+- Proof:
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed.
+  - `pnpm --dir probate-lead-engine test`: passed.
+  - Search proof found no remaining `Discovery source APIs`, `source APIs ran`, `source APIs returned`, or `source API worker` strings in active artifact/server/worker/test paths.
+  - Restarted the local app on `localhost:4185`; route proof for `/api/discovery/external-source-run` returned message `Discovery source checks ran and returned review blockers...`, `hasBadApiClaim: false`, 8 source buckets, `readyForDiscoveryCompletion: false`, and `legalTemplateAutofillAllowed: false`.
+  - Browser proof clicked `Run Source Search` after restart and saw the source-check message, no fake API claim, source proof copy still present, no console errors, and no failed requests.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

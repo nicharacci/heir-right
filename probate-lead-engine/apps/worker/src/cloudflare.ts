@@ -989,8 +989,8 @@ async function externalSourceRunResponse(request: Request, url: URL, env: Cloudf
     dossier: pipeline.dossier,
     blockers,
     message: blockers.length
-      ? "Discovery source APIs ran and returned review blockers. The app did not assume missing public or paid-source facts."
-      : "Discovery source APIs returned structured source facts for review.",
+      ? "Discovery source checks ran and returned review blockers. The app did not assume missing public or paid-source facts."
+      : "Discovery source checks returned structured source facts for review.",
   }, { headers: { "cache-control": "no-store" } });
 }
 
