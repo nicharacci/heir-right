@@ -20353,6 +20353,14 @@ function scrollDocPrepDeepLinkSection(section = "") {
   target.scrollIntoView({ block: "start", behavior: "auto" });
 }
 
+function docPrepFlowForDeepLink(params = new URLSearchParams()) {
+  const explicitFlow = params.get("flow") || params.get("docprepFlow");
+  if (docPrepFlows[explicitFlow]) return explicitFlow;
+  const section = params.get("section");
+  if (["source-capture", "source-search"].includes(section)) return "discovery";
+  return state.activeDocPrepFlow;
+}
+
 function setRailOpen(open, source = null) {
   state.railOpen = open;
   const rail = document.getElementById("researchRail");
@@ -22872,6 +22880,7 @@ if (initialView === "dossiers" && initialUrlParams.get("docprep") === "estate") 
   state.discoveryOpen = false;
   state.railMode = "dossier";
   state.railTab = ["flow", "timeline", "docs"].includes(initialUrlParams.get("railTab")) ? initialUrlParams.get("railTab") : "flow";
+  setActiveDocPrepFlow(docPrepFlowForDeepLink(initialUrlParams), { persist: false, rerender: false });
   renderCurrentLoopView();
   renderRail();
   setRailOpen(initialUrlParams.get("rail") !== "closed");

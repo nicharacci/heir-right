@@ -82,6 +82,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Browserbase function package proof passed syntax checks and extraction contract tests for receipt capture, obituary-link selection, and DOB/DOD hints.
 - Source-readiness server/API proof found `Source readiness before this run`, `Tax receipts`, `Clerk records`, `Obituary and vital review`, `IDI asset search`, and `Manual research`, backed by `/api/connections/status` rows for `Tax Collector Source`, `Miami-Dade Clerk API`, `Vital/Obituary Workflow`, and `IDI Core`.
 - Chrome Computer Use proof on a clean `localhost:4179` origin switched to `Estate Discovery`, showed the readiness rows in the visible Doc Prep rail, clicked `Run Source Search`, and rendered review blockers plus source facts without assuming missing public or paid-source facts.
+- Deep-link proof on `localhost:4180` first persisted `Closing Prep`, then reopened the `section=source-capture` route. The app forced `Estate Discovery` for that proof route and rendered `Public-record capture` with source readiness blockers, so S29/S30 demos no longer depend on an operator manually switching tabs first.
 
 ## Dedicated Final Review Pass
 
@@ -138,7 +139,7 @@ S29-S32 plan check:
 /solvys-heir-audit
 Source checked: `/Users/tifos/Desktop/HRight/HeirRight Workflow. pdf.pdf`, `/Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md`, source-run API proof, Browserbase mock route proof, Settings status proof, route-level UI proof, and current git diff/status.
 Backward: The work changed Discovery Doc Prep from a partial UI/source-capture story into a source-run architecture with eight visible buckets: Property Appraiser, Tax Collector, Official Records, Probate/Civil/Family Court, vital/obituary, IDI, skip trace, and governed manual/paid research. It now includes direct Browserbase Function paths plus deployable function sources for Tax Collector and vital/obituary, supporting the packet's property/deed/tax/probate/vital/IDI/manual-research steps by saving facts or explicit blockers instead of blank implied completion.
-UX pass: aligned with gaps. Operators get a `Run Source Search` control, source-readiness preflight, source summaries, readiness statuses, and plain blocker language. The remaining UX gap is live workflow completion: without real workflow endpoints and credentials, a non-technical operator still has source work to finish manually.
+UX pass: aligned with gaps. Operators get a `Run Source Search` control, source-readiness preflight, source summaries, readiness statuses, plain blocker language, and a deterministic source-capture proof route that opens the correct workflow. The remaining UX gap is live workflow completion: without real workflow endpoints and credentials, a non-technical operator still has source work to finish manually.
 Forward: S30 must demo the real flow with these blockers visible and document streaming; S31 must complete Settings/Outreach/auth readiness; S32 must audit against live PDF outputs and browser/API proof.
 Alignment: aligned with gaps
 Required corrections before complete:

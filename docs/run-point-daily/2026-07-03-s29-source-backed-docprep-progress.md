@@ -432,6 +432,16 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - The same proof confirmed `/api/connections/status` exposes `Tax Collector Source`, `Miami-Dade Clerk API`, `Vital/Obituary Workflow`, and `IDI Core`.
   - Chrome Computer Use proof on a clean `localhost:4179` origin switched to `Estate Discovery`, showed the source-readiness rows in the visible Doc Prep rail, clicked `Run Source Search`, and rendered review blockers plus source facts without assuming missing public or paid-source facts.
 
+## Eighteenth Repair Pass: Source-Capture Deep Link Honors Discovery
+
+- Fixed the Doc Prep QA/demo route so `section=source-capture` and `section=source-search` force the `Estate Discovery` workflow before render.
+- The route also accepts explicit `flow` or `docprepFlow` query params for future demos, but source-capture/source-search default to Discovery because they are Discovery source-acquisition work.
+- The forced workflow is not persisted, so opening a source-capture proof link does not overwrite an operator's normal saved workflow preference.
+- Proof:
+  - `pnpm build`: passed.
+  - `pnpm test`: passed.
+  - Chrome Computer Use proof on `localhost:4180` first clicked `Closing Prep` to persist the stale workflow state, then reopened `?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture`; the rendered page showed `Estate Discovery`, `Public-record capture`, `Source readiness before this run`, and the source readiness blockers instead of the Closing Prep rail.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.
