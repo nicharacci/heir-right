@@ -1084,6 +1084,12 @@ function sourceDetailChecks(source: string, sourceFacts: SourceFact[] = []): Arr
   return checks;
 }
 
+function detailCheckBlocks(check: Record<string, unknown>): boolean {
+  const status = String(check.status || "");
+  return Boolean(check.blocksUntilCaptured)
+    && !["evidence_returned_review_required", "ready_for_review", "complete", "completed"].includes(status);
+}
+
 function sourceRunProofLedger(sourceSummaries: Array<Record<string, unknown>>, sourceFacts: SourceFact[] = []): Record<string, unknown> {
   const sources = sourceSummaries.map((summary) => {
     const source = String(summary.source || "");
@@ -1108,14 +1114,20 @@ function sourceRunProofLedger(sourceSummaries: Array<Record<string, unknown>>, s
   });
   const blockedCount = sources.filter((item) => item.proofState === "blocked").length;
   const evidenceRequiredCount = sources.filter((item) => item.proofState === "evidence_required").length;
+  const detailCheckCount = sources.reduce((total, item) => total + (Array.isArray(item.detailChecks) ? item.detailChecks.length : 0), 0);
+  const blockingDetailCheckCount = sources.reduce((total, item) =>
+    total + (Array.isArray(item.detailChecks) ? (item.detailChecks as Array<Record<string, unknown>>).filter(detailCheckBlocks).length : 0), 0);
   return {
     completionStandard: "proof_or_explicit_blocker",
     allRequiredSourcesAccountedFor: discoverySourceLabels.every((item) => sources.some((source) => source.source === item.source)),
-    readyForOperatorReview: blockedCount === 0 && evidenceRequiredCount === 0,
+    readyForOperatorReview: blockedCount === 0 && evidenceRequiredCount === 0 && blockingDetailCheckCount === 0,
     readyForDiscoveryCompletion: false,
     legalTemplateAutofillAllowed: false,
     blockedCount,
     evidenceRequiredCount,
+    detailCheckCount,
+    blockingDetailCheckCount,
+    unresolvedDetailCheckCount: blockingDetailCheckCount,
     factsReturnedCount: sources.filter((item) => item.factCount > 0).length,
     sources,
   };

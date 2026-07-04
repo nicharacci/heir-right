@@ -666,6 +666,33 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Browser proof on `http://localhost:4187/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` clicked `Run Source Search` and rendered IDI access mode, paid approval, first-run lock, report import, contact review, provider access, and skip-trace contact review in plain operator language.
   - Browser proof found no raw env names, no fake API claim, no console errors, and no failed requests.
 
+## Thirtieth Repair Pass: Blocking Detail Checks Gate Readiness
+
+- Fixed the source-run proof ledger so detail checks are not decorative.
+- The proof ledger now exposes:
+  - `detailCheckCount`;
+  - `blockingDetailCheckCount`;
+  - `unresolvedDetailCheckCount`.
+- `readyForOperatorReview` now requires:
+  - no blocked source rows;
+  - no evidence-required source rows;
+  - no unresolved blocking detail checks.
+- Doc Prep now explains the unresolved checklist count in operator language: source checklist items still block Discovery from moving forward.
+- Proof:
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed and reported `blocking_detail_checks_gate_readiness`.
+  - `pnpm --dir probate-lead-engine test`: passed.
+  - `git diff --check`: passed.
+  - Local route proof on `http://localhost:4188/api/discovery/external-source-run` returned:
+    - `readyForOperatorReview: false`;
+    - `readyForDiscoveryCompletion: false`;
+    - `detailCheckCount: 40`;
+    - `blockingDetailCheckCount: 18`;
+    - `unresolvedDetailCheckCount: 18`;
+    - `legalTemplateAutofillAllowed: false`.
+  - Browser proof on `http://localhost:4188/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` clicked `Run Source Search` and showed the source-checklist blocker count in the Doc Prep rail.
+  - Corrected DOM proof found 40 actual `[data-source-proof-detail]` rows and confirmed required rows for `bottom_right_receipt`, `idi_contact_review`, `skiptrace_contact_review`, and `voter_records`.
+  - Browser proof found no raw env names, no fake API claim, no console errors, and no failed requests.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

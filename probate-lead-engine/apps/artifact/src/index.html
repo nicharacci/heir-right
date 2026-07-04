@@ -16237,9 +16237,12 @@ function sourceRunProofHtml(run = {}) {
   const proof = run.sourceRunProof && typeof run.sourceRunProof === "object" ? run.sourceRunProof : null;
   const sources = Array.isArray(proof?.sources) ? proof.sources : [];
   if (!sources.length) return "";
+  const unresolvedDetails = Number(proof.blockingDetailCheckCount || proof.unresolvedDetailCheckCount || 0);
   const completionCopy = proof.readyForOperatorReview
     ? "All source buckets returned evidence for operator review. Closing Prep still waits for reviewed Discovery facts."
-    : "This run is not complete. Review the blocked and missing evidence rows before Discovery can move forward.";
+    : unresolvedDetails
+      ? `This run is not complete. ${unresolvedDetails} source checklist item${unresolvedDetails === 1 ? "" : "s"} still block Discovery from moving forward.`
+      : "This run is not complete. Review the blocked and missing evidence rows before Discovery can move forward.";
   return `
     <p class="copy">What this run proved: ${escapeHtml(completionCopy)}</p>
     <ul class="mini-list source-proof-list">

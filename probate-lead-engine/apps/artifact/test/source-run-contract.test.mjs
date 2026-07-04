@@ -64,7 +64,11 @@ try {
   assert.equal(result.json.ok, false);
   assert.equal(result.json.sourceRunProof.completionStandard, "proof_or_explicit_blocker");
   assert.equal(result.json.sourceRunProof.allRequiredSourcesAccountedFor, true);
+  assert.ok(result.json.sourceRunProof.detailCheckCount >= 20);
+  assert.ok(result.json.sourceRunProof.blockingDetailCheckCount > 0);
+  assert.equal(result.json.sourceRunProof.unresolvedDetailCheckCount, result.json.sourceRunProof.blockingDetailCheckCount);
   assert.equal(result.json.sourceRunProof.readyForDiscoveryCompletion, false);
+  assert.equal(result.json.sourceRunProof.readyForOperatorReview, false);
   assert.equal(result.json.sourceRunProof.legalTemplateAutofillAllowed, false);
   assert.ok(result.json.sourceRunProof.blockedCount > 0 || result.json.sourceRunProof.evidenceRequiredCount > 0);
   assert.ok(Array.isArray(result.json.blockers) && result.json.blockers.length > 0);
@@ -172,6 +176,7 @@ try {
 
   const bundle = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
   assert.ok(bundle.includes("What this run proved"));
+  assert.ok(bundle.includes("source checklist item"));
   assert.ok(bundle.includes("bottom-right receipt link"));
   assert.ok(bundle.includes("source-proof-detail-list"));
   assert.ok(bundle.includes("Review owner name, folio"));
@@ -230,6 +235,7 @@ try {
       "no_legal_template_autofill",
       "tax_receipt_link_preserved",
       "source_proof_detail_checks",
+      "blocking_detail_checks_gate_readiness",
       "idi_core_guardrail_detail_checks",
       "governed_manual_and_paid_sources_visible",
       "operator_visible_source_proof_copy",
