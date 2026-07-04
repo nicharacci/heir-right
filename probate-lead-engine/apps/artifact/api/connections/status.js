@@ -156,7 +156,7 @@ function clerkCommercialApiStatus(env, checkedAt = new Date().toISOString()) {
       ? "Miami-Dade Clerk Commercial Data Services AuthKey is configured. Official Records and Civil/Family/Probate API calls can run, but each returned fact still needs review before legal or outreach use."
       : "Official Records and Civil/Family/Probate APIs require a Miami-Dade Clerk Commercial Data Services AuthKey and pre-paid units before HeirRight can run them automatically.",
     checkedAt,
-    blockers: authConfigured ? [] : ["Configure MIAMI_DADE_CLERK_AUTH_KEY before claiming Official Records or Probate/Court API automation."],
+    blockers: authConfigured ? [] : ["Add Miami-Dade Clerk Commercial Data Services access before claiming Official Records or Probate/Court automation."],
     sourceAutomation: {
       officialRecordsApi: "api/OfficialRecords?parameter1={folio}&parameter2=FN&authKey=...",
       civilCaseApi: "api/Civil?caseNumber={caseNumber}&AuthKey=...",
@@ -187,7 +187,7 @@ function vitalObituaryWorkflowStatus(env, checkedAt = new Date().toISOString()) 
       ? "Vital, obituary, marriage-license, death-certificate, and deceased-indicator workflow is configured. Returned facts stay review-gated before Closing Prep uses them."
       : "Vital, obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator review needs a configured browser/API workflow before Discovery can fill those facts automatically.",
     checkedAt,
-    blockers: configured ? [] : ["Configure OBITUARY_VITAL_WORKFLOW_URL or equivalent before claiming vital/obituary source automation."],
+    blockers: configured ? [] : ["Add the vital/obituary browser workflow before claiming obituary, marriage, death, or deceased-indicator automation."],
     sourceAutomation: {
       workflowConfigured: configured,
       browserbaseFunctionConfigured,

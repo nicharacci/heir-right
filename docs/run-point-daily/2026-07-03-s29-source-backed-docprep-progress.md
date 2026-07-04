@@ -555,6 +555,29 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Live `POST http://localhost:4184/api/discovery/source-capture` with a listing page containing the bottom-right receipt link plus a later footer `Payment history` link returned `mode: source_review`, `source_status.value.mode: listing_page_bottom_right`, `tax_receipt_link: https://miamidade.county-taxes.test/receipts/2025-live.pdf`, and matching receipt attachment URL.
   - Served page proof on `localhost:4184` still found `Bottom-right receipt link`, `Tax Collector listing page`, `What this run proved`, and `Preview`; `Live packet preview` remained absent.
 
+## Twenty-Fifth Repair Pass: Source Readiness Contract
+
+- Added an executable artifact contract test for `/api/connections/status` source readiness.
+- The test locks the distinction TP asked about:
+  - Tax Collector is not "an API" by default; it is direct listing/script-ready only when a listing URL/template exists and browser-workflow-ready only when Browserbase/Chrome workflow access exists.
+  - Miami-Dade Clerk records require commercial API access.
+  - Vital/obituary, marriage, death, memorial, and deceased-indicator review require a browser/API workflow before facts can be filled automatically.
+  - IDI Core supports a shared default key plus user override, but live backend runs still require the vendor endpoint and approval.
+- Changed the operator-facing readiness blockers for Clerk and vital/obituary so they no longer expose raw env var names in Settings or Doc Prep readiness copy.
+- Mirrored the same blocker copy in the worker export readiness seam so generated/exported readiness metadata matches the artifact app.
+- Proof:
+  - First attempted `pnpm --filter @ple/artifact test` from the git root and got the expected repo-root package-manifest failure; reran from the package root.
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed and reported `source_readiness_distinguishes_api_browser_and_blocked_modes`, `idi_core_shared_default_and_user_override_contract`, and `operator_visible_readiness_copy_has_no_raw_env_keys`.
+  - `pnpm --dir probate-lead-engine test`: passed.
+  - Local `AUTH_REQUIRED=false` route proof on `http://localhost:4185/api/connections/status` returned:
+    - `Tax Collector Source`: `blocked`, `configuredMode: none`, with Browserbase/controlled Chrome required for public GovHub search;
+    - `Miami-Dade Clerk API`: `blocked`, `configuredMode: none`, with Commercial Data Services access required;
+    - `Vital/Obituary Workflow`: `blocked`, `configuredMode: none`, with browser/API workflow required;
+    - `IDI Core`: `review`, `configuredMode: operator_portal`, `userOverrideAllowed: true`, `sharedDefaultConfigured: false`, and backend live run blocked by missing vendor endpoint.
+  - Headless browser proof on `http://localhost:4185/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` clicked the real `Run Source Search` button and rendered 8 `[data-source-proof-row]` rows for Property Appraiser, Tax Collector, Official Records, Probate Court, Clerk/Vital sources, IDI, Skip Trace, and Source Governance.
+  - Browser proof confirmed operator copy for the bottom-right receipt link, latest deed/Clerk access, approved IDI asset search, and manual/paid research policy; visible copy did not expose `IDI_CORE_API_KEY`, `MIAMI_DADE_CLERK_AUTH_KEY`, `OBITUARY_VITAL_WORKFLOW_URL`, or `TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID`.
+  - Browser proof reported no console errors, no failed requests, and no stale `Live packet preview` copy.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.
