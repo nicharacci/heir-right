@@ -6700,6 +6700,19 @@
       font-size: 12px;
     }
 
+    .source-readiness-list strong,
+    .source-run-list strong {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .source-readiness-list .pill,
+    .source-run-list .pill {
+      flex: 0 0 auto;
+    }
+
     .research-rail {
       position: absolute;
       grid-column: 1 / -1;
@@ -16215,12 +16228,78 @@ function sourceRunSummaryHtml(capture = {}) {
   `;
 }
 
+function sourceReadinessLabel(connection, fallback = "Needs setup") {
+  if (!connection) return fallback;
+  if (connection.ok && connection.mode === "live") return "Live";
+  if (connection.ok && connection.mode === "review") return "Ready";
+  if (connection.ok) return displayStatus(connection.mode, "Ready");
+  return connection.mode ? displayStatus(connection.mode) : fallback;
+}
+
+function sourceReadinessItems() {
+  const tax = connectionByName("Tax Collector Source");
+  const clerk = connectionByName("Miami-Dade Clerk API");
+  const vital = connectionByName("Vital/Obituary Workflow");
+  const idi = connectionByName("IDI Core");
+  return [
+    {
+      title: "Tax receipts",
+      connection: tax,
+      copy: operatorConnectionMessage(tax, "Tax Collector Source"),
+    },
+    {
+      title: "Clerk records",
+      connection: clerk,
+      copy: operatorConnectionMessage(clerk, "Miami-Dade Clerk API"),
+    },
+    {
+      title: "Obituary and vital review",
+      connection: vital,
+      copy: operatorConnectionMessage(vital, "Vital/Obituary Workflow"),
+    },
+    {
+      title: "IDI asset search",
+      connection: idi,
+      copy: operatorConnectionMessage(idi, "IDI Core"),
+    },
+    {
+      title: "Manual research",
+      tone: "review",
+      label: "Review-only",
+      copy: "Voter, social, professional-license, business/address, field, and paid people-search checks stay approval-gated until reviewed.",
+    },
+  ];
+}
+
+function sourceReadinessHtml() {
+  const loading = !state.connections.length;
+  const items = sourceReadinessItems();
+  return `
+    <div data-source-readiness-panel>
+      <p class="copy">${loading ? "Checking source readiness before public-record search." : "Source readiness before this run:"}</p>
+      <ul class="mini-list source-readiness-list">
+        ${items.map((item) => {
+          const tone = item.tone || connectionTone(item.connection);
+          const label = item.label || sourceReadinessLabel(item.connection);
+          return `
+            <li data-source-readiness-row="${escapeHtml(item.title)}">
+              <strong>${escapeHtml(item.title)} ${statusPill(tone, label)}</strong>
+              <span>${escapeHtml(item.copy)}</span>
+            </li>
+          `;
+        }).join("")}
+      </ul>
+    </div>
+  `;
+}
+
 function assetCaptureFormHtml(row = selectedRow()) {
   const capture = sourceCaptureForRow(row);
   return `
     <section class="glass-card rail-card">
       <h3>Public-record capture</h3>
       <p class="copy">Attach the evidence that makes the dossier real. For tax, start from the Tax Collector listing page and capture the receipt link shown in the bottom-right corner.</p>
+      ${sourceReadinessHtml()}
       ${sourceRunSummaryHtml(capture)}
       <div class="asset-capture-grid">
         <div class="field full"><label>Tax Collector listing page</label><input data-source-capture-field="taxReceipt.listingUrl" value="${escapeHtml(capture.taxReceipt?.listingUrl ?? "")}" placeholder="Tax Collector parcel/listing page URL"></div>
@@ -21658,6 +21737,8 @@ function operatorConnectionMessage(connection, name) {
     if (name === "SMS Gateway") return "SMS delivery is not configured yet. Keep SMS templates in the app-owned queue until a carrier or Podio-native SMS path is approved.";
     if (name === "Web Search") return "Public-source validation needs a fresh checked lead packet before promotion.";
     if (name === "Tax Collector Source") return "Tax Collector public search needs a browser workflow or a direct listing URL before receipt and payer capture can be called automated.";
+    if (name === "Miami-Dade Clerk API") return "Clerk records are not connected yet. Official Records and court docket checks stay review-blocked until commercial access is added.";
+    if (name === "Vital/Obituary Workflow") return "Obituary and vital-source review needs the browser workflow before it can return source links automatically.";
     if (name === "IDI Core") return "idiCORE portal access is not confirmed yet. Keep Discovery blocked until an approved operator search is imported or vendor API access is provisioned.";
     if (name === "Activepieces") return "Activepieces is not configured yet. Outreach will use the first-party fallback package and stay queued for Podio review.";
     if (name === "Linear Support") return "Linear support routing is not configured yet. Admin tickets stay local until the Worker has API access and a team route.";
@@ -21675,6 +21756,9 @@ async function loadConnectionStatuses() {
     state.connections = [];
   }
   updateConnectionStatuses();
+  if (document.querySelector("[data-source-readiness-panel]")) {
+    renderRail();
+  }
 }
 
 function updateConnectionStatuses() {

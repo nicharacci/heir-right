@@ -99,6 +99,8 @@ Use the smallest reliable path that preserves the workflow packet:
 
 July 3 live probe: system Chrome reached `https://miamidade.county-taxes.com/public` but only saw Cloudflare security verification with a hidden Turnstile response input and no search form. That confirms Browserbase/controlled-browser workflow is needed for the public-search entry, while script extraction remains valid once a listing page or stable endpoint is available.
 
+The Doc Prep public-record capture card now shows a source-readiness preflight from `/api/connections/status` before `Run Source Search`, so operators see tax, Clerk, vital/obituary, IDI, and manual-research readiness before they spend a run.
+
 ## SourceRef Rule
 
 Every dossier claim must have at least one source ref or a review flag explaining why it is not source-confirmed.

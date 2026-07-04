@@ -414,6 +414,23 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - `node --check src/source-helpers.mjs && node --check src/tax-collector-receipt.mjs && node --check src/vital-obituary-review.mjs && node test/contracts.test.mjs`: passed.
   - `pnpm build && pnpm test`: passed.
 
+## Seventeenth Repair Pass: Doc Prep Source Readiness Preflight
+
+- Added a source-readiness preflight panel to the Doc Prep public-record capture card before `Run Source Search`.
+- The panel shows operator-visible readiness for:
+  - Tax receipts;
+  - Clerk records;
+  - Obituary and vital review;
+  - IDI asset search;
+  - Manual research.
+- The readiness panel reads the existing `/api/connections/status` contract and refreshes the Doc Prep rail once connection statuses load.
+- Added plain-language blocker copy for Clerk records and vital/obituary workflow readiness so those gaps are visible before a source run starts.
+- Proof:
+  - `pnpm build`: passed.
+  - `pnpm test`: passed.
+  - Local DOM/API proof on `http://localhost:4178/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` found `Source readiness before this run`, `Tax receipts`, `Clerk records`, `Obituary and vital review`, `IDI asset search`, and `Manual research`.
+  - The same proof confirmed `/api/connections/status` exposes `Tax Collector Source`, `Miami-Dade Clerk API`, `Vital/Obituary Workflow`, and `IDI Core`.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.
