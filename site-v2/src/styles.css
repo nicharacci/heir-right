@@ -928,17 +928,22 @@
   .reason-section,
   .landing-legal,
   .landing-contact {
-    width: min(100% - 1.25rem, 42rem);
+    width: calc(100vw - 1.25rem);
+    max-width: 42rem;
   }
 
   .landing-page .landing-nav {
-    grid-template-columns: 1fr auto;
-    gap: 1rem;
+    grid-template-columns: 1fr;
+    gap: 0;
     padding-top: 1rem;
   }
 
   .landing-page .landing-nav .brand {
     width: 8.4rem;
+  }
+
+  .landing-page .landing-nav .nav-links {
+    display: none;
   }
 
   .hero-grid {
@@ -947,32 +952,60 @@
     padding: 2.35rem 0 4.25rem;
   }
 
+  .hero-message {
+    box-sizing: border-box;
+    inline-size: min(calc(100vw - 1.25rem), 22.75rem);
+    max-inline-size: calc(100vw - 1.25rem);
+    min-width: 0;
+  }
+
   .hero-message h1 {
+    inline-size: 100%;
+    max-width: 100%;
     font-size: clamp(2.65rem, 12.2vw, 3.55rem);
+    text-wrap: wrap;
   }
 
   .hero-lede {
+    inline-size: 100%;
+    width: 100%;
+    max-width: 100%;
     margin-top: 1rem;
     font-size: 0.98rem;
     line-height: 1.48;
+    text-wrap: wrap;
+    overflow-wrap: break-word;
+  }
+
+  .hero-message .eyebrow {
+    max-width: 20rem;
+    white-space: normal;
+    line-height: 1.25;
   }
 
   .hero-proof {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.45rem;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    max-width: 100%;
     margin-top: 1.35rem;
   }
 
   .hero-proof div {
-    padding: 0.82rem 0.65rem;
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    align-items: center;
+    min-height: 4.5rem;
+    padding: 0.78rem 0.85rem;
   }
 
   .hero-proof dt {
-    font-size: 1.35rem;
+    font-size: 1.28rem;
   }
 
   .hero-proof dd {
-    font-size: 0.72rem;
+    margin: 0;
+    font-size: 0.8rem;
+    white-space: normal;
   }
 
   .hero-actions {
@@ -1090,6 +1123,7 @@
 
 * {
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 html {
@@ -1121,6 +1155,11 @@ a {
   text-decoration: none;
 }
 
+a,
+button {
+  -webkit-tap-highlight-color: rgba(205, 168, 92, 0.24);
+}
+
 button,
 input,
 textarea {
@@ -1136,6 +1175,15 @@ button {
 img,
 svg {
   display: block;
+}
+
+[id] {
+  scroll-margin-top: 5rem;
+}
+
+:where(a, button, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: 3px;
 }
 
 main {
@@ -1929,6 +1977,12 @@ main {
 .form-grid textarea:focus {
   border-color: var(--gold);
   box-shadow: 0 1px 0 var(--gold);
+}
+
+.form-grid input:focus-visible,
+.form-grid textarea:focus-visible {
+  border-color: var(--gold);
+  box-shadow: 0 2px 0 var(--gold), 0 0 0 3px rgba(205, 168, 92, 0.16);
 }
 
 .form-grid input::placeholder,

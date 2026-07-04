@@ -179,6 +179,7 @@ function setupContactForm(): void {
     if (submit) {
       submit.disabled = true;
       submit.textContent = "Submitting...";
+      submit.setAttribute("aria-label", "Submitting free consultation request");
     }
     setStatus("Submitting your free consultation request...", "loading");
 
@@ -214,6 +215,7 @@ function setupContactForm(): void {
       form.removeAttribute("aria-busy");
       if (submit) {
         submit.disabled = false;
+        submit.removeAttribute("aria-label");
         submit.innerHTML = originalSubmit;
       }
     }
