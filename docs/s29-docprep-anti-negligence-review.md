@@ -95,6 +95,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Settings source-controls addendum: Settings now exposes dedicated `Tax Collector`, `Clerk Records`, and `Vital Sources` cards plus status rows for `Tax Collector Source`, `Miami-Dade Clerk API`, and `Vital/Obituary Workflow`. The source-readiness test fails if those controls disappear.
 - No-fake-API-claim addendum: the source-run response now says `Discovery source checks`, not `Discovery source APIs`. The source-run contract fails if the response implies all Discovery sources are APIs.
 - Source-proof detail addendum: source-run proof rows now include `detailChecks` from the source-governance catalog. The Doc Prep rail renders blocking source steps and governed manual/paid items, including bottom-right receipt capture, voter records, professional licenses, business/address associations, social profiles, deceased-indicator cross-check, door knock, neighbor research, and code enforcement.
+- IDI guardrail detail addendum: the IDI source proof row now renders access mode, paid-run approval, first-run duplicate lock, approved report import, and contact-review details. Skip trace now renders provider-access and contact-review details. All remain approval-gated and blocked from legal-template autofill.
 
 ## Dedicated Final Review Pass
 
@@ -149,6 +150,7 @@ Evidence rerun:
 - Settings source-controls proof: browser proof on `localhost:4185/?view=settings&walkthrough=off` rendered the dedicated Tax Collector, Clerk Records, and Vital Sources cards plus source status rows for Tax Collector Source, Miami-Dade Clerk API, and Vital/Obituary Workflow with no raw env names, console errors, or failed requests.
 - Source-language proof: after restarting `localhost:4185`, `/api/discovery/external-source-run` returned `Discovery source checks ran and returned review blockers...`, `hasBadApiClaim: false`, 8 source buckets, `readyForDiscoveryCompletion: false`, and `legalTemplateAutofillAllowed: false`. Browser proof clicked `Run Source Search` and found no `Discovery source APIs` claim in visible copy.
 - Source-detail proof: after starting `localhost:4186`, `/api/discovery/external-source-run` returned 4 Tax Collector detail checks, 19 governed manual/paid detail checks, `hasBottomRightReceipt: true`, `requiredGovernanceVisible: true`, and `legalAutofillAllowedInDetails: false`. Browser proof clicked `Run Source Search` and rendered 33 source-detail rows with the packet-required manual/paid source families visible in operator language.
+- IDI guardrail proof: after starting `localhost:4187`, `/api/discovery/external-source-run` returned `idiDetailCount: 5`, `idiRequiredVisible: true`, `skipTraceDetailCount: 2`, `skipTraceRequiredVisible: true`, and `allIdiBlockedFromAutofill: true`. `/api/discovery/idi-core/status` still showed operator-portal review mode with no backend endpoint/shared default key. Browser proof clicked `Run Source Search` and rendered the IDI and skip-trace guardrails without raw env names, fake API claims, console errors, or failed requests.
 
 S29-S32 plan check:
 

@@ -16257,7 +16257,8 @@ function sourceRunProofHtml(run = {}) {
 function sourceProofDetailChecksHtml(item = {}) {
   const checks = Array.isArray(item.detailChecks) ? item.detailChecks : [];
   if (!checks.length) return "";
-  const visibleChecks = item.source === "source_governance"
+  const showAllChecks = ["source_governance", "idi", "skip_trace"].includes(item.source);
+  const visibleChecks = showAllChecks
     ? checks
     : checks.filter((check) => check.blocksUntilCaptured).concat(checks.filter((check) => !check.blocksUntilCaptured)).slice(0, 4);
   if (!visibleChecks.length) return "";

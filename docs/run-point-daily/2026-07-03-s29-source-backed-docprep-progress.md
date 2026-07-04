@@ -638,6 +638,34 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Browser proof on `http://localhost:4186/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` clicked `Run Source Search`, rendered 33 `[data-source-proof-detail]` rows, and confirmed required detail rows for bottom-right receipt, voter records, professional licenses, business/address associations, social profiles, deceased-indicator cross-check, door knock, neighbor research, and code enforcement.
   - Browser proof found plain operator text for the required source steps, no raw env names, no fake API claim, no console errors, and no failed requests.
 
+## Twenty-Ninth Repair Pass: IDI Guardrail Detail Checks
+
+- Added explicit IDI Core guardrail detail checks to the `IDI Core Asset Search` source proof row:
+  - confirm IDI access mode;
+  - approve paid asset search;
+  - confirm first-run lock / duplicate guard;
+  - import approved report evidence when backend live access is not ready;
+  - review IDI contact candidates before Discovery or Closing Prep can use them.
+- Added explicit skip-trace detail checks to the `Skip trace/contact enrichment` source proof row:
+  - confirm provider access and storage/source approval;
+  - review skip-trace contacts before outreach or Discovery completion.
+- The Doc Prep proof renderer now shows all detail checks for IDI, skip trace, and governed manual/paid research instead of clipping those rows.
+- Every IDI and skip-trace detail check keeps `automationAllowed: false` and `legalTemplateAutofillAllowed: false`.
+- Proof:
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed and reported `idi_core_guardrail_detail_checks`.
+  - `pnpm --dir probate-lead-engine test`: passed.
+  - `git diff --check`: passed.
+  - Local route proof on `http://localhost:4187/api/discovery/external-source-run` returned:
+    - `idiProofState: evidence_required`;
+    - `idiDetailCount: 5`;
+    - `idiRequiredVisible: true`;
+    - `skipTraceDetailCount: 2`;
+    - `skipTraceRequiredVisible: true`;
+    - `allIdiBlockedFromAutofill: true`.
+  - IDI status proof on `http://localhost:4187/api/discovery/idi-core/status` still returned `configuredMode: operator_portal`, `endpointConfigured: false`, `sharedDefaultConfigured: false`, and `userOverrideAllowed: true`; no backend live IDI claim was made.
+  - Browser proof on `http://localhost:4187/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` clicked `Run Source Search` and rendered IDI access mode, paid approval, first-run lock, report import, contact review, provider access, and skip-trace contact review in plain operator language.
+  - Browser proof found no raw env names, no fake API claim, no console errors, and no failed requests.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

@@ -105,6 +105,25 @@ try {
     "Official Records proof must expose the credential gate for audit metadata"
   );
   assert.equal(proofBySource.get("idi").proofState, "evidence_required");
+  const idiDetails = proofBySource.get("idi").detailChecks || [];
+  const idiCodes = new Set(idiDetails.map((check) => check.code));
+  for (const code of [
+    "idi_access_mode",
+    "idi_paid_run_approval",
+    "idi_duplicate_guard",
+    "idi_report_import",
+    "idi_contact_review",
+  ]) {
+    assert.ok(idiCodes.has(code), `IDI proof detail ${code} missing`);
+  }
+  assert.ok(
+    idiDetails.every((check) => check.legalTemplateAutofillAllowed === false && check.automationAllowed === false),
+    "IDI source detail checks must stay approval-gated and never allow legal autofill"
+  );
+  const skipTraceDetails = proofBySource.get("skip_trace").detailChecks || [];
+  const skipTraceCodes = new Set(skipTraceDetails.map((check) => check.code));
+  assert.ok(skipTraceCodes.has("skiptrace_provider_access"), "Skip-trace provider access detail missing");
+  assert.ok(skipTraceCodes.has("skiptrace_contact_review"), "Skip-trace contact review detail missing");
   const governanceDetails = proofBySource.get("source_governance").detailChecks || [];
   const governanceCodes = new Set(governanceDetails.map((check) => check.code));
   for (const code of [
@@ -211,6 +230,7 @@ try {
       "no_legal_template_autofill",
       "tax_receipt_link_preserved",
       "source_proof_detail_checks",
+      "idi_core_guardrail_detail_checks",
       "governed_manual_and_paid_sources_visible",
       "operator_visible_source_proof_copy",
       "preview_fit_css",
