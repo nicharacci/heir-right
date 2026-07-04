@@ -485,6 +485,28 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Headless Chromium Doc Prep preview proof clicked `Run Full Discovery`; `.docprep-artifact-stream` rendered with `minHeight: 0px`, document `height: 228px`, `maxHeight: 228px`, `overflowY: auto`, and `previewFitsCard: true`.
   - Computer Use and Chrome AppleScript execution were not usable in this resumed session: Computer Use returned `cgWindowNotFound`, and Chrome had JavaScript-from-Apple-Events disabled. The fallback proof used the same local browser route through headless Chromium/CDP instead of code-only inspection.
 
+## Twenty-First Proof Pass: IDI Shared Default And User Override
+
+- Rechecked local/deployment env key presence without printing secret values.
+- Current local `.env.local` has IDI portal/account context and live-run approval, but it does not contain `IDI_CORE_API_URL` or the shared default `IDI_CORE_API_KEY`.
+- Current production-local Vercel env exports also do not contain `IDI_CORE_API_URL`, `IDI_CORE_API_KEY`, Browserbase function credentials, or `MIAMI_DADE_CLERK_AUTH_KEY`.
+- Route proof on `http://localhost:4182/api/discovery/idi-core/status` returned:
+  - `configuredMode: operator_portal`;
+  - `api.endpointConfigured: false`;
+  - `api.sharedDefaultConfigured: false`;
+  - `api.userOverrideAllowed: true`;
+  - blocker: backend live runs need a vendor API endpoint.
+- Live-run proof with a pasted user key on `/api/discovery/idi-asset-search/import` returned:
+  - HTTP `503`;
+  - `error: idi_core_not_configured`;
+  - `apiKeySource: user_override`;
+  - blocker only named `IDI Core endpoint`, proving the personal key was accepted but the vendor endpoint is still missing.
+- Live-run proof with no pasted user key returned:
+  - HTTP `503`;
+  - `apiKeySource: missing`;
+  - blockers named `IDI Core endpoint` and `IDI Core access`, proving the shared default key is not configured in this environment.
+- Approved report import proof returned HTTP `200`, `mode: operator_import`, `paidRun: false`, `duplicateGuard: first_import_only`, and the message that the backend did not run IDI Core.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

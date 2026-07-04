@@ -87,6 +87,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Operator-visible proof addendum on `localhost:4182` clicked the real `Run Source Search` button in headless Chromium and rendered the `What this run proved` section with 8 source proof rows. The visible rows explain bottom-right Tax Collector receipt capture, Property Appraiser review, latest-deed/Clerk access, vital/obituary review, IDI import/run approval, skip-trace approval, and governed manual research without leaking backend env var names into the UI.
 - Preview containment addendum on `localhost:4182` clicked `Run Full Discovery` in headless Chromium and proved the artifact stream is bounded: card `minHeight: 0px`, document `height: 228px`, `maxHeight: 228px`, `overflowY: auto`, and `previewFitsCard: true`. The source text for the preview eyebrow is `Preview`; stale `Live packet preview` copy is absent.
 - Tooling caveat: Computer Use could not attach to Chrome after the resumed context (`cgWindowNotFound`), and Chrome AppleScript JavaScript execution was disabled, so the browser proof used cached headless Chromium with DevTools Protocol instead of a screenshot claim.
+- IDI proof addendum on `localhost:4182` found `operator_portal` mode with user override allowed, but no `IDI_CORE_API_URL` and no shared default `IDI_CORE_API_KEY` in the current local/deployment env files. A pasted user key was accepted as `apiKeySource: user_override` and then blocked only on the missing endpoint; no pasted key returned `apiKeySource: missing` with both endpoint and access blockers. Approved report import returned HTTP `200` in `operator_import` mode with `paidRun: false`.
 
 ## Dedicated Final Review Pass
 
@@ -133,6 +134,7 @@ Evidence rerun:
 - `/api/connections/status`: `Miami-Dade Clerk API` and `Vital/Obituary Workflow` expose blocked readiness until their credentials/workflows are configured.
 - UI route proof: Doc Prep route includes `Public-record capture`, `Run Source Search`, `Tax Collector listing page`, and `Preview`; stale `Live packet preview` copy is absent.
 - UI action proof: headless Chromium clicked `Run Source Search` and showed `What this run proved` with operator-readable source proof rows; headless Chromium clicked `Run Full Discovery` and proved the preview document fits inside its card.
+- IDI route proof: `user_override` personal-key runs are accepted and blocked only by missing vendor endpoint; shared-default runs are still blocked because no shared `IDI_CORE_API_KEY` is configured in this environment.
 
 S29-S32 plan check:
 
