@@ -525,6 +525,8 @@
 }
 
 .trust-copy {
+  position: relative;
+  isolation: isolate;
   min-height: 28rem;
   display: grid;
   align-content: end;
@@ -533,10 +535,13 @@
   border-radius: 8px;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(16, 35, 60, 0.1), rgba(16, 35, 60, 0.88)),
+    linear-gradient(180deg, rgba(16, 35, 60, 0.28) 0%, rgba(16, 35, 60, 0.6) 44%, rgba(7, 18, 32, 0.96) 100%),
+    linear-gradient(0deg, rgba(4, 12, 22, 0.86) 0%, rgba(4, 12, 22, 0.32) 42%, rgba(4, 12, 22, 0) 72%),
     url("/assets/property-review-dossier.png") center top / cover,
     #10233c;
+  background-clip: padding-box;
   color: #fff;
+  clip-path: inset(0 round 8px);
 }
 
 .trust-copy .eyebrow,
@@ -556,7 +561,7 @@
 
 .trust-copy p:not(.eyebrow) {
   max-width: 620px;
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .trust-checklist {
@@ -1576,6 +1581,28 @@
 .trust-copy {
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: var(--shadow-lift);
+}
+
+.landing-page .trust-copy {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    var(--shadow-lift),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.landing-page .trust-copy p.eyebrow {
+  color: #f0c66d;
+  text-shadow: 0 1px 18px rgba(0, 0, 0, 0.46);
+}
+
+.landing-page .trust-copy h2,
+.landing-page .trust-copy p:not(.eyebrow) {
+  color: #fff;
+  text-shadow: 0 2px 22px rgba(0, 0, 0, 0.54);
+}
+
+.landing-page .trust-copy p:not(.eyebrow) {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .archive-experience {
