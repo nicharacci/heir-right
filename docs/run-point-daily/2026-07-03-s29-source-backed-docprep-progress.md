@@ -428,8 +428,9 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
 - Proof:
   - `pnpm build`: passed.
   - `pnpm test`: passed.
-  - Local DOM/API proof on `http://localhost:4178/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` found `Source readiness before this run`, `Tax receipts`, `Clerk records`, `Obituary and vital review`, `IDI asset search`, and `Manual research`.
+  - Local server/API proof on `http://localhost:4178/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` found `Source readiness before this run`, `Tax receipts`, `Clerk records`, `Obituary and vital review`, `IDI asset search`, and `Manual research`.
   - The same proof confirmed `/api/connections/status` exposes `Tax Collector Source`, `Miami-Dade Clerk API`, `Vital/Obituary Workflow`, and `IDI Core`.
+  - Chrome Computer Use proof on a clean `localhost:4179` origin switched to `Estate Discovery`, showed the source-readiness rows in the visible Doc Prep rail, clicked `Run Source Search`, and rendered review blockers plus source facts without assuming missing public or paid-source facts.
 
 ## Next Work
 

@@ -80,7 +80,8 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Source governance route proof returned 8 source summaries and a blocked `Governed manual and paid research` bucket containing voter, professional-license, business/address, social-profile, and deceased-indicator review codes.
 - Browserbase route proof with mocked Browserbase Function API returned Tax Collector receipt link and vital date-of-death facts through the actual `/api/discovery/external-source-run` route, while leaving Clerk/IDI/skip/governed sources blocked.
 - Browserbase function package proof passed syntax checks and extraction contract tests for receipt capture, obituary-link selection, and DOB/DOD hints.
-- Source-readiness UI proof found `Source readiness before this run`, `Tax receipts`, `Clerk records`, `Obituary and vital review`, `IDI asset search`, and `Manual research` in the Doc Prep rail, backed by `/api/connections/status` rows for `Tax Collector Source`, `Miami-Dade Clerk API`, `Vital/Obituary Workflow`, and `IDI Core`.
+- Source-readiness server/API proof found `Source readiness before this run`, `Tax receipts`, `Clerk records`, `Obituary and vital review`, `IDI asset search`, and `Manual research`, backed by `/api/connections/status` rows for `Tax Collector Source`, `Miami-Dade Clerk API`, `Vital/Obituary Workflow`, and `IDI Core`.
+- Chrome Computer Use proof on a clean `localhost:4179` origin switched to `Estate Discovery`, showed the readiness rows in the visible Doc Prep rail, clicked `Run Source Search`, and rendered review blockers plus source facts without assuming missing public or paid-source facts.
 
 ## Dedicated Final Review Pass
 
