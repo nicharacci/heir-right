@@ -111,6 +111,48 @@ try {
   assert.ok(bundle.includes("grid-template-rows: auto auto minmax(220px, var(--artifact-preview-height)) auto"));
   assert.ok(bundle.includes("max-height: var(--artifact-preview-height)"));
 
+  const turbo = JSON.parse(readFileSync(new URL("../../../turbo.json", import.meta.url), "utf8"));
+  const trackedEnv = new Set(turbo.globalEnv || []);
+  const sourceAcquisitionEnv = [
+    "WORKER_API_URL",
+    "WORKER_BASE_URL",
+    "IDI_CORE_API_URL",
+    "IDI_CORE_API_KEY",
+    "IDI_CORE_LIVE_RUN_APPROVED",
+    "IDI_CORE_LOGIN_URL",
+    "IDI_CORE_PORTAL_URL",
+    "IDI_CORE_SEARCH_URL",
+    "IDI_CORE_ACCOUNT_ID",
+    "IDI_CORE_ACCOUNT_COMPANY",
+    "IDI_CORE_OPERATOR_EMAIL",
+    "BROWSERBASE_API_KEY",
+    "BROWSERBASE_PROJECT_ID",
+    "BROWSERBASE_API_BASE",
+    "TAX_COLLECTOR_LISTING_URL",
+    "TAX_COLLECTOR_LISTING_URL_TEMPLATE",
+    "TAX_COLLECTOR_LIVE_ACQUISITION_ENABLED",
+    "TAX_COLLECTOR_SEARCH_URL",
+    "TAX_COLLECTOR_BROWSER_WORKFLOW_URL",
+    "TAX_COLLECTOR_BROWSER_WORKFLOW_TOKEN",
+    "TAX_COLLECTOR_BROWSER_WORKFLOW_ENABLED",
+    "TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID",
+    "BROWSERBASE_TAX_COLLECTOR_FUNCTION_ID",
+    "MIAMI_DADE_CLERK_AUTH_KEY",
+    "MIAMI_DADE_COMMERCIAL_AUTH_KEY",
+    "CLERK_COMMERCIAL_AUTH_KEY",
+    "MIAMI_DADE_CLERK_API_BASE",
+    "OBITUARY_VITAL_WORKFLOW_URL",
+    "OBITUARY_VITAL_WORKFLOW_TOKEN",
+    "VITAL_OBITUARY_WORKFLOW_URL",
+    "MARRIAGE_DEATH_WORKFLOW_URL",
+    "OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID",
+    "VITAL_OBITUARY_BROWSERBASE_FUNCTION_ID",
+    "MARRIAGE_DEATH_BROWSERBASE_FUNCTION_ID",
+    "BROWSERBASE_VITAL_OBITUARY_FUNCTION_ID",
+  ];
+  const missingEnv = sourceAcquisitionEnv.filter((key) => !trackedEnv.has(key));
+  assert.deepEqual(missingEnv, [], "Turbo must track source-acquisition env vars so proof does not reuse stale cached output.");
+
   console.log(JSON.stringify({
     ok: true,
     checks: [
@@ -120,6 +162,7 @@ try {
       "tax_receipt_link_preserved",
       "operator_visible_source_proof_copy",
       "preview_fit_css",
+      "source_acquisition_env_cache_key",
     ],
   }, null, 2));
 } finally {

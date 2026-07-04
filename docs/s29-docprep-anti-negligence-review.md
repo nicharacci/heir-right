@@ -89,6 +89,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Tooling caveat: Computer Use could not attach to Chrome after the resumed context (`cgWindowNotFound`), and Chrome AppleScript JavaScript execution was disabled, so the browser proof used cached headless Chromium with DevTools Protocol instead of a screenshot claim.
 - IDI proof addendum on `localhost:4182` found `operator_portal` mode with user override allowed, but no `IDI_CORE_API_URL` and no shared default `IDI_CORE_API_KEY` in the current local/deployment env files. A pasted user key was accepted as `apiKeySource: user_override` and then blocked only on the missing endpoint; no pasted key returned `apiKeySource: missing` with both endpoint and access blockers. Approved report import returned HTTP `200` in `operator_import` mode with `paidRun: false`.
 - Source-run contract addendum: `@ple/artifact` now has an executable contract test for `/api/discovery/external-source-run`. It fails if any required source bucket disappears, if Discovery is marked complete while blockers remain, if legal-template autofill becomes allowed from unreviewed source facts, if the Tax Collector bottom-right receipt link is dropped, or if the operator bundle loses the source-proof/preview containment copy.
+- Cache-invalidation addendum: Turbo now tracks IDI, Browserbase, Tax Collector, Miami-Dade Clerk, vital/obituary, and alternate worker proxy env vars. The artifact source-run contract test fails if those env vars fall out of `globalEnv`, preventing stale cached "blocked" proof after production credentials are configured.
 
 ## Dedicated Final Review Pass
 
@@ -137,6 +138,7 @@ Evidence rerun:
 - UI action proof: headless Chromium clicked `Run Source Search` and showed `What this run proved` with operator-readable source proof rows; headless Chromium clicked `Run Full Discovery` and proved the preview document fits inside its card.
 - IDI route proof: `user_override` personal-key runs are accepted and blocked only by missing vendor endpoint; shared-default runs are still blocked because no shared `IDI_CORE_API_KEY` is configured in this environment.
 - Regression proof: `pnpm test` now includes the artifact source-run contract test and passed. Live `localhost:4183` route proof still returned eight source buckets, `readyForDiscoveryCompletion: false`, `legalTemplateAutofillAllowed: false`, Tax Collector receipt fact present, and IDI `evidence_required`.
+- Cache proof: `pnpm test` passed after adding source-acquisition env vars to Turbo's `globalEnv`, and the artifact contract test now reports `source_acquisition_env_cache_key`.
 
 S29-S32 plan check:
 

@@ -527,6 +527,18 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Served page proof on `http://localhost:4183/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` found `What this run proved`, `bottom-right receipt link`, `Review owner name, folio`, `Attach the latest deed`, `Run Source Search`, and `Preview`; `Live packet preview` was false.
   - IDI status proof on `http://localhost:4183/api/discovery/idi-core/status` still returned `configuredMode: operator_portal`, `sharedDefaultConfigured: false`, `endpointConfigured: false`, and `userOverrideAllowed: true`.
 
+## Twenty-Third Repair Pass: Source Credential Cache Invalidation
+
+- Added the source-acquisition credential and workflow env vars to `turbo.json` `globalEnv`.
+- Covered IDI Core, Browserbase, Tax Collector direct/browser workflow, Miami-Dade Clerk Commercial Data Services, vital/obituary workflow, and alternate worker proxy env names.
+- Extended the artifact source-run contract test so it fails if those source-acquisition env vars fall out of Turbo's cache key.
+- Why it matters: when TP configures `IDI_CORE_API_URL`, shared `IDI_CORE_API_KEY`, Browserbase function IDs, Clerk AuthKey, or vital/obituary workflow URLs, source-run proof must rerun with the new env instead of reusing stale blocked output.
+- Proof:
+  - `pnpm --filter @ple/artifact test`: passed and reported `source_acquisition_env_cache_key`.
+  - `pnpm test`: passed with all five workspace tasks executing after the env-key change.
+  - Direct `turbo.json` proof confirmed `IDI_CORE_API_URL`, `IDI_CORE_API_KEY`, `BROWSERBASE_API_KEY`, `TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID`, `MIAMI_DADE_CLERK_AUTH_KEY`, and `OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID` are tracked.
+  - `git diff --check`: passed.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.
