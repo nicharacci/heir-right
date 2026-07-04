@@ -789,6 +789,19 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
 - Proof:
   - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed and reported `clerk_commercial_api_route_fact_mapping`.
 
+## Thirty-Fifth Repair Pass: Browserbase Source-Run Route Mapping Proof
+
+- Added a route-level source-run contract for configured Browserbase Function paths.
+- The test configures mocked Browserbase function IDs/API base and verifies `/api/discovery/external-source-run` maps function outputs into Discovery facts.
+- Proved:
+  - Tax Collector Browserbase function output returns the bottom-right receipt link, paid-by party, paid date, amount due, unpaid years, and reassessment detail from returned listing HTML;
+  - vital/obituary Browserbase function output returns DOB/DOD, obituary link/snapshot, marriage signal, and death-certificate status;
+  - Tax Collector and vital/obituary proof rows become `facts_returned_review_required`;
+  - `bottom_right_receipt` and `vital_indicators` detail checks resolve to `Evidence found`;
+  - Browserbase API key is not stored in source URLs.
+- Proof:
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed and reported `browserbase_source_run_route_fact_mapping`.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

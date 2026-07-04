@@ -437,6 +437,107 @@ try {
     if (previousClerkApiBase === undefined) delete process.env.MIAMI_DADE_CLERK_API_BASE;
     else process.env.MIAMI_DADE_CLERK_API_BASE = previousClerkApiBase;
   }
+
+  const previousBrowserbaseApiKey = process.env.BROWSERBASE_API_KEY;
+  const previousTaxBrowserbaseFunction = process.env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID;
+  const previousVitalBrowserbaseFunction = process.env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID;
+  const previousBrowserbaseApiBase = process.env.BROWSERBASE_API_BASE;
+  const previousBrowserbaseFetch = globalThis.fetch;
+  try {
+    process.env.BROWSERBASE_API_KEY = "contract-browserbase-key";
+    process.env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID = "tax-contract-function";
+    process.env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID = "vital-contract-function";
+    process.env.BROWSERBASE_API_BASE = "https://browserbase-contract.test";
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      if (url.includes("/v1/functions/tax-contract-function/invoke")) {
+        return Response.json({
+          id: "inv-tax-contract",
+          sessionId: "sess-tax-contract",
+          status: "COMPLETED",
+          results: {
+            listingUrl: "https://miamidade.county-taxes.test/listing/browserbase-contract",
+            listingHtml: `
+              <dl>
+                <dt>Paid By</dt><dd>Maria Browserbase</dd>
+                <dt>Paid Date</dt><dd>04/15/2025</dd>
+                <dt>Amount Due</dt><dd>$2,345.67</dd>
+                <dt>Unpaid Years</dt><dd>2023, 2024</dd>
+                <dt>Reassessment</dt><dd>Review reassessment from browser run</dd>
+              </dl>
+              <aside><a class="receipt-link" href="/receipt/browserbase-paid.pdf">Print receipt</a></aside>
+            `,
+          },
+        }, { status: 202 });
+      }
+      if (url.includes("/v1/functions/vital-contract-function/invoke")) {
+        return Response.json({
+          id: "inv-vital-contract",
+          sessionId: "sess-vital-contract",
+          status: "COMPLETED",
+          results: {
+            ok: true,
+            status: "reviewed-with-source",
+            dateOfBirth: "1942-04-10",
+            dateOfDeath: "2024-01-02",
+            obituaryLink: "https://legacy.test/browserbase-contract-obituary",
+            obituarySnapshot: "Obituary names surviving spouse and children for review.",
+            marriageLicenseSignal: "Possible spouse signal found.",
+            deathCertificateStatus: "Requested, not attached",
+          },
+        }, { status: 202 });
+      }
+      return previousBrowserbaseFetch(input);
+    };
+    const browserbaseResult = await callHandler(externalSourceRun, {
+      assetKey: "browserbase-route-contract-proof",
+      estateName: "Estate of Browserbase Contract Proof",
+      ownerName: "Estate of Browserbase Contract Proof",
+      propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+      parcelId: "34-1133-036-0010",
+      county: "miami-dade",
+    });
+    const browserbaseProofBySource = new Map(browserbaseResult.json.sourceRunProof.sources.map((item) => [item.source, item]));
+    assert.equal(browserbaseProofBySource.get("tax_collector").proofState, "facts_returned_review_required");
+    assert.equal(browserbaseProofBySource.get("clerk_of_courts").proofState, "facts_returned_review_required");
+    assert.ok(
+      browserbaseProofBySource.get("tax_collector").detailChecks.some((check) => check.code === "bottom_right_receipt" && check.status === "evidence_returned_review_required"),
+      "Browserbase Tax Collector route proof must resolve bottom-right receipt detail"
+    );
+    assert.ok(
+      browserbaseProofBySource.get("clerk_of_courts").detailChecks.some((check) => check.code === "vital_indicators" && check.status === "evidence_returned_review_required"),
+      "Browserbase vital/obituary route proof must resolve vital-indicator detail"
+    );
+    assert.ok(
+      browserbaseResult.json.sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "tax_receipt_link" && /browserbase-paid/.test(String(fact.value))),
+      "Browserbase Tax Collector route proof must return the receipt link fact"
+    );
+    assert.ok(
+      browserbaseResult.json.sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "tax_last_paid_by" && fact.value === "Maria Browserbase"),
+      "Browserbase Tax Collector route proof must parse payer detail from returned listing HTML"
+    );
+    assert.ok(
+      browserbaseResult.json.sourceFacts.some((fact) => fact.source === "clerk_of_courts" && fact.factType === "date_of_death" && fact.value === "2024-01-02"),
+      "Browserbase vital/obituary route proof must return date-of-death facts"
+    );
+    assert.ok(
+      browserbaseResult.json.sourceFacts
+        .filter((fact) => fact.source === "tax_collector" || fact.source === "clerk_of_courts")
+        .every((fact) => !String(fact.sourceUrl || "").includes("contract-browserbase-key")),
+      "Browserbase API key must not be stored in source URLs"
+    );
+  } finally {
+    globalThis.fetch = previousBrowserbaseFetch;
+    if (previousBrowserbaseApiKey === undefined) delete process.env.BROWSERBASE_API_KEY;
+    else process.env.BROWSERBASE_API_KEY = previousBrowserbaseApiKey;
+    if (previousTaxBrowserbaseFunction === undefined) delete process.env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID;
+    else process.env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID = previousTaxBrowserbaseFunction;
+    if (previousVitalBrowserbaseFunction === undefined) delete process.env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID;
+    else process.env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID = previousVitalBrowserbaseFunction;
+    if (previousBrowserbaseApiBase === undefined) delete process.env.BROWSERBASE_API_BASE;
+    else process.env.BROWSERBASE_API_BASE = previousBrowserbaseApiBase;
+  }
+
   const artifactReceipt = discoverTaxCollectorReceipt({
     listingUrl: "https://miamidade.county-taxes.test/listing/3411330360010",
     listingHtml: `
@@ -533,6 +634,7 @@ try {
       "idi_core_guardrail_detail_checks",
       "idi_import_and_contact_review_split",
       "clerk_commercial_api_route_fact_mapping",
+      "browserbase_source_run_route_fact_mapping",
       "governed_manual_and_paid_sources_visible",
       "operator_visible_source_proof_copy",
       "preview_fit_css",
