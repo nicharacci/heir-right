@@ -4,7 +4,9 @@ Date: 2026-07-04
 
 ## Result
 
-No new provider secrets were deployed because the actual private values are not available in the checked local environment, env files, Keychain names, Vercel project, Cloudflare Worker, or local secret-manager CLIs.
+IDI Core operator-portal configuration was found, deployed, and verified live.
+
+The shared backend IDI API endpoint/token and Browserbase credentials were not found in the checked local environment, provider env inventories, Chrome profile metadata, local Mail storage, or available app connectors. They were not fabricated.
 
 Do not use dummy values. Do not set `IDI_CORE_LIVE_RUN_APPROVED=true` without the real endpoint/token and an approved proof window.
 
@@ -23,6 +25,14 @@ Do not use dummy values. Do not set `IDI_CORE_LIVE_RUN_APPROVED=true` without th
   - `IDI_CORE_API_TOKEN`
   - `HEIRRIGHT_IDI_CORE_API_TOKEN`
   - `BROWSERBASE_API_KEY`
+- Chrome profile data:
+  - Profile 11 contains saved `login.idicore.com` credentials.
+  - The valid idiCORE credential reaches the email authentication-code gate.
+  - The copied Chrome session is expired for idiCORE app pages.
+  - Chrome history/saved-login metadata did not contain Browserbase dashboard/API-key access.
+- Gmail/Mail retrieval:
+  - Gmail connector returned `UNAUTHORIZED` / reauthentication required.
+  - Local Mail storage did not contain a fresh idiCORE authentication-code email after requesting one.
 - Secret-manager CLIs:
   - `op`
   - `doppler`
@@ -31,6 +41,18 @@ Do not use dummy values. Do not set `IDI_CORE_LIVE_RUN_APPROVED=true` without th
 ## Present Values Found
 
 - `.env.local` contains `IDI_CORE_LIVE_RUN_APPROVED`.
+- Chrome Profile 11 contains a valid idiCORE portal login, but the app requires an emailed authentication code before admin/search surfaces can be reached.
+- Deployed to Vercel production:
+  - `IDI_CORE_LOGIN_URL`
+  - `IDI_CORE_PORTAL_URL`
+  - `IDI_CORE_OPERATOR_EMAIL`
+  - `IDI_CORE_LIVE_RUN_APPROVED=false`
+- Deployed to Cloudflare Worker secrets:
+  - `IDI_CORE_OPERATOR_EMAIL`
+- Cloudflare Worker vars already contain:
+  - `IDI_CORE_LOGIN_URL`
+  - `IDI_CORE_PORTAL_URL`
+  - `IDI_CORE_LIVE_RUN_APPROVED=false`
 - No `IDI_CORE_API_URL`.
 - No `IDI_CORE_API_TOKEN`.
 - No `HEIRRIGHT_IDI_CORE_API_TOKEN`.
@@ -67,6 +89,37 @@ Deploy shared app/runtime secrets to both:
 - Cloudflare Worker secrets for `heirright-probate-lead-engine`
 
 Deploy Browserbase function IDs only after the Browserbase source functions are actually deployed.
+
+## Live Verification
+
+- Vercel production deployment: `dpl_5TTCUuevxQEaM8nCDe9GoToBA9PC`
+- Cloudflare Worker deployment version: `82e87deb-5453-447b-b5a8-f96fa5564afa`
+- `GET https://heirright-landing-demo.vercel.app/api/discovery/idi-core/status`
+  - HTTP `200`
+  - `name: IDI Core`
+  - `ok: true`
+  - `mode: review`
+  - `configuredMode: operator_portal`
+  - `portal.configured: true`
+  - `api.endpointConfigured: false`
+  - `api.sharedDefaultConfigured: false`
+- `POST https://heirright-landing-demo.vercel.app/api/discovery/external-source-run`
+  - HTTP `200`
+  - route is live
+  - current blocker: Tax Collector public search still needs a direct listing URL/template or browser workflow capture.
+- `POST https://heirright-landing-demo.vercel.app/api/discovery/tax-collector/receipt-run`
+  - HTTP `200`
+  - route is live
+  - current blocker: no `TAX_COLLECTOR_LISTING_URL_TEMPLATE`, Browserbase function, or controlled browser workflow is deployed.
+
+## Route Fixes Deployed
+
+- Added root Vercel API shims for:
+  - `/api/discovery/idi-core/status`
+  - `/api/discovery/external-source-run`
+  - `/api/discovery/tax-collector/receipt-run`
+- Deployed the current Cloudflare Worker so Vercel source routes no longer hit stale Worker 404s.
+- Patched Tax Collector receipt-run to fall back to local acquisition when the Worker does not implement that standalone receipt route.
 
 ## Verification After Deployment
 

@@ -7,7 +7,7 @@ module.exports = async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const proxied = await proxyWorkerJson("/api/discovery/tax-collector/receipt-run", body);
-    if (proxied) {
+    if (proxied && proxied.status !== 404) {
       sendProxied(response, proxied);
       return;
     }
