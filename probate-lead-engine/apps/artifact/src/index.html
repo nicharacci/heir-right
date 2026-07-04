@@ -3767,9 +3767,11 @@
 
     .docprep-artifact-stream {
       --artifact-preview-height: clamp(220px, 38vh, 480px);
+      --artifact-card-extra-height: 180px;
       gap: 12px;
       grid-template-rows: auto auto minmax(220px, var(--artifact-preview-height)) auto;
-      min-height: 0;
+      min-height: calc(var(--artifact-preview-height) + var(--artifact-card-extra-height));
+      height: auto;
       align-content: start;
       overflow: hidden;
     }
@@ -7016,7 +7018,8 @@
     }
 
     .rail-card.docprep-artifact-stream {
-      min-height: 0;
+      min-height: calc(var(--artifact-preview-height) + var(--artifact-card-extra-height));
+      height: auto;
       align-content: start;
       gap: 12px;
       overflow: hidden;
@@ -14648,60 +14651,137 @@ function docPrepStreamStatusLabel(status = "pending") {
   }[status] || "Waiting";
 }
 
+function sourceProofForCapture(capture = {}) {
+  const proof = capture.sourceApiRun?.sourceRunProof;
+  return proof && typeof proof === "object" ? proof : null;
+}
+
+function sourceProofBucket(capture = {}, source = "") {
+  const sources = sourceProofForCapture(capture)?.sources;
+  if (!Array.isArray(sources)) return null;
+  return sources.find((item) => item.source === source || item.label === source) || null;
+}
+
+function sourceProofBucketLine(capture = {}, source = "", label = "Source proof") {
+  const bucket = sourceProofBucket(capture, source);
+  if (!bucket) return "";
+  const status = sourceProofLabel(bucket.proofState);
+  const action = sourceProofOperatorAction(bucket);
+  return `${label}: ${status}${action ? ` - ${action}` : ""}`;
+}
+
+function sourceProofDetailLine(capture = {}, source = "", codes = [], label = "Source check") {
+  const bucket = sourceProofBucket(capture, source);
+  const checks = Array.isArray(bucket?.detailChecks) ? bucket.detailChecks : [];
+  const targets = new Set(codes);
+  const check = checks.find((item) => targets.has(item.code));
+  if (!check) return sourceProofBucketLine(capture, source, label);
+  const status = sourceDetailLabel(check.status);
+  return `${label}: ${status}${check.operatorAction ? ` - ${check.operatorAction}` : ""}`;
+}
+
+function currentCaptureProofLine(hasEvidence, label = "Source check", evidenceCopy = "Evidence captured from the current Discovery File.") {
+  return hasEvidence ? `${label}: Evidence captured - ${evidenceCopy}` : "";
+}
+
+function sourceRunSummaryLine(capture = {}) {
+  const proof = sourceProofForCapture(capture);
+  if (!proof) return "";
+  const unresolved = Number(proof.blockingDetailCheckCount || proof.unresolvedDetailCheckCount || 0);
+  const sourceCount = Array.isArray(proof.sources) ? proof.sources.length : 0;
+  const generatedAt = Date.parse(capture.sourceApiRun?.generatedAt || "");
+  const savedAt = Number(capture.updatedAt || 0);
+  const newerCapture = Number.isFinite(generatedAt) && savedAt > generatedAt + 1000;
+  const suffix = newerCapture ? " Current saved capture is newer than that source-search proof." : "";
+  return proof.readyForOperatorReview
+    ? `Source proof: ${sourceCount} source buckets returned evidence for operator review.${suffix}`
+    : `Source proof: ${sourceCount} source buckets checked; ${unresolved} blocking checklist item${unresolved === 1 ? "" : "s"} remain visible.${suffix}`;
+}
+
 function docPrepStreamPhaseLines(row = selectedRow(), dossier = dossierForRow(row), flowId = state.activeDocPrepFlow, phase = currentDiscoveryPhase(flowId, row), status = "pending", message = "") {
   const capture = sourceCaptureForRow(row);
   const idi = idiImportForRow(row);
   const accepted = acceptedContactCandidates(row);
   const docs = docsForFlow(row, dossier, flowId);
+  const discoveryStats = documentPrepStats(row, dossier, "discovery");
+  const closingBlockers = closingTemplateFamilies.flatMap((template) => closingTemplateBlockers(template, row, dossier).map((entry) => `${template.title}: ${entry.label}`));
+  const taxStatus = capture.taxReceipt?.status === "browser_workflow_required" ? "Browser workflow blocked" : capture.taxReceipt?.status || "Needs review";
+  const taxBlocker = capture.taxReceipt?.sourceBlockedReason || capture.taxReceipt?.blocker || "";
   const common = [
     `Estate: ${docPrepEstateLabel(row)}`,
     `Property: ${cleanDisplayValue(row?.address || dossier?.property?.address?.value || "Address needs review")}`,
-    `Source: ${phase?.source || docPrepFlow(flowId).title}`
-  ];
+    `Source: ${phase?.source || docPrepFlow(flowId).title}`,
+    sourceRunSummaryLine(capture)
+  ].filter(Boolean);
   const phaseLines = {
     "owner-details": [
       `Owner: ${docPrepOwnerLabel(row)}`,
       `Folio: ${cleanDisplayValue(row?.parcel || dossier?.property?.parcelId?.value || "Needs folio review")}`,
+      sourceProofDetailLine(capture, "property_appraiser", ["property_identity", "owner_name", "owner_identity"], "Property Appraiser proof"),
       row?.sourceKind === "crm-import" ? `CRM row: ${row.sourceRecordId || row.file || "linked estate import"}` : "External estate row is being assembled from public source evidence."
-    ],
+    ].filter(Boolean),
     "tax-receipt": [
+      `Tax source status: ${cleanDisplayValue(taxStatus)}`,
       `Listing page: ${cleanDisplayValue(capture.taxReceipt?.listingUrl || "Needs Tax Collector listing page")}`,
-      `Receipt link: ${cleanDisplayValue(capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl || "Needs bottom-right receipt link")}`,
+      `Bottom-right receipt link: ${cleanDisplayValue(capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl || "Needs bottom-right receipt link")}`,
       `Paid by: ${cleanDisplayValue(capture.taxReceipt?.paidBy || "Needs Tax Collector payer")}`,
-      `Paid date: ${cleanDisplayValue(capture.taxReceipt?.paidDate || "Needs receipt paid date")}`
-    ],
+      `Paid date: ${cleanDisplayValue(capture.taxReceipt?.paidDate || "Needs receipt paid date")}`,
+      `Amount due: ${cleanDisplayValue(capture.taxReceipt?.amountDue || "Needs amount due review")}`,
+      `Unpaid years: ${cleanDisplayValue(capture.taxReceipt?.unpaidYears || "Needs unpaid-year review")}`,
+      `Reassessment: ${cleanDisplayValue(capture.taxReceipt?.reassessment || "Needs reassessment review")}`,
+      taxBlocker ? `Tax source blocker: ${cleanDisplayValue(taxBlocker)}` : "",
+      currentCaptureProofLine(Boolean(capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl), "Bottom-right receipt proof", "Receipt link is saved from the Tax Collector listing page.")
+        || sourceProofDetailLine(capture, "tax_collector", ["bottom_right_receipt", "tax_receipt_link"], "Bottom-right receipt proof")
+    ].filter(Boolean),
     deed: [
       `Official Records: ${cleanDisplayValue(capture.deed?.sourceUrl || "Needs Official Records source")}`,
       `Instrument: ${cleanDisplayValue(capture.deed?.instrument || capture.deed?.instrumentNumber || dossier?.deedHistory?.latestInstrument || "Needs OR book/page or instrument")}`,
       `Deed file: ${cleanDisplayValue(capture.deed?.documentUrl || capture.deed?.fileName || "Not attached yet")}`,
-      `Grantor / grantee: ${cleanDisplayValue([capture.deed?.grantor, capture.deed?.grantee].filter(Boolean).join(" to ") || "Needs source review")}`
-    ],
+      `Grantor / grantee: ${cleanDisplayValue([capture.deed?.grantor, capture.deed?.grantee].filter(Boolean).join(" to ") || "Needs source review")}`,
+      `Recording date: ${cleanDisplayValue(capture.deed?.recordingDate || capture.deed?.lastSaleDate || "Needs recording-date review")}`,
+      currentCaptureProofLine(Boolean((capture.deed?.sourceUrl || capture.deed?.documentUrl || capture.deed?.fileName) && (capture.deed?.instrument || capture.deed?.instrumentNumber || capture.deed?.book || capture.deed?.page)), "Deed/title proof", "Official Records evidence and instrument are saved in the Discovery File.")
+        || sourceProofDetailLine(capture, "official_records", ["latest_deed", "deed_instrument", "title_chain"], "Deed/title proof"),
+      currentCaptureProofLine(Boolean(capture.probate?.caseNumber || capture.probate?.docketUrl || capture.probate?.sourceUrl), "Court/probate proof", "Court docket evidence is saved in the Discovery File.")
+        || sourceProofDetailLine(capture, "probate_court", ["case_lookup", "probate_case", "affidavit_of_heirs"], "Court/probate proof")
+    ].filter(Boolean),
     obituary: [
       `Obituary status: ${cleanDisplayValue(capture.obituary?.status || (capture.obituary?.sourceUrl ? "found" : "Needs obituary source review"))}`,
       `Obituary evidence: ${cleanDisplayValue(capture.obituary?.sourceUrl || capture.obituary?.fileName || "Not attached yet")}`,
       `DOB / DOD: ${cleanDisplayValue([capture.obituary?.dateOfBirth, capture.obituary?.dateOfDeath].filter(Boolean).join(" / ") || "Needs vital source review")}`,
-      `Probate case: ${cleanDisplayValue(capture.probate?.caseNumber || "Needs docket source review")}`
-    ],
+      `Probate case: ${cleanDisplayValue(capture.probate?.caseNumber || "Needs docket source review")}`,
+      `Probate docket: ${cleanDisplayValue(capture.probate?.docketUrl || capture.probate?.sourceUrl || "Needs docket link")}`,
+      currentCaptureProofLine(Boolean(capture.obituary?.sourceUrl || capture.obituary?.fileName || capture.obituary?.dateOfDeath || capture.obituary?.status === "reviewed-not-found"), "Obituary/vital proof", "Obituary or vital-source review is saved in the Discovery File.")
+        || sourceProofDetailLine(capture, "clerk_of_courts", ["vital_indicators", "obituary_vital_review", "deceased_indicator"], "Obituary/vital proof")
+    ].filter(Boolean),
     "idi-asset-search": [
       `IDI mode: ${idi?.mode || "Needs controlled run or approved import"}`,
+      `Paid run: ${idi?.paidRun ? "Yes - controlled paid proof" : "No - approved import or not run"}`,
+      `API key source: ${idi?.apiKeySource || (idi ? "shared/default not reported" : "Needs team default or user key")}`,
+      `Lock key: ${idi?.lockKey || assetDiscoveryKey(row)}`,
       `Contacts parsed: ${Array.isArray(idi?.candidates) ? idi.candidates.length : 0}`,
-      `Readback: ${idi?.readbackStatus || idi?.sourceEvidence?.readbackStatus || "Not completed"}`
-    ],
+      `Readback: ${idi?.readbackStatus || idi?.sourceEvidence?.readbackStatus || "Not completed"}`,
+      sourceProofDetailLine(capture, "idi", ["idi_paid_run_approval", "idi_report_import", "idi_contact_review"], "IDI source gate")
+    ].filter(Boolean),
     "contact-review": [
       `Accepted contacts: ${accepted.length}`,
-      accepted.length ? `Signer/contact names: ${accepted.map((contact) => contact.name).filter(Boolean).join(", ")}` : "Signer/contact review is still required."
+      accepted.length ? `Signer/contact names: ${accepted.map((contact) => contact.name).filter(Boolean).join(", ")}` : "Signer/contact review is still required.",
+      sourceProofDetailLine(capture, "skip_trace", ["skip_trace_contact_review", "provider_access"], "Contact-source gate")
     ],
     "dossier-export": [
       `Packet sections: ${docs.length}`,
+      `Discovery documents linked: ${documentPrepStats(row, dossier, "discovery").linked} / ${documentPrepStats(row, dossier, "discovery").total}`,
       "Batch Queue export target: one combined Discovery Prep PDF for this estate flow."
     ],
     "closing-intake": [
       `Imported row: ${row?.sourceRecordId || row?.file || "estate row linked"}`,
+      `Reviewed Discovery File: ${discoveryProgress("discovery", row)}% complete; ${discoveryStats.linked} / ${discoveryStats.total} Discovery documents linked`,
       `Review owner: ${state.session?.user?.email || "team"}`
     ],
     "title-clearance": [
       `Deed status: ${assetPhaseComplete(row, "deed") ? "deed evidence present" : "needs deed evidence"}`,
-      `Tax status: ${assetPhaseComplete(row, "tax-receipt") ? "tax evidence present" : "needs tax evidence"}`
+      `Tax status: ${assetPhaseComplete(row, "tax-receipt") ? "tax evidence present" : "needs tax evidence"}`,
+      `Bottom-right receipt link: ${cleanDisplayValue(capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl || "Needs bottom-right receipt link")}`,
+      `Title evidence: ${cleanDisplayValue(capture.deed?.instrument || capture.deed?.sourceUrl || "Needs deed/title source")}`
     ],
     "seller-approval": [
       `Accepted signers: ${accepted.length}`,
@@ -14713,9 +14793,11 @@ function docPrepStreamPhaseLines(row = selectedRow(), dossier = dossierForRow(ro
     ],
     "closing-package": [
       `Template families: ${closingTemplateFamilies.length}`,
-      `Required-field blockers: ${closingTemplateFamilies.reduce((total, template) => total + closingTemplateBlockers(template, row, dossier).length, 0)}`,
+      `Required-field blockers: ${closingBlockers.length}`,
+      closingBlockers.length ? `First blockers: ${closingBlockers.slice(0, 4).join("; ")}` : "All required mapped fields are present for review.",
+      `Bottom-right receipt link: ${cleanDisplayValue(capture.taxReceipt?.receiptLink || capture.taxReceipt?.sourceUrl || "Needs bottom-right receipt link")}`,
       "Export target: one combined Closing Prep PDF. Legal template language remains unchanged."
-    ]
+    ].filter(Boolean)
   };
   const result = [...common, ...(phaseLines[phase?.id] || [phase?.summary || docPrepFlow(flowId).copy])];
   if (message) result.push(message);
@@ -20650,7 +20732,7 @@ function renderDocPrepRerunReview(row = selectedRow()) {
           </article>
           <article class="rail-item">
             <span class="rail-item-index">02</span>
-            <span><span class="rail-item-title">Run again</span><span class="rail-item-copy">After the correction is saved, the completed package can be rerun from the corrected file.</span></span>
+            <span><span class="rail-item-title">Run corrected packet</span><span class="rail-item-copy">After the correction note is saved, run the completed package again and watch the Preview rebuild each section.</span></span>
           </article>
         </div>
       </section>
@@ -20658,6 +20740,7 @@ function renderDocPrepRerunReview(row = selectedRow()) {
         <button class="btn" type="button" data-docprep-rerun-close>Close</button>
         <div>
           <button class="btn primary solvys-liquid-glass" type="button" data-docprep-rerun-save="${escapeHtml(flow.id)}">Save review note</button>
+          <button class="btn primary solvys-liquid-glass" type="button" data-docprep-rerun-run="${escapeHtml(flow.id)}">Run corrected packet</button>
         </div>
       </div>
     </section>
@@ -20679,6 +20762,20 @@ function wireDocPrepRerunReview(content) {
       : `${flow.shortTitle} manual fix opened. Add a note before rerunning.`;
     addShellEvent(`${flow.shortTitle} manual fix saved`, note || "Manual fix review opened for the completed Doc Prep package.", "review", false);
     renderRail();
+  });
+  content.querySelector("[data-docprep-rerun-run]")?.addEventListener("click", (event) => {
+    const row = selectedRow();
+    const flowId = event.currentTarget.dataset.docprepRerunRun || state.activeDocPrepFlow;
+    const flow = docPrepFlow(flowId);
+    const note = docPrepNoteValue(docPrepRerunNoteKey(flow.id), row, flow.id).trim();
+    if (!note) {
+      document.getElementById("topStatus").textContent = `${flow.shortTitle} needs a correction note before it runs again.`;
+      addShellEvent(`${flow.shortTitle} rerun blocked`, "Add a short correction note before rerunning the completed packet.", "blocked", true);
+      return;
+    }
+    state.docPrepManualFix = null;
+    addShellEvent(`${flow.shortTitle} rerun started`, `${docPrepEstateLabel(row)} is rebuilding the completed package from the reviewed correction note.`, "review", false);
+    runFullDiscovery(row, event.currentTarget, flow.id);
   });
   content.querySelector("[data-docprep-rerun-close]")?.addEventListener("click", () => {
     state.docPrepManualFix = null;

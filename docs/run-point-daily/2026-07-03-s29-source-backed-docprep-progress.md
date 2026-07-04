@@ -810,3 +810,37 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
 - Configure/prove `IDI_CORE_API_URL`, the shared default `IDI_CORE_API_KEY`, and explicit live-run approval or keep IDI in operator-import mode.
 - Rerun S30 demos against the corrected S29 source contracts before treating S30 as final client acceptance proof.
 - Continue source-backed treatment for marriage/death, offender/professional-license, voter/license, field/neighbor/code-enforcement, and paid/manual research tasks as explicitly human-required or approval-gated.
+
+## S30 Follow-On Proof Completed
+
+- Reran S30 against the corrected source contracts after rebuilding `apps/artifact/dist/index.html`.
+- Fixed the completed-packet rerun path so `Run again` opens a correction note and `Run corrected packet` starts a fresh streamed Preview.
+- Discovery proof:
+  - `docs/evidence/s30-discovery-stream-proof-rerun.json`;
+  - `docs/evidence/s30-discovery-stream-desktop-rerun.png`;
+  - `docs/evidence/s30-discovery-stream-mobile-rerun.png`.
+- Discovery verified:
+  - `Preview` header;
+  - 7 / 7 streamed sections;
+  - Tax Collector listing page;
+  - bottom-right receipt link;
+  - receipt proof;
+  - deed/title proof;
+  - court/probate proof;
+  - obituary/vital proof;
+  - IDI gate;
+  - accepted contacts;
+  - contained desktop/mobile preview with no horizontal overflow.
+- Closing proof:
+  - `docs/evidence/s30-docprep-stream-proof-rerun.json`;
+  - `docs/evidence/s30-docprep-stream-desktop-rerun.png`;
+  - `docs/evidence/s30-docprep-stream-mobile-rerun.png`.
+- Closing verified:
+  - `Preview` header;
+  - 5 / 5 streamed sections;
+  - bottom-right receipt link visible in Closing Prep;
+  - legal template language remains unchanged;
+  - Option+Up / Option+Down section cycling;
+  - contained desktop/mobile preview with no horizontal overflow.
+- Remaining warning:
+  - S30 proves the local rebuilt product surface and saved source facts. Production live-provider availability still belongs to S29/S32 deployment and final objective audit.

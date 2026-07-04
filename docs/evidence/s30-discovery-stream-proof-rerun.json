@@ -1,0 +1,491 @@
+{
+  "at": "2026-07-04T03:21:25.708Z",
+  "url": "http://localhost:4194/?view=dossiers&docprep=estate&rail=open&walkthrough=off&flow=discovery",
+  "ok": true,
+  "checks": [
+    {
+      "name": "desktop rerun path exposed and used",
+      "passed": true,
+      "detail": {
+        "startPath": {
+          "path": "rerun-review"
+        },
+        "rerunPath": {
+          "review": true,
+          "note": {
+            "text": "S30 proof rerun: rebuild the Discovery preview with source-backed Tax Collector receipt, public-records proof, IDI evidence, and contact review.",
+            "hasRun": true,
+            "runText": "Run corrected packet"
+          }
+        }
+      }
+    },
+    {
+      "name": "desktop heading is Preview",
+      "passed": true,
+      "detail": "Preview"
+    },
+    {
+      "name": "desktop no legacy/placeholder text",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasReceipt": true,
+        "hasReceiptProof": true,
+        "hasDeedProof": true,
+        "hasCourtProof": true,
+        "hasVitalProof": true,
+        "hasIdi": true,
+        "hasContacts": true
+      }
+    },
+    {
+      "name": "desktop discovery source evidence visible",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasReceipt": true,
+        "hasReceiptProof": true,
+        "hasDeedProof": true,
+        "hasCourtProof": true,
+        "hasVitalProof": true,
+        "hasIdi": true,
+        "hasContacts": true
+      }
+    },
+    {
+      "name": "desktop keyboard cycles sections",
+      "passed": true,
+      "detail": {
+        "before": "Dossier export",
+        "afterDown": "Owner details",
+        "afterUp": "Dossier export",
+        "changedOnDown": true,
+        "changedBackOnUp": true
+      }
+    },
+    {
+      "name": "desktop preview contained",
+      "passed": true,
+      "detail": {
+        "panel": {
+          "width": 535,
+          "height": 579,
+          "top": -59,
+          "bottom": 520,
+          "left": 893,
+          "right": 1428
+        },
+        "document": {
+          "width": 509,
+          "height": 399,
+          "top": 104,
+          "bottom": 503,
+          "left": 906,
+          "right": 1415
+        },
+        "childBottoms": [
+          {
+            "className": "artifact-stream-head",
+            "top": -46,
+            "bottom": 28,
+            "height": 74
+          },
+          {
+            "className": "docprep-section-control",
+            "top": 40,
+            "bottom": 92,
+            "height": 52
+          },
+          {
+            "className": "artifact-stream-document",
+            "top": 104,
+            "bottom": 503,
+            "height": 399
+          },
+          {
+            "className": "artifact-stream-shortcut",
+            "top": 492,
+            "bottom": 507,
+            "height": 15
+          }
+        ],
+        "computed": {
+          "display": "grid",
+          "minHeight": "579px",
+          "height": "579px",
+          "gridTemplateRows": "74.375px 52px 375.781px 14.8438px",
+          "overflow": "hidden"
+        },
+        "heading": "Preview",
+        "progress": "7 / 7 sections",
+        "activeChip": "Dossier export",
+        "textFlags": {
+          "hasLegacyHeader": false,
+          "hasFake": false,
+          "hasReceipt": true,
+          "hasReceiptProof": true,
+          "hasDeedProof": true,
+          "hasCourtProof": true,
+          "hasVitalProof": true,
+          "hasIdi": true,
+          "hasContacts": true
+        },
+        "scroll": {
+          "bodyScrollWidth": 1440,
+          "innerWidth": 1440,
+          "docScrollHeight": 2302,
+          "docClientHeight": 397
+        },
+        "sectionSample": [
+          "Owner Details\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: County property search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nOwner: Owner needs review\nFolio: Folio needs review\nProperty Appraiser proof: Review facts - Review owner name, folio, mailing address, recent sale, and stop-rule signals before moving the lead forward.\nExternal estate row is being assembled from public source evidence.\nOwner details written from current reviewed fields.",
+          "Tax Receipt\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Tax Collector\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nTax source status: receipt_link_captured\nListing page: https://county.example/tax/listing/01-3113-045-0190\nBottom-right receipt link: https://county.example/tax/receipt-2025-7788.pdf\nPaid by: Maria Hawkins\nPaid date: 11/20/2025\nAmount due: $0.00\nUnpaid years: none\nReassessment: no change\nBottom-right receipt proof: Evidence captured - Receipt link is saved from the Tax Collector listing page.\nTax receipt written from current reviewed fields.",
+          "Deed\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Official Records\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nOfficial Records: https://clerk.example/official-records/OR-34567-890\nInstrument: OR 34567 / 890\nDeed file: https://clerk.example/official-records/OR-34567-890.pdf\nGrantor / grantee: Annie Hawkins to Annie Hawkins Revocable Trust\nRecording date: 02/14/2020\nDeed/title proof: Evidence captured - Official Records evidence and instrument are saved in the Discovery File.\nCourt/probate proof: Evidence captured - Court docket evidence is saved in the Discovery File.\nDeed written from current reviewed fields.",
+          "Obituary\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Google obituary search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nObituary status: found\nObituary evidence: https://memorial.example/annie-hawkins\nDOB / DOD: 04/18/1942 / 05/12/2024\nProbate case: 2024-CP-001234\nProbate docket: https://clerk.example/probate/2024-CP-001234\nObituary/vital proof: Evidence captured - Obituary or vital-source review is saved in the Discovery File.\nObituary written from current reviewed fields.",
+          "IDI Asset Search\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: IDI Core expanded asset search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nIDI mode: operator_import\nPaid run: No - approved import or not run\nAPI key source: shared/default not reported\nLock key: idi:20611 nw 33rd pl miami gardens fl 33056:lead\nContacts parsed: 2\nReadback: Not completed\nIDI source gate: Approval - Run one paid asset search by property address only after the review owner approves the lookup.\nIDI asset search written from current reviewed fields.",
+          "Contact Review\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: IDI likely relatives and associates\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nAccepted contacts: 1\nSigner/contact names: Maria Hawkins\nContact-source gate: Needs evidence - Leave skip trace off until provider access and approval are present.\nContact review written from current reviewed fields.",
+          "Dossier Export\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Podio prep\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nPacket sections: 10\nDiscovery documents linked: 10 / 10\nBatch Queue export target: one combined Discovery Prep PDF for this estate flow.\nDossier export written from current reviewed fields."
+        ]
+      }
+    },
+    {
+      "name": "desktop no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "bodyScrollWidth": 1440,
+        "innerWidth": 1440,
+        "docScrollHeight": 2302,
+        "docClientHeight": 397
+      }
+    },
+    {
+      "name": "mobile heading is Preview",
+      "passed": true,
+      "detail": "Preview"
+    },
+    {
+      "name": "mobile no legacy/placeholder text",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasReceipt": true,
+        "hasReceiptProof": true,
+        "hasDeedProof": true,
+        "hasCourtProof": true,
+        "hasVitalProof": true,
+        "hasIdi": true,
+        "hasContacts": true
+      }
+    },
+    {
+      "name": "mobile discovery source evidence visible",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasReceipt": true,
+        "hasReceiptProof": true,
+        "hasDeedProof": true,
+        "hasCourtProof": true,
+        "hasVitalProof": true,
+        "hasIdi": true,
+        "hasContacts": true
+      }
+    },
+    {
+      "name": "mobile preview contained",
+      "passed": true,
+      "detail": {
+        "panel": {
+          "width": 390,
+          "height": 554,
+          "top": 408,
+          "bottom": 962,
+          "left": 13,
+          "right": 403
+        },
+        "document": {
+          "width": 364,
+          "height": 321,
+          "top": 587,
+          "bottom": 908,
+          "left": 26,
+          "right": 390
+        },
+        "childBottoms": [
+          {
+            "className": "artifact-stream-head",
+            "top": 421,
+            "bottom": 511,
+            "height": 90
+          },
+          {
+            "className": "docprep-section-control",
+            "top": 523,
+            "bottom": 575,
+            "height": 52
+          },
+          {
+            "className": "artifact-stream-document",
+            "top": 587,
+            "bottom": 908,
+            "height": 321
+          },
+          {
+            "className": "artifact-stream-shortcut",
+            "top": 920,
+            "bottom": 949,
+            "height": 30
+          }
+        ],
+        "computed": {
+          "display": "grid",
+          "minHeight": "500.72px",
+          "height": "554.375px",
+          "gridTemplateRows": "89.9688px 52px 320.719px 29.6875px",
+          "overflow": "hidden"
+        },
+        "heading": "Preview",
+        "progress": "7 / 7 sections",
+        "activeChip": "Dossier export",
+        "textFlags": {
+          "hasLegacyHeader": false,
+          "hasFake": false,
+          "hasReceipt": true,
+          "hasReceiptProof": true,
+          "hasDeedProof": true,
+          "hasCourtProof": true,
+          "hasVitalProof": true,
+          "hasIdi": true,
+          "hasContacts": true
+        },
+        "scroll": {
+          "bodyScrollWidth": 390,
+          "innerWidth": 390,
+          "docScrollHeight": 2789,
+          "docClientHeight": 319
+        },
+        "sectionSample": [
+          "Owner Details\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: County property search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nOwner: Owner needs review\nFolio: Folio needs review\nProperty Appraiser proof: Review facts - Review owner name, folio, mailing address, recent sale, and stop-rule signals before moving the lead forward.\nExternal estate row is being assembled from public source evidence.\nOwner details written from current reviewed fields.",
+          "Tax Receipt\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Tax Collector\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nTax source status: receipt_link_captured\nListing page: https://county.example/tax/listing/01-3113-045-0190\nBottom-right receipt link: https://county.example/tax/receipt-2025-7788.pdf\nPaid by: Maria Hawkins\nPaid date: 11/20/2025\nAmount due: $0.00\nUnpaid years: none\nReassessment: no change\nBottom-right receipt proof: Evidence captured - Receipt link is saved from the Tax Collector listing page.\nTax receipt written from current reviewed fields.",
+          "Deed\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Official Records\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nOfficial Records: https://clerk.example/official-records/OR-34567-890\nInstrument: OR 34567 / 890\nDeed file: https://clerk.example/official-records/OR-34567-890.pdf\nGrantor / grantee: Annie Hawkins to Annie Hawkins Revocable Trust\nRecording date: 02/14/2020\nDeed/title proof: Evidence captured - Official Records evidence and instrument are saved in the Discovery File.\nCourt/probate proof: Evidence captured - Court docket evidence is saved in the Discovery File.\nDeed written from current reviewed fields.",
+          "Obituary\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Google obituary search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nObituary status: found\nObituary evidence: https://memorial.example/annie-hawkins\nDOB / DOD: 04/18/1942 / 05/12/2024\nProbate case: 2024-CP-001234\nProbate docket: https://clerk.example/probate/2024-CP-001234\nObituary/vital proof: Evidence captured - Obituary or vital-source review is saved in the Discovery File.\nObituary written from current reviewed fields.",
+          "IDI Asset Search\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: IDI Core expanded asset search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nIDI mode: operator_import\nPaid run: No - approved import or not run\nAPI key source: shared/default not reported\nLock key: idi:20611 nw 33rd pl miami gardens fl 33056:lead\nContacts parsed: 2\nReadback: Not completed\nIDI source gate: Approval - Run one paid asset search by property address only after the review owner approves the lookup.\nIDI asset search written from current reviewed fields.",
+          "Contact Review\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: IDI likely relatives and associates\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nAccepted contacts: 1\nSigner/contact names: Maria Hawkins\nContact-source gate: Needs evidence - Leave skip trace off until provider access and approval are present.\nContact review written from current reviewed fields.",
+          "Dossier Export\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Podio prep\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nPacket sections: 10\nDiscovery documents linked: 10 / 10\nBatch Queue export target: one combined Discovery Prep PDF for this estate flow.\nDossier export written from current reviewed fields."
+        ]
+      }
+    },
+    {
+      "name": "mobile no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "bodyScrollWidth": 390,
+        "innerWidth": 390,
+        "docScrollHeight": 2789,
+        "docClientHeight": 319
+      }
+    }
+  ],
+  "desktop": {
+    "complete": {
+      "hasStream": true,
+      "complete": true,
+      "blocked": false,
+      "review": false,
+      "text": "HeirRight\nDashboard\nEstates\nDocument Prep\nOutreach\nQueue\nAdmin\nSettings\nHelp & Demos\n/\n+\nImport\nPrep export\nReport\nHistory\nActivity\nGuide\nAll clients\n/\nEstate of Fresh Public-Source Validation Lead\nEstate of Fresh Public-Source Validation Lead\n\n20611 NW 33rd Pl\nMiami Gardens\nFL 33056\n\nDEAL STATUS\nPre-Discovery\nPost-Discovery\nOutreach\nWarm\nHot\nCold\nPre-Discovery\nEstate Discovery\n100%\nClosing Prep\n100% · Closing templates\nAll\nLinked · 10\nMissing · 0\nEstate of Fresh Public-Source Validation Lead\n10/10 documents\nRun again\nComplete\nDiscovery Dossier\nDiscovery Dossier - Owner needs review - Estate Discovery.pdf · 9 KB\nPDF packet\nRun\nCompleted Lead Report\nCompleted Lead Report - Owner needs review - Estate Discovery.pdf · 17 KB\nRendered report\nRun\nSource Notes\nSource Notes - Owner needs review - Estate Discovery.pdf · 5 KB\nReview notes\nRun\nDeed & Title Notes\nDeed & Title Notes - Owner needs review - Estate Discovery.pdf · 4 KB\nOfficial records\nRun\nTax History Packet\nTax History Packet - Owner needs review - Estate Discovery.pdf · 5 KB\nTax collector\nRun\nProbate Document Request\nProbate Document Request - Owner needs review - Estate Discovery.pdf · 3 KB\nCourt request\nRun\nHeir Contact Matrix\nHeir Contact Matrix - Owner needs review - Estate Discovery.pdf · 5 KB\nContact review\nRun\nOutreach Drafts\nOutreach Drafts - Owner needs review - Estate Discovery.pdf · 3 KB\nEmail and SMS\nRun\nDrip Schedule\nDrip Schedule - Owner needs review - Estate Discovery.pdf · 3 KB\nAutomation prep\nRun\nCRM Review\nCRM Review - Owner needs review - Estate Discovery.pdf · 3 KB\nPodio fields\nRun\n\nPROCESS\n\nEstate Discovery\nQueue\nSource\nMiami-Dade\nCreated\n7/3/2026\nDeadline\nImport IDI\nProgress\n10 of 10 files\n\nSTILL MISSING\n\n✓\nAll listed documents are linked.\nBack to Estates\nDOSSIER RAIL\nEstate of Fresh Public-Source Validation Lead\nDISCOVERY DOSSIER · PDF PACKET · 5 OPEN SECTIONS\nBlocked\nFlow\nQuality & Score\nDocs\n\nESTATE DISCOVERY\n\nEstate Discovery checklist\n\nRun the source-backed estate play: owner, property, deed, taxes, probate, heirs, IDI, contacts, and lead report.\n\nComplete\n100%\nDossier export\nRun again\nComplete\n\nPREVIEW\n\nEstate Discovery artifact ready for review\n\nEstate Discovery generated 0 packet"
+    },
+    "stream": {
+      "panel": {
+        "width": 535,
+        "height": 579,
+        "top": -59,
+        "bottom": 520,
+        "left": 893,
+        "right": 1428
+      },
+      "document": {
+        "width": 509,
+        "height": 399,
+        "top": 104,
+        "bottom": 503,
+        "left": 906,
+        "right": 1415
+      },
+      "childBottoms": [
+        {
+          "className": "artifact-stream-head",
+          "top": -46,
+          "bottom": 28,
+          "height": 74
+        },
+        {
+          "className": "docprep-section-control",
+          "top": 40,
+          "bottom": 92,
+          "height": 52
+        },
+        {
+          "className": "artifact-stream-document",
+          "top": 104,
+          "bottom": 503,
+          "height": 399
+        },
+        {
+          "className": "artifact-stream-shortcut",
+          "top": 492,
+          "bottom": 507,
+          "height": 15
+        }
+      ],
+      "computed": {
+        "display": "grid",
+        "minHeight": "579px",
+        "height": "579px",
+        "gridTemplateRows": "74.375px 52px 375.781px 14.8438px",
+        "overflow": "hidden"
+      },
+      "heading": "Preview",
+      "progress": "7 / 7 sections",
+      "activeChip": "Dossier export",
+      "textFlags": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasReceipt": true,
+        "hasReceiptProof": true,
+        "hasDeedProof": true,
+        "hasCourtProof": true,
+        "hasVitalProof": true,
+        "hasIdi": true,
+        "hasContacts": true
+      },
+      "scroll": {
+        "bodyScrollWidth": 1440,
+        "innerWidth": 1440,
+        "docScrollHeight": 2302,
+        "docClientHeight": 397
+      },
+      "sectionSample": [
+        "Owner Details\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: County property search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nOwner: Owner needs review\nFolio: Folio needs review\nProperty Appraiser proof: Review facts - Review owner name, folio, mailing address, recent sale, and stop-rule signals before moving the lead forward.\nExternal estate row is being assembled from public source evidence.\nOwner details written from current reviewed fields.",
+        "Tax Receipt\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Tax Collector\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nTax source status: receipt_link_captured\nListing page: https://county.example/tax/listing/01-3113-045-0190\nBottom-right receipt link: https://county.example/tax/receipt-2025-7788.pdf\nPaid by: Maria Hawkins\nPaid date: 11/20/2025\nAmount due: $0.00\nUnpaid years: none\nReassessment: no change\nBottom-right receipt proof: Evidence captured - Receipt link is saved from the Tax Collector listing page.\nTax receipt written from current reviewed fields.",
+        "Deed\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Official Records\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nOfficial Records: https://clerk.example/official-records/OR-34567-890\nInstrument: OR 34567 / 890\nDeed file: https://clerk.example/official-records/OR-34567-890.pdf\nGrantor / grantee: Annie Hawkins to Annie Hawkins Revocable Trust\nRecording date: 02/14/2020\nDeed/title proof: Evidence captured - Official Records evidence and instrument are saved in the Discovery File.\nCourt/probate proof: Evidence captured - Court docket evidence is saved in the Discovery File.\nDeed written from current reviewed fields.",
+        "Obituary\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Google obituary search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nObituary status: found\nObituary evidence: https://memorial.example/annie-hawkins\nDOB / DOD: 04/18/1942 / 05/12/2024\nProbate case: 2024-CP-001234\nProbate docket: https://clerk.example/probate/2024-CP-001234\nObituary/vital proof: Evidence captured - Obituary or vital-source review is saved in the Discovery File.\nObituary written from current reviewed fields.",
+        "IDI Asset Search\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: IDI Core expanded asset search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nIDI mode: operator_import\nPaid run: No - approved import or not run\nAPI key source: shared/default not reported\nLock key: idi:20611 nw 33rd pl miami gardens fl 33056:lead\nContacts parsed: 2\nReadback: Not completed\nIDI source gate: Approval - Run one paid asset search by property address only after the review owner approves the lookup.\nIDI asset search written from current reviewed fields.",
+        "Contact Review\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: IDI likely relatives and associates\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nAccepted contacts: 1\nSigner/contact names: Maria Hawkins\nContact-source gate: Needs evidence - Leave skip trace off until provider access and approval are present.\nContact review written from current reviewed fields.",
+        "Dossier Export\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Podio prep\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nPacket sections: 10\nDiscovery documents linked: 10 / 10\nBatch Queue export target: one combined Discovery Prep PDF for this estate flow.\nDossier export written from current reviewed fields."
+      ]
+    }
+  },
+  "mobile": {
+    "complete": {
+      "hasStream": true,
+      "complete": true,
+      "blocked": false,
+      "review": false,
+      "text": "+\nImport\nPrep export\nReport\nHistory\nActivity\nGuide\nAll clients\n/\nEstate of Fresh Public-Source Validation Lead\nEstate of Fresh Public-Source Validation Lead\n\n20611 NW 33rd Pl\nMiami Gardens\nFL 33056\n\nDEAL STATUS\nPre-Discovery\nPost-Discovery\nOutreach\nWarm\nHot\nCold\nPre-Discovery\nEstate Discovery\n100%\nClosing Prep\n100% · Closing templates\nAll\nLinked · 10\nMissing · 0\nEstate of Fresh Public-Source Validation Lead\n10/10 documents\nRun again\nComplete\nDiscovery Dossier\nDiscovery Dossier - Owner needs review - Estate Discovery.pdf · 9 KB\nPDF packet\nRun\nCompleted Lead Report\nCompleted Lead Report - Owner needs review - Estate Discovery.pdf · 17 KB\nRendered report\nRun\nSource Notes\nSource Notes - Owner needs review - Estate Discovery.pdf · 5 KB\nReview notes\nRun\nDeed & Title Notes\nDeed & Title Notes - Owner needs review - Estate Discovery.pdf · 4 KB\nOfficial records\nRun\nTax History Packet\nTax History Packet - Owner needs review - Estate Discovery.pdf · 5 KB\nTax collector\nRun\nProbate Document Request\nProbate Document Request - Owner needs review - Estate Discovery.pdf · 3 KB\nCourt request\nRun\nHeir Contact Matrix\nHeir Contact Matrix - Owner needs review - Estate Discovery.pdf · 5 KB\nContact review\nRun\nOutreach Drafts\nOutreach Drafts - Owner needs review - Estate Discovery.pdf · 3 KB\nEmail and SMS\nRun\nDrip Schedule\nDrip Schedule - Owner needs review - Estate Discovery.pdf · 3 KB\nAutomation prep\nRun\nCRM Review\nCRM Review - Owner needs review - Estate Discovery.pdf · 3 KB\nPodio fields\nRun\n\nPROCESS\n\nEstate Discovery\nQueue\nSource\nMiami-Dade\nCreated\n7/3/2026\nDeadline\nImport IDI\nProgress\n10 of 10 files\n\nSTILL MISSING\n\n✓\nAll listed documents are linked.\nBack to Estates\nDOSSIER RAIL\nEstate of Fresh Public-Source Validation Lead\nDISCOVERY DOSSIER · PDF PACKET · 5 OPEN SECTIONS\nBlocked\nFlow\nQuality & Score\nDocs\n\nESTATE DISCOVERY\n\nEstate Discovery checklist\n\nRun the source-backed estate play: owner, property, deed, taxes, probate, heirs, IDI, contacts, and lead report.\n\nComplete\n100%\nDossier export\nRun again\nComplete\n\nPREVIEW\n\nEstate Discovery artifact ready for review\n\nEstate Discovery generated 0 packet sections for one combined PDF export.\n\n7 / 7 sections\nOwner details\nTax receipt\nDeed\nO"
+    },
+    "stream": {
+      "panel": {
+        "width": 390,
+        "height": 554,
+        "top": 408,
+        "bottom": 962,
+        "left": 13,
+        "right": 403
+      },
+      "document": {
+        "width": 364,
+        "height": 321,
+        "top": 587,
+        "bottom": 908,
+        "left": 26,
+        "right": 390
+      },
+      "childBottoms": [
+        {
+          "className": "artifact-stream-head",
+          "top": 421,
+          "bottom": 511,
+          "height": 90
+        },
+        {
+          "className": "docprep-section-control",
+          "top": 523,
+          "bottom": 575,
+          "height": 52
+        },
+        {
+          "className": "artifact-stream-document",
+          "top": 587,
+          "bottom": 908,
+          "height": 321
+        },
+        {
+          "className": "artifact-stream-shortcut",
+          "top": 920,
+          "bottom": 949,
+          "height": 30
+        }
+      ],
+      "computed": {
+        "display": "grid",
+        "minHeight": "500.72px",
+        "height": "554.375px",
+        "gridTemplateRows": "89.9688px 52px 320.719px 29.6875px",
+        "overflow": "hidden"
+      },
+      "heading": "Preview",
+      "progress": "7 / 7 sections",
+      "activeChip": "Dossier export",
+      "textFlags": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasReceipt": true,
+        "hasReceiptProof": true,
+        "hasDeedProof": true,
+        "hasCourtProof": true,
+        "hasVitalProof": true,
+        "hasIdi": true,
+        "hasContacts": true
+      },
+      "scroll": {
+        "bodyScrollWidth": 390,
+        "innerWidth": 390,
+        "docScrollHeight": 2789,
+        "docClientHeight": 319
+      },
+      "sectionSample": [
+        "Owner Details\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: County property search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nOwner: Owner needs review\nFolio: Folio needs review\nProperty Appraiser proof: Review facts - Review owner name, folio, mailing address, recent sale, and stop-rule signals before moving the lead forward.\nExternal estate row is being assembled from public source evidence.\nOwner details written from current reviewed fields.",
+        "Tax Receipt\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Tax Collector\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nTax source status: receipt_link_captured\nListing page: https://county.example/tax/listing/01-3113-045-0190\nBottom-right receipt link: https://county.example/tax/receipt-2025-7788.pdf\nPaid by: Maria Hawkins\nPaid date: 11/20/2025\nAmount due: $0.00\nUnpaid years: none\nReassessment: no change\nBottom-right receipt proof: Evidence captured - Receipt link is saved from the Tax Collector listing page.\nTax receipt written from current reviewed fields.",
+        "Deed\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Official Records\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nOfficial Records: https://clerk.example/official-records/OR-34567-890\nInstrument: OR 34567 / 890\nDeed file: https://clerk.example/official-records/OR-34567-890.pdf\nGrantor / grantee: Annie Hawkins to Annie Hawkins Revocable Trust\nRecording date: 02/14/2020\nDeed/title proof: Evidence captured - Official Records evidence and instrument are saved in the Discovery File.\nCourt/probate proof: Evidence captured - Court docket evidence is saved in the Discovery File.\nDeed written from current reviewed fields.",
+        "Obituary\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Google obituary search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nObituary status: found\nObituary evidence: https://memorial.example/annie-hawkins\nDOB / DOD: 04/18/1942 / 05/12/2024\nProbate case: 2024-CP-001234\nProbate docket: https://clerk.example/probate/2024-CP-001234\nObituary/vital proof: Evidence captured - Obituary or vital-source review is saved in the Discovery File.\nObituary written from current reviewed fields.",
+        "IDI Asset Search\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: IDI Core expanded asset search\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nIDI mode: operator_import\nPaid run: No - approved import or not run\nAPI key source: shared/default not reported\nLock key: idi:20611 nw 33rd pl miami gardens fl 33056:lead\nContacts parsed: 2\nReadback: Not completed\nIDI source gate: Approval - Run one paid asset search by property address only after the review owner approves the lookup.\nIDI asset search written from current reviewed fields.",
+        "Contact Review\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: IDI likely relatives and associates\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nAccepted contacts: 1\nSigner/contact names: Maria Hawkins\nContact-source gate: Needs evidence - Leave skip trace off until provider access and approval are present.\nContact review written from current reviewed fields.",
+        "Dossier Export\nWritten\nEstate: Estate of Fresh Public-Source Validation Lead\nProperty: 20611 NW 33rd Pl, Miami Gardens, FL 33056\nSource: Podio prep\nSource proof: 8 source buckets checked; 6 blocking checklist items remain visible.\nPacket sections: 10\nDiscovery documents linked: 10 / 10\nBatch Queue export target: one combined Discovery Prep PDF for this estate flow.\nDossier export written from current reviewed fields."
+      ]
+    }
+  },
+  "keyboard": {
+    "before": "Dossier export",
+    "afterDown": "Owner details",
+    "afterUp": "Dossier export",
+    "changedOnDown": true,
+    "changedBackOnUp": true
+  },
+  "rerun": {
+    "startPath": {
+      "path": "rerun-review"
+    },
+    "rerunPath": {
+      "review": true,
+      "note": {
+        "text": "S30 proof rerun: rebuild the Discovery preview with source-backed Tax Collector receipt, public-records proof, IDI evidence, and contact review.",
+        "hasRun": true,
+        "runText": "Run corrected packet"
+      }
+    }
+  }
+}
