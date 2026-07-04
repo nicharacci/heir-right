@@ -92,6 +92,10 @@ try {
 
   assert.equal(proofBySource.get("tax_collector").proofState, "facts_returned_review_required");
   assert.ok(
+    proofBySource.get("tax_collector").detailChecks.some((check) => check.code === "bottom_right_receipt" && check.blocksUntilCaptured === true),
+    "Tax Collector proof must expose the bottom-right receipt checklist step"
+  );
+  assert.ok(
     proofBySource.get("tax_collector").extractedFactTypes.includes("tax_receipt_link"),
     "Tax Collector proof must preserve the bottom-right receipt link fact"
   );
@@ -101,6 +105,27 @@ try {
     "Official Records proof must expose the credential gate for audit metadata"
   );
   assert.equal(proofBySource.get("idi").proofState, "evidence_required");
+  const governanceDetails = proofBySource.get("source_governance").detailChecks || [];
+  const governanceCodes = new Set(governanceDetails.map((check) => check.code));
+  for (const code of [
+    "idi",
+    "intelius",
+    "ancestry",
+    "voter_records",
+    "professional_licenses",
+    "business_address_associations",
+    "social_profiles",
+    "deceased_indicator_crosscheck",
+    "DOOR_KNOCK",
+    "NEIGHBOR_RESEARCH",
+    "CODE_ENFORCEMENT",
+  ]) {
+    assert.ok(governanceCodes.has(code), `Governed source proof detail ${code} missing`);
+  }
+  assert.ok(
+    governanceDetails.every((check) => check.legalTemplateAutofillAllowed === false),
+    "Governed source detail checks must never allow legal autofill"
+  );
 
   const sourceFacts = result.json.sourceFacts || [];
   assert.ok(
@@ -129,6 +154,7 @@ try {
   const bundle = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
   assert.ok(bundle.includes("What this run proved"));
   assert.ok(bundle.includes("bottom-right receipt link"));
+  assert.ok(bundle.includes("source-proof-detail-list"));
   assert.ok(bundle.includes("Review owner name, folio"));
   assert.ok(bundle.includes("Attach the latest deed"));
   assert.ok(!/Live packet preview/i.test(bundle));
@@ -184,6 +210,8 @@ try {
       "no_discovery_completion_without_blockers_cleared",
       "no_legal_template_autofill",
       "tax_receipt_link_preserved",
+      "source_proof_detail_checks",
+      "governed_manual_and_paid_sources_visible",
       "operator_visible_source_proof_copy",
       "preview_fit_css",
       "source_acquisition_env_cache_key",

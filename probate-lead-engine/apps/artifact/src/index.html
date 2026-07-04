@@ -16247,6 +16247,26 @@ function sourceRunProofHtml(run = {}) {
         <li data-source-proof-row="${escapeHtml(item.source || item.label || "source")}">
           <strong>${escapeHtml(item.label || displayStatus(item.source, "Source"))} ${statusPill(sourceProofTone(item.proofState), sourceProofLabel(item.proofState))}</strong>
           <span>${escapeHtml(sourceProofOperatorAction(item))}</span>
+          ${sourceProofDetailChecksHtml(item)}
+        </li>
+      `).join("")}
+    </ul>
+  `;
+}
+
+function sourceProofDetailChecksHtml(item = {}) {
+  const checks = Array.isArray(item.detailChecks) ? item.detailChecks : [];
+  if (!checks.length) return "";
+  const visibleChecks = item.source === "source_governance"
+    ? checks
+    : checks.filter((check) => check.blocksUntilCaptured).concat(checks.filter((check) => !check.blocksUntilCaptured)).slice(0, 4);
+  if (!visibleChecks.length) return "";
+  return `
+    <ul class="source-proof-detail-list">
+      ${visibleChecks.map((check) => `
+        <li data-source-proof-detail="${escapeHtml(check.code || check.label || "check")}">
+          <span>${escapeHtml(check.label || displayStatus(check.code, "Check"))}</span>
+          <small>${escapeHtml(check.operatorAction || "Review this source step before Discovery completion.")}</small>
         </li>
       `).join("")}
     </ul>

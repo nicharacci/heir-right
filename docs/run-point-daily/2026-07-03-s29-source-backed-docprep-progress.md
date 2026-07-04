@@ -606,6 +606,38 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Restarted the local app on `localhost:4185`; route proof for `/api/discovery/external-source-run` returned message `Discovery source checks ran and returned review blockers...`, `hasBadApiClaim: false`, 8 source buckets, `readyForDiscoveryCompletion: false`, and `legalTemplateAutofillAllowed: false`.
   - Browser proof clicked `Run Source Search` after restart and saw the source-check message, no fake API claim, source proof copy still present, no console errors, and no failed requests.
 
+## Twenty-Eighth Repair Pass: Source Proof Detail Checks
+
+- Promoted the existing source-governance catalog into the source-run proof ledger as `detailChecks`.
+- Each public source row can now expose its exact evidence checklist from the workflow packet; Tax Collector proof includes `bottom_right_receipt` as a blocking evidence step.
+- The governed manual/paid research row now exposes concrete checklist items instead of a vague policy bucket:
+  - IDI, Intelius, Ancestry, ForeWarn, and VitalChek;
+  - voter records;
+  - professional licenses;
+  - business/address associations;
+  - social profiles;
+  - deceased-indicator cross-check;
+  - private investigator request;
+  - door knock / field visit;
+  - neighbor research;
+  - code enforcement call;
+  - manual document request.
+- Every detail check returns `legalTemplateAutofillAllowed: false`, so Closing Prep cannot treat these checklist rows as template-fill facts.
+- Doc Prep renders the detail checks underneath each source proof row after `Run Source Search`, keeping the operator's source work visible in the rail.
+- Proof:
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed.
+  - `pnpm --dir probate-lead-engine test`: passed and reported `source_proof_detail_checks` plus `governed_manual_and_paid_sources_visible`.
+  - `git diff --check`: passed.
+  - Local route proof on `http://localhost:4186/api/discovery/external-source-run` returned:
+    - `sourceCount: 8`;
+    - `taxDetailCount: 4`;
+    - `hasBottomRightReceipt: true`;
+    - `governanceDetailCount: 19`;
+    - `requiredGovernanceVisible: true`;
+    - `legalAutofillAllowedInDetails: false`.
+  - Browser proof on `http://localhost:4186/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` clicked `Run Source Search`, rendered 33 `[data-source-proof-detail]` rows, and confirmed required detail rows for bottom-right receipt, voter records, professional licenses, business/address associations, social profiles, deceased-indicator cross-check, door knock, neighbor research, and code enforcement.
+  - Browser proof found plain operator text for the required source steps, no raw env names, no fake API claim, no console errors, and no failed requests.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

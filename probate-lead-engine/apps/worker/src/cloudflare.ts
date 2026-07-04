@@ -923,7 +923,69 @@ function sourceProofState(status: unknown): string {
   return "not_checked";
 }
 
-function sourceRunProofLedger(sourceSummaries: Array<Record<string, unknown>>): Record<string, unknown> {
+function governanceCatalogFromFacts(sourceFacts: SourceFact[] = []): Record<string, unknown> | null {
+  const factItem = sourceFacts.find((item) =>
+    item.source === "source_governance"
+      && item.factType === "source_governance_catalog"
+      && item.value
+      && typeof item.value === "object"
+  );
+  return factItem?.value && typeof factItem.value === "object" ? factItem.value as Record<string, unknown> : null;
+}
+
+function sourceDetailChecks(source: string, sourceFacts: SourceFact[] = []): Array<Record<string, unknown>> {
+  const catalog = governanceCatalogFromFacts(sourceFacts);
+  if (!catalog) return [];
+  const publicContracts = Array.isArray(catalog.publicSourceContracts) ? catalog.publicSourceContracts as Array<Record<string, unknown>> : [];
+  const governedSources = Array.isArray(catalog.governedSources) ? catalog.governedSources as Array<Record<string, unknown>> : [];
+  const manualTasks = Array.isArray(catalog.manualTasks) ? catalog.manualTasks as Array<Record<string, unknown>> : [];
+  const contract = publicContracts.find((item) => item && item.source === source);
+  const checks: Array<Record<string, unknown>> = [];
+  const stages = contract && Array.isArray(contract.stages) ? contract.stages as Array<Record<string, unknown>> : [];
+  checks.push(...stages.map((stage) => ({
+    code: stage.code,
+    label: stage.title,
+    type: "source_evidence_step",
+    accessClass: contract?.accessClass,
+    status: stage.blocksUntilCaptured ? "evidence_required" : "review_required",
+    operatorAction: stage.operatorAction,
+    requiredEvidence: Array.isArray(stage.requiredEvidence) ? stage.requiredEvidence : [],
+    blocksUntilCaptured: Boolean(stage.blocksUntilCaptured),
+    automationAllowed: Boolean(contract?.automationAllowed),
+    legalTemplateAutofillAllowed: false,
+  })));
+  if (source === "source_governance") {
+    checks.push(...governedSources.map((item) => ({
+      code: item.code,
+      label: item.label,
+      type: "governed_source",
+      accessClass: item.accessClass,
+      status: item.accessClass === "paid_approval_gated" ? "approval_required" : "manual_review_required",
+      operatorAction: item.reason,
+      requiredEvidence: ["source link, reviewed-not-found note, or approval record"],
+      blocksUntilCaptured: false,
+      automationAllowed: Boolean(item.automationAllowed),
+      storageApproved: Boolean(item.storageApproved),
+      legalTemplateAutofillAllowed: false,
+    })));
+    checks.push(...manualTasks.map((task) => ({
+      code: task.code,
+      label: task.title,
+      type: "manual_task",
+      accessClass: task.accessClass,
+      status: "manual_review_required",
+      operatorAction: task.description,
+      requiredEvidence: ["operator note, source link, photo, or reviewed-not-found note"],
+      blocksUntilCaptured: false,
+      automationAllowed: false,
+      storageApproved: false,
+      legalTemplateAutofillAllowed: false,
+    })));
+  }
+  return checks;
+}
+
+function sourceRunProofLedger(sourceSummaries: Array<Record<string, unknown>>, sourceFacts: SourceFact[] = []): Record<string, unknown> {
   const sources = sourceSummaries.map((summary) => {
     const source = String(summary.source || "");
     const status = String(summary.status || "not_checked");
@@ -941,6 +1003,7 @@ function sourceRunProofLedger(sourceSummaries: Array<Record<string, unknown>>): 
       extractedFactTypes: summary.extractedFactTypes,
       reviewFlags: summary.reviewFlags,
       nextAction: summary.nextAction,
+      detailChecks: sourceDetailChecks(source, sourceFacts),
       legalTemplateAutofillAllowed: false,
     };
   });
@@ -967,7 +1030,7 @@ async function externalSourceRunResponse(request: Request, url: URL, env: Cloudf
   const pipeline = await runDryPipeline(seed, { env: env as Record<string, string | undefined> });
   const sourceFacts = pipeline.facts.filter((factItem) => discoverySourceLabels.some((source) => source.source === factItem.source));
   const sourceSummaries = summarizeSourceRunFacts(sourceFacts);
-  const sourceRunProof = sourceRunProofLedger(sourceSummaries);
+  const sourceRunProof = sourceRunProofLedger(sourceSummaries, sourceFacts);
   const blockers = Array.from(new Set([
     ...sourceSummaries
       .filter((summary) => summary.status === "blocked" || summary.status === "needs_review")

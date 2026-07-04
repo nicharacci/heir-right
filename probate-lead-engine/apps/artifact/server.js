@@ -923,7 +923,70 @@ function sourceProofState(status) {
   return "not_checked";
 }
 
-function sourceRunProofLedger(sourceSummaries) {
+function governanceCatalogFromFacts(sourceFacts = []) {
+  const fact = sourceFacts.find((item) =>
+    item.source === "source_governance"
+      && item.factType === "source_governance_catalog"
+      && item.value
+      && typeof item.value === "object"
+  );
+  return fact?.value && typeof fact.value === "object" ? fact.value : null;
+}
+
+function sourceDetailChecks(source, sourceFacts = []) {
+  const catalog = governanceCatalogFromFacts(sourceFacts);
+  if (!catalog) return [];
+  const publicContracts = Array.isArray(catalog.publicSourceContracts) ? catalog.publicSourceContracts : [];
+  const governedSources = Array.isArray(catalog.governedSources) ? catalog.governedSources : [];
+  const manualTasks = Array.isArray(catalog.manualTasks) ? catalog.manualTasks : [];
+  const contract = publicContracts.find((item) => item && item.source === source);
+  const checks = [];
+  if (contract && Array.isArray(contract.stages)) {
+    checks.push(...contract.stages.map((stage) => ({
+      code: stage.code,
+      label: stage.title,
+      type: "source_evidence_step",
+      accessClass: contract.accessClass,
+      status: stage.blocksUntilCaptured ? "evidence_required" : "review_required",
+      operatorAction: stage.operatorAction,
+      requiredEvidence: Array.isArray(stage.requiredEvidence) ? stage.requiredEvidence : [],
+      blocksUntilCaptured: Boolean(stage.blocksUntilCaptured),
+      automationAllowed: Boolean(contract.automationAllowed),
+      legalTemplateAutofillAllowed: false,
+    })));
+  }
+  if (source === "source_governance") {
+    checks.push(...governedSources.map((item) => ({
+      code: item.code,
+      label: item.label,
+      type: "governed_source",
+      accessClass: item.accessClass,
+      status: item.accessClass === "paid_approval_gated" ? "approval_required" : "manual_review_required",
+      operatorAction: item.reason,
+      requiredEvidence: ["source link, reviewed-not-found note, or approval record"],
+      blocksUntilCaptured: false,
+      automationAllowed: Boolean(item.automationAllowed),
+      storageApproved: Boolean(item.storageApproved),
+      legalTemplateAutofillAllowed: false,
+    })));
+    checks.push(...manualTasks.map((task) => ({
+      code: task.code,
+      label: task.title,
+      type: "manual_task",
+      accessClass: task.accessClass,
+      status: "manual_review_required",
+      operatorAction: task.description,
+      requiredEvidence: ["operator note, source link, photo, or reviewed-not-found note"],
+      blocksUntilCaptured: false,
+      automationAllowed: false,
+      storageApproved: false,
+      legalTemplateAutofillAllowed: false,
+    })));
+  }
+  return checks;
+}
+
+function sourceRunProofLedger(sourceSummaries, sourceFacts = []) {
   const sources = sourceSummaries.map((summary) => {
     const source = String(summary.source || "");
     const status = String(summary.status || "not_checked");
@@ -941,6 +1004,7 @@ function sourceRunProofLedger(sourceSummaries) {
       extractedFactTypes: summary.extractedFactTypes,
       reviewFlags: summary.reviewFlags,
       nextAction: summary.nextAction,
+      detailChecks: sourceDetailChecks(source, sourceFacts),
       legalTemplateAutofillAllowed: false,
     };
   });
@@ -976,7 +1040,7 @@ async function handleExternalSourceRun(req, res) {
   const pipeline = await runDryPipeline(seed, { env: process.env });
   const sourceFacts = pipeline.facts.filter((fact) => discoverySourceLabels.some((item) => item.source === fact.source));
   const sourceSummaries = summarizeSourceRunFacts(sourceFacts);
-  const sourceRunProof = sourceRunProofLedger(sourceSummaries);
+  const sourceRunProof = sourceRunProofLedger(sourceSummaries, sourceFacts);
   const blockers = [...new Set([
     ...sourceSummaries
       .filter((summary) => summary.status === "blocked" || summary.status === "needs_review")
