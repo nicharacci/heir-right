@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "checks": [
+    "auth gate blocks product data and protected JSON routes",
+    "settings source readiness tab renders and refreshes",
+    "settings account menu exposes switch account and log out",
+    "outreach pipeline renders and direct send stays locked",
+    "mobile settings outreach tab renders with all tabs available"
+  ],
+  "screenshots": [
+    "docs/evidence/s31-auth-gate.png",
+    "docs/evidence/s31-settings-sources.png",
+    "docs/evidence/s31-outreach-send-locked.png",
+    "docs/evidence/s31-settings-mobile-outreach.png"
+  ],
+  "authData": {
+    "authGated": "true",
+    "gateText": "TEAM ACCESS\n\nSign in to HeirRight\n\nUse your approved Google Workspace account. Personal email domains cannot clear this workspace gate.\n\nContinue with Google\n\nAccepted access: heirright.com.\n\nGoogle sign-in is not configured in this environment yet. The deployed app needs the approved Google OAuth client and session secret before a user can clear this gate.",
+    "workspaceFilter": "blur(7px)",
+    "accountName": "Sign in",
+    "accountDomain": "Google required",
+    "dataLoaded": false
+  },
+  "authSessionStatus": 200,
+  "protectedRunStatus": 401,
+  "at": "2026-07-04T04:03:39.693Z"
+}

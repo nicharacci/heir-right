@@ -660,6 +660,8 @@
     .workspace.is-auto-collapsed .theme-row { display: none; }
 
     .user-strip {
+      appearance: none;
+      width: 100%;
       margin: 0;
       padding: 7px 6px;
       display: grid;
@@ -669,6 +671,18 @@
       border: 1px solid transparent;
       border-radius: 14px;
       background: transparent;
+      color: var(--text);
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .user-strip:hover,
+    .user-strip:focus-visible,
+    .user-strip[aria-expanded="true"] {
+      outline: 0;
+      border-color: var(--line);
+      background: var(--ios-fill);
     }
 
     .avatar {
@@ -681,6 +695,12 @@
       background: linear-gradient(180deg, rgba(255,255,255,.76), rgba(255,255,255,.34));
       border: 1px solid rgba(16,24,40,.08);
       box-shadow: 0 10px 20px rgba(16,24,40,.06);
+    }
+
+    .avatar.has-image {
+      background-size: cover;
+      background-position: center;
+      color: transparent;
     }
 
     .user-name,
@@ -700,6 +720,161 @@
     .workspace.is-collapsed .user-meta,
     .workspace.is-auto-collapsed .user-name,
     .workspace.is-auto-collapsed .user-meta { display: none; }
+
+    .account-menu {
+      position: fixed;
+      left: 18px;
+      bottom: 76px;
+      z-index: 88;
+      width: min(260px, calc(100vw - 32px));
+      display: none;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--shell-surface) 94%, transparent);
+      box-shadow: 0 24px 72px rgba(16,24,40,.22), inset 0 1px 0 rgba(255,255,255,.12);
+      backdrop-filter: blur(24px) saturate(1.12);
+      -webkit-backdrop-filter: blur(24px) saturate(1.12);
+    }
+
+    .account-menu[data-open="true"] {
+      display: grid;
+      gap: 8px;
+      animation: accountMenuIn .16s var(--ease-out) both;
+    }
+
+    @keyframes accountMenuIn {
+      from { opacity: 0; transform: translate3d(0, 8px, 0) scale(.985); }
+      to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    }
+
+    .account-menu-head {
+      display: grid;
+      gap: 2px;
+      padding: 4px 4px 10px;
+    }
+
+    .account-menu-head strong,
+    .account-menu-head span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .account-menu-head strong {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.25;
+    }
+
+    .account-menu-head span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .account-menu-divider {
+      height: 1px;
+      margin: 0 2px;
+      background: linear-gradient(90deg, transparent, var(--line), transparent);
+    }
+
+    .account-menu-action {
+      width: 100%;
+      min-height: 38px;
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 0;
+      border-radius: 10px;
+      color: var(--text);
+      background: transparent;
+      text-decoration: none;
+      text-align: left;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 760;
+      cursor: pointer;
+    }
+
+    .account-menu-action:hover,
+    .account-menu-action:focus-visible {
+      outline: 0;
+      background: var(--ios-fill-strong);
+    }
+
+    .auth-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      background: color-mix(in srgb, var(--page) 48%, transparent);
+      backdrop-filter: blur(24px) saturate(1.08);
+      -webkit-backdrop-filter: blur(24px) saturate(1.08);
+    }
+
+    body[data-auth-gated="true"] .auth-gate {
+      display: grid;
+    }
+
+    body[data-auth-gated="true"] .workspace {
+      filter: blur(7px);
+      transform: scale(.997);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .auth-card {
+      width: min(420px, calc(100vw - 32px));
+      display: grid;
+      gap: 14px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      color: var(--text);
+      background: color-mix(in srgb, var(--shell-surface) 93%, transparent);
+      box-shadow: 0 32px 90px rgba(16,24,40,.25), inset 0 1px 0 rgba(255,255,255,.14);
+    }
+
+    .auth-card h2 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+
+    .auth-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .auth-google-button {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border-radius: 10px;
+      color: #fff;
+      background: #2f3137;
+      text-decoration: none;
+      font-weight: 820;
+    }
+
+    .auth-google-button[aria-disabled="true"] {
+      pointer-events: none;
+      opacity: .64;
+    }
+
+    .auth-allow-list {
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+    }
 
     body[data-theme="dark"] .sidebar,
     body[data-theme="dark"] .topbar,
@@ -5750,6 +5925,233 @@
       padding: 0 2px 2px;
     }
 
+    .settings-readiness-band {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 4px 0 16px;
+    }
+
+    .settings-unified-card > .loop-panel-head .tab-strip {
+      min-width: 0;
+      overflow-x: auto;
+      justify-content: flex-start;
+      flex-wrap: nowrap;
+      scrollbar-width: none;
+    }
+
+    .settings-unified-card > .loop-panel-head .tab-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    .settings-unified-card > .loop-panel-head .tab-strip button {
+      flex: 0 0 auto;
+    }
+
+    .settings-readiness-tile,
+    .settings-control-card,
+    .settings-audit-card,
+    .source-control-card,
+    .outreach-control-card {
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      padding: 14px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 52%, transparent);
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.018)),
+        color-mix(in srgb, var(--ios-fill) 76%, transparent);
+    }
+
+    .settings-readiness-tile strong,
+    .settings-control-card strong,
+    .settings-audit-card strong,
+    .source-control-card strong,
+    .outreach-control-card strong {
+      min-width: 0;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .settings-readiness-tile span,
+    .settings-control-card span,
+    .settings-audit-card span,
+    .source-control-card span,
+    .outreach-control-card span {
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .settings-action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 4px;
+    }
+
+    .settings-control-grid,
+    .source-control-grid,
+    .outreach-control-grid,
+    .settings-audit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .settings-control-list,
+    .source-control-list,
+    .outreach-control-list {
+      display: grid;
+      gap: 7px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .settings-control-list li,
+    .source-control-list li,
+    .outreach-control-list li {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .settings-control-list li::before,
+    .source-control-list li::before,
+    .outreach-control-list li::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      margin: 5px 0 0 5px;
+      border-radius: 999px;
+      background: var(--soft);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--soft) 15%, transparent);
+    }
+
+    .settings-control-list li[data-state="ready"]::before,
+    .source-control-list li[data-state="ready"]::before,
+    .outreach-control-list li[data-state="ready"]::before {
+      background: var(--green);
+      box-shadow: 0 0 0 4px var(--green-soft);
+    }
+
+    .settings-control-list li[data-state="blocked"]::before,
+    .source-control-list li[data-state="blocked"]::before,
+    .outreach-control-list li[data-state="blocked"]::before {
+      background: #ff7a8a;
+      box-shadow: 0 0 0 4px rgba(255,122,138,.14);
+    }
+
+    .settings-field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .settings-field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .settings-field label {
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 850;
+      line-height: 1.1;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .settings-field code {
+      min-width: 0;
+      display: block;
+      padding: 9px 10px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 44%, transparent);
+      border-radius: 11px;
+      color: var(--text);
+      background: color-mix(in srgb, var(--surface-2) 74%, transparent);
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 780;
+      overflow-wrap: anywhere;
+    }
+
+    .source-receipt-callout {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+      border-radius: 13px;
+      color: var(--text);
+      background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+    }
+
+    .source-receipt-callout span {
+      color: color-mix(in srgb, var(--text) 82%, var(--muted));
+    }
+
+    .outreach-pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin: 10px 0 14px;
+    }
+
+    .outreach-pipeline-step {
+      min-width: 0;
+      display: grid;
+      gap: 5px;
+      padding: 10px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 48%, transparent);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--ios-fill) 70%, transparent);
+    }
+
+    .outreach-pipeline-step[data-state="ready"] {
+      border-color: color-mix(in srgb, var(--green) 50%, transparent);
+      background: var(--green-soft);
+    }
+
+    .outreach-pipeline-step[data-state="blocked"] {
+      border-color: color-mix(in srgb, #ff7a8a 46%, transparent);
+      background: rgba(255,122,138,.09);
+    }
+
+    .outreach-pipeline-step strong {
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.18;
+    }
+
+    .outreach-pipeline-step span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .outreach-editor-panel .outreach-pipeline {
+      grid-template-columns: 1fr;
+    }
+
+    .outreach-editor-panel .outreach-pipeline-step {
+      grid-template-columns: 92px minmax(0, 1fr);
+      align-items: center;
+    }
+
     .settings-status-list .settings-connection-list {
       gap: 0;
       overflow: hidden;
@@ -9642,6 +10044,16 @@
       .workbench-body { grid-template-columns: minmax(0, 1fr); }
       .detail { display: none; }
       .app[data-active-view="admin"] .detail { display: grid; }
+      .settings-readiness-band,
+      .outreach-pipeline {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .settings-control-grid,
+      .source-control-grid,
+      .outreach-control-grid,
+      .settings-audit-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 980px) {
@@ -9711,6 +10123,11 @@
       .top-actions > * {
         min-width: 0;
         max-width: 100%;
+      }
+      .settings-readiness-band,
+      .outreach-pipeline,
+      .settings-field-grid {
+        grid-template-columns: 1fr;
       }
       .import-menu,
       .export-menu,
@@ -10133,18 +10550,13 @@
           </button>
         </div>
       </div>
-      <div class="user-strip">
-        <span class="avatar" aria-hidden="true">
-          <svg viewBox="0 0 64 64">
-            <path class="shield-placeholder" d="M32 8 49 14.5v16.8c0 10.8-6.8 18.3-17 24.7-10.2-6.4-17-14.9-17-24.7V14.5L32 8Z" />
-            <path class="shield-placeholder" d="M32 17v30" />
-          </svg>
-        </span>
+      <button id="accountChip" class="user-strip" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="accountMenu">
+        <span id="accountAvatar" class="avatar" aria-hidden="true">HR</span>
         <span>
-          <span class="user-name">HeirRight Ops</span>
-          <span class="user-meta">Company workspace</span>
+          <span id="accountName" class="user-name">HeirRight Ops</span>
+          <span id="accountDomain" class="user-meta">Company workspace</span>
         </span>
-      </div>
+      </button>
     </div>
   </aside>
 
@@ -10665,6 +11077,8 @@
 <div id="crmImportModalMount"></div>
 <div id="outreachNotificationMount" class="outreach-toast-mount" aria-live="polite"></div>
 <div id="walkthroughMount" aria-live="polite"></div>
+<div id="accountMenu" class="account-menu" role="menu" aria-label="Account menu" data-open="false"></div>
+<div id="authGate" class="auth-gate" role="presentation" aria-live="polite"></div>
 
 <script>
 const state = {
@@ -10777,6 +11191,7 @@ const state = {
     templates: [],
     audit: []
   },
+  accountMenuOpen: false,
   selectedOutreachCampaignId: null,
   selectedOutreachTemplateId: null,
   outreachArchiveOpen: false,
@@ -11930,17 +12345,98 @@ function initials(value) {
   return words.map((word) => word[0]?.toUpperCase() ?? "").join("") || "HR";
 }
 
+function authGateBlocking(session = state.session) {
+  return Boolean(session?.auth?.required && !session?.authenticated);
+}
+
+function authAllowedCopy(session = state.session) {
+  const domains = Array.isArray(session?.auth?.allowedDomains) ? session.auth.allowedDomains : [];
+  const emails = Array.isArray(session?.auth?.allowedEmails) ? session.auth.allowedEmails : [];
+  const domainCopy = domains.length ? domains.join(", ") : "approved business domains";
+  const emailCopy = emails.length ? ` Approved users: ${emails.join(", ")}.` : "";
+  return `${domainCopy}.${emailCopy}`;
+}
+
+function renderAuthGate(session = state.session) {
+  const gate = document.getElementById("authGate");
+  if (!gate) return;
+  const blocked = authGateBlocking(session);
+  document.body.dataset.authGated = blocked ? "true" : "false";
+  if (!blocked) {
+    gate.innerHTML = "";
+    return;
+  }
+  const configured = Boolean(session?.auth?.configured);
+  gate.innerHTML = `
+    <section class="auth-card" role="dialog" aria-modal="true" aria-label="Sign in">
+      <div>
+        <p class="eyebrow">Team access</p>
+        <h2>Sign in to HeirRight</h2>
+      </div>
+      <p>Use your approved Google Workspace account. Personal email domains cannot clear this workspace gate.</p>
+      <a class="auth-google-button" href="/auth/login" aria-disabled="${configured ? "false" : "true"}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 12.2c0-.7-.06-1.37-.18-2.02H12v3.82h5.05a4.32 4.32 0 0 1-1.87 2.84v2.36h3.03C20 17.56 21 15.12 21 12.2Z" fill="#4285F4"/><path d="M12 21c2.43 0 4.47-.8 5.96-2.18l-3.03-2.36c-.84.56-1.92.9-2.93.9-2.35 0-4.34-1.58-5.05-3.72H3.82v2.43A9 9 0 0 0 12 21Z" fill="#34A853"/><path d="M6.95 13.64A5.4 5.4 0 0 1 6.67 12c0-.57.1-1.12.28-1.64V7.93H3.82A9 9 0 0 0 3 12c0 1.45.35 2.82.82 4.07l3.13-2.43Z" fill="#FBBC05"/><path d="M12 6.64c1.32 0 2.5.45 3.43 1.34l2.59-2.59A8.7 8.7 0 0 0 12 3a9 9 0 0 0-8.18 4.93l3.13 2.43C7.66 8.22 9.65 6.64 12 6.64Z" fill="#EA4335"/></svg>
+        <span>Continue with Google</span>
+      </a>
+      <p class="auth-allow-list">Accepted access: ${escapeHtml(authAllowedCopy(session))}</p>
+      ${configured ? "" : `<p class="copy">Google sign-in is not configured in this environment yet. The deployed app needs the approved Google OAuth client and session secret before a user can clear this gate.</p>`}
+    </section>
+  `;
+}
+
+function renderAccountMenu() {
+  const menu = document.getElementById("accountMenu");
+  const chip = document.getElementById("accountChip");
+  if (!menu || !chip) return;
+  const user = state.session?.user;
+  const name = user?.name || user?.email || "Beta access";
+  const email = user?.email || (state.session?.auth?.required ? "Not signed in" : "Local review session");
+  menu.dataset.open = state.accountMenuOpen ? "true" : "false";
+  chip.setAttribute("aria-expanded", state.accountMenuOpen ? "true" : "false");
+  menu.innerHTML = `
+    <div class="account-menu-head">
+      <strong>${escapeHtml(name)}</strong>
+      <span>${escapeHtml(email)}</span>
+    </div>
+    <div class="account-menu-divider" role="presentation"></div>
+    <a class="account-menu-action" role="menuitem" href="/auth/login?prompt=select_account">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M19 8v4m2-2h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Switch account</span>
+    </a>
+    <a class="account-menu-action" role="menuitem" href="/auth/logout">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 6H6.5A2.5 2.5 0 0 0 4 8.5v7A2.5 2.5 0 0 0 6.5 18H10m4-8 4 4-4 4m4-4H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Log out</span>
+    </a>
+  `;
+}
+
+function setAccountMenuOpen(open) {
+  state.accountMenuOpen = Boolean(open && !authGateBlocking());
+  renderAccountMenu();
+}
+
 function renderSession(session) {
   state.session = session;
   const accountChip = document.getElementById("accountChip");
-  if (!accountChip) return;
+  if (!accountChip) {
+    renderAuthGate(session);
+    return;
+  }
   const user = session?.user;
   const name = user?.name || user?.email || "Beta access";
   const domain = user?.domain || (session?.auth?.required ? "Google OAuth" : "Local review");
-  document.getElementById("accountAvatar").textContent = initials(name);
-  document.getElementById("accountName").textContent = user?.email ? name : "Beta access";
-  document.getElementById("accountDomain").textContent = domain;
+  const avatar = document.getElementById("accountAvatar");
+  if (avatar) {
+    avatar.classList.toggle("has-image", Boolean(user?.picture));
+    avatar.style.backgroundImage = user?.picture ? `url("${String(user.picture).replace(/"/g, "%22")}")` : "";
+    avatar.textContent = user?.picture ? "" : initials(name);
+  }
+  document.getElementById("accountName").textContent = user?.email ? name : authGateBlocking(session) ? "Sign in" : "Beta access";
+  document.getElementById("accountDomain").textContent = user?.email ? domain : authGateBlocking(session) ? "Google required" : "Local review";
   accountChip.title = user?.email ? `Signed in as ${user.email}. Click to sign out.` : "Beta access session";
+  renderAuthGate(session);
+  if (authGateBlocking(session)) state.accountMenuOpen = false;
+  renderAccountMenu();
 }
 
 function cleanDisplayValue(value) {
@@ -11961,13 +12457,17 @@ async function loadSession() {
   try {
     const response = await fetch("/auth/session", { cache: "no-store" });
     if (!response.ok) throw new Error("Session unavailable");
-    renderSession(await response.json());
+    const session = await response.json();
+    renderSession(session);
+    return session;
   } catch (error) {
-    renderSession({
+    const session = {
       authenticated: false,
       user: null,
       auth: { required: true, configured: false, allowedDomains: ["heirright.com"], allowedEmails: [] }
-    });
+    };
+    renderSession(session);
+    return session;
   }
 }
 
@@ -17088,6 +17588,12 @@ function exportBlockerItems(result = state.exportResult) {
     .map(operatorBlockerText));
 }
 
+function connectionDisplayName(name) {
+  if (name === "Activepieces") return "Backstage outreach";
+  if (name === "Google") return "Google Workspace";
+  return name;
+}
+
 function queueReadinessItems() {
   const queued = queuedRows();
   if (!queued.length) {
@@ -17110,7 +17616,7 @@ function queueDestinationItems() {
     const connection = connectionByName(name === "Google Workspace" ? "Google" : name);
     const connected = Boolean(connection?.ok && connection?.mode === "live");
     return {
-      title: name,
+      title: connectionDisplayName(name),
       connected,
       status: connected ? "Ready" : "Setup needed"
     };
@@ -18972,8 +19478,8 @@ async function syncOutreachTemplate(templateId) {
   }
   showOutreachNotification({
     tone: "review",
-    title: "Preparing outreach automation",
-    copy: "The app is attempting the Activepieces Podio workflow. If that route is not configured, the review-only fallback will stage the template instead.",
+    title: "Preparing outreach package",
+    copy: "HeirRight is preparing a Podio review package. If the backstage handoff is not configured, the package stays in the app-owned review queue without sending.",
     action: "retry"
   });
   const podio = connectionByName("Podio");
@@ -18992,7 +19498,7 @@ async function syncOutreachTemplate(templateId) {
     result = {
       ok: false,
       status: "architecturally_free_outreach",
-      message: error.message || "Activepieces outreach route unavailable."
+      message: error.message || "Backstage Outreach handoff unavailable."
     };
   }
   if (!result?.ok) {
@@ -19009,7 +19515,7 @@ async function syncOutreachTemplate(templateId) {
     showOutreachNotification({
       tone: "review",
       title: "Fallback outreach staged",
-      copy: result?.message || "Activepieces is unavailable, so the reviewed template was staged in the app-owned outreach queue without sending.",
+      copy: result?.message || "Backstage handoff is unavailable, so the reviewed template was staged in the app-owned outreach queue without sending.",
       action: "settings"
     });
     return;
@@ -19017,17 +19523,17 @@ async function syncOutreachTemplate(templateId) {
   const synced = normalizeOutreachTemplate({
     ...template,
     status: "Sync to Podio",
-    podioSyncState: "Activepieces Podio automation queued",
+    podioSyncState: "Podio review package queued",
     podioArtifactId: result?.runId || `podio-template-${template.id}`,
     lastEditedBy: currentActorEmail(),
     lastEditedAt: isoNow(),
     updatedAt: isoNow()
   });
-  upsertOutreachTemplate(synced, "Activepieces outreach queued", `${synced.name} was handed to the Podio automation workflow. No direct SMS or email send was attempted by HeirRight Leads.`);
+  upsertOutreachTemplate(synced, "Podio package queued", `${synced.name} was handed to the approved Podio review workflow. No direct SMS or email send was attempted by HeirRight Leads.`);
   showOutreachNotification({
     tone: "ready",
-    title: "Podio automation queued",
-    copy: "Activepieces accepted the reviewed outreach package. Readback proof is still required before any outbound send.",
+    title: "Podio package queued",
+    copy: "The reviewed outreach package is queued for Podio readback. Proof is still required before any outbound send.",
     action: "retry"
   });
 }
@@ -19121,7 +19627,7 @@ function outreachWorkflowControlsHtml(campaign, settings) {
           <p class="eyebrow">Workflow Controls</p>
           <h3>${escapeHtml(campaign?.name || "Selected campaign")}</h3>
         </div>
-        <span class="pill ${podioReady && automationReady ? "ready" : "review"}">${escapeHtml(podioReady ? "Podio-ready" : "Review-only")}</span>
+        <span class="pill ${podioReady && automationReady ? "ready" : "review"}">${escapeHtml(podioReady ? "Package-ready" : "Review-only")}</span>
       </div>
       <div class="workflow-control-grid">
         <label class="workflow-control-item">
@@ -19135,7 +19641,7 @@ function outreachWorkflowControlsHtml(campaign, settings) {
         <label class="workflow-control-item">
           <span>Recipient</span>
           <strong>Reviewed primary contact</strong>
-          <em>Fallbacks stay blocked until approved.</em>
+          <em>Fallback contacts stay blocked until approved.</em>
         </label>
         <label class="workflow-control-item">
           <span>Send as</span>
@@ -19161,12 +19667,36 @@ function outreachWorkflowControlsHtml(campaign, settings) {
           </select>
         </label>
         <div class="workflow-control-item">
-          <span>Goals and stop rules</span>
+          <span>Stop rules</span>
           <strong>Reply, call, no-contact, source blocker, status change</strong>
           <em>${escapeHtml((campaign?.stopRules || []).join(" / ") || "Campaign stop rules required.")}</em>
         </div>
       </div>
     </section>
+  `;
+}
+
+function outreachPipelineHtml(template) {
+  const status = template?.status || "Draft";
+  const approved = status === "Approved" || status === "Sync to Podio";
+  const synced = status === "Sync to Podio";
+  const ready = status === "Ready" || approved;
+  const stages = [
+    { title: "Stage", state: "ready", copy: "Draft exists in the app." },
+    { title: "Review", state: ready ? "ready" : "review", copy: ready ? "Variables and stop rules reviewed." : "Mark Ready after variables and stop rules are checked." },
+    { title: "Approve", state: approved ? "ready" : "review", copy: approved ? "Approved owner recorded." : "Needs approved owner and password." },
+    { title: "Sync package", state: synced ? "ready" : approved ? "review" : "blocked", copy: synced ? "Podio review package prepared." : approved ? "Ready to prepare a Podio package." : "Approval required first." },
+    { title: "Send locked", state: "blocked", copy: "No direct SMS or email send from HeirRight." },
+  ];
+  return `
+    <div class="outreach-pipeline" aria-label="Outreach approval path">
+      ${stages.map((stage) => `
+        <div class="outreach-pipeline-step" data-state="${escapeHtml(stage.state)}">
+          <strong>${escapeHtml(stage.title)}</strong>
+          <span>${escapeHtml(stage.copy)}</span>
+        </div>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -19176,6 +19706,10 @@ function outreachEditorHtml(template) {
       <section class="loop-panel outreach-editor-panel">
         <div class="loop-panel-head"><div><p class="eyebrow">Template</p><h2 class="loop-title">Nothing selected</h2></div></div>
         <p class="copy">Create an SMS or email template to begin the Podio-ready Outreach workflow.</p>
+        ${outreachPipelineHtml(null)}
+        <div class="template-action-row">
+          <button class="btn quick solvys-liquid-glass" type="button" data-template-send-blocked="none" onclick="handleOutreachTemplateAction(this); return false;">Send locked</button>
+        </div>
       </section>
     `;
   }
@@ -19193,6 +19727,7 @@ function outreachEditorHtml(template) {
         <span class="pill ${outreachStatusTone(template.status)}">${escapeHtml(template.status)}</span>
       </div>
       <p class="copy">${escapeHtml(templateSummary(template))}</p>
+      ${outreachPipelineHtml(template)}
       <div class="template-preview-box">
         <strong>Selected dossier preview</strong>
         ${template.channel === "email" ? `<span class="copy">Subject: ${escapeHtml(renderedSubject || "No subject")}</span>` : ""}
@@ -19215,7 +19750,8 @@ function outreachEditorHtml(template) {
       <div class="template-action-row">
         ${template.status !== "Archived" ? `<button class="btn quick solvys-liquid-glass" type="button" data-template-edit="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Edit</button>` : ""}
         ${template.status === "Draft" ? `<button class="btn quick solvys-liquid-glass" type="button" data-template-ready="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Mark Ready</button>` : ""}
-        ${template.status === "Approved" ? `<button class="btn primary solvys-liquid-glass" type="button" data-template-sync="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Sync Podio</button>` : ""}
+        ${template.status === "Approved" ? `<button class="btn primary solvys-liquid-glass" type="button" data-template-sync="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Sync package</button>` : ""}
+        <button class="btn quick solvys-liquid-glass" type="button" data-template-send-blocked="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Send locked</button>
         ${template.status !== "Archived" ? `<button class="plain-action" type="button" data-template-archive="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Archive</button>` : `<button class="plain-action" type="button" data-template-restore="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Restore</button><button class="plain-action" type="button" data-template-delete="${escapeHtml(template.id)}" onclick="handleOutreachTemplateAction(this); return false;">Delete permanently</button>`}
       </div>
       <p class="outreach-section-label">Audit Trail</p>
@@ -19246,6 +19782,16 @@ function handleOutreachTemplateAction(button, root = document.getElementById("dr
   }
   if (button.dataset.templateSync) {
     syncOutreachTemplate(button.dataset.templateSync);
+    return true;
+  }
+  if (button.dataset.templateSendBlocked) {
+    showOutreachNotification({
+      tone: "blocked",
+      title: "Direct send is locked",
+      copy: "HeirRight does not send SMS or email from this screen. Prepare a reviewed Podio package, confirm readback proof, then use the approved external send path.",
+      action: "settings"
+    });
+    addShellEvent("Outbound send blocked", "A user checked the send path. The app kept the reviewed outreach package locked from direct SMS/email send.", "blocked", false);
     return true;
   }
   if (button.dataset.templateArchive) {
@@ -19440,7 +19986,7 @@ function adminErrorItems() {
     const tone = connectionTone(connection);
     return {
       id: `connection-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-      title: `${name} setup`,
+      title: `${connectionDisplayName(name)} setup`,
       copy: operatorConnectionMessage(connection, name),
       severity: ok ? "ready" : tone === "review" ? "review" : "blocked",
       ready: ok,
@@ -19765,9 +20311,9 @@ function integrationOnboardingCardHtml(kind) {
     },
     activepieces: {
       name: "Activepieces",
-      title: "Activepieces Outreach",
-      action: "Review automation",
-      steps: ["Add the approved Podio workflow webhook", "Validate the staged outreach payload", "Fall back to first-party packages if automation is blocked"]
+      title: "Outreach automation",
+      action: "Review handoff",
+      steps: ["Keep the automation builder backstage", "Validate the first-party outreach review package", "Fall back to app-owned Podio packages if automation is blocked"]
     },
     linear: {
       name: "Linear Support",
@@ -19887,7 +20433,7 @@ function handleIntegrationOnboarding(kind) {
   }
   const message = operatorConnectionMessage(connection, name);
   document.getElementById("topStatus").textContent = message;
-  addShellEvent(`${name} onboarding reviewed`, message, connectionTone(connection), false);
+  addShellEvent(`${connectionDisplayName(name)} onboarding reviewed`, message, connectionTone(connection), false);
   renderSettingsView();
 }
 
@@ -19898,7 +20444,7 @@ function integrationStatusRowsHtml() {
     const connected = Boolean(connection?.ok && connection?.mode === "live");
     const tone = connectionTone(connection);
     return {
-      title: name === "Google" ? "Google Workspace" : name,
+      title: connectionDisplayName(name),
       connectionName: name,
       connected,
       status: displayStatus(connection?.mode || "blocked"),
@@ -19927,50 +20473,338 @@ function integrationStatusRowsHtml() {
   `;
 }
 
+const settingsTabs = [
+  { id: "access", label: "Access" },
+  { id: "integrations", label: "Integrations" },
+  { id: "sources", label: "Sources" },
+  { id: "outreach", label: "Outreach" },
+  { id: "audit", label: "Audit" },
+  { id: "preferences", label: "Preferences" },
+];
+
+function normalizedSettingsTab(value = state.settingsTab) {
+  return settingsTabs.some((tab) => tab.id === value) ? value : "access";
+}
+
+function settingsAllowedDomains() {
+  const sessionDomains = state.session?.auth?.allowedDomains;
+  const domains = Array.isArray(sessionDomains) && sessionDomains.length ? sessionDomains : state.adminAccessDomains;
+  return Array.from(new Set(domains.map((domain) => String(domain || "").trim().toLowerCase()).filter(Boolean)));
+}
+
+function connectionReadyState(name) {
+  const connection = connectionByName(name);
+  if (connection?.ok && connection?.mode === "live") return "ready";
+  return connectionTone(connection) === "blocked" ? "blocked" : "review";
+}
+
+function settingsReadinessBandHtml() {
+  const domains = settingsAllowedDomains();
+  const authConfigured = Boolean(state.session?.auth?.configured);
+  const idi = connectionByName("IDI Core");
+  const idiCredential = idiCoreCredentialStatus(idi);
+  const outreachReady = ["Podio", "Resend", "SMS Gateway"].some((name) => connectionReadyState(name) === "ready");
+  const sourceReviewCount = ["Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "IDI Core"].filter((name) => connectionReadyState(name) !== "blocked").length;
+  return `
+    <div class="settings-readiness-band" aria-label="Workspace readiness summary">
+      <article class="settings-readiness-tile">
+        <p class="eyebrow">Team access</p>
+        <strong>${authConfigured ? "Google login configured" : "Google login setup needed"}</strong>
+        <span>${domains.length ? `${domains.join(", ")} allowed` : "No accepted business domains listed yet."}</span>
+      </article>
+      <article class="settings-readiness-tile">
+        <p class="eyebrow">Source readiness</p>
+        <strong>${sourceReviewCount} of 4 source groups reviewable</strong>
+        <span>Tax receipts, Clerk records, vital sources, and IDI stay gated until proof is captured.</span>
+      </article>
+      <article class="settings-readiness-tile">
+        <p class="eyebrow">IDI Core API</p>
+        <strong>${escapeHtml(idiCredential.label)}</strong>
+        <span>${escapeHtml(idiCredential.copy)}</span>
+      </article>
+      <article class="settings-readiness-tile">
+        <p class="eyebrow">Outreach safety</p>
+        <strong>${outreachReady ? "Review queue ready" : "No-send guard active"}</strong>
+        <span>Messages stay in review packages until approval and readback proof pass.</span>
+      </article>
+    </div>
+  `;
+}
+
+function settingsSectionShell(title, eyebrow, badge, body) {
+  return `
+    <div class="settings-section">
+      <div class="settings-section-head">
+        <div><p class="eyebrow">${escapeHtml(eyebrow)}</p><h3>${escapeHtml(title)}</h3></div>
+        ${badge ? `<span class="pill review">${escapeHtml(badge)}</span>` : ""}
+      </div>
+      ${body}
+    </div>
+  `;
+}
+
+function renderAccessSettingsPanel() {
+  const domains = settingsAllowedDomains();
+  const authConfigured = Boolean(state.session?.auth?.configured);
+  const session = state.session || {};
+  const user = session.user || {};
+  const idi = connectionByName("IDI Core");
+  const idiCredential = idiCoreCredentialStatus(idi);
+  const status = [
+    { state: authConfigured ? "ready" : "blocked", copy: "Google-only login clears the blurred app gate." },
+    { state: domains.length ? "ready" : "blocked", copy: `Allowed domains: ${domains.join(", ") || "not set"}.` },
+    { state: state.session?.authenticated ? "ready" : "review", copy: user.email ? `Current user: ${user.name || user.email}.` : "No signed-in Google user on this browser." },
+    { state: idi?.api?.sharedDefaultConfigured || state.idiCoreUserApiKey ? "ready" : "review", copy: "IDI Core uses the shared team key by default; a user may paste a personal key for approved runs." },
+  ];
+  return `
+    ${settingsSectionShell("Team access", "Access", authConfigured ? "Google ready" : "Setup needed", `
+      <div class="settings-control-grid">
+        <article class="settings-control-card">
+          <strong>Allowed business domains</strong>
+          <span>Only users with these Google Workspace domains can clear the sign-in overlay.</span>
+          <div class="settings-field-grid">
+            <div class="settings-field"><label>Domains</label><code>${escapeHtml(domains.join(", ") || "Add business domains")}</code></div>
+            <div class="settings-field"><label>Login method</label><code>Google only</code></div>
+          </div>
+          <ul class="settings-control-list">
+            ${status.map((item) => `<li data-state="${escapeHtml(item.state)}">${escapeHtml(item.copy)}</li>`).join("")}
+          </ul>
+          <div class="settings-action-row">
+            <a class="btn primary solvys-liquid-glass" href="/auth/login">Continue with Google</a>
+            <button class="btn quick solvys-liquid-glass" type="button" data-settings-account-menu>Account menu</button>
+          </div>
+        </article>
+        <article class="settings-control-card">
+          <strong>IDI Core API access</strong>
+          <span>The default key stays shared for the whole team. A pasted personal key is stored only in this browser and never replaces the shared key.</span>
+          <div class="field">
+            <label>Personal IDI access key</label>
+            <input data-idi-settings-api-key type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(state.idiCoreUserApiKey)}" placeholder="Leave blank to use team default">
+            <span class="copy">${escapeHtml(idiCredential.copy)}</span>
+          </div>
+          <ul class="settings-control-list">
+            <li data-state="${idi?.api?.sharedDefaultConfigured ? "ready" : "review"}">Shared team key: ${idi?.api?.sharedDefaultConfigured ? "available" : "not confirmed here"}.</li>
+            <li data-state="${idi?.api?.endpointConfigured ? "ready" : "blocked"}">IDI Core endpoint: ${idi?.api?.endpointConfigured ? "configured" : "needed before API live runs"}.</li>
+            <li data-state="review">Paid runs remain controlled and duplicate-guarded before Discovery can use the result.</li>
+          </ul>
+        </article>
+      </div>
+    `)}
+  `;
+}
+
+function renderIntegrationSettingsPanel() {
+  return `
+    ${settingsSectionShell("Integration status", "Workspace", "Reconnect / Review setup", `
+      <p class="copy">Connector setup, approval, and readback status live here so Batch Queue and Outreach show only deal-work blockers.</p>
+      <div class="settings-action-row">
+        <button class="btn primary solvys-liquid-glass" type="button" data-settings-refresh-connections>Refresh statuses</button>
+        <button class="btn quick solvys-liquid-glass" type="button" data-settings-open-view="admin">Open Admin tickets</button>
+      </div>
+      <div class="integration-onboarding settings-integrations-list">
+        ${integrationOnboardingCardHtml("podio")}
+        ${integrationOnboardingCardHtml("google")}
+        ${integrationOnboardingCardHtml("idi")}
+        ${integrationOnboardingCardHtml("tax")}
+        ${integrationOnboardingCardHtml("clerk")}
+        ${integrationOnboardingCardHtml("vital")}
+        ${integrationOnboardingCardHtml("activepieces")}
+        ${integrationOnboardingCardHtml("linear")}
+        ${integrationOnboardingCardHtml("web")}
+        ${integrationOnboardingCardHtml("leads")}
+        ${integrationOnboardingCardHtml("resend")}
+        ${integrationOnboardingCardHtml("sms")}
+      </div>
+    `)}
+    ${integrationStatusRowsHtml()}
+  `;
+}
+
+function sourceControlCardHtml({ name, title, badge, copy, checks }) {
+  const connection = connectionByName(name);
+  const tone = connectionTone(connection);
+  const state = tone === "blocked" ? "blocked" : connection?.mode === "live" ? "ready" : "review";
+  return `
+    <article class="source-control-card" data-state="${escapeHtml(state)}">
+      <div class="settings-section-head">
+        <div><p class="eyebrow">${escapeHtml(badge)}</p><strong>${escapeHtml(title)}</strong></div>
+        <span class="pill ${tone === "blocked" ? "blocked" : tone === "ready" ? "ready" : "review"}">${escapeHtml(displayStatus(connection?.mode || "blocked"))}</span>
+      </div>
+      <span>${escapeHtml(copy || operatorConnectionMessage(connection, name))}</span>
+      <ul class="source-control-list">
+        ${checks.map((check) => `<li data-state="${escapeHtml(check.state || state)}">${escapeHtml(check.copy)}</li>`).join("")}
+      </ul>
+    </article>
+  `;
+}
+
+function renderSourceSettingsPanel() {
+  const tax = connectionByName("Tax Collector Source");
+  const clerk = connectionByName("Miami-Dade Clerk API");
+  const vital = connectionByName("Vital/Obituary Workflow");
+  const idi = connectionByName("IDI Core");
+  return `
+    ${settingsSectionShell("Source and enrichment controls", "Discovery", "Manual proof stays visible", `
+      <div class="source-receipt-callout">
+        <strong>Tax Collector Source receipt capture</strong>
+        <span>For direct listing/template paths, the script must capture the receipt link on the bottom-right of the listing page, then preserve payer, paid date, unpaid years, and source evidence. For GovHub, Cloudflare, or public-search blockers, use the Browserbase/controlled Chrome workflow and keep the receipt fields review-blocked until the listing page is reached.</span>
+      </div>
+      <div class="source-control-grid">
+        ${sourceControlCardHtml({
+          name: "Tax Collector Source",
+          title: "Tax Collector Source",
+          badge: tax?.configuredMode === "script_listing" ? "Script listing" : "Browser workflow",
+          copy: operatorConnectionMessage(tax, "Tax Collector Source"),
+          checks: [
+            { state: tax?.sourceAutomation?.scriptDirectListingConfigured ? "ready" : "review", copy: "Direct listing/template script path checked." },
+            { state: tax?.sourceAutomation?.browserWorkflowConfigured ? "ready" : "blocked", copy: "Browser workflow handles GovHub/public-search blockers." },
+            { state: "review", copy: "Bottom-right receipt link, payer, paid date, and unpaid years must be preserved before Discovery completion." },
+          ]
+        })}
+        ${sourceControlCardHtml({
+          name: "Miami-Dade Clerk API",
+          title: "Miami-Dade Clerk API records",
+          badge: clerk?.configuredMode === "commercial_api" ? "Commercial API" : "Access needed",
+          copy: operatorConnectionMessage(clerk, "Miami-Dade Clerk API"),
+          checks: [
+            { state: clerk?.ok ? "ready" : "blocked", copy: "Commercial Data Services access is required before automated Official Records pulls." },
+            { state: "review", copy: "Deed, OR book/page, probate, civil, and family records still require review before legal-template use." },
+          ]
+        })}
+        ${sourceControlCardHtml({
+          name: "Vital/Obituary Workflow",
+          title: "Vital/Obituary Workflow",
+          badge: vital?.configuredMode === "browser_workflow" ? "Browser workflow" : "Workflow needed",
+          copy: operatorConnectionMessage(vital, "Vital/Obituary Workflow"),
+          checks: [
+            { state: vital?.sourceAutomation?.workflowConfigured ? "ready" : "blocked", copy: "Findagrave, Legacy, marriage, death, DOB/DOD, and deceased indicators need a saved workflow." },
+            { state: "review", copy: "Returned family-tree facts stay review-gated before Closing Prep." },
+          ]
+        })}
+        ${sourceControlCardHtml({
+          name: "IDI Core",
+          title: "IDI Core enrichment",
+          badge: idi?.configuredMode === "api" ? "API" : "Portal/import",
+          copy: operatorConnectionMessage(idi, "IDI Core"),
+          checks: [
+            { state: idi?.api?.sharedDefaultConfigured ? "ready" : "review", copy: "Shared team API key remains the default for all users." },
+            { state: idi?.api?.userOverrideAllowed ? "ready" : "blocked", copy: "Personal pasted key is allowed as a per-user override." },
+            { state: idi?.api?.liveRunApproved ? "ready" : "review", copy: "Controlled paid-run approval is required before a live lookup spends." },
+          ]
+        })}
+      </div>
+      <div class="settings-action-row">
+        <button class="btn primary solvys-liquid-glass" type="button" data-settings-open-view="dossiers">Open Doc Prep</button>
+        <button class="btn quick solvys-liquid-glass" type="button" data-settings-refresh-connections>Refresh source readiness</button>
+      </div>
+    `)}
+  `;
+}
+
+function renderOutreachSettingsPanel() {
+  const podio = connectionByName("Podio");
+  const activepieces = connectionByName("Activepieces");
+  const resend = connectionByName("Resend");
+  const sms = connectionByName("SMS Gateway");
+  return `
+    ${settingsSectionShell("Outreach production controls", "Safety gates", "No native builder", `
+      <div class="outreach-control-grid">
+        <article class="outreach-control-card">
+          <strong>First-party operator workflow</strong>
+          <span>Operators stage, review, approve, and sync packages from HeirRight. The automation builder stays backstage.</span>
+          <ul class="outreach-control-list">
+            <li data-state="ready">Draft and variable review happen in the Outreach tab.</li>
+            <li data-state="review">Approval requires an approved owner and password.</li>
+            <li data-state="${podio?.ok ? "ready" : "blocked"}">Podio handoff requires access plus readback proof before external work continues.</li>
+            <li data-state="blocked">Direct send is locked from the app surface.</li>
+          </ul>
+          <div class="settings-action-row">
+            <button class="btn primary solvys-liquid-glass" type="button" data-settings-open-view="drips">Open Outreach</button>
+          </div>
+        </article>
+        <article class="outreach-control-card">
+          <strong>Delivery readiness</strong>
+          <span>SMS and email routes are visible as delivery readiness, not as a permission to send without review.</span>
+          <ul class="outreach-control-list">
+            <li data-state="${activepieces?.ok ? "ready" : "review"}">Backstage automation: ${displayStatus(activepieces?.mode || "review")}.</li>
+            <li data-state="${resend?.ok ? "ready" : "review"}">Email fallback: ${displayStatus(resend?.mode || "review")}.</li>
+            <li data-state="${sms?.ok ? "ready" : "review"}">SMS gateway: ${displayStatus(sms?.mode || "review")}.</li>
+            <li data-state="review">All outbound work keeps compliance review and no-send guardrails.</li>
+          </ul>
+        </article>
+      </div>
+    `)}
+  `;
+}
+
+function renderAuditSettingsPanel() {
+  const recentEvents = (state.shellEvents || []).slice(0, 4);
+  const auditEvents = (state.outreachWorkspace?.audit || []).slice(0, 3);
+  return `
+    ${settingsSectionShell("Activity and audit log", "Admin", "Review trail", `
+      <div class="settings-audit-grid">
+        <article class="settings-audit-card">
+          <strong>Recent workspace activity</strong>
+          <span>Use this as the operator-facing setup trail before filing a support ticket.</span>
+          <ul class="audit-list">
+            ${recentEvents.length ? recentEvents.map((event) => `<li class="audit-item"><strong>${escapeHtml(event.title || "Activity")}</strong><span>${escapeHtml(event.copy || "")}</span></li>`).join("") : `<li class="audit-item"><strong>No activity yet</strong><span>Connection checks and approval actions will appear here.</span></li>`}
+          </ul>
+        </article>
+        <article class="settings-audit-card">
+          <strong>Template controls</strong>
+          <span>Outreach templates retain approval owner, variable readiness, archive state, and Podio package status.</span>
+          <ul class="audit-list">
+            ${auditEvents.length ? auditEvents.map((event) => `<li class="audit-item"><strong>${escapeHtml(event.action || "Template event")}</strong><span>${escapeHtml(event.summary || "")}</span></li>`).join("") : `<li class="audit-item"><strong>No template audit events yet</strong><span>Edit, approve, archive, or sync a template to create review history.</span></li>`}
+          </ul>
+          <div class="settings-action-row">
+            <button class="btn quick solvys-liquid-glass" type="button" data-settings-open-view="drips">Review templates</button>
+            <button class="btn quick solvys-liquid-glass" type="button" data-settings-open-view="admin">File setup ticket</button>
+          </div>
+        </article>
+      </div>
+    `)}
+  `;
+}
+
+function renderPreferencesSettingsPanel() {
+  return `
+    ${settingsSectionShell("Discovery and review preferences", "Preferences", "Office policy", `
+      <div class="settings-grid">
+        <div class="setting-card"><label for="settingsSignalWeight"><strong>Source signal weight</strong><span>${escapeHtml(signalWeightLabel(state.shellSettings.signalWeight))}</span></label><input id="settingsSignalWeight" type="range" min="1" max="5" value="${escapeHtml(state.shellSettings.signalWeight)}"></div>
+        <div class="setting-card"><label for="settingsTaxThreshold"><strong>Tax pressure threshold</strong><span>Unpaid years before priority review.</span></label><select id="settingsTaxThreshold"><option value="1">1+ unpaid year</option><option value="2">2+ unpaid years</option><option value="3">3+ unpaid years</option></select></div>
+        <div class="setting-card"><label for="settingsReasonCodes"><strong>Reason-code set</strong><span>Office-facing qualification reasons.</span></label><select id="settingsReasonCodes"><option value="probate-title-tax">Probate + title + tax</option><option value="property-pressure">Property pressure only</option><option value="heirship-first">Heirship first</option></select></div>
+        <div class="setting-card"><label class="toggle-line"><strong>Require deed proof</strong><input id="settingsDeedProofRequired" type="checkbox" ${state.shellSettings.deedProofRequired ? "checked" : ""}></label><span>OR book/page evidence stays required before promotion.</span></div>
+        <div class="setting-card"><label class="toggle-line"><strong>Manual paid-source approval</strong><input id="settingsPaidSourceApproval" type="checkbox" ${state.shellSettings.paidSourceApproval ? "checked" : ""}></label><span>IDI, Intelius, Ancestry, ForeWarn, VitalChek, and PI work stay gated.</span></div>
+      </div>
+    `)}
+  `;
+}
+
+function settingsTabPanelHtml(tab) {
+  if (tab === "integrations") return renderIntegrationSettingsPanel();
+  if (tab === "sources") return renderSourceSettingsPanel();
+  if (tab === "outreach") return renderOutreachSettingsPanel();
+  if (tab === "audit") return renderAuditSettingsPanel();
+  if (tab === "preferences") return renderPreferencesSettingsPanel();
+  return renderAccessSettingsPanel();
+}
+
 function renderSettingsView() {
   const target = document.getElementById("settingsView");
   if (!target) return;
-  const tab = state.settingsTab === "preferences" ? "preferences" : "integrations";
+  const tab = normalizedSettingsTab();
+  state.settingsTab = tab;
   target.innerHTML = `
     <div class="settings-center-shell">
       <section class="loop-panel full settings-unified-card">
         <div class="loop-panel-head">
-          <div><p class="eyebrow">Settings</p><h2 class="loop-title">${tab === "integrations" ? "Integrations" : "Discovery and review preferences"}</h2></div>
+          <div><p class="eyebrow">Settings</p><h2 class="loop-title">${escapeHtml(settingsTabs.find((item) => item.id === tab)?.label || "Access")} readiness</h2></div>
           <div class="tab-strip" role="tablist" aria-label="Settings tabs">
-            <button type="button" data-settings-tab="integrations" aria-pressed="${tab === "integrations"}">Integrations</button>
-            <button type="button" data-settings-tab="preferences" aria-pressed="${tab === "preferences"}">Preferences</button>
+            ${settingsTabs.map((item) => `<button type="button" data-settings-tab="${escapeHtml(item.id)}" aria-pressed="${item.id === tab}">${escapeHtml(item.label)}</button>`).join("")}
           </div>
         </div>
-        ${tab === "integrations" ? `
-          <div class="settings-section">
-            <p class="copy">Connector setup, approval, and readback status live here so Queue stays focused on export blockers.</p>
-            <div class="integration-onboarding settings-integrations-list">
-              ${integrationOnboardingCardHtml("podio")}
-              ${integrationOnboardingCardHtml("google")}
-              ${integrationOnboardingCardHtml("idi")}
-              ${integrationOnboardingCardHtml("tax")}
-              ${integrationOnboardingCardHtml("clerk")}
-              ${integrationOnboardingCardHtml("vital")}
-              ${integrationOnboardingCardHtml("activepieces")}
-              ${integrationOnboardingCardHtml("linear")}
-              ${integrationOnboardingCardHtml("web")}
-              ${integrationOnboardingCardHtml("leads")}
-              ${integrationOnboardingCardHtml("resend")}
-              ${integrationOnboardingCardHtml("sms")}
-            </div>
-          </div>
-          ${integrationStatusRowsHtml()}
-        ` : `
-          <div class="settings-section">
-            <div class="settings-grid">
-              <div class="setting-card"><label for="settingsSignalWeight"><strong>Source signal weight</strong><span>${escapeHtml(signalWeightLabel(state.shellSettings.signalWeight))}</span></label><input id="settingsSignalWeight" type="range" min="1" max="5" value="${escapeHtml(state.shellSettings.signalWeight)}"></div>
-              <div class="setting-card"><label for="settingsTaxThreshold"><strong>Tax pressure threshold</strong><span>Unpaid years before priority review.</span></label><select id="settingsTaxThreshold"><option value="1">1+ unpaid year</option><option value="2">2+ unpaid years</option><option value="3">3+ unpaid years</option></select></div>
-              <div class="setting-card"><label for="settingsReasonCodes"><strong>Reason-code set</strong><span>Office-facing qualification reasons.</span></label><select id="settingsReasonCodes"><option value="probate-title-tax">Probate + title + tax</option><option value="property-pressure">Property pressure only</option><option value="heirship-first">Heirship first</option></select></div>
-              <div class="setting-card"><label class="toggle-line"><strong>Require deed proof</strong><input id="settingsDeedProofRequired" type="checkbox" ${state.shellSettings.deedProofRequired ? "checked" : ""}></label><span>OR book/page evidence stays required before promotion.</span></div>
-              <div class="setting-card"><label class="toggle-line"><strong>Manual paid-source approval</strong><input id="settingsPaidSourceApproval" type="checkbox" ${state.shellSettings.paidSourceApproval ? "checked" : ""}></label><span>IDI, Intelius, Ancestry, ForeWarn, VitalChek, and PI work stay gated.</span></div>
-            </div>
-          </div>
-        `}
+        ${settingsReadinessBandHtml()}
+        ${settingsTabPanelHtml(tab)}
       </section>
     </div>
   `;
@@ -19981,8 +20815,29 @@ function renderSettingsView() {
   enhanceSelectMenus(target);
   target.querySelectorAll("[data-settings-tab]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.settingsTab = button.dataset.settingsTab === "preferences" ? "preferences" : "integrations";
+      state.settingsTab = normalizedSettingsTab(button.dataset.settingsTab);
       renderSettingsView();
+    });
+  });
+  target.querySelectorAll("[data-settings-open-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const view = button.dataset.settingsOpenView || "dashboard";
+      setActiveShellView(view, activeViewLabel(view));
+    });
+  });
+  target.querySelectorAll("[data-settings-refresh-connections]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      button.textContent = "Checking...";
+      await loadConnectionStatuses();
+      addShellEvent("Connection statuses refreshed", "Settings pulled the latest integration, source, and Outreach readiness checks.", "review", false);
+      renderSettingsView();
+    });
+  });
+  target.querySelectorAll("[data-settings-account-menu]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setAccountMenuOpen(true);
+      document.getElementById("accountChip")?.focus();
     });
   });
   target.querySelectorAll("[data-integration-onboarding]").forEach((button) => {
@@ -22020,7 +22875,7 @@ function operatorConnectionMessage(connection, name) {
     if (name === "Miami-Dade Clerk API") return "Clerk records are not connected yet. Official Records and court docket checks stay review-blocked until commercial access is added.";
     if (name === "Vital/Obituary Workflow") return "Obituary and vital-source review needs the browser workflow before it can return source links automatically.";
     if (name === "IDI Core") return "idiCORE portal access is not confirmed yet. Keep Discovery blocked until an approved operator search is imported or vendor API access is provisioned.";
-    if (name === "Activepieces") return "Activepieces is not configured yet. Outreach will use the first-party fallback package and stay queued for Podio review.";
+    if (name === "Activepieces") return "Backstage outreach handoff is not configured yet. Outreach will use the first-party fallback package and stay queued for Podio review.";
     if (name === "Linear Support") return "Linear support routing is not configured yet. Admin tickets stay local until the Worker has API access and a team route.";
     if (name === "Leads Engine Access") return "Leads engine access changes are captured in-app until support routing or the access webhook is configured.";
   }
@@ -22794,6 +23649,11 @@ function wireEvents() {
     workspace.classList.toggle("is-collapsed");
     syncSidebarState();
   });
+  document.getElementById("accountChip")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setAccountMenuOpen(!state.accountMenuOpen);
+  });
   document.querySelectorAll("[data-theme-option]").forEach((button) => {
     button.addEventListener("click", () => applyTheme(button.dataset.themeOption));
   });
@@ -22957,6 +23817,9 @@ function wireEvents() {
     chooseExportRoute(button.dataset.exportRoute, button);
   });
   document.addEventListener("click", (event) => {
+    if (!document.getElementById("accountMenu")?.contains(event.target) && !document.getElementById("accountChip")?.contains(event.target)) {
+      setAccountMenuOpen(false);
+    }
     const docPrepTrigger = event.target.closest?.("[data-open-docprep-row]");
     if (docPrepTrigger && document.getElementById("dossiersView")?.contains(docPrepTrigger)) {
       if (!docPrepTrigger.matches?.("button") && event.target.closest?.("input, label")) return;
@@ -22970,7 +23833,7 @@ function wireEvents() {
       openUtilityRail("report", reportTrigger);
       return;
     }
-    const outreachButton = event.target.closest?.("[data-template-edit], [data-template-ready], [data-template-approve], [data-template-sync], [data-template-archive], [data-template-restore], [data-template-delete]");
+    const outreachButton = event.target.closest?.("[data-template-edit], [data-template-ready], [data-template-approve], [data-template-sync], [data-template-send-blocked], [data-template-archive], [data-template-restore], [data-template-delete]");
     if (outreachButton && handleOutreachTemplateAction(outreachButton)) {
       event.preventDefault();
       return;
@@ -23029,6 +23892,7 @@ function wireEvents() {
       setSearchPopupOpen(false);
       setHistoryRailOpen(false);
       setActivityOpen(false);
+      setAccountMenuOpen(false);
       closeWalkthrough(false);
       if (state.crmImportModal.open) closeCrmImportModal();
       if (state.documentActionModal.open) closeDocumentActionModal();
@@ -23160,8 +24024,9 @@ if (initialView === "dossiers" && initialUrlParams.get("docprep") === "estate") 
     window.setTimeout(() => scrollDocPrepDeepLinkSection(initialUrlParams.get("section")), 200);
   }
 }
-loadSession();
-loadRun();
+loadSession().then((session) => {
+  if (!authGateBlocking(session)) loadRun();
+});
 if (initialUrlParams.get("walkthrough") !== "off") {
   walkthroughAutoTimer = window.setTimeout(() => {
     walkthroughAutoTimer = null;

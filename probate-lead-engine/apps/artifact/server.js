@@ -1876,8 +1876,6 @@ function handleRequest(req, res) {
       sendJson(res, 401, { ok: false, error: "auth_required", loginUrl: "/auth/login" });
       return;
     }
-    sendHtml(res, 401, loginPage(req));
-    return;
   }
 
   if (url.pathname.startsWith("/local-state/")) {
