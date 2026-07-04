@@ -578,6 +578,21 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Browser proof confirmed operator copy for the bottom-right receipt link, latest deed/Clerk access, approved IDI asset search, and manual/paid research policy; visible copy did not expose `IDI_CORE_API_KEY`, `MIAMI_DADE_CLERK_AUTH_KEY`, `OBITUARY_VITAL_WORKFLOW_URL`, or `TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID`.
   - Browser proof reported no console errors, no failed requests, and no stale `Live packet preview` copy.
 
+## Twenty-Sixth Repair Pass: Settings Source Controls
+
+- Confirmed and fixed a visible Settings gap: `Miami-Dade Clerk API` and `Vital/Obituary Workflow` existed in the API/readiness layer, but the global Settings connection list and admin blocker list did not show them.
+- Added dedicated Settings integration cards for:
+  - Tax Collector;
+  - Clerk Records;
+  - Vital Sources.
+- Added `Miami-Dade Clerk API` and `Vital/Obituary Workflow` to Settings connection status rows and admin blocker coverage so source-readiness blockers are visible outside the Doc Prep rail.
+- Extended the source-readiness contract test so it fails if Settings loses the Tax Collector, Clerk, or Vital source controls.
+- Proof:
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed and reported `settings_exposes_source_readiness_controls`.
+  - `pnpm --dir probate-lead-engine test`: passed.
+  - Headless browser proof on `http://localhost:4185/?view=settings&walkthrough=off` rendered `Tax Collector`, `Clerk Records`, `Vital Sources`, and the status rows `Tax Collector Source`, `Miami-Dade Clerk API`, and `Vital/Obituary Workflow`.
+  - Browser proof found no raw env names, no console errors, and no failed requests.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 
 const require = createRequire(import.meta.url);
 const { buildConnectionStatuses, buildIdiCoreStatus } = require("../api/connections/status.js");
@@ -123,6 +124,13 @@ for (const row of [configuredTax, configuredClerk, configuredVital, configuredId
   assertNoRawEnvCopy(row);
 }
 
+const bundle = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
+assert.ok(bundle.includes('integrationOnboardingCardHtml("tax")'), "Settings must expose a Tax Collector source card.");
+assert.ok(bundle.includes('integrationOnboardingCardHtml("clerk")'), "Settings must expose a Clerk Records source card.");
+assert.ok(bundle.includes('integrationOnboardingCardHtml("vital")'), "Settings must expose a Vital Sources card.");
+assert.ok(bundle.includes('"Miami-Dade Clerk API", "Vital/Obituary Workflow"'), "Settings status rows must include Clerk and Vital/Obituary readiness.");
+assert.ok(bundle.includes('"Web Search", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "IDI Core"'), "Admin blockers must include every source-readiness integration.");
+
 console.log(JSON.stringify({
   ok: true,
   checks: [
@@ -132,5 +140,6 @@ console.log(JSON.stringify({
     "vital_obituary_readiness_requires_browser_workflow",
     "idi_core_shared_default_and_user_override_contract",
     "operator_visible_readiness_copy_has_no_raw_env_keys",
+    "settings_exposes_source_readiness_controls",
   ],
 }, null, 2));

@@ -19238,7 +19238,7 @@ function renderQueueView() {
 }
 
 function adminErrorItems() {
-  const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "Tax Collector Source", "IDI Core", "Activepieces", "Linear Support", "Leads Engine Access"];
+  const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "IDI Core", "Activepieces", "Linear Support", "Leads Engine Access"];
   const actionItems = state.actionErrorLog.map((item) => ({ ...item, ready: false }));
   const loggedActionTitles = new Set(actionItems.map((item) => item.title));
   const blockedEventItems = state.shellEvents
@@ -19604,6 +19604,24 @@ function integrationOnboardingCardHtml(kind) {
       action: "Review source status",
       steps: ["Run Miami-Dade public-source fetch", "Capture source facts into Discovery", "Keep paid-source work approval-gated"]
     },
+    tax: {
+      name: "Tax Collector Source",
+      title: "Tax Collector",
+      action: "Review tax source",
+      steps: ["Open the Tax Collector listing page or run the approved browser workflow", "Capture the bottom-right receipt link, payer, paid date, and unpaid years", "Keep tax fields review-blocked until receipt evidence or an approved unavailable note exists"]
+    },
+    clerk: {
+      name: "Miami-Dade Clerk API",
+      title: "Clerk Records",
+      action: "Review Clerk access",
+      steps: ["Add Commercial Data Services access before automatic Clerk pulls", "Fetch Official Records by folio and court dockets by case when access is ready", "Review deed, OR book/page, probate, civil, and family facts before Discovery completion"]
+    },
+    vital: {
+      name: "Vital/Obituary Workflow",
+      title: "Vital Sources",
+      action: "Review vital workflow",
+      steps: ["Run the approved obituary and vital-source browser workflow", "Capture obituary, marriage, death, memorial, and deceased-indicator evidence", "Keep DOB, DOD, spouse, and heir signals review-gated before Closing Prep"]
+    },
     idi: {
       name: "IDI Core",
       title: "IDI Core",
@@ -19672,11 +19690,17 @@ function handleIntegrationOnboarding(kind) {
             ? "Linear Support"
             : kind === "web"
               ? "Web Search"
-              : kind === "idi"
-                ? "IDI Core"
-                : kind === "leads"
-                  ? "Leads Engine Access"
-                  : "Podio";
+              : kind === "tax"
+                ? "Tax Collector Source"
+                : kind === "clerk"
+                  ? "Miami-Dade Clerk API"
+                  : kind === "vital"
+                    ? "Vital/Obituary Workflow"
+                    : kind === "idi"
+                      ? "IDI Core"
+                      : kind === "leads"
+                        ? "Leads Engine Access"
+                        : "Podio";
   const isGoogle = kind === "google";
   const connection = connectionByName(name);
   if (isGoogle && !state.session?.auth?.configured) {
@@ -19691,7 +19715,7 @@ function handleIntegrationOnboarding(kind) {
 }
 
 function integrationStatusRowsHtml() {
-  const names = ["Podio", "Google", "IDI Core", "Tax Collector Source", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
+  const names = ["Podio", "Google", "IDI Core", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
   const items = names.map((name) => {
     const connection = connectionByName(name);
     const connected = Boolean(connection?.ok && connection?.mode === "live");
@@ -19747,6 +19771,9 @@ function renderSettingsView() {
               ${integrationOnboardingCardHtml("podio")}
               ${integrationOnboardingCardHtml("google")}
               ${integrationOnboardingCardHtml("idi")}
+              ${integrationOnboardingCardHtml("tax")}
+              ${integrationOnboardingCardHtml("clerk")}
+              ${integrationOnboardingCardHtml("vital")}
               ${integrationOnboardingCardHtml("activepieces")}
               ${integrationOnboardingCardHtml("linear")}
               ${integrationOnboardingCardHtml("web")}

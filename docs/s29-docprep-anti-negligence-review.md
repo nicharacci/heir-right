@@ -92,6 +92,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Cache-invalidation addendum: Turbo now tracks IDI, Browserbase, Tax Collector, Miami-Dade Clerk, vital/obituary, and alternate worker proxy env vars. The artifact source-run contract test fails if those env vars fall out of `globalEnv`, preventing stale cached "blocked" proof after production credentials are configured.
 - Tax Collector receipt-selection addendum: Browserbase, worker, and artifact source-capture helpers now score the listing-page receipt link instead of taking the last payment-like anchor. Regression fixtures include a correct bottom-right receipt link followed by a misleading footer `Payment history` link.
 - Source-readiness contract addendum: `@ple/artifact` now has an executable `/api/connections/status` contract test that fails if Tax Collector, Clerk, vital/obituary, or IDI readiness collapses into a fake "all APIs are automated" state. Browser proof clicked `Run Source Search` on `localhost:4185` and rendered 8 source-proof rows without raw credential/env names in visible operator copy.
+- Settings source-controls addendum: Settings now exposes dedicated `Tax Collector`, `Clerk Records`, and `Vital Sources` cards plus status rows for `Tax Collector Source`, `Miami-Dade Clerk API`, and `Vital/Obituary Workflow`. The source-readiness test fails if those controls disappear.
 
 ## Dedicated Final Review Pass
 
@@ -143,6 +144,7 @@ Evidence rerun:
 - Cache proof: `pnpm test` passed after adding source-acquisition env vars to Turbo's `globalEnv`, and the artifact contract test now reports `source_acquisition_env_cache_key`.
 - Receipt-selection proof: live `localhost:4184` source-capture returned `listing_page_bottom_right` and `tax_receipt_link: https://miamidade.county-taxes.test/receipts/2025-live.pdf` even with a later footer `Payment history` link present.
 - Source-readiness proof: `pnpm --dir probate-lead-engine --filter @ple/artifact test` and `pnpm --dir probate-lead-engine test` passed with the new source-readiness contract. Local route proof on `localhost:4185` showed Tax Collector, Clerk, and Vital/Obituary blocked unless their specific acquisition path is configured, while IDI remained operator-portal review with user override allowed but no shared backend endpoint. Browser proof clicked `Run Source Search`, rendered 8 source-proof rows, and showed no raw env names or stale preview copy.
+- Settings source-controls proof: browser proof on `localhost:4185/?view=settings&walkthrough=off` rendered the dedicated Tax Collector, Clerk Records, and Vital Sources cards plus source status rows for Tax Collector Source, Miami-Dade Clerk API, and Vital/Obituary Workflow with no raw env names, console errors, or failed requests.
 
 S29-S32 plan check:
 
