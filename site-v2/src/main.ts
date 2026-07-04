@@ -335,6 +335,11 @@ function setupTestimonialPlayer(): void {
     }
   };
 
+  const playerIsVisible = () => {
+    const rect = player.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < window.innerHeight;
+  };
+
   const stopCycle = () => {
     window.clearInterval(cycleTimer);
     cycleTimer = undefined;
@@ -345,13 +350,21 @@ function setupTestimonialPlayer(): void {
   };
 
   const startCycle = () => {
-    if (reducedMotion || userPausedCycle || cycleTimer) return;
+    if (reducedMotion || userPausedCycle || cycleTimer || !playerIsVisible()) return;
 
     cycleTimer = window.setInterval(() => {
-      if (!document.hidden && video.paused) {
+      if (!document.hidden && video.paused && playerIsVisible()) {
         advance();
       }
     }, 8500);
+  };
+
+  const syncCycleVisibility = () => {
+    if (playerIsVisible()) {
+      startCycle();
+    } else {
+      stopCycle();
+    }
   };
 
   thumbs.forEach((thumb, index) => {
@@ -395,12 +408,14 @@ function setupTestimonialPlayer(): void {
     if (document.hidden) {
       stopCycle();
     } else {
-      startCycle();
+      syncCycleVisibility();
     }
   });
+  window.addEventListener("scroll", syncCycleVisibility, { passive: true });
+  window.addEventListener("resize", syncCycleVisibility, { passive: true });
 
   setActive(activeIndex);
-  startCycle();
+  syncCycleVisibility();
 }
 
 setupAmbientCanvas();
