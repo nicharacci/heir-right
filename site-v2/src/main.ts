@@ -292,28 +292,16 @@ function setupTestimonialPlayer(): void {
   const player = document.querySelector<HTMLElement>("[data-testimonial-player]");
   const video = player?.querySelector<HTMLVideoElement>("[data-testimonial-video]");
   const source = player?.querySelector<HTMLSourceElement>("[data-testimonial-source]");
-  const dock = player?.querySelector<HTMLElement>("[data-testimonial-dock]");
-  const dockToggle = player?.querySelector<HTMLButtonElement>("[data-testimonial-strip-toggle]");
   const playButton = player?.querySelector<HTMLButtonElement>("[data-testimonial-play]");
   const thumbs = Array.from(player?.querySelectorAll<HTMLButtonElement>("[data-video-src]") ?? []);
 
-  if (!player || !video || !source || !dock || !playButton || !thumbs.length) return;
+  if (!player || !video || !source || !playButton || !thumbs.length) return;
 
   let activeIndex = Math.max(
     thumbs.findIndex((thumb) => thumb.classList.contains("is-active")),
     0
   );
   let swapTimer: number | undefined;
-
-  const openDock = () => {
-    dock.classList.add("is-open");
-    dockToggle?.setAttribute("aria-expanded", "true");
-  };
-
-  const closeDock = () => {
-    dock.classList.remove("is-open");
-    dockToggle?.setAttribute("aria-expanded", "false");
-  };
 
   const syncPlayButton = () => {
     player.classList.toggle("is-playing", !video.paused && !video.ended);
@@ -371,28 +359,7 @@ function setupTestimonialPlayer(): void {
   thumbs.forEach((thumb, index) => {
     thumb.addEventListener("click", () => {
       setActive(index);
-      openDock();
     });
-
-    thumb.addEventListener("focus", () => {
-      openDock();
-    });
-  });
-
-  dockToggle?.addEventListener("click", openDock);
-  dockToggle?.addEventListener("focus", openDock);
-
-  dock.addEventListener("pointerleave", () => {
-    if (!dock.contains(document.activeElement)) {
-      closeDock();
-    }
-  });
-  dock.addEventListener("focusout", () => {
-    window.setTimeout(() => {
-      if (!dock.contains(document.activeElement)) {
-        closeDock();
-      }
-    }, 0);
   });
 
   playButton.addEventListener("click", () => {
