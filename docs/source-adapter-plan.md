@@ -20,6 +20,12 @@ Official Records and Civil/Family/Probate now have first-class Miami-Dade Clerk 
 
 Tax Collector and vital/obituary browser workflows can invoke Browserbase Functions directly through Browserbase's `POST /v1/functions/{id}/invoke` API. The app keeps `BROWSERBASE_API_KEY` server-side and stores only readiness booleans in Settings. Browserbase invocation is documented by Browserbase at `https://docs.browserbase.com/reference/api/invoke-a-function`.
 
+Deployable function sources live in `probate-lead-engine/browserbase-functions`. The package includes:
+
+- `src/tax-collector-receipt.mjs`;
+- `src/vital-obituary-review.mjs`;
+- deterministic helper tests in `test/contracts.test.mjs`.
+
 ## Adapter Output Principle
 
 Adapters return normalized `SourceFact[]`. They do not decide CRM state, score, outreach strategy, or legal interpretation. The dossier builder converts facts into claims, title events, review flags, document fields, and CRM adapter dry-run payloads.
@@ -147,9 +153,9 @@ Stop and report a blocker instead of forcing source extraction when:
 7. Dashboard/intake and Friday handoff.
 8. Workflow rule engine for disqualifications and review-required states.
 9. Tax Collector search/listing client that lands on the listing page and extracts the bottom-right receipt link; direct listing/template path and saved browser-workflow blockers are implemented, Browserbase/Chrome capture remains for GovHub/Cloudflare.
-10. Tax Collector browser-workflow API hook and direct Browserbase Function invocation via `TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID`; hook implemented and route-proven with a mocked Browserbase API, real GovHub proof remains.
+10. Tax Collector browser-workflow API hook and direct Browserbase Function invocation via `TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID`; deployable function source exists and the hook is route-proven with a mocked Browserbase API, real GovHub proof remains.
 11. Miami-Dade Clerk Commercial Data Services clients for Official Records by folio and Civil/Family/Probate by case number; AuthKey-gated client implemented, credentialed proof remains.
-12. Vital/obituary/marriage/death workflow API hook and direct Browserbase Function invocation via `OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID`; hook implemented and route-proven with a mocked Browserbase API, real controlled-browser/API source proof remains.
+12. Vital/obituary/marriage/death workflow API hook and direct Browserbase Function invocation via `OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID`; deployable function source exists and the hook is route-proven with a mocked Browserbase API, real controlled-browser/API source proof remains.
 13. Route-visible governed manual/paid research bucket for voter records, professional licenses, business/address associations, social profiles, deceased indicators, PI/field tasks, and paid genealogy/people-search tools.
 14. Tax/deed depth adapters.
 15. Probate/heirship research queue.

@@ -22,6 +22,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Settings/export readiness now exposes `Vital/Obituary Workflow` separately from generic Web Search readiness.
 - Source governance is now route-visible as `Governed manual and paid research`, and explicitly names voter records, professional licenses, business/address associations, social profiles, and deceased-indicator cross-checks as approval-gated review work.
 - Tax Collector and vital/obituary adapters now invoke Browserbase Functions directly when function IDs and `BROWSERBASE_API_KEY` are configured, instead of requiring a separate custom workflow URL.
+- Deployable Browserbase Function source files now exist in `probate-lead-engine/browserbase-functions` for Tax Collector receipt capture and vital/obituary review.
 - Closing Prep cannot auto-complete title, seller approval, or package phases when required evidence or fields are missing.
 - Required Closing fields persist per estate and feed the deterministic field map.
 - Closing export blocks before Google export if required fields are unresolved.
@@ -77,6 +78,7 @@ Assume every AI-built completion claim is false until the app proves it with sou
 - Vital/obituary route proof returned `workflow_required` and `VITAL_RECORDS_WORKFLOW_REQUIRED`; Settings returned `Vital/Obituary Workflow` as blocked until the workflow URL is configured.
 - Source governance route proof returned 8 source summaries and a blocked `Governed manual and paid research` bucket containing voter, professional-license, business/address, social-profile, and deceased-indicator review codes.
 - Browserbase route proof with mocked Browserbase Function API returned Tax Collector receipt link and vital date-of-death facts through the actual `/api/discovery/external-source-run` route, while leaving Clerk/IDI/skip/governed sources blocked.
+- Browserbase function package proof passed syntax checks and extraction contract tests for receipt capture, obituary-link selection, and DOB/DOD hints.
 
 ## Dedicated Final Review Pass
 
@@ -117,6 +119,7 @@ Evidence rerun:
 - `pnpm test`: passed.
 - `/api/discovery/external-source-run`: returned 8 source summaries.
 - `/api/discovery/external-source-run` with Browserbase Function env and mocked Browserbase API: returned Tax Collector `listing_page_bottom_right`, a receipt link, vital `workflow_reviewed`, and date of death.
+- `browserbase-functions` package check: passed.
 - Vital/obituary route proof: `source_status.value.mode = workflow_required`, `VITAL_RECORDS_WORKFLOW_REQUIRED`.
 - Source-governance route proof: `Governed manual and paid research` returned as blocked with voter records, professional licenses, business/address associations, social profiles, and deceased-indicator cross-checks in the catalog.
 - `/api/connections/status`: `Miami-Dade Clerk API` and `Vital/Obituary Workflow` expose blocked readiness until their credentials/workflows are configured.
@@ -131,7 +134,7 @@ S29-S32 plan check:
 
 /solvys-heir-audit
 Source checked: `/Users/tifos/Desktop/HRight/HeirRight Workflow. pdf.pdf`, `/Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md`, source-run API proof, Browserbase mock route proof, Settings status proof, route-level UI proof, and current git diff/status.
-Backward: The work changed Discovery Doc Prep from a partial UI/source-capture story into a source-run architecture with eight visible buckets: Property Appraiser, Tax Collector, Official Records, Probate/Civil/Family Court, vital/obituary, IDI, skip trace, and governed manual/paid research. It now includes direct Browserbase Function paths for Tax Collector and vital/obituary, supports the packet's property/deed/tax/probate/vital/IDI/manual-research steps by saving facts or explicit blockers instead of blank implied completion.
+Backward: The work changed Discovery Doc Prep from a partial UI/source-capture story into a source-run architecture with eight visible buckets: Property Appraiser, Tax Collector, Official Records, Probate/Civil/Family Court, vital/obituary, IDI, skip trace, and governed manual/paid research. It now includes direct Browserbase Function paths plus deployable function sources for Tax Collector and vital/obituary, supporting the packet's property/deed/tax/probate/vital/IDI/manual-research steps by saving facts or explicit blockers instead of blank implied completion.
 UX pass: aligned with gaps. Operators get a `Run Source Search` control, source summaries, readiness statuses, and plain blocker language. The remaining UX gap is live workflow completion: without real workflow endpoints and credentials, a non-technical operator still has source work to finish manually.
 Forward: S30 must demo the real flow with these blockers visible and document streaming; S31 must complete Settings/Outreach/auth readiness; S32 must audit against live PDF outputs and browser/API proof.
 Alignment: aligned with gaps

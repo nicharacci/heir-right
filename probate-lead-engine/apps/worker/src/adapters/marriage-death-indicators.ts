@@ -114,6 +114,8 @@ async function fetchVitalWorkflow(seed: IntakeSeed, env: RuntimeEnv): Promise<{ 
             allowedDomains: [
               "www2.miamidadeclerk.gov",
               "miamidadeclerk.gov",
+              "google.com",
+              "www.google.com",
               "legacy.com",
               "www.legacy.com",
               "findagrave.com",

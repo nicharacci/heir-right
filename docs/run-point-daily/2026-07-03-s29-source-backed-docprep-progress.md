@@ -392,6 +392,28 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Settings showed both Browserbase function paths configured;
   - route still returned `ok: false` because Official Records, Probate/Civil/Family, IDI, skip trace, and governed manual/paid research were still honestly blocked or review-gated.
 
+## Sixteenth Repair Pass: Deployable Browserbase Function Sources
+
+- Added `probate-lead-engine/browserbase-functions` with deployable function sources:
+  - `src/tax-collector-receipt.mjs`;
+  - `src/vital-obituary-review.mjs`;
+  - `src/source-helpers.mjs`.
+- Added a function-package check script that syntax-checks both functions and runs deterministic extraction contract tests.
+- Tax Collector function contract:
+  - accepts folio/address/owner/search URL;
+  - searches or opens the Tax Collector listing page;
+  - extracts the bottom-right receipt/payment/print link;
+  - returns a blocker when the page loads without a receipt link.
+- Vital/obituary function contract:
+  - accepts estate/owner/county/source URLs;
+  - captures obituary/memorial candidates;
+  - preserves source URL, snapshot text, DOB/DOD hints, marriage/death-certificate review states;
+  - returns review facts only, not heirship conclusions.
+- Updated the vital Browserbase invocation allowlist to permit Google search when the function uses Google to discover obituary/memorial pages.
+- Proof:
+  - `node --check src/source-helpers.mjs && node --check src/tax-collector-receipt.mjs && node --check src/vital-obituary-review.mjs && node test/contracts.test.mjs`: passed.
+  - `pnpm build && pnpm test`: passed.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.
