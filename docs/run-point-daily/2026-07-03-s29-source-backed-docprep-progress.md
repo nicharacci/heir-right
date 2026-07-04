@@ -442,6 +442,31 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - `pnpm test`: passed.
   - Chrome Computer Use proof on `localhost:4180` first clicked `Closing Prep` to persist the stale workflow state, then reopened `?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture`; the rendered page showed `Estate Discovery`, `Public-record capture`, `Source readiness before this run`, and the source readiness blockers instead of the Closing Prep rail.
 
+## Nineteenth Repair Pass: Source-Run Proof Ledger
+
+- Added a machine-readable `sourceRunProof` ledger to `/api/discovery/external-source-run` across the worker, local artifact server, and serverless fallback.
+- The ledger records each required source's:
+  - proof state;
+  - completion gate;
+  - credential or workflow gate;
+  - fact count;
+  - extracted fact types;
+  - review flags;
+  - next operator action.
+- The ledger explicitly keeps `legalTemplateAutofillAllowed: false` at the run and source level, so Closing Prep cannot treat returned source facts as legal-template permission.
+- Source proof states are intentionally conservative:
+  - `facts_returned_review_required`;
+  - `evidence_required`;
+  - `blocked`;
+  - `not_checked`.
+- Doc Prep now preserves `sourceRunProof` in the saved source-capture run state for future S30/S32 demo and audit assertions.
+- Proof:
+  - `pnpm build`: passed.
+  - `pnpm test`: passed.
+  - `node --check probate-lead-engine/apps/artifact/api/discovery/external-source-run.js`: passed.
+  - `node --check probate-lead-engine/apps/artifact/server.js`: passed.
+  - Local route proof on `http://localhost:4181/api/discovery/external-source-run` returned `sourceRunProof` with 8 sources, `allRequiredSourcesAccountedFor: true`, `readyForDiscoveryCompletion: false`, `legalTemplateAutofillAllowed: false`, `blockedCount: 3`, and `evidenceRequiredCount: 3`.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

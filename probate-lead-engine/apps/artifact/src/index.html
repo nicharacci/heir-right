@@ -16509,6 +16509,7 @@ function applyExternalSourceRunResult(row, capture, result) {
       runId: result.runId || "",
       generatedAt: result.generatedAt || new Date().toISOString(),
       sourceSummaries: Array.isArray(result.sourceSummaries) ? result.sourceSummaries : [],
+      sourceRunProof: result.sourceRunProof && typeof result.sourceRunProof === "object" ? result.sourceRunProof : null,
       blockers: Array.isArray(result.blockers) ? result.blockers : [],
       message: result.message || ""
     }

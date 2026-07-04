@@ -16,6 +16,8 @@ The route is intentionally proof-or-blocker:
 
 Current route proof returned eight buckets. With no live workflow credentials, the route returns blockers instead of blank facts. With Browserbase Function env pointed at a mocked Browserbase API, the actual source-run route returned Tax Collector receipt facts and vital/obituary facts while leaving Clerk, IDI, skip trace, and governed research blocked or review-gated. That means the buckets are callable and visible, not that every external source is fully automated end to end.
 
+The source-run response now includes `sourceRunProof`, a machine-readable proof ledger for every required Discovery source. It records proof state, completion gate, credential/workflow gate, fact count, extracted fact types, review flags, and next action. The ledger keeps `legalTemplateAutofillAllowed: false` until a later Closing Prep review explicitly maps reviewed Discovery facts into template blanks.
+
 Official Records and Civil/Family/Probate now have first-class Miami-Dade Clerk Commercial Data Services API clients. They run only when `MIAMI_DADE_CLERK_AUTH_KEY` is configured; otherwise they return `commercial_api_key_required` blockers. This matches the Clerk's published API posture: developer account enabled, pre-paid units required, and `AuthKey` supplied with each request.
 
 Tax Collector and vital/obituary browser workflows can invoke Browserbase Functions directly through Browserbase's `POST /v1/functions/{id}/invoke` API. The app keeps `BROWSERBASE_API_KEY` server-side and stores only readiness booleans in Settings. Browserbase invocation is documented by Browserbase at `https://docs.browserbase.com/reference/api/invoke-a-function`.

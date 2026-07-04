@@ -905,6 +905,60 @@ function summarizeSourceRunFacts(sourceFacts) {
   });
 }
 
+function sourceRunCredentialGate(source) {
+  if (source === "property_appraiser") return "Public county property search";
+  if (source === "tax_collector") return "Direct Tax Collector listing URL, TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID, or TAX_COLLECTOR_BROWSER_WORKFLOW_URL";
+  if (source === "official_records" || source === "probate_court") return "MIAMI_DADE_CLERK_AUTH_KEY with Clerk Commercial Data Services units";
+  if (source === "clerk_of_courts") return "OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID or OBITUARY_VITAL_WORKFLOW_URL";
+  if (source === "idi") return "IDI_CORE_API_URL plus shared IDI_CORE_API_KEY and IDI_CORE_LIVE_RUN_APPROVED=true, or approved operator report import";
+  if (source === "skip_trace") return "Approved skip-trace provider plus operator approval";
+  if (source === "source_governance") return "Operator approval for manual, paid, voter, social, license, business/address, and field research";
+  return "Source-specific evidence or operator review";
+}
+
+function sourceProofState(status) {
+  if (status === "blocked") return "blocked";
+  if (status === "needs_review") return "evidence_required";
+  if (status === "partial") return "facts_returned_review_required";
+  return "not_checked";
+}
+
+function sourceRunProofLedger(sourceSummaries) {
+  const sources = sourceSummaries.map((summary) => {
+    const source = String(summary.source || "");
+    const status = String(summary.status || "not_checked");
+    const proofState = sourceProofState(status);
+    const factCount = Number(summary.factCount || 0);
+    return {
+      source,
+      label: summary.label,
+      mode: summary.mode,
+      status,
+      proofState,
+      completionGate: proofState === "facts_returned_review_required" ? "operator_review_required" : "blocked",
+      credentialGate: sourceRunCredentialGate(source),
+      factCount,
+      extractedFactTypes: summary.extractedFactTypes,
+      reviewFlags: summary.reviewFlags,
+      nextAction: summary.nextAction,
+      legalTemplateAutofillAllowed: false,
+    };
+  });
+  const blockedCount = sources.filter((item) => item.proofState === "blocked").length;
+  const evidenceRequiredCount = sources.filter((item) => item.proofState === "evidence_required").length;
+  return {
+    completionStandard: "proof_or_explicit_blocker",
+    allRequiredSourcesAccountedFor: discoverySourceLabels.every((item) => sources.some((source) => source.source === item.source)),
+    readyForOperatorReview: blockedCount === 0 && evidenceRequiredCount === 0,
+    readyForDiscoveryCompletion: false,
+    legalTemplateAutofillAllowed: false,
+    blockedCount,
+    evidenceRequiredCount,
+    factsReturnedCount: sources.filter((item) => item.factCount > 0).length,
+    sources,
+  };
+}
+
 async function handleExternalSourceRun(req, res) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
   const proxied = await proxyWorkerJson("/api/discovery/external-source-run", {
@@ -922,6 +976,7 @@ async function handleExternalSourceRun(req, res) {
   const pipeline = await runDryPipeline(seed, { env: process.env });
   const sourceFacts = pipeline.facts.filter((fact) => discoverySourceLabels.some((item) => item.source === fact.source));
   const sourceSummaries = summarizeSourceRunFacts(sourceFacts);
+  const sourceRunProof = sourceRunProofLedger(sourceSummaries);
   const blockers = [...new Set([
     ...sourceSummaries
       .filter((summary) => summary.status === "blocked" || summary.status === "needs_review")
@@ -938,6 +993,7 @@ async function handleExternalSourceRun(req, res) {
     generatedAt: new Date().toISOString(),
     seed,
     sourceSummaries,
+    sourceRunProof,
     sourceFacts,
     dossier: pipeline.dossier,
     blockers,
