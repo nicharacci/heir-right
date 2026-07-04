@@ -225,6 +225,10 @@ const text = new Map([
   ["Phone", "Telefono"],
   ["Tell us about your home", "Cuentenos sobre su casa"],
   [
+    "Call 786-962-3457 for any questions & concerns, & we'd be happy to assist you!",
+    "Llame al 786-962-3457 si tiene preguntas o inquietudes, y con gusto le ayudaremos."
+  ],
+  [
     "Please contact us today at 786-962-3457. We will break the process down for you, answer any questions, and if it makes sense, make it a hassle free sale.",
     "Contactenos hoy al 786-962-3457. Le explicaremos el proceso, responderemos sus preguntas y, si tiene sentido, haremos que sea una venta sin complicaciones."
   ],
