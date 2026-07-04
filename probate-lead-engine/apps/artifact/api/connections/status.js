@@ -98,7 +98,7 @@ function idiCorePortalConfigured(env) {
 function idiCoreApiDetails(env) {
   return {
     endpointConfigured: Boolean(env.IDI_CORE_API_URL),
-    sharedDefaultConfigured: Boolean(env.IDI_CORE_API_KEY),
+    sharedDefaultConfigured: Boolean(env.IDI_CORE_API_TOKEN || env.HEIRRIGHT_IDI_CORE_API_TOKEN || env.IDI_CORE_API_KEY),
     userOverrideAllowed: true,
   };
 }
@@ -293,6 +293,8 @@ function operatorAccessList(items) {
     .replace(/CLERK_COMMERCIAL_AUTH_KEY/g, "Miami-Dade Clerk API access")
     .replace(/OBITUARY_VITAL_WORKFLOW_URL/g, "vital/obituary workflow")
     .replace(/IDI_CORE_API_URL/g, "IDI Core endpoint")
+    .replace(/HEIRRIGHT_IDI_CORE_API_TOKEN/g, "IDI Core access")
+    .replace(/IDI_CORE_API_TOKEN/g, "IDI Core access")
     .replace(/IDI_CORE_API_KEY/g, "IDI Core access")
     .replace(/IDI_CORE_PORTAL_URL/g, "idiCORE portal")
     .replace(/IDI_CORE_ACCOUNT_ID/g, "idiCORE account")

@@ -51,7 +51,7 @@ function idiCoreApiDetails(env: RuntimeEnv): {
 } {
   return {
     endpointConfigured: Boolean(env.IDI_CORE_API_URL),
-    sharedDefaultConfigured: Boolean(env.IDI_CORE_API_KEY),
+    sharedDefaultConfigured: Boolean(env.IDI_CORE_API_TOKEN || env.HEIRRIGHT_IDI_CORE_API_TOKEN || env.IDI_CORE_API_KEY),
     userOverrideAllowed: true,
   };
 }

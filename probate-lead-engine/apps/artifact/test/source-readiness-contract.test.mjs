@@ -68,7 +68,7 @@ const configured = buildConnectionStatuses({
   MIAMI_DADE_CLERK_AUTH_KEY: "clerk-test-key",
   OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID: "vital-function",
   IDI_CORE_API_URL: "https://idi.example.test/search",
-  IDI_CORE_API_KEY: "shared-default-key",
+  IDI_CORE_API_TOKEN: "shared-default-token",
   IDI_CORE_LIVE_RUN_APPROVED: "true",
 }, { freshBatchExists: true });
 
@@ -111,6 +111,14 @@ assert.equal(configuredIdi.api.sharedDefaultConfigured, true);
 assert.equal(configuredIdi.api.liveRunApproved, true);
 assert.equal(configuredIdi.api.userOverrideAllowed, true);
 
+const legacyKeyConfigured = buildIdiCoreStatus({
+  IDI_CORE_API_URL: "https://idi.example.test/search",
+  IDI_CORE_API_KEY: "legacy-shared-default-key",
+  IDI_CORE_LIVE_RUN_APPROVED: "true",
+}, "2026-07-03T00:00:00.000Z");
+assert.equal(legacyKeyConfigured.configuredMode, "api");
+assert.equal(legacyKeyConfigured.api.sharedDefaultConfigured, true);
+
 const userOverrideEndpointOnly = buildIdiCoreStatus({
   IDI_CORE_API_URL: "https://idi.example.test/search",
 }, "2026-07-03T00:00:00.000Z");
@@ -120,7 +128,7 @@ assert.equal(userOverrideEndpointOnly.api.endpointConfigured, true);
 assert.equal(userOverrideEndpointOnly.api.sharedDefaultConfigured, false);
 assert.equal(userOverrideEndpointOnly.api.userOverrideAllowed, true);
 
-for (const row of [configuredTax, configuredClerk, configuredVital, configuredIdi, userOverrideEndpointOnly]) {
+for (const row of [configuredTax, configuredClerk, configuredVital, configuredIdi, legacyKeyConfigured, userOverrideEndpointOnly]) {
   assertNoRawEnvCopy(row);
 }
 

@@ -7,8 +7,14 @@ const reportPdfHandler = require("./api/reports/pdf.js");
 const activepiecesHandler = require("./api/outreach/activepieces.js");
 const supportLinearHandler = require("./api/support/linear.js");
 const adminAccessHandler = require("./api/admin/access.js");
+const taxCollectorReceiptHandler = require("./api/discovery/tax-collector/receipt-run.js");
 const { buildConnectionStatuses, buildIdiCoreStatus } = require("./api/connections/status.js");
 const { discoverTaxCollectorReceipt, extractTaxCollectorDetails } = require("./api/_shared.js");
+const {
+  runTaxCollectorReceiptSearch,
+  taxCollectorCaptureFromRun,
+  withoutTaxCollectorAcquisitionEnv,
+} = require("./api/discovery/tax-collector/service.js");
 
 function loadLocalEnvFile(filePath) {
   if (!existsSync(filePath)) return;
@@ -333,6 +339,8 @@ function operatorAccessList(items) {
     .replace(/SMS_GATEWAY_API_KEY/g, "SMS gateway access")
     .replace(/SMS_LIVE_SEND_APPROVED/g, "SMS internal-test approval")
     .replace(/IDI_CORE_API_URL/g, "IDI Core endpoint")
+    .replace(/HEIRRIGHT_IDI_CORE_API_TOKEN/g, "IDI Core access")
+    .replace(/IDI_CORE_API_TOKEN/g, "IDI Core access")
     .replace(/IDI_CORE_API_KEY/g, "IDI Core access")
   ).join(", ");
 }
@@ -634,19 +642,23 @@ function idiCoreUserApiKey(body = {}) {
   return directKey || "";
 }
 
+function idiCoreSharedApiKey(env = process.env) {
+  return String(env.IDI_CORE_API_TOKEN || env.HEIRRIGHT_IDI_CORE_API_TOKEN || env.IDI_CORE_API_KEY || "").trim();
+}
+
 function idiCoreRequestApiKey(body = {}) {
-  return idiCoreUserApiKey(body) || String(process.env.IDI_CORE_API_KEY || "").trim();
+  return idiCoreUserApiKey(body) || idiCoreSharedApiKey(process.env);
 }
 
 function idiCoreApiKeySource(body = {}) {
   if (idiCoreUserApiKey(body)) return "user_override";
-  return process.env.IDI_CORE_API_KEY ? "shared_default" : "missing";
+  return idiCoreSharedApiKey(process.env) ? "shared_default" : "missing";
 }
 
 function idiCoreMissingConfig(body = {}) {
   const missing = [];
   if (!process.env.IDI_CORE_API_URL) missing.push("IDI_CORE_API_URL");
-  if (!idiCoreRequestApiKey(body)) missing.push("IDI_CORE_API_KEY");
+  if (!idiCoreRequestApiKey(body)) missing.push("IDI_CORE_API_TOKEN");
   return missing;
 }
 
@@ -1276,6 +1288,42 @@ function sourceRunProofLedger(sourceSummaries, sourceFacts = []) {
   };
 }
 
+function mergeTaxCollectorCapture(capture = {}, taxCollectorReceiptRun = null) {
+  if (!taxCollectorReceiptRun) return capture;
+  const runCapture = taxCollectorCaptureFromRun(taxCollectorReceiptRun);
+  return {
+    ...capture,
+    taxReceipt: {
+      ...(capture.taxReceipt || {}),
+      ...runCapture,
+    },
+  };
+}
+
+async function maybeRunTaxCollectorReceipt(body, seed) {
+  const capture = body.capture && typeof body.capture === "object" ? body.capture : body;
+  const existingReceipt = capture?.taxReceipt?.receiptLink || capture?.taxReceipt?.receiptUrl || capture?.taxReceipt?.sourceUrl;
+  const existingListingHtml = capture?.taxReceipt?.listingHtml;
+  const hasPriorFacts = seed.parcelId || seed.propertyAddress || seed.ownerName || existingListingHtml || existingReceipt;
+  if (!hasPriorFacts) return null;
+  return runTaxCollectorReceiptSearch({
+    ...body,
+    capture,
+    seed,
+  });
+}
+
+function mergeConfirmedFacts(seed, facts = []) {
+  if (!facts.length) return seed;
+  return {
+    ...seed,
+    confirmedSourceFacts: [
+      ...(Array.isArray(seed.confirmedSourceFacts) ? seed.confirmedSourceFacts : []),
+      ...facts,
+    ],
+  };
+}
+
 async function handleExternalSourceRun(req, res) {
   const body = req.method === "POST" ? await readJsonBody(req) : {};
   const proxied = await proxyWorkerJson("/api/discovery/external-source-run", {
@@ -1288,10 +1336,13 @@ async function handleExternalSourceRun(req, res) {
     res.end(proxied.body);
     return;
   }
-  const seed = sourceRunSeedFromBody(body);
+  const baseSeed = sourceRunSeedFromBody(body);
+  const taxCollectorReceiptRun = await maybeRunTaxCollectorReceipt(body, baseSeed);
+  const seed = mergeConfirmedFacts(baseSeed, taxCollectorReceiptRun?.sourceFacts || []);
   const { runDryPipeline } = require("../worker/dist/index");
-  const pipeline = await runDryPipeline(seed, { env: process.env });
-  const capture = body.capture && typeof body.capture === "object" ? body.capture : body;
+  const pipeline = await runDryPipeline(seed, { env: taxCollectorReceiptRun ? withoutTaxCollectorAcquisitionEnv(process.env) : process.env });
+  const baseCapture = body.capture && typeof body.capture === "object" ? body.capture : body;
+  const capture = mergeTaxCollectorCapture(baseCapture, taxCollectorReceiptRun);
   const capturedSourceFacts = localSourceFactsFromCapture({ ...capture, seed, runId: pipeline.runId });
   const sourceFacts = [
     ...pipeline.facts,
@@ -1318,6 +1369,7 @@ async function handleExternalSourceRun(req, res) {
     sourceSummaries,
     sourceRunProof,
     sourceFacts,
+    taxCollectorReceiptRun,
     dossier: pipeline.dossier,
     blockers,
     message: blockers.length
@@ -1990,6 +2042,11 @@ function handleRequest(req, res) {
 
   if (url.pathname === "/api/discovery/source-capture") {
     handleSourceCapture(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/api/discovery/tax-collector/receipt-run") {
+    taxCollectorReceiptHandler(req, res);
     return;
   }
 

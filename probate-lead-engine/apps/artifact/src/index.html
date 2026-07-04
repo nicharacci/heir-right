@@ -16889,9 +16889,14 @@ function sourceRunSummaryHtml(capture = {}) {
   const checked = summaries.filter((item) => Number(item.factCount) > 0).length;
   const blocked = summaries.filter((item) => item.status === "blocked" || item.status === "needs_review").length;
   const runTime = run.generatedAt ? new Date(run.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "just now";
+  const receiptRun = capture.taxCollectorReceiptRun && typeof capture.taxCollectorReceiptRun === "object" ? capture.taxCollectorReceiptRun : null;
+  const receiptRunLine = receiptRun ? `
+      <li><strong>Tax Collector receipt run ${statusPill(receiptRun.ok ? "review" : "blocked", receiptRun.ok ? "Receipt found" : "Blocked")}</strong><span>${escapeHtml(receiptRun.message || "Tax Collector receipt search result recorded.")}</span></li>
+    ` : "";
   return `
     <p class="copy">${escapeHtml(run.message || `Source search checked ${checked} source${checked === 1 ? "" : "s"}. ${blocked ? `${blocked} still need review.` : "No source blockers returned."}`)} Last checked ${escapeHtml(runTime)}.</p>
     <ul class="mini-list source-run-list">
+      ${receiptRunLine}
       ${summaries.map((summary) => `
         <li>
           <strong>${escapeHtml(summary.label || displayStatus(summary.source, "Source"))} ${statusPill(sourceRunTone(summary.status), sourceRunStatusLabel(summary.status))}</strong>
@@ -16974,7 +16979,7 @@ function assetCaptureFormHtml(row = selectedRow()) {
   return `
     <section class="glass-card rail-card">
       <h3>Public-record capture</h3>
-      <p class="copy">Attach the evidence that makes the dossier real. For tax, start from the Tax Collector listing page and capture the receipt link shown in the bottom-right corner.</p>
+      <p class="copy">Run source search from the estate facts first. HeirRight searches Tax Collector by folio, address, and owner, opens the matching listing, then captures the receipt link shown in the bottom-right corner. Manual fields below are fallback review only.</p>
       ${sourceReadinessHtml()}
       ${sourceRunSummaryHtml(capture)}
       <div class="asset-capture-grid">
@@ -17215,11 +17220,13 @@ function taxCaptureDisplayValue(value) {
 function applyExternalSourceRunResult(row, capture, result) {
   const key = assetDiscoveryKey(row);
   const sourceFacts = Array.isArray(result.sourceFacts) ? result.sourceFacts : [];
+  const taxCollectorReceiptRun = result.taxCollectorReceiptRun && typeof result.taxCollectorReceiptRun === "object" ? result.taxCollectorReceiptRun : null;
   const stored = {
     ...(state.sourceCaptures[key] ?? {}),
     ...capture,
     updatedAt: Date.now(),
     sourceFacts,
+    taxCollectorReceiptRun,
     sourceApiRun: {
       ok: Boolean(result.ok),
       mode: result.mode || "external_source_run",

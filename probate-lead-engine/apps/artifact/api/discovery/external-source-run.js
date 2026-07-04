@@ -1,5 +1,10 @@
 const { methodGuard, proxyWorkerJson, readJsonBody, receiptId, sendJson, sendProxied } = require("../_shared");
 const { localSourceFactsFromCapture } = require("./source-capture");
+const {
+  runTaxCollectorReceiptSearch,
+  taxCollectorCaptureFromRun,
+  withoutTaxCollectorAcquisitionEnv,
+} = require("./tax-collector/service");
 
 const discoverySourceLabels = [
   { source: "property_appraiser", label: "Property Appraiser", mode: "public_api" },
@@ -449,11 +454,51 @@ function fallbackSummaries() {
   }));
 }
 
+function mergeTaxCollectorCapture(capture = {}, taxReceiptRun = null) {
+  if (!taxReceiptRun) return capture;
+  const runCapture = taxCollectorCaptureFromRun(taxReceiptRun);
+  return {
+    ...capture,
+    taxReceipt: {
+      ...(capture.taxReceipt || {}),
+      ...runCapture,
+    },
+  };
+}
+
+async function maybeRunTaxCollectorReceipt(body, seed) {
+  const capture = body.capture && typeof body.capture === "object" ? body.capture : body;
+  const existingReceipt = capture?.taxReceipt?.receiptLink || capture?.taxReceipt?.receiptUrl || capture?.taxReceipt?.sourceUrl;
+  const existingListingHtml = capture?.taxReceipt?.listingHtml;
+  const hasPriorFacts = seed.parcelId || seed.propertyAddress || seed.ownerName || existingListingHtml || existingReceipt;
+  if (!hasPriorFacts) return null;
+  return runTaxCollectorReceiptSearch({
+    ...body,
+    capture,
+    seed,
+  });
+}
+
+function mergeConfirmedFacts(seed, facts = []) {
+  if (!facts.length) return seed;
+  return {
+    ...seed,
+    confirmedSourceFacts: [
+      ...(Array.isArray(seed.confirmedSourceFacts) ? seed.confirmedSourceFacts : []),
+      ...facts,
+    ],
+  };
+}
+
 async function localWorkerRun(body) {
   const { runDryPipeline } = require("../../../worker/dist/index");
-  const seed = sourceRunSeedFromBody(body);
-  const pipeline = await runDryPipeline(seed, { env: process.env });
-  const capture = body.capture && typeof body.capture === "object" ? body.capture : body;
+  const baseSeed = sourceRunSeedFromBody(body);
+  const taxCollectorReceiptRun = await maybeRunTaxCollectorReceipt(body, baseSeed);
+  const seed = mergeConfirmedFacts(baseSeed, taxCollectorReceiptRun?.sourceFacts || []);
+  const workerEnv = taxCollectorReceiptRun ? withoutTaxCollectorAcquisitionEnv(process.env) : process.env;
+  const pipeline = await runDryPipeline(seed, { env: workerEnv });
+  const baseCapture = body.capture && typeof body.capture === "object" ? body.capture : body;
+  const capture = mergeTaxCollectorCapture(baseCapture, taxCollectorReceiptRun);
   const capturedSourceFacts = typeof localSourceFactsFromCapture === "function"
     ? localSourceFactsFromCapture({ ...capture, seed, runId: pipeline.runId })
     : [];
@@ -482,6 +527,7 @@ async function localWorkerRun(body) {
     sourceSummaries,
     sourceRunProof,
     sourceFacts,
+    taxCollectorReceiptRun,
     dossier: pipeline.dossier,
     blockers,
     message: blockers.length

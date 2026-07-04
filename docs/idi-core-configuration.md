@@ -24,17 +24,18 @@ Portal mode is configured by:
 API mode additionally requires:
 
 - `IDI_CORE_API_URL`
-- `IDI_CORE_API_KEY` as the shared default key for all approved users
+- `IDI_CORE_API_TOKEN` as the shared private backend token for all approved users
+- `IDI_CORE_API_KEY` remains supported only as a legacy alias
 - `IDI_CORE_LIVE_RUN_APPROVED=true` for the single approved paid proof
 
-Users can also paste a personal IDI access key in Settings or the Doc Prep IDI panel. That key is stored only in the user's browser and sent only with the live IDI run they trigger. It does not replace `IDI_CORE_API_KEY`, and the app never returns either key from connection-status APIs.
+Users can also paste a personal IDI access key in Settings or the Doc Prep IDI panel. That key is stored only in the user's browser and sent only with the live IDI run they trigger. It does not replace `IDI_CORE_API_TOKEN`, and the app never returns either key from connection-status APIs.
 
 When IDI provides backend API access, configure the shared default once in the deployment/runtime environment. Leave the personal-key field available for a user override, but never make a user's pasted key the team default and never echo either key back to the browser.
 
 ## Guardrails
 
 - Do not store the idiCORE password in repo env files.
-- Do not expose the shared `IDI_CORE_API_KEY` in browser responses; show only whether the team default is configured.
+- Do not expose the shared `IDI_CORE_API_TOKEN` or legacy `IDI_CORE_API_KEY` in browser responses; show only whether the team default is configured.
 - Do not let a personal pasted key overwrite the shared default key.
 - Do not scrape the logged-in browser session as a backend substitute.
 - Do not call portal access a successful backend live run.

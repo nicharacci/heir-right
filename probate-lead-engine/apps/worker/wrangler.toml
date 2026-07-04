@@ -10,3 +10,5 @@ COUNTY_LIST = "miami-dade"
 IDI_CORE_LOGIN_URL = "https://login.idicore.com/"
 IDI_CORE_PORTAL_URL = "https://idicore.com/search/PropertySearch"
 IDI_CORE_LIVE_RUN_APPROVED = "false"
+# Set IDI_CORE_API_TOKEN as a Wrangler secret, not a plain var:
+# wrangler secret put IDI_CORE_API_TOKEN

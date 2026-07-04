@@ -49,6 +49,8 @@ interface CloudflareEnv {
   GOOGLE_WORKSPACE_WEBHOOK_URL?: string;
   GOOGLE_WORKSPACE_WEBHOOK_SECRET?: string;
   IDI_CORE_API_URL?: string;
+  IDI_CORE_API_TOKEN?: string;
+  HEIRRIGHT_IDI_CORE_API_TOKEN?: string;
   IDI_CORE_API_KEY?: string;
   IDI_CORE_LIVE_RUN_APPROVED?: string;
   IDI_CORE_LOGIN_URL?: string;
@@ -365,19 +367,23 @@ function idiCoreUserApiKey(body: Record<string, unknown>): string {
   return stringValue(body.idiCoreApiKey || body.userApiKey);
 }
 
+function idiCoreSharedApiKey(env: CloudflareEnv): string {
+  return stringValue(env.IDI_CORE_API_TOKEN || env.HEIRRIGHT_IDI_CORE_API_TOKEN || env.IDI_CORE_API_KEY);
+}
+
 function idiCoreRequestApiKey(body: Record<string, unknown>, env: CloudflareEnv): string {
-  return idiCoreUserApiKey(body) || stringValue(env.IDI_CORE_API_KEY);
+  return idiCoreUserApiKey(body) || idiCoreSharedApiKey(env);
 }
 
 function idiCoreApiKeySource(body: Record<string, unknown>, env: CloudflareEnv): "user_override" | "shared_default" | "missing" {
   if (idiCoreUserApiKey(body)) return "user_override";
-  return env.IDI_CORE_API_KEY ? "shared_default" : "missing";
+  return idiCoreSharedApiKey(env) ? "shared_default" : "missing";
 }
 
 function idiCoreMissingConfig(env: CloudflareEnv, body: Record<string, unknown> = {}): string[] {
   const missing: string[] = [];
   if (!env.IDI_CORE_API_URL) missing.push("IDI_CORE_API_URL");
-  if (!idiCoreRequestApiKey(body, env)) missing.push("IDI_CORE_API_KEY");
+  if (!idiCoreRequestApiKey(body, env)) missing.push("IDI_CORE_API_TOKEN");
   return missing;
 }
 
@@ -390,6 +396,15 @@ function idiCorePortalConfigured(env: CloudflareEnv): boolean {
 
 function idiCoreLiveApproved(body: Record<string, unknown>, env: CloudflareEnv): boolean {
   return body.liveRunApproved === true || body.liveRunApproved === "true" || env.IDI_CORE_LIVE_RUN_APPROVED === "true";
+}
+
+function idiCoreMissingAccessList(items: string[]): string {
+  return items.map((item) => item
+    .replace(/IDI_CORE_API_URL/g, "IDI Core endpoint")
+    .replace(/HEIRRIGHT_IDI_CORE_API_TOKEN/g, "IDI Core access")
+    .replace(/IDI_CORE_API_TOKEN/g, "IDI Core access")
+    .replace(/IDI_CORE_API_KEY/g, "IDI Core access")
+  ).join(", ");
 }
 
 function redactIdiCoreProviderResponse(value: unknown, depth = 0): unknown {
@@ -422,7 +437,7 @@ async function liveIdiCoreResponse(body: Record<string, unknown>, env: Cloudflar
     return json({
       ok: false,
       error: "idi_core_not_configured",
-      blockers: [`Live IDI Core needs approved vendor access before it can run: ${missing.join(", ")}.`],
+      blockers: [`Live IDI Core needs approved vendor access before it can run: ${idiCoreMissingAccessList(missing)}.`],
       message: portalConfigured
         ? "idiCORE portal access is configured for approved operator searches, but backend live runs still need vendor API access. Open idiCORE, run the approved property search, then import the report."
         : "Live IDI Core is not configured. Import an approved report or add vendor access before running the paid search.",
