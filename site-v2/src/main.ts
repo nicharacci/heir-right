@@ -272,28 +272,41 @@ function setupTestimonialPlayer(): void {
   const video = player?.querySelector<HTMLVideoElement>("[data-testimonial-video]");
   const source = player?.querySelector<HTMLSourceElement>("[data-testimonial-source]");
   const dock = player?.querySelector<HTMLElement>("[data-testimonial-dock]");
+  const dockToggle = player?.querySelector<HTMLButtonElement>("[data-testimonial-strip-toggle]");
+  const playButton = player?.querySelector<HTMLButtonElement>("[data-testimonial-play]");
   const thumbs = Array.from(player?.querySelectorAll<HTMLButtonElement>("[data-video-src]") ?? []);
 
-  if (!player || !video || !source || !dock || !thumbs.length) return;
+  if (!player || !video || !source || !dock || !playButton || !thumbs.length) return;
 
   let activeIndex = Math.max(
     thumbs.findIndex((thumb) => thumb.classList.contains("is-active")),
     0
   );
-  let cycleTimer: number | undefined;
-  let userPausedCycle = false;
+  let swapTimer: number | undefined;
 
-  const clearNeighborLift = () => {
-    thumbs.forEach((thumb) => thumb.classList.remove("is-near"));
+  const openDock = () => {
+    dock.classList.add("is-open");
+    dockToggle?.setAttribute("aria-expanded", "true");
   };
 
-  const syncNeighborLift = (index: number) => {
-    thumbs.forEach((thumb, thumbIndex) => {
-      thumb.classList.toggle("is-near", Math.abs(thumbIndex - index) === 1);
-    });
+  const closeDock = () => {
+    dock.classList.remove("is-open");
+    dockToggle?.setAttribute("aria-expanded", "false");
   };
 
-  const setActive = (index: number, playAfterSwap = false) => {
+  const syncPlayButton = () => {
+    player.classList.toggle("is-playing", !video.paused && !video.ended);
+  };
+
+  const fadeMainVideo = () => {
+    if (reducedMotion) return;
+
+    window.clearTimeout(swapTimer);
+    player.classList.add("is-swapping");
+    swapTimer = window.setTimeout(() => player.classList.remove("is-swapping"), 260);
+  };
+
+  const setActive = (index: number) => {
     const nextThumb = thumbs[index];
     const src = nextThumb?.dataset.videoSrc;
     const poster = nextThumb?.dataset.videoPoster;
@@ -314,10 +327,13 @@ function setupTestimonialPlayer(): void {
     const absoluteSrc = new URL(src, window.location.href).href;
     if (source.src !== absoluteSrc) {
       video.pause();
+      fadeMainVideo();
       source.src = src;
       video.poster = poster;
       video.load();
     }
+
+    syncPlayButton();
 
     const playerRect = player.getBoundingClientRect();
     const playerIsVisible = playerRect.bottom > 0 && playerRect.top < window.innerHeight;
@@ -329,93 +345,45 @@ function setupTestimonialPlayer(): void {
         behavior: reducedMotion ? "auto" : "smooth",
       });
     }
-
-    if (playAfterSwap) {
-      void video.play().catch(() => undefined);
-    }
-  };
-
-  const playerIsVisible = () => {
-    const rect = player.getBoundingClientRect();
-    return rect.bottom > 0 && rect.top < window.innerHeight;
-  };
-
-  const stopCycle = () => {
-    window.clearInterval(cycleTimer);
-    cycleTimer = undefined;
-  };
-
-  const advance = () => {
-    setActive((activeIndex + 1) % thumbs.length);
-  };
-
-  const startCycle = () => {
-    if (reducedMotion || userPausedCycle || cycleTimer || !playerIsVisible()) return;
-
-    cycleTimer = window.setInterval(() => {
-      if (!document.hidden && video.paused && playerIsVisible()) {
-        advance();
-      }
-    }, 8500);
-  };
-
-  const syncCycleVisibility = () => {
-    if (playerIsVisible()) {
-      startCycle();
-    } else {
-      stopCycle();
-    }
   };
 
   thumbs.forEach((thumb, index) => {
     thumb.addEventListener("click", () => {
-      userPausedCycle = true;
-      stopCycle();
       setActive(index);
+      openDock();
     });
 
-    thumb.addEventListener("pointerenter", () => syncNeighborLift(index));
     thumb.addEventListener("focus", () => {
-      dock.classList.add("is-open");
-      syncNeighborLift(index);
+      openDock();
     });
   });
 
-  dock.addEventListener("pointerleave", clearNeighborLift);
+  dockToggle?.addEventListener("click", openDock);
+  dockToggle?.addEventListener("focus", openDock);
+
+  dock.addEventListener("pointerleave", () => {
+    if (!dock.contains(document.activeElement)) {
+      closeDock();
+    }
+  });
   dock.addEventListener("focusout", () => {
     window.setTimeout(() => {
       if (!dock.contains(document.activeElement)) {
-        dock.classList.remove("is-open");
-        clearNeighborLift();
+        closeDock();
       }
     }, 0);
   });
 
-  player.addEventListener("mouseenter", stopCycle);
-  player.addEventListener("mouseleave", startCycle);
-  player.addEventListener("focusin", stopCycle);
+  playButton.addEventListener("click", () => {
+    void video.play().catch(() => undefined);
+  });
 
-  video.addEventListener("play", () => {
-    userPausedCycle = true;
-    stopCycle();
-  });
-  video.addEventListener("ended", () => {
-    userPausedCycle = false;
-    advance();
-    startCycle();
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      stopCycle();
-    } else {
-      syncCycleVisibility();
-    }
-  });
-  window.addEventListener("scroll", syncCycleVisibility, { passive: true });
-  window.addEventListener("resize", syncCycleVisibility, { passive: true });
+  video.addEventListener("play", syncPlayButton);
+  video.addEventListener("pause", syncPlayButton);
+  video.addEventListener("ended", syncPlayButton);
 
   setActive(activeIndex);
-  syncCycleVisibility();
+  syncPlayButton();
 }
 
 setupAmbientCanvas();

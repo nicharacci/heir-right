@@ -475,9 +475,19 @@
               >
                 <source data-testimonial-source src="/assets/old-site/testimonials/videos/testimonial-03.mp4" type="video/mp4" />
               </video>
+              <button
+                class="testimonial-play-button solvys-liquid-glass"
+                type="button"
+                data-testimonial-play
+                aria-label="Play selected client testimonial"
+              >
+                <span aria-hidden="true"></span>
+              </button>
             </div>
-            <div class="testimonial-dock-shell" data-testimonial-dock>
-              <span class="dock-rest-label" aria-hidden="true">View more</span>
+            <div class="testimonial-dock-shell solvys-liquid-glass" data-testimonial-dock>
+              <button class="dock-rest-label" type="button" data-testimonial-strip-toggle aria-expanded="false">
+                View more
+              </button>
               <div class="testimonial-dock" aria-label="Choose a client testimonial video">
                 <button
                   class="dock-thumb"
