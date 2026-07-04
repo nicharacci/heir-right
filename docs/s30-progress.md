@@ -35,6 +35,7 @@ Make Doc Prep visibly stream real Discovery and Closing Prep packet sections, ad
 - Closing rerun results: `Run again` -> correction note -> `Run corrected packet`; `Preview` heading; 5/5 sections; bottom-right tax receipt link visible; legal template immutability visible; Option+Down/Option+Up changed sections without fallback; desktop/mobile preview cards contained the document pane with no horizontal overflow.
 - Discovery rerun proof after rebuild: `docs/evidence/s30-discovery-stream-proof-rerun.json`, `docs/evidence/s30-discovery-stream-desktop-rerun.png`, and `docs/evidence/s30-discovery-stream-mobile-rerun.png`.
 - Discovery rerun results: `Run again` -> correction note -> `Run corrected packet`; `Preview` heading; 7/7 sections; Tax Collector listing page and bottom-right receipt link visible; receipt proof, deed/title proof, court/probate proof, obituary/vital proof, IDI gate, and accepted contacts visible; desktop/mobile preview cards contained the document pane with no horizontal overflow.
+- Fresh CDP console/network pass after the rerun proof loaded Help & Demos, Discovery Doc Prep, and Closing Doc Prep routes with zero page exceptions, log warnings/errors, failed requests, or 4xx/5xx route responses.
 
 ## Review Notes
 - Stream card clipping found during screenshot proof and fixed in source plus rebuilt artifact.
