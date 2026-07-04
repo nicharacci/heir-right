@@ -121,6 +121,9 @@ const text = new Map([
   ["Google Business Profile", "Perfil de Empresa en Google"],
   ["Public reviews from people who worked with Joshua and the team.", "Resenas publicas de personas que trabajaron con Joshua y el equipo."],
   ["Visit Google profile", "Visitar perfil de Google"],
+  ["Google reviewer - 3 months ago", "Resena de Google - hace 3 meses"],
+  ["Google reviewer - 4 months ago", "Resena de Google - hace 4 meses"],
+  ["Google reviewer - a month ago", "Resena de Google - hace un mes"],
   ["3 reviews - 3 months ago", "3 resenas - hace 3 meses"],
   [
     "I have been a Lender for Joshua and his team for about 2 years now and I have nothing but positive things to say. From the very beginning, Joshua demonstrated an exceptional level of professionalism and integrity that truly sets his company apart.",
@@ -274,6 +277,8 @@ const attributes = new Map([
   ["Play client testimonial video 5", "Reproducir video testimonial de cliente 5"],
   ["Play client testimonial video 6", "Reproducir video testimonial de cliente 6"],
   ["HeirRight Google rating badge showing 5.0 stars", "Insignia de calificacion de Google de HeirRight con 5.0 estrellas"],
+  ["Google Business Profile review cards", "Tarjetas de resenas del Perfil de Empresa en Google"],
+  ["5 out of 5 stars", "5 de 5 estrellas"],
   ["Google Business Profile review screenshots", "Capturas de resenas del Perfil de Empresa en Google"],
   ["Google Business Profile review screenshot from Daniela Armenta", "Captura de resena de Google de Daniela Armenta"],
   ["Google Business Profile review screenshots from Max Khalus, David Diaz, and Jessica Escobar-Ramos", "Capturas de resenas de Google de Max Khalus, David Diaz y Jessica Escobar-Ramos"],
