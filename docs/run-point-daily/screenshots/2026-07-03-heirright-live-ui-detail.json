@@ -1,0 +1,202 @@
+[
+  {
+    "label": "home-desktop",
+    "screenshot": "/Users/tifos/Documents/Codebases/heir-right/docs/run-point-daily/screenshots/2026-07-03-heirright-live-home-desktop.png",
+    "metrics": {
+      "url": "https://heirright.vercel.app/?qa=1783124003090",
+      "width": 1440,
+      "height": 1100,
+      "title": "HeirRight | Inherited Property Settlement",
+      "hero": "Resolve your inherited property hassle-free.",
+      "cta": [
+        "How it works",
+        "What we handle",
+        "Reviews",
+        "Legal",
+        "Free consult",
+        "Get free consultation",
+        "Call 786-962-3457",
+        "Get my free offer"
+      ],
+      "overflowX": -15,
+      "scrollWidth": 1425,
+      "imagesNeedingAttention": [
+        {
+          "src": "/assets/heirright-mark.svg",
+          "width": "640",
+          "height": "640",
+          "alt": "",
+          "complete": false,
+          "naturalWidth": 0,
+          "naturalHeight": 0
+        },
+        {
+          "src": "/assets/heirright-mark.svg",
+          "width": "640",
+          "height": "640",
+          "alt": "",
+          "complete": false,
+          "naturalWidth": 0,
+          "naturalHeight": 0
+        },
+        {
+          "src": "/assets/heirright-logo-light.svg",
+          "width": "420",
+          "height": "112",
+          "alt": "HeirRight",
+          "complete": false,
+          "naturalWidth": 420,
+          "naturalHeight": 112
+        }
+      ],
+      "forms": [
+        {
+          "emailInputmode": "email",
+          "emailSpellcheck": "false",
+          "phoneType": "tel",
+          "phoneInputmode": "tel",
+          "statusRole": "status",
+          "statusLive": "polite"
+        }
+      ],
+      "focusVisible": true,
+      "firstSectionTop": 1108.043701171875
+    }
+  },
+  {
+    "label": "home-mobile",
+    "screenshot": "/Users/tifos/Documents/Codebases/heir-right/docs/run-point-daily/screenshots/2026-07-03-heirright-live-home-mobile.png",
+    "metrics": {
+      "url": "https://heirright.vercel.app/?qa=1783124006664",
+      "width": 390,
+      "height": 900,
+      "title": "HeirRight | Inherited Property Settlement",
+      "hero": "Resolve your inherited property hassle-free.",
+      "cta": [
+        "How it works",
+        "What we handle",
+        "Reviews",
+        "Legal",
+        "Free consult",
+        "Get free consultation",
+        "Call 786-962-3457",
+        "Get my free offer"
+      ],
+      "overflowX": 0,
+      "scrollWidth": 390,
+      "imagesNeedingAttention": [
+        {
+          "src": "/assets/heirright-mark.svg",
+          "width": "640",
+          "height": "640",
+          "alt": "",
+          "complete": false,
+          "naturalWidth": 0,
+          "naturalHeight": 0
+        },
+        {
+          "src": "/assets/heirright-mark.svg",
+          "width": "640",
+          "height": "640",
+          "alt": "",
+          "complete": false,
+          "naturalWidth": 0,
+          "naturalHeight": 0
+        },
+        {
+          "src": "/assets/heirright-logo-light.svg",
+          "width": "420",
+          "height": "112",
+          "alt": "HeirRight",
+          "complete": false,
+          "naturalWidth": 420,
+          "naturalHeight": 112
+        }
+      ],
+      "forms": [
+        {
+          "emailInputmode": "email",
+          "emailSpellcheck": "false",
+          "phoneType": "tel",
+          "phoneInputmode": "tel",
+          "statusRole": "status",
+          "statusLive": "polite"
+        }
+      ],
+      "focusVisible": true,
+      "firstSectionTop": 758.921875
+    }
+  },
+  {
+    "label": "contact-mobile",
+    "screenshot": "/Users/tifos/Documents/Codebases/heir-right/docs/run-point-daily/screenshots/2026-07-03-heirright-live-contact-mobile.png",
+    "metrics": {
+      "url": "https://heirright.vercel.app/contact.html?qa=1783124008673",
+      "width": 390,
+      "height": 900,
+      "title": "HeirRight | Contact",
+      "hero": "Get Your Free Consultation",
+      "cta": [
+        "Process",
+        "Reviews",
+        "Legal",
+        "Contact",
+        "Submit",
+        "Terms of Use",
+        "Privacy Policy"
+      ],
+      "overflowX": 0,
+      "scrollWidth": 390,
+      "imagesNeedingAttention": [],
+      "forms": [
+        {
+          "emailInputmode": "email",
+          "emailSpellcheck": "false",
+          "phoneType": "tel",
+          "phoneInputmode": "tel",
+          "statusRole": "status",
+          "statusLive": "polite"
+        }
+      ],
+      "focusVisible": true,
+      "firstSectionTop": 472
+    }
+  },
+  {
+    "label": "legal-desktop",
+    "screenshot": "/Users/tifos/Documents/Codebases/heir-right/docs/run-point-daily/screenshots/2026-07-03-heirright-live-legal-desktop.png",
+    "metrics": {
+      "url": "https://heirright.vercel.app/legal.html?qa=1783124010843",
+      "width": 1440,
+      "height": 900,
+      "title": "HeirRight | Terms and Privacy",
+      "hero": "Terms of Use and Privacy Policy",
+      "cta": [
+        "Process",
+        "Reviews",
+        "Legal",
+        "Contact",
+        "Terms of Use",
+        "Privacy Policy",
+        "Contact HeirRight",
+        "Terms of Use"
+      ],
+      "overflowX": -15,
+      "scrollWidth": 1425,
+      "imagesNeedingAttention": [
+        {
+          "src": "/assets/heirright-logo-light.svg",
+          "width": "420",
+          "height": "112",
+          "alt": "HeirRight",
+          "complete": false,
+          "naturalWidth": 420,
+          "naturalHeight": 112
+        }
+      ],
+      "forms": [],
+      "focusVisible": true,
+      "firstSectionTop": 528.625
+    }
+  }
+]
