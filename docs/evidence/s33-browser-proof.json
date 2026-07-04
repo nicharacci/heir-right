@@ -1,0 +1,87 @@
+{
+  "browserPath": "Python Playwright fallback after in-app browser attach timeout",
+  "url": "http://127.0.0.1:4197/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-search",
+  "title": "HeirRight Lead Review",
+  "viewport": {
+    "width": 1440,
+    "height": 940
+  },
+  "mobileViewport": {
+    "width": 390,
+    "height": 844
+  },
+  "checks": {
+    "pageIdentity": true,
+    "notBlank": true,
+    "noFrameworkOverlay": true,
+    "walkthroughSuppressed": true,
+    "mobileNotBlank": true,
+    "previewHeader": true,
+    "noSecretMarkersInDom": true,
+    "consoleClean": true
+  },
+  "interactions": [
+    {
+      "action": "Run Source Search",
+      "status": "61 evidence items loaded from the latest lead review.",
+      "receiptFields": {
+        "taxReceipt.receiptLink": "https://miamidade.county-taxes.test/receipts/2025-route-proof.pdf",
+        "taxReceipt.paidBy": "Route Proof Estate",
+        "taxReceipt.paidDate": "06/10/2025",
+        "taxReceipt.amountDue": "$456.00 (2023, 2024, 2025)",
+        "taxReceipt.unpaidYears": "2023, 2024, 2025",
+        "taxReceipt.reassessment": "Route proof reassessment review required Payment history"
+      }
+    },
+    {
+      "action": "Open Settings via sidebar",
+      "idiCopyFound": true,
+      "tokenHidden": true
+    },
+    {
+      "action": "Open Queue via sidebar",
+      "queueTextMatched": true
+    },
+    {
+      "action": "Export menu routes",
+      "exportResults": [
+        {
+          "route": "queue",
+          "status": "1 lead added to Queue for batch export review.",
+          "exportStatus": "export: [1 QUEUED]"
+        },
+        {
+          "route": "google",
+          "status": "Google Workspace export prepared as one PDF for review. Live write and readback still need approval before any external record is created.",
+          "exportStatus": "export: [GOOGLE] [PREPARED]"
+        },
+        {
+          "route": "podio",
+          "status": "Podio export prepared as one PDF for review. Live write and readback still need approval before any external record is created.",
+          "exportStatus": "export: [PODIO] [PREPARED]"
+        },
+        {
+          "route": "podio-test",
+          "status": "Podio readiness check export has 1 blocker.",
+          "exportStatus": "export: [PODIO CHECK] [BLOCKED]"
+        },
+        {
+          "route": "both",
+          "status": "Google + Podio export prepared as one PDF for review. Live write and readback still need approval before any external record is created.",
+          "exportStatus": "export: [GOOGLE + PODIO] [PREPARED]"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    "docs/evidence/s33-docprep-initial.png",
+    "docs/evidence/s33-docprep-tax-receipt.png",
+    "docs/evidence/s33-settings-idi-ready.png",
+    "docs/evidence/s33-queue-proof.png",
+    "docs/evidence/s33-export-buttons-proof.png",
+    "docs/evidence/s33-mobile-docprep-proof.png"
+  ],
+  "console": {
+    "errorsOrWarnings": []
+  }
+}

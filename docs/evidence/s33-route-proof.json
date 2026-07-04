@@ -1,0 +1,486 @@
+{
+  "ok": true,
+  "generatedAt": "2026-07-04T20:28:05.892Z",
+  "base": "http://127.0.0.1:4197",
+  "taxReceipt": {
+    "status": 200,
+    "mode": "listing_page_bottom_right",
+    "receiptUrl": "https://miamidade.county-taxes.test/receipts/2025-route-proof.pdf",
+    "paidBy": "Route Proof Estate",
+    "paidDate": "06/10/2025",
+    "amountDue": {
+      "amount": 4567.89,
+      "currency": "USD",
+      "years": [
+        2023,
+        2024,
+        2025
+      ]
+    },
+    "unpaidYears": [
+      2023,
+      2024,
+      2025
+    ],
+    "sourceFactTypes": [
+      "source_status",
+      "tax_receipt_status",
+      "tax_receipt_link",
+      "tax_receipt_attachment",
+      "tax_last_paid_by",
+      "tax_payer_identity",
+      "tax_paid_date",
+      "tax_amount_due",
+      "unpaid_tax_years",
+      "tax_reassessment_signal"
+    ]
+  },
+  "externalSource": {
+    "status": 200,
+    "taxCollectorOk": true,
+    "sourceFacts": [
+      {
+        "source": "tax_collector",
+        "factType": "source_status",
+        "value": {
+          "mode": "listing_page_bottom_right",
+          "ok": true,
+          "listingUrl": "https://miamidade.county-taxes.test/accounts/34-1133-036-0010",
+          "receiptUrl": "https://miamidade.county-taxes.test/receipts/2025-route-proof.pdf",
+          "searchUrl": "https://miamidade.county-taxes.com/public",
+          "note": "Tax Collector listing was reached from estate facts and the bottom-right receipt link was captured for review.",
+          "status": 202
+        }
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_receipt_status",
+        "value": "receipt_link_captured"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_receipt_link",
+        "value": "https://miamidade.county-taxes.test/receipts/2025-route-proof.pdf"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_receipt_attachment",
+        "value": {
+          "label": "Tax Collector receipt",
+          "sourceUrl": "https://miamidade.county-taxes.test/receipts/2025-route-proof.pdf",
+          "fileKind": "pdf",
+          "capturedAt": "2026-07-04T20:28:05.660Z",
+          "capturedBy": "tax-collector-receipt-run",
+          "reviewFlags": [
+            "TAX_RECEIPT_LINK_CAPTURED",
+            "HUMAN_REVIEW_REQUIRED"
+          ]
+        }
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_last_paid_by",
+        "value": "Route Proof Estate"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_payer_identity",
+        "value": "Route Proof Estate"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_paid_date",
+        "value": "06/10/2025"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_amount_due",
+        "value": {
+          "amount": 4567.89,
+          "currency": "USD",
+          "years": [
+            2023,
+            2024,
+            2025
+          ]
+        }
+      },
+      {
+        "source": "tax_collector",
+        "factType": "unpaid_tax_years",
+        "value": [
+          2023,
+          2024,
+          2025
+        ]
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_reassessment_signal",
+        "value": "Route proof reassessment review required Payment history"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "source_status",
+        "value": {
+          "mode": "not_configured",
+          "ok": false,
+          "listingUrl": null,
+          "receiptUrl": null,
+          "searchUrl": "https://miamidade.county-taxes.com/public",
+          "note": "Tax Collector script acquisition waits for a direct listing URL, listing URL template, or browser workflow capture."
+        }
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_history_status",
+        "value": "manual_review_required"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "unpaid_tax_years",
+        "value": null
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_amount_due",
+        "value": null
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_reassessment_signal",
+        "value": null
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_receipt_status",
+        "value": null
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_receipt_link",
+        "value": null
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_paid_date",
+        "value": null
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_payer_identity",
+        "value": null
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_receipt_attachment",
+        "value": null
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_last_paid_by",
+        "value": null
+      },
+      {
+        "source": "tax_collector",
+        "factType": "source_status",
+        "value": "Open the Tax Collector listing page and capture the receipt link shown in the bottom-right corner."
+      },
+      {
+        "source": "tax_collector",
+        "factType": "source_status",
+        "value": {
+          "mode": "explicit",
+          "ok": true,
+          "listingUrl": "https://miamidade.county-taxes.test/accounts/34-1133-036-0010",
+          "receiptUrl": "https://miamidade.county-taxes.test/receipts/2025-route-proof.pdf"
+        }
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_last_paid_by",
+        "value": "Route Proof Estate"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_payer_identity",
+        "value": "Route Proof Estate"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_paid_date",
+        "value": "06/10/2025"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_receipt_status",
+        "value": "receipt_link_captured"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_receipt_link",
+        "value": "https://miamidade.county-taxes.test/receipts/2025-route-proof.pdf"
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_receipt_attachment",
+        "value": {
+          "label": "Tax Collector receipt",
+          "sourceUrl": "https://miamidade.county-taxes.test/receipts/2025-route-proof.pdf",
+          "fileKind": "link",
+          "capturedAt": "2026-07-04T20:28:05.864Z",
+          "capturedBy": "source-capture",
+          "reviewFlags": [
+            "TAX_RECEIPT_LINK_CAPTURED",
+            "HUMAN_REVIEW_REQUIRED"
+          ]
+        }
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_amount_due",
+        "value": {
+          "amount": 4567.89,
+          "currency": "USD",
+          "years": [
+            2023,
+            2024,
+            2025
+          ]
+        }
+      },
+      {
+        "source": "tax_collector",
+        "factType": "unpaid_tax_years",
+        "value": [
+          2023,
+          2024,
+          2025
+        ]
+      },
+      {
+        "source": "tax_collector",
+        "factType": "tax_reassessment_signal",
+        "value": "Route proof reassessment review required Payment history"
+      }
+    ]
+  },
+  "idi": {
+    "status": 200,
+    "mode": "live_idi_core",
+    "apiKeySource": "shared_default",
+    "paidRun": true,
+    "lockKey": "idi:20611 nw 33rd pl proof 1783196885623 miami gardens fl 33056:proof",
+    "readbackStatus": "route_readback_confirmed",
+    "sourceEvidence": {
+      "reportId": "route-proof-idi",
+      "token": "[redacted]"
+    },
+    "candidateCount": 1
+  },
+  "idiDuplicate": {
+    "status": 409,
+    "error": "duplicate_idi_asset_search",
+    "lockKey": "idi:20611 nw 33rd pl proof 1783196885623 miami gardens fl 33056:proof"
+  },
+  "connections": {
+    "idiCore": {
+      "configuredMode": "api",
+      "api": {
+        "endpointConfigured": true,
+        "sharedDefaultConfigured": true,
+        "userOverrideAllowed": true,
+        "accessConfigured": true,
+        "liveRunApproved": true
+      },
+      "blockers": []
+    },
+    "taxCollector": {
+      "configuredMode": "browser_workflow",
+      "readiness": null,
+      "blockers": []
+    }
+  },
+  "exports": [
+    {
+      "payload": {
+        "routes": [
+          "google"
+        ],
+        "dryRun": true,
+        "batch": false,
+        "flow": "discovery",
+        "estateId": "s33-route-proof-estate",
+        "expectedArtifact": "single_pdf"
+      },
+      "status": 200,
+      "ok": true,
+      "artifact": {
+        "kind": "single_pdf",
+        "contentType": "application/pdf",
+        "flow": "discovery",
+        "estateId": "s33-route-proof-estate",
+        "url": "/api/reports/pdf?title=HeirRight%20Discovery%20Prep%20Packet&status=Review%20packet",
+        "sections": [
+          "Discovery dossier",
+          "Completed lead report",
+          "Source notes",
+          "Closing Prep review",
+          "CRM handoff"
+        ]
+      },
+      "pdf": {
+        "status": 200,
+        "contentType": "application/pdf",
+        "bytes": 1461,
+        "startsWithPdf": true,
+        "file": "docs/evidence/s33-discovery-single.pdf"
+      },
+      "blockers": [
+        "Google confirmation readback has not run yet.",
+        "Google setup still needed before approval and confirmation readback: Google Workspace access, Google tracking Sheet"
+      ]
+    },
+    {
+      "payload": {
+        "routes": [
+          "google"
+        ],
+        "dryRun": true,
+        "batch": false,
+        "flow": "closing-docs",
+        "estateId": "s33-route-proof-estate",
+        "expectedArtifact": "single_pdf"
+      },
+      "status": 200,
+      "ok": true,
+      "artifact": {
+        "kind": "single_pdf",
+        "contentType": "application/pdf",
+        "flow": "closing-docs",
+        "estateId": "s33-route-proof-estate",
+        "url": "/api/reports/pdf?title=HeirRight%20Closing%20Prep%20Packet&status=Review%20packet",
+        "sections": [
+          "Reviewed Discovery File",
+          "Closing field map",
+          "Required seller/client fields",
+          "Template fill review",
+          "Closing Prep packet"
+        ]
+      },
+      "pdf": {
+        "status": 200,
+        "contentType": "application/pdf",
+        "bytes": 1459,
+        "startsWithPdf": true,
+        "file": "docs/evidence/s33-closing-single.pdf"
+      },
+      "blockers": [
+        "Google confirmation readback has not run yet.",
+        "Google setup still needed before approval and confirmation readback: Google Workspace access, Google tracking Sheet"
+      ]
+    },
+    {
+      "payload": {
+        "routes": [
+          "google",
+          "podio"
+        ],
+        "dryRun": true,
+        "batch": true,
+        "mode": "batch",
+        "leadIds": [
+          "s33-route-proof-estate",
+          "s33-route-proof-estate-2"
+        ],
+        "flow": "discovery",
+        "estateId": "s33-route-proof-batch",
+        "expectedArtifact": "single_pdf"
+      },
+      "status": 200,
+      "ok": true,
+      "artifact": {
+        "kind": "single_pdf",
+        "contentType": "application/pdf",
+        "flow": "discovery",
+        "estateId": "s33-route-proof-batch",
+        "url": "/api/reports/pdf?title=HeirRight%20Batch%20Discovery%20Prep%20Packet&status=Review%20packet",
+        "sections": [
+          "Discovery dossier",
+          "Completed lead report",
+          "Source notes",
+          "Closing Prep review",
+          "CRM handoff"
+        ]
+      },
+      "pdf": {
+        "status": 200,
+        "contentType": "application/pdf",
+        "bytes": 1467,
+        "startsWithPdf": true,
+        "file": "docs/evidence/s33-discovery-batch.pdf"
+      },
+      "blockers": [
+        "Google confirmation readback has not run yet.",
+        "Google setup still needed before approval and confirmation readback: Google Workspace access, Google tracking Sheet",
+        "Podio confirmation readback has not run yet.",
+        "Podio setup still needed before approval and confirmation readback: Podio Leads app, Podio access, Podio refresh access, or Podio API client/Podio API secret/Podio app token, Podio field map or verified Leads app"
+      ]
+    },
+    {
+      "payload": {
+        "routes": [
+          "google",
+          "podio"
+        ],
+        "dryRun": true,
+        "batch": true,
+        "mode": "batch",
+        "leadIds": [
+          "s33-route-proof-estate",
+          "s33-route-proof-estate-2"
+        ],
+        "flow": "closing-docs",
+        "estateId": "s33-route-proof-batch",
+        "expectedArtifact": "single_pdf"
+      },
+      "status": 200,
+      "ok": true,
+      "artifact": {
+        "kind": "single_pdf",
+        "contentType": "application/pdf",
+        "flow": "closing-docs",
+        "estateId": "s33-route-proof-batch",
+        "url": "/api/reports/pdf?title=HeirRight%20Batch%20Closing%20Prep%20Packet&status=Review%20packet",
+        "sections": [
+          "Reviewed Discovery File",
+          "Closing field map",
+          "Required seller/client fields",
+          "Template fill review",
+          "Closing Prep packet"
+        ]
+      },
+      "pdf": {
+        "status": 200,
+        "contentType": "application/pdf",
+        "bytes": 1465,
+        "startsWithPdf": true,
+        "file": "docs/evidence/s33-closing-batch.pdf"
+      },
+      "blockers": [
+        "Google confirmation readback has not run yet.",
+        "Google setup still needed before approval and confirmation readback: Google Workspace access, Google tracking Sheet",
+        "Podio confirmation readback has not run yet.",
+        "Podio setup still needed before approval and confirmation readback: Podio Leads app, Podio access, Podio refresh access, or Podio API client/Podio API secret/Podio app token, Podio field map or verified Leads app"
+      ]
+    }
+  ],
+  "assertions": [
+    "tax_collector_receipt_run_started_from_estate_facts",
+    "external_source_run_merged_tax_receipt_source_facts",
+    "idi_shared_backend_token_used_and_redacted",
+    "idi_duplicate_guard_blocked_second_paid_run",
+    "single_and_batch_discovery_exports_return_one_pdf",
+    "single_and_batch_closing_exports_return_one_pdf"
+  ]
+}

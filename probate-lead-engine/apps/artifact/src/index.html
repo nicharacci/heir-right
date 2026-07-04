@@ -1049,7 +1049,7 @@
 
     .topbar {
       position: relative;
-      z-index: 30;
+      z-index: 320;
       min-width: 0;
       display: grid;
       grid-template-columns: minmax(240px, 500px) minmax(0, 1fr) auto;
@@ -1253,7 +1253,7 @@
     .import-menu,
     .export-menu {
       position: relative;
-      z-index: 4;
+      z-index: 340;
       flex: 0 0 auto;
     }
 
@@ -1859,7 +1859,7 @@
 
     .export-menu {
       position: relative;
-      z-index: 3;
+      z-index: 340;
       flex: 0 0 auto;
     }
 
@@ -1879,7 +1879,7 @@
       position: absolute;
       top: calc(100% + 8px);
       right: 0;
-      z-index: 20;
+      z-index: 360;
       width: 260px;
       padding: 6px;
       border: 1px solid var(--line);
@@ -7508,6 +7508,11 @@
       background: #f7f7f2;
       display: block;
       box-sizing: border-box;
+    }
+
+    .app:has(.export-menu[data-open="true"]) .pdf-packet-frame,
+    .app:has(.export-menu[data-open="true"]) .pdf-reader {
+      pointer-events: none;
     }
 
     .pdf-blocker-list {
