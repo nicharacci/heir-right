@@ -486,7 +486,7 @@ async function liveIdiCoreResponse(body: Record<string, unknown>, env: Cloudflar
     paidRun: true,
     apiKeySource,
     readbackStatus: data.readbackStatus || data.status || "provider_completed",
-    sourceEvidence: data.sourceEvidence || data.evidence || null,
+    sourceEvidence: redactIdiCoreProviderResponse(data.sourceEvidence || data.evidence || null),
     message: "Live IDI Core asset search completed and is ready for contact review.",
   }, { headers: { "cache-control": "no-store" } });
 }

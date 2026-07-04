@@ -14,6 +14,7 @@ Complete the production-source cleanup before the final S32 readiness pass: Tax 
 - Updated Doc Prep copy so `Run Source Search` is clearly the primary automated path and the manual Tax Collector fields are fallback review only.
 - Added IDI shared-backend token aliases: `IDI_CORE_API_TOKEN` and `HEIRRIGHT_IDI_CORE_API_TOKEN`, with `IDI_CORE_API_KEY` retained as a legacy alias.
 - Updated the standalone IDI import route to support controlled live runs, shared backend token default, personal user override, duplicate guard, readback status, and provider-response redaction.
+- Hardened successful IDI Core responses so provider `sourceEvidence` is redacted too, not only failure payloads.
 - Updated Settings/readiness status, Worker connection status, Turbo env tracking, Wrangler guidance, `.env.example`, and `docs/idi-core-configuration.md`.
 
 ## Proof So Far
@@ -25,7 +26,7 @@ Complete the production-source cleanup before the final S32 readiness pass: Tax 
   - IDI shared backend token alias is recognized as the team default.
   - Personal IDI override remains separate.
   - Duplicate IDI paid runs are blocked without admin override.
-  - Browserbase and IDI tokens are absent from route responses.
+  - Browserbase and IDI tokens, bearer headers, and provider auth fields are absent from route responses.
 
 ## Remaining Before S33 Close
 

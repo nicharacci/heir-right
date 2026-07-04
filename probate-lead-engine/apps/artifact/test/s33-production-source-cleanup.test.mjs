@@ -188,7 +188,7 @@ try {
   assert.equal(idiResult.json.lockKey, "idi:20611 nw 33rd pl miami gardens fl 33056:proof");
   assert.equal(idiResult.json.readbackStatus, "readback_confirmed");
   assert.equal(idiResult.json.candidates.length, 1);
-  assert.doesNotMatch(idiResult.text, /s33-shared-team-token|Bearer/);
+  assert.doesNotMatch(idiResult.text, /s33-shared-team-token|Bearer|should-not-survive/);
 
   const duplicate = await callHandler(idiImport, {
     assetKey: "s33-idi-proof",

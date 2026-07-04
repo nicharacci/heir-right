@@ -746,7 +746,7 @@ async function runLiveIdiCore(body = {}, lockKey = "") {
     paidRun: true,
     apiKeySource,
     readbackStatus: data.readbackStatus || data.status || "provider_completed",
-    sourceEvidence: data.sourceEvidence || data.evidence || null,
+    sourceEvidence: redactIdiCoreProviderResponse(data.sourceEvidence || data.evidence || null),
     attachment: data.attachment || body.attachment || null,
     importedText: data.importedText || data.reportText || "",
     candidates,
