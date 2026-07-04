@@ -507,6 +507,26 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - blockers named `IDI Core endpoint` and `IDI Core access`, proving the shared default key is not configured in this environment.
 - Approved report import proof returned HTTP `200`, `mode: operator_import`, `paidRun: false`, `duplicateGuard: first_import_only`, and the message that the backend did not run IDI Core.
 
+## Twenty-Second Repair Pass: Source-Run Contract Regression Test
+
+- Added `apps/artifact/test/source-run-contract.test.mjs` and wired it into `@ple/artifact` test.
+- The test calls the deployed-style `/api/discovery/external-source-run` serverless handler with a Tax Collector listing/receipt fixture and proves:
+  - all eight required source buckets are present;
+  - `ok` remains false while required source blockers remain;
+  - `readyForDiscoveryCompletion` remains false;
+  - `legalTemplateAutofillAllowed` remains false at run and source level;
+  - the Tax Collector bottom-right `tax_receipt_link` fact is preserved;
+  - IDI stays `evidence_required` without approved live or imported evidence;
+  - the operator bundle still contains `What this run proved`, receipt/deed/property action copy, `Preview`, bounded preview CSS, and no stale `Live packet preview`.
+- Updated `@ple/artifact` test so it builds the worker before the source-run contract test. This avoids a false green caused by worker-dist task-order luck.
+- Proof:
+  - `pnpm --filter @ple/artifact test`: passed.
+  - `pnpm test`: passed.
+  - `git diff --check`: passed.
+  - Live route proof on `http://localhost:4183/api/discovery/external-source-run` returned `sourceCount: 8`, `allRequiredSourcesAccountedFor: true`, `readyForDiscoveryCompletion: false`, `legalTemplateAutofillAllowed: false`, `blockedCount: 3`, `evidenceRequiredCount: 3`, Tax Collector `proofState: facts_returned_review_required`, Tax Collector `tax_receipt_link` fact present, and IDI `proofState: evidence_required`.
+  - Served page proof on `http://localhost:4183/?view=dossiers&docprep=estate&rail=open&walkthrough=off&section=source-capture` found `What this run proved`, `bottom-right receipt link`, `Review owner name, folio`, `Attach the latest deed`, `Run Source Search`, and `Preview`; `Live packet preview` was false.
+  - IDI status proof on `http://localhost:4183/api/discovery/idi-core/status` still returned `configuredMode: operator_portal`, `sharedDefaultConfigured: false`, `endpointConfigured: false`, and `userOverrideAllowed: true`.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.
