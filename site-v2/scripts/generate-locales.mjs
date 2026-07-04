@@ -147,7 +147,7 @@ const text = new Map([
   ],
   ["About Us", "Sobre nosotros"],
   ["Family-owned, rooted in South Florida and Texas.", "Empresa familiar, con raices en el sur de Florida y Texas."],
-  ["Family-owned and personally led.", "Empresa familiar dirigida personalmente."],
+  ["Founder, Joshua Hernandez", "Fundador, Joshua Hernandez"],
   [
     "We are a family-owned business proudly rooted in the heart of South Florida and Texas. Over eight years ago, Joshua began his real estate journey in Houston, Texas, where he successfully bought, rehabbed, and sold numerous residential properties. His work expanded into land development and, over time, a strong niche helping clients navigate inherited real estate.",
     "Somos una empresa familiar orgullosamente arraigada en el corazon del sur de Florida y Texas. Hace mas de ocho anos, Joshua comenzo su camino en bienes raices en Houston, Texas, donde compro, rehabilito y vendio numerosas propiedades residenciales. Su trabajo se expandio al desarrollo de terrenos y, con el tiempo, a un nicho fuerte ayudando a clientes a navegar propiedades heredadas."
