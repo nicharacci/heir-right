@@ -19918,8 +19918,8 @@ function renderQueueView() {
   target.innerHTML = `
     <div class="queue-layout">
       <section class="loop-panel queue-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch export prep</h2></div><button class="btn primary solvys-liquid-glass" type="button" data-queue-stage ${items.length ? "" : "disabled"}>Stage batch</button></div>
-        <p class="copy">Use this queue after Discovery review to stage documents, CRM fields, and spreadsheet rows as one batch. Nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
+        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch Queue export prep</h2></div><button class="btn primary solvys-liquid-glass" type="button" data-queue-stage ${items.length ? "" : "disabled"}>Stage batch</button></div>
+        <p class="copy">Use this queue after Discovery review to stage documents, CRM fields, and spreadsheet rows as one batch. Exports produce one combined PDF per selected flow; nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
         <ul class="queue-list">
           ${items.map((item, index) => `<li class="queue-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Estate Search and select leads before staging a batch.</span></li>`}
         </ul>

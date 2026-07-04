@@ -1,0 +1,102 @@
+{
+  "ok": true,
+  "generatedAt": "2026-07-04T15:38:51.115Z",
+  "checks": [
+    {
+      "name": "Help & Demos walkthrough cards and launch",
+      "status": "passed",
+      "demoId": "docprep-discovery",
+      "activeView": "dossiers"
+    },
+    {
+      "name": "Doc Prep Preview stream and Option+Down section cycling",
+      "status": "passed",
+      "beforeActive": "Tax receipt",
+      "afterActive": "Deed",
+      "chipCount": 7
+    },
+    {
+      "name": "Closing Prep stream renders deterministic field/blocker preview",
+      "status": "passed"
+    },
+    {
+      "name": "Batch Queue surface renders single-PDF export guidance",
+      "status": "passed"
+    },
+    {
+      "name": "Settings source/team/outreach readiness controls render",
+      "status": "passed"
+    },
+    {
+      "name": "Outreach renders first-party no-send controls without ActivePieces builder UI",
+      "status": "passed"
+    },
+    {
+      "name": "Mobile Settings layout fits viewport without horizontal overflow",
+      "status": "passed",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "Anonymous auth gate renders Google-only domain gate",
+      "status": "passed"
+    },
+    {
+      "name": "Allowed-domain auth session shows avatar/account menu",
+      "status": "passed"
+    }
+  ],
+  "screenshots": {
+    "helpDemos": "docs/evidence/s32-help-demos.png",
+    "docPrep": "docs/evidence/s32-docprep-proof.png",
+    "queue": "docs/evidence/s32-queue-proof.png",
+    "settings": "docs/evidence/s32-settings-proof.png",
+    "outreach": "docs/evidence/s32-outreach-proof.png",
+    "mobile": "docs/evidence/s32-mobile-proof.png",
+    "authGate": "docs/evidence/s32-auth-gate.png",
+    "avatarMenu": "docs/evidence/s32-avatar-menu.png"
+  },
+  "console": [
+    {
+      "page": "main",
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+    },
+    {
+      "page": "main",
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+    },
+    {
+      "page": "main",
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+    },
+    {
+      "page": "main",
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+    },
+    {
+      "page": "main",
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+    },
+    {
+      "page": "main",
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+    },
+    {
+      "page": "auth-allowed",
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+    }
+  ],
+  "pageErrors": [],
+  "consoleSummary": {
+    "total": 7,
+    "warnings": 0,
+    "errors": 0
+  }
+}

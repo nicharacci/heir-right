@@ -1,0 +1,272 @@
+{
+  "generatedAt": "2026-07-04T15:18:26.830Z",
+  "base": "http://localhost:4201",
+  "estateId": "s32-proof-1783178301772",
+  "routeAssertions": {
+    "externalSourceRun": {
+      "status": 200,
+      "mode": "external_source_run",
+      "ok": false,
+      "sourceCount": 8,
+      "allRequiredSourcesAccountedFor": true,
+      "legalTemplateAutofillAllowed": false,
+      "readyForDiscoveryCompletion": false,
+      "factsReturnedCount": 7,
+      "blockingDetailCheckCount": 3,
+      "taxReceiptFactTypes": [
+        "source_status",
+        "tax_receipt_link",
+        "tax_receipt_attachment"
+      ],
+      "taxReceiptUrl": "https://miamidade.county-taxes.test/receipts/2025-s32-proof.pdf",
+      "taxPaidBy": "Estate of Maria Alvarez",
+      "sourceStatuses": [
+        {
+          "source": "property_appraiser",
+          "proofState": "facts_returned_review_required",
+          "factCount": 9,
+          "completionGate": "operator_review_required"
+        },
+        {
+          "source": "tax_collector",
+          "proofState": "facts_returned_review_required",
+          "factCount": 21,
+          "completionGate": "operator_review_required"
+        },
+        {
+          "source": "official_records",
+          "proofState": "facts_returned_review_required",
+          "factCount": 28,
+          "completionGate": "operator_review_required"
+        },
+        {
+          "source": "probate_court",
+          "proofState": "facts_returned_review_required",
+          "factCount": 14,
+          "completionGate": "operator_review_required"
+        },
+        {
+          "source": "clerk_of_courts",
+          "proofState": "facts_returned_review_required",
+          "factCount": 19,
+          "completionGate": "operator_review_required"
+        },
+        {
+          "source": "idi",
+          "proofState": "facts_returned_review_required",
+          "factCount": 3,
+          "completionGate": "operator_review_required"
+        },
+        {
+          "source": "skip_trace",
+          "proofState": "evidence_required",
+          "factCount": 0,
+          "completionGate": "blocked"
+        },
+        {
+          "source": "source_governance",
+          "proofState": "blocked",
+          "factCount": 1,
+          "completionGate": "blocked"
+        }
+      ]
+    },
+    "idi": {
+      "statusRoute": {
+        "name": "IDI Core",
+        "ok": true,
+        "mode": "review",
+        "configuredMode": "operator_portal",
+        "message": "idiCORE portal access is confirmed for approved operator searches. Backend paid-run automation still needs IDI API access; import the approved report after the controlled search.",
+        "checkedAt": "2026-07-04T15:18:22.127Z",
+        "portal": {
+          "configured": true,
+          "searchUrl": "https://idicore.com/search/PropertySearch",
+          "loginUrl": "https://login.idicore.com/"
+        },
+        "api": {
+          "endpointConfigured": false,
+          "sharedDefaultConfigured": false,
+          "userOverrideAllowed": true,
+          "accessConfigured": false,
+          "liveRunApproved": false
+        },
+        "blockers": [
+          "Backend IDI Core live runs need a vendor API endpoint before they can execute from HeirRight."
+        ]
+      },
+      "operatorImport": {
+        "status": 200,
+        "mode": "operator_import",
+        "paidRun": false,
+        "lockKey": "idi:1240 nw 32nd ave miami fl 33125:alvarez",
+        "duplicateGuard": "first_import_only"
+      },
+      "duplicateGuard": {
+        "status": 409,
+        "error": "duplicate_idi_asset_search",
+        "lockKey": "idi:1240 nw 32nd ave miami fl 33125:alvarez"
+      },
+      "personalOverrideBlocked": {
+        "status": 503,
+        "error": "idi_core_not_configured",
+        "apiKeySource": "user_override",
+        "blockers": [
+          "Live IDI Core needs approved access before it can run: IDI Core endpoint"
+        ],
+        "message": "idiCORE portal access is configured for approved operator searches, but backend live runs still need vendor API access. Open idiCORE, run the approved property search, then import the report."
+      }
+    },
+    "freshBatch": {
+      "status": 200,
+      "ok": true,
+      "outputPersistence": {
+        "ok": true,
+        "mode": "filesystem"
+      },
+      "leadCount": 0
+    },
+    "exports": [
+      {
+        "name": "Discovery Prep",
+        "artifact": {
+          "kind": "single_pdf",
+          "contentType": "application/pdf",
+          "flow": "discovery",
+          "estateId": "s32-proof-1783178301772",
+          "url": "/api/reports/pdf?title=HeirRight%20Discovery%20Prep%20Packet&status=Review%20packet",
+          "sections": [
+            "Discovery dossier",
+            "Completed lead report",
+            "Source notes",
+            "Closing Prep review",
+            "CRM handoff"
+          ]
+        },
+        "blockers": [
+          "Google confirmation readback has not run yet.",
+          "Google setup still needed before approval and confirmation readback: Google Workspace access, Google tracking Sheet"
+        ],
+        "pdf": {
+          "status": 200,
+          "contentType": "application/pdf",
+          "bytes": 1461,
+          "header": "%PDF-",
+          "containsHeirRight": true
+        }
+      },
+      {
+        "name": "Closing Prep",
+        "artifact": {
+          "kind": "single_pdf",
+          "contentType": "application/pdf",
+          "flow": "closing-docs",
+          "estateId": "s32-proof-1783178301772",
+          "url": "/api/reports/pdf?title=HeirRight%20Closing%20Prep%20Packet&status=Review%20packet",
+          "sections": [
+            "Reviewed Discovery File",
+            "Closing field map",
+            "Required seller/client fields",
+            "Template fill review",
+            "Closing Prep packet"
+          ]
+        },
+        "blockers": [
+          "Google confirmation readback has not run yet.",
+          "Google setup still needed before approval and confirmation readback: Google Workspace access, Google tracking Sheet"
+        ],
+        "pdf": {
+          "status": 200,
+          "contentType": "application/pdf",
+          "bytes": 1459,
+          "header": "%PDF-",
+          "containsHeirRight": true
+        }
+      },
+      {
+        "name": "Batch Discovery Prep",
+        "artifact": {
+          "kind": "single_pdf",
+          "contentType": "application/pdf",
+          "flow": "discovery",
+          "estateId": "s32-proof-1783178301772",
+          "url": "/api/reports/pdf?title=HeirRight%20Batch%20Discovery%20Prep%20Packet&status=Review%20packet",
+          "sections": [
+            "Discovery dossier",
+            "Completed lead report",
+            "Source notes",
+            "Closing Prep review",
+            "CRM handoff"
+          ]
+        },
+        "blockers": [
+          "Google confirmation readback has not run yet.",
+          "Google setup still needed before approval and confirmation readback: Google Workspace access, Google tracking Sheet"
+        ],
+        "pdf": {
+          "status": 200,
+          "contentType": "application/pdf",
+          "bytes": 1467,
+          "header": "%PDF-",
+          "containsHeirRight": true
+        }
+      },
+      {
+        "name": "Batch Closing Prep",
+        "artifact": {
+          "kind": "single_pdf",
+          "contentType": "application/pdf",
+          "flow": "closing-docs",
+          "estateId": "s32-proof-1783178301772",
+          "url": "/api/reports/pdf?title=HeirRight%20Batch%20Closing%20Prep%20Packet&status=Review%20packet",
+          "sections": [
+            "Reviewed Discovery File",
+            "Closing field map",
+            "Required seller/client fields",
+            "Template fill review",
+            "Closing Prep packet"
+          ]
+        },
+        "blockers": [
+          "Google confirmation readback has not run yet.",
+          "Google setup still needed before approval and confirmation readback: Google Workspace access, Google tracking Sheet"
+        ],
+        "pdf": {
+          "status": 200,
+          "contentType": "application/pdf",
+          "bytes": 1465,
+          "header": "%PDF-",
+          "containsHeirRight": true
+        }
+      }
+    ],
+    "directPdf": {
+      "status": 200,
+      "contentType": "application/pdf",
+      "bytes": 1443,
+      "header": "%PDF-",
+      "containsHeirRight": true
+    },
+    "closingGoogle": {
+      "status": 200,
+      "response": {
+        "ok": false,
+        "status": "blocked",
+        "blockers": [
+          "Cloudflare Worker backend is required for Closing Docs Google export."
+        ],
+        "message": "Closing Docs export is blocked until HEIRRIGHT_WORKER_URL is configured."
+      }
+    },
+    "outreach": {
+      "status": 200,
+      "noDirectSend": true,
+      "statusLabel": "ready_for_podio_review",
+      "blockers": [
+        "Cloudflare Worker backend is not configured.",
+        "Podio controlled write/readback is not approved in this environment."
+      ],
+      "message": "Outreach was staged as a Podio-compatible review package. No outbound SMS or email was sent."
+    }
+  }
+}
