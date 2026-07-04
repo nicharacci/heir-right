@@ -2139,6 +2139,11 @@
 
   .landing-page .teaser-panel {
     grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .landing-page .teaser-panel img {
+    display: none;
   }
 
   .landing-page .contact-steps {
@@ -2671,6 +2676,9 @@ main {
 
 .teaser-panel img {
   width: 4.5rem;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
 }
 
 .teaser-panel h3 {
