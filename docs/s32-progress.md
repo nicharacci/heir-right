@@ -2,15 +2,23 @@
 
 ## 2026-07-04
 
-- Created S32 goal for final objective audit and full product-loop proof.
-- Ran artifact tests before browser/route proof.
-- Generated route/PDF evidence in `docs/evidence/s32-route-pdf-proof.json`.
-- Generated PDF artifacts for Discovery, Closing, Batch Discovery, Batch Closing, and direct report proof.
-- Generated auth/domain route evidence in `docs/evidence/s32-auth-domain-proof.json`.
-- Browser-tested Help & Demos, Doc Prep Preview, `Option+Down`, Closing Prep Preview, Batch Queue, Settings, Outreach, mobile Settings, auth gate, and avatar menu.
-- Found Queue copy did not explicitly say single/combined PDF; patched `probate-lead-engine/apps/artifact/src/index.html` and rebuilt.
-- Generated browser evidence in `docs/evidence/s32-browser-proof.json` plus screenshots.
-- Confirmed local env has IDI portal/operator variables only; no backend `IDI_CORE_API_KEY` or `IDI_CORE_API_URL` is present.
-- Wrote S32 objective matrix, final anti-negligence review, and readiness report.
-- Ran final artifact test suite: `pnpm --dir probate-lead-engine --filter @ple/artifact test` passed.
-- Ran targeted fake/TODO/coming-soon scan; no hits. Broad `placeholder` hits are form placeholder attributes and icon class names.
+- Reopened S32 after completing S33 production-source cleanup.
+- Used S33 route proof and browser proof as the current product-loop evidence.
+- Confirmed S33 route proof covers:
+  - Tax Collector receipt search from estate facts.
+  - External source merge of receipt facts into Discovery.
+  - Shared-backend IDI token route behavior.
+  - IDI duplicate paid-run guard.
+  - Single and batch PDF export artifacts.
+- Confirmed S33 browser proof covers:
+  - Doc Prep `Run Source Search`.
+  - Settings IDI team-default copy.
+  - Queue view.
+  - Add to Queue, Google Workspace, Podio, Podio readiness check, and Google + Podio buttons.
+  - Mobile Doc Prep, Preview copy, console cleanliness, and no secret markers.
+- Verified deploy-provider secret names:
+  - Vercel does not list IDI endpoint/token names.
+  - Cloudflare Worker does not list IDI endpoint/token names.
+- Ran targeted fake/TODO/coming-soon scan; no product fake/TODO/coming-soon hits. One legacy worker validation string says `mocked Drive permissions`; it is test wording, not user-facing product copy. Broad placeholder hits are form placeholder attributes and icon class names.
+- Updated S32 objective matrix, final anti-negligence review, readiness report, and Solvys Heir audit to remove stale S32 blockers that S33 resolved and keep current deployment/legal-template blockers.
+- Current rating after S33: 79/100.

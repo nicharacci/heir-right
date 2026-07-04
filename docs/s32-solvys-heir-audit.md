@@ -2,12 +2,16 @@
 
 ```text
 /solvys-heir-audit
-Source checked: /Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md, S32 final brief, S29-S31 docs, route/browser/PDF evidence
-Backward: S32 audited Doc Prep, external source capture, Tax Collector receipt extraction, IDI modes, single-PDF export, Help & Demos, Settings, Outreach, and auth. It supports S5 owner/tax/deed/source evidence, S6 probate/manual-source governance, S7 report/PDF handoff, S8 no-auto-send Outreach, and S9 team access/readback readiness.
-UX pass: aligned with gaps. Queue copy was corrected to say Batch Queue and one combined PDF per selected flow. Doc Prep Preview, Settings, Outreach, auth gate, avatar menu, and mobile Settings passed browser proof. Remaining gaps are live provider/API proof and real legal-template immutability proof.
-Forward: resolve production blockers before shipment: shared backend IDI Core API, Tax Collector search-to-listing automation, Clerk/vital workflows, Google/Podio readback, production OAuth, and real Closing template fixture tests.
-Alignment: aligned with gaps
-Required corrections before complete:
-- none local remaining for S32 audit artifacts. Production shipment remains blocked by external credentials/workflows and template proof listed in docs/s32-final-readiness-report.md.
+Source checked: /Users/tifos/.codex/skills/solvys-heir-audit/references/deal-flow-checklist.md, S33 route/browser/PDF evidence, S33 anti-negligence review, current S32 objective matrix
+Backward: S33 resolved the S32 local/product-loop gaps for Tax Collector app-contract automation, shared IDI route behavior, PDF exports, export-button usability, and Preview copy. It supports S5 owner/tax/source evidence, S7 report/PDF handoff, S8 no-auto-send Outreach handoff posture, and S9 team access/readiness posture.
+UX pass: aligned with current product evidence. Export menu layering bug was found and fixed. Doc Prep Source Search, Settings IDI posture, Queue, export buttons, mobile Doc Prep, console health, and no-secret DOM checks passed browser proof.
+Forward: production shipment still requires real deployment secrets and live provider proof for IDI, Tax Collector Browserbase/public workflow, Clerk/Official Records, vital/obituary workflow, Google/Podio readback, production OAuth, and Closing legal-template fixture diff tests.
+Alignment: aligned with evidence
+Required corrections before production shipment:
+- Install and prove real IDI Core endpoint/token in deployment.
+- Install and prove real Tax Collector Browserbase/public workflow.
+- Prove Clerk/vital workflows with live provider credentials or exact blockers.
+- Prove Google/Podio write/readback in approved sample mode.
+- Prove production Google OAuth and avatar profile.
+- Add real legal-template fill-only fixture tests.
 ```
-

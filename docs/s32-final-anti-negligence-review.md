@@ -1,48 +1,57 @@
 # S32 Final Anti-Negligence Review
 
-Reviewer stance: assume every claim is false until route output, browser behavior, PDF bytes, or explicit blocker proves it.
+Reviewer stance: assume every claim is false until route output, browser behavior, PDF bytes, deployment-provider state, or explicit blocker proves it.
 
 ## Findings
 
-1. Backend live IDI Core is not configured.
-   - Evidence: `docs/evidence/s32-route-pdf-proof.json` reports `endpointConfigured: false`, `sharedDefaultConfigured: false`, and personal override blocks on missing endpoint.
-   - Impact: Do not claim same shared IDI Core API key is available for all users. Today the app supports operator portal import and distinguishes a user override key, but cannot run live backend IDI Core.
+1. Live deployment IDI Core is not configured.
+   - Evidence: S33 route proof proves the code path with `apiKeySource: shared_default`; Vercel and Cloudflare Worker secret-name checks do not list `IDI_CORE_API_URL`, `IDI_CORE_API_TOKEN`, `HEIRRIGHT_IDI_CORE_API_TOKEN`, or `IDI_CORE_API_KEY`.
+   - Impact: The app can use a shared backend IDI token, but live production cannot run the real vendor path until TP installs the private endpoint/token.
 
-2. External Discovery sources are not all real APIs yet.
-   - Evidence: the source-run route accounts for eight required buckets, but Settings and source proof keep Tax Collector public search, Clerk records, vital/obituary workflows, skip trace, and governed sources blocked or review-gated.
-   - Impact: The app has source contracts and capture APIs. It does not yet fully automate every public/county/manual workflow end to end.
+2. Tax Collector automation is fixed at the app-contract level, not live-public-site proven.
+   - Evidence: `docs/evidence/s33-route-proof.json` starts from estate facts, invokes the browser-workflow interface, captures the bottom-right receipt link, and populates payer/date/amount/unpaid years/reassessment. Direct curl to the Miami-Dade public site is Cloudflare-challenged, so the production path should be Browserbase/controlled browser, not plain server-side curl.
+   - Impact: The app no longer requires the user to supply the listing link first. The deployment still needs the real Browserbase/function secret installed and tested against the county site.
 
-3. Tax Collector receipt extraction is real only after listing-page evidence is supplied.
-   - Evidence: `tax_receipt_link`, `tax_receipt_attachment`, receipt URL, and payer are captured from listing HTML in `s32-route-pdf-proof.json`.
-   - Impact: The specific bottom-right receipt fix is covered. The browser/script workflow that searches the public site and lands on that listing page still needs production proof.
+3. Export buttons were not production-grade until S33 browser proof found a real layering bug.
+   - Evidence: Browser proof initially hit PDF iframe pointer interception on lower export options. The topbar/export-menu stacking and iframe pointer capture were patched in `probate-lead-engine/apps/artifact/src/index.html`.
+   - Impact: Fixed and rerun. `docs/evidence/s33-browser-proof.json` now proves Add to Queue, Google Workspace, Podio, Podio readiness check, and Google + Podio all change visible state.
 
-4. Closing legal-template immutability is not fully proven.
-   - Evidence: Closing Prep stream/blocker UI and single-PDF export are proven, but no S32 test compares generated output against real client legal templates.
-   - Impact: Keep legal-template readiness blocked until fixture-based fill-only tests prove no template language mutation.
+4. Batch and single exports are proven as PDFs.
+   - Evidence: `docs/evidence/s33-discovery-single.pdf`, `docs/evidence/s33-closing-single.pdf`, `docs/evidence/s33-discovery-batch.pdf`, and `docs/evidence/s33-closing-batch.pdf` all fetched as `%PDF` artifacts and rendered PNG previews.
+   - Impact: This gate passes: export is one PDF artifact per selected flow, not a folder.
 
-5. Batch Queue route behavior was correct, but UI copy was not explicit enough.
-   - Evidence: route proof already returned `single_pdf`; browser proof initially found Queue copy did not say single/combined PDF.
-   - Fix: patched Queue heading/copy in `probate-lead-engine/apps/artifact/src/index.html`, rebuilt, and reran browser proof. `s32-queue-proof.png` now shows `Batch Queue export prep` and `one combined PDF per selected flow`.
+5. Closing legal-template immutability is still not proven.
+   - Evidence: S33 proves Closing PDF artifact generation, but there is no fixture diff against the real client legal templates.
+   - Impact: Do not claim legal-document production readiness until approved template fixtures prove blank-fill only.
 
-6. Auth is locally proven but production OAuth is not.
-   - Evidence: `s32-auth-domain-proof.json`, `s32-auth-gate.png`, and `s32-avatar-menu.png`.
-   - Impact: Allowed-domain gate, Google-only redirect, and avatar menu work locally. Production needs deployed Google OAuth client/redirect proof.
+6. Clerk/vital/obituary workflows remain provider/deployment blockers.
+   - Evidence: Source readiness contracts expose exact blockers; S33 did not install Clerk Commercial Data Services or vital/obituary Browserbase/API credentials.
+   - Impact: Source facts can be captured and normalized, but those workflows are not fully autonomous in live production yet.
 
-7. Outreach is safe but not live-production connected.
-   - Evidence: `s32-outreach-proof.png` and `/api/outreach/sync` no-direct-send guard in `s32-route-pdf-proof.json`.
-   - Impact: Good for review/staging. Live Podio/readback and ActivePieces handoff remain blocked.
+7. Google/Podio live write/readback and production OAuth remain deployment blockers.
+   - Evidence: S33 browser proof verifies export buttons and prep statuses; prior S32 local auth proof verifies the gate. No live deployed OAuth/readback proof was added.
+   - Impact: Safe for prep/review. Not shippable to a team of 10 until deployed auth and readback are proven.
 
 ## Proof Summary
 
-- Route/PDF proof: `docs/evidence/s32-route-pdf-proof.json`
-- Auth/domain route proof: `docs/evidence/s32-auth-domain-proof.json`
-- Browser proof: `docs/evidence/s32-browser-proof.json`
-- PDF artifacts: `docs/evidence/s32-discovery-prep.pdf`, `docs/evidence/s32-closing-prep.pdf`, `docs/evidence/s32-batch-discovery-prep.pdf`, `docs/evidence/s32-batch-closing-prep.pdf`, `docs/evidence/s32-direct-report.pdf`
-- Screenshots: `docs/evidence/s32-help-demos.png`, `docs/evidence/s32-docprep-proof.png`, `docs/evidence/s32-queue-proof.png`, `docs/evidence/s32-settings-proof.png`, `docs/evidence/s32-outreach-proof.png`, `docs/evidence/s32-mobile-proof.png`, `docs/evidence/s32-auth-gate.png`, `docs/evidence/s32-avatar-menu.png`
+- S33 route proof: `docs/evidence/s33-route-proof.json`
+- S33 browser proof: `docs/evidence/s33-browser-proof.json`
+- S33 anti-negligence review: `docs/s33-final-anti-negligence-review.md`
+- S33 progress: `docs/s33-progress.md`
+- S33 PDFs:
+  - `docs/evidence/s33-discovery-single.pdf`
+  - `docs/evidence/s33-closing-single.pdf`
+  - `docs/evidence/s33-discovery-batch.pdf`
+  - `docs/evidence/s33-closing-batch.pdf`
+- S33 screenshots:
+  - `docs/evidence/s33-docprep-tax-receipt.png`
+  - `docs/evidence/s33-settings-idi-ready.png`
+  - `docs/evidence/s33-queue-proof.png`
+  - `docs/evidence/s33-export-buttons-proof.png`
+  - `docs/evidence/s33-mobile-docprep-proof.png`
 
 ## Decision
 
 Reject production shipment for a team of 10 today.
 
-Accept internal review/demo readiness for the locally proven flows, with explicit blockers for live IDI API, live public-source automation, live Clerk/vital workflows, real Google/Podio readback, and legal-template immutability proof.
-
+Accept internal stakeholder demo/review of the locally proven product loop. The current remaining work is not UI polish; it is deployment/provider proof and legal-template fixture proof.
