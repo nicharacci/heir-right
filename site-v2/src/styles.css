@@ -1043,9 +1043,67 @@
 
 .google-rating-badge {
   width: min(100%, 18.75rem);
-  height: auto;
+  display: grid;
+  justify-items: start;
+  gap: 0.72rem;
+  padding: 0.2rem 0 0.35rem;
   border-radius: 8px;
-  background: #fff;
+  background: transparent;
+}
+
+.google-word {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: clamp(3.2rem, 8.8vw, 5rem);
+  font-weight: 760;
+  line-height: 0.9;
+}
+
+.google-word span:nth-child(1),
+.google-word span:nth-child(4) {
+  color: #4285f4;
+}
+
+.google-word span:nth-child(2),
+.google-word span:nth-child(6) {
+  color: #ea4335;
+}
+
+.google-word span:nth-child(3) {
+  color: #fbbc05;
+}
+
+.google-word span:nth-child(5) {
+  color: #34a853;
+}
+
+.google-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.26rem 0.56rem 0.32rem;
+  border: 1px solid rgba(245, 211, 143, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.google-score strong {
+  color: #fff;
+  font-size: clamp(1.25rem, 4vw, 1.7rem);
+  line-height: 1;
+}
+
+.rating-stars {
+  display: inline-flex;
+  gap: 0.16rem;
+}
+
+.rating-stars i {
+  width: clamp(1rem, 3.1vw, 1.28rem);
+  aspect-ratio: 1;
+  background: #f4c128;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 56%, 79% 91%, 50% 70%, 21% 91%, 32% 56%, 2% 35%, 39% 35%);
 }
 
 .google-review-copy h3 {
@@ -1631,9 +1689,7 @@
 }
 
 .google-rating-badge {
-  box-shadow:
-    0 18px 34px rgba(8, 20, 37, 0.18),
-    inset 0 0 0 1px rgba(16, 35, 60, 0.06);
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.18));
 }
 
 .google-review-proof img {
