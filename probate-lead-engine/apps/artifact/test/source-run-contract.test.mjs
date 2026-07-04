@@ -337,6 +337,106 @@ try {
     acceptedIdiResult.json.sourceFacts.some((fact) => fact.source === "idi" && fact.factType === "primary_contact_profile" && fact.value?.reviewStatus === "accepted"),
     "Accepted contact-review state must be preserved in source-run facts"
   );
+
+  const previousClerkAuthKey = process.env.MIAMI_DADE_CLERK_AUTH_KEY;
+  const previousClerkApiBase = process.env.MIAMI_DADE_CLERK_API_BASE;
+  const previousFetch = globalThis.fetch;
+  try {
+    process.env.MIAMI_DADE_CLERK_AUTH_KEY = "contract-clerk-key";
+    process.env.MIAMI_DADE_CLERK_API_BASE = "https://clerk-contract.test/api";
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      if (url.includes("/OfficialRecords")) {
+        return Response.json({
+          Status: "Success",
+          StatusDesc: "OK",
+          UnitsBalance: 42,
+          OfficialRecordList: {
+            OfficialRecords: [{
+              DOC_TYPE: "WD",
+              REC_DATE: "2025-04-14",
+              DOC_DATE: "2025-04-11",
+              REC_BOOK: "34113",
+              REC_PAGE: "360",
+              CFN_YEAR: 2025,
+              CFN_SEQ: 12345,
+              FIRST_PARTY: "Prior Owner",
+              SECOND_PARTY: "Estate of Contract Proof",
+              CASE_NUM: "2025-CP-001234",
+            }],
+          },
+        });
+      }
+      if (url.includes("/Civil") && url.includes("caseNumber=")) {
+        return Response.json({
+          Status: "Success",
+          CaseInfo: {
+            caseNumber: "2025-CP-001234",
+            caseStatus: "Open",
+            caseType: "Probate",
+            filingDate: "2025-02-03",
+          },
+          UnitsBalance: 41,
+        });
+      }
+      if (url.includes("/Civil") && url.includes("civilCaseNumber=")) {
+        return Response.json({
+          Status: "Success",
+          DocketsList: {
+            DocketInfo: [{
+              eventDate: "2025-03-01",
+              docketNumber: "12",
+              docketDescrition: "Affidavit of Heirs filed",
+              comments: "Image available",
+              numberOfDocuments: 1,
+            }],
+          },
+          UnitsBalance: 40,
+        });
+      }
+      return previousFetch(input);
+    };
+    const clerkResult = await callHandler(externalSourceRun, {
+      assetKey: "clerk-commercial-contract-proof",
+      estateName: "Estate of Clerk Contract Proof",
+      ownerName: "Estate of Clerk Contract Proof",
+      propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+      parcelId: "34-1133-036-0010",
+      caseNumber: "2025-CP-001234",
+      county: "miami-dade",
+    });
+    const clerkProofBySource = new Map(clerkResult.json.sourceRunProof.sources.map((item) => [item.source, item]));
+    assert.equal(clerkProofBySource.get("official_records").proofState, "facts_returned_review_required");
+    assert.equal(clerkProofBySource.get("probate_court").proofState, "facts_returned_review_required");
+    assert.ok(
+      clerkProofBySource.get("official_records").detailChecks.some((check) => check.code === "latest_deed" && check.status === "evidence_returned_review_required"),
+      "Configured Clerk Official Records API must resolve latest deed detail from route-level source-run facts"
+    );
+    assert.ok(
+      clerkProofBySource.get("probate_court").detailChecks.some((check) => check.code === "case_lookup" && check.status === "evidence_returned_review_required"),
+      "Configured Clerk Civil/Family/Probate API must resolve case lookup detail from route-level source-run facts"
+    );
+    assert.ok(
+      clerkResult.json.sourceFacts.some((fact) => fact.source === "official_records" && fact.factType === "latest_deed" && fact.value?.book === "34113"),
+      "Clerk Official Records API route proof must return latest deed details"
+    );
+    assert.ok(
+      clerkResult.json.sourceFacts.some((fact) => fact.source === "probate_court" && fact.factType === "affidavit_of_heirs_status" && /Affidavit/i.test(String(fact.value))),
+      "Clerk probate API route proof must return affidavit-of-heirs evidence"
+    );
+    assert.ok(
+      clerkResult.json.sourceFacts
+        .filter((fact) => fact.source === "official_records" || fact.source === "probate_court")
+        .every((fact) => !String(fact.sourceUrl || "").includes("contract-clerk-key")),
+      "Clerk AuthKey must be redacted from stored source URLs"
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousClerkAuthKey === undefined) delete process.env.MIAMI_DADE_CLERK_AUTH_KEY;
+    else process.env.MIAMI_DADE_CLERK_AUTH_KEY = previousClerkAuthKey;
+    if (previousClerkApiBase === undefined) delete process.env.MIAMI_DADE_CLERK_API_BASE;
+    else process.env.MIAMI_DADE_CLERK_API_BASE = previousClerkApiBase;
+  }
   const artifactReceipt = discoverTaxCollectorReceipt({
     listingUrl: "https://miamidade.county-taxes.test/listing/3411330360010",
     listingHtml: `
@@ -432,6 +532,7 @@ try {
       "blocking_detail_checks_gate_readiness",
       "idi_core_guardrail_detail_checks",
       "idi_import_and_contact_review_split",
+      "clerk_commercial_api_route_fact_mapping",
       "governed_manual_and_paid_sources_visible",
       "operator_visible_source_proof_copy",
       "preview_fit_css",

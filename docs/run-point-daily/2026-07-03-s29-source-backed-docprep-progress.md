@@ -776,6 +776,19 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Clean Chrome DevTools proof on `localhost:4192` imported an IDI report, clicked `Run Source Search`, saw contact review stay `Manual`, then accepted the contact and saw only contact review change to `Evidence found`. Paid-run approval stayed `Approval`, no fake API claim appeared, no raw env names were visible, and console/network failures were empty.
   - Screenshot evidence: `docs/run-point-daily/2026-07-03-s29-idi-source-run-browser-proof.png`.
 
+## Thirty-Fourth Repair Pass: Clerk Commercial API Route Mapping Proof
+
+- Added a route-level source-run contract for the configured Miami-Dade Clerk Commercial Data Services path.
+- The test configures a mocked Clerk AuthKey/API base and verifies `/api/discovery/external-source-run` maps mocked Clerk responses into source-run facts instead of only testing adapter code in isolation.
+- Proved:
+  - Official Records API facts return `latest_deed` with book/page, recorded date, parties, and case link data;
+  - Civil/Family/Probate API facts return case status, docket refs, affidavit-of-heirs signal, and document availability;
+  - Official Records and probate/court proof rows become `facts_returned_review_required`;
+  - `latest_deed` and `case_lookup` detail checks resolve to `Evidence found`;
+  - the Clerk AuthKey is redacted from stored source URLs.
+- Proof:
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed and reported `clerk_commercial_api_route_fact_mapping`.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.
