@@ -4,6 +4,7 @@ import { runDailyProduction } from "./daily/run-daily";
 import { buildControlledPodioTestSeed } from "./export/controlled-test-lead";
 import { connectionStatuses, exportCompletedReport, podioReadbackBlockerMessage, resolvePodioAccessToken } from "./export/export-package";
 import { TEXAS_EQUITY_PROS_LEADS_APP_ID, TEXAS_EQUITY_PROS_LEADS_SPACE_ID } from "./export/podio-config";
+import { buildIdiAssetSearchFacts } from "./enrichment/idi-asset-search";
 import { runDryPipeline } from "./index";
 import { fact, intakeSubject, nowIso, seedIdentity, slug } from "./lib";
 import { runFreshLeadBatch } from "./live/source-batch";
@@ -852,6 +853,9 @@ function sourceRunSeedFromBody(body: Record<string, unknown>, fallback: IntakeSe
   const seed = body.seed && typeof body.seed === "object" ? body.seed as Record<string, unknown> : {};
   const capture = body.capture && typeof body.capture === "object" ? body.capture as Record<string, unknown> : body;
   const taxReceipt = capture.taxReceipt && typeof capture.taxReceipt === "object" ? capture.taxReceipt as Record<string, unknown> : {};
+  const confirmedSourceFacts = Array.isArray(seed.confirmedSourceFacts)
+    ? seed.confirmedSourceFacts
+    : Array.isArray(body.confirmedSourceFacts) ? body.confirmedSourceFacts : fallback.confirmedSourceFacts;
   return {
     ownerName: stringValue(seed.ownerName) || stringValue(body.ownerName) || stringValue(body.owner) || fallback.ownerName,
     estateName: stringValue(seed.estateName) || stringValue(body.estateName) || fallback.estateName,
@@ -864,7 +868,49 @@ function sourceRunSeedFromBody(body: Record<string, unknown>, fallback: IntakeSe
     source: "operator_cli",
     includeDealMath: false,
     includeSkipTrace: body.includeSkipTrace === true,
+    ...(confirmedSourceFacts ? { confirmedSourceFacts } : {}),
   };
+}
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function idiAssetImportInputFromBody(body: Record<string, unknown> = {}): Record<string, unknown> | null {
+  const capture = objectValue(body.capture);
+  const input = objectValue(body.idiAssetImport || body.idiImport || capture.idiAssetImport || capture.idiImport);
+  const importedText = stringValue(input.importedText || body.idiImportedText);
+  const attachment = objectValue(input.attachment);
+  const sourceUrl = stringValue(attachment.sourceUrl || input.sourceUrl || input.reportSourceUrl);
+  if (!importedText && !sourceUrl && !Array.isArray(input.candidates)) return null;
+  return {
+    provider: stringValue(input.provider) || "idi",
+    mode: stringValue(input.mode) || undefined,
+    paidRun: input.paidRun === true,
+    paidRunApproved: input.paidRunApproved === true,
+    approvalRecord: input.approvalRecord || undefined,
+    readbackStatus: stringValue(input.readbackStatus) || undefined,
+    apiKeySource: stringValue(input.apiKeySource) || undefined,
+    importedText,
+    candidates: Array.isArray(input.candidates) ? input.candidates : undefined,
+    contactReviews: objectValue(input.contactReviews || body.contactReviews),
+    capturedBy: stringValue(input.capturedBy || body.capturedBy) || undefined,
+    adminOverrideReason: stringValue(input.adminOverrideReason) || undefined,
+    attachment: {
+      label: stringValue(attachment.label || input.label) || "IDI expanded asset search",
+      sourceUrl: sourceUrl || undefined,
+      fileKind: stringValue(attachment.fileKind || input.fileKind) || (sourceUrl ? "link" : "text"),
+      fileName: stringValue(attachment.fileName || input.fileName) || undefined,
+      capturedAt: stringValue(attachment.capturedAt) || nowIso(),
+      capturedBy: stringValue(attachment.capturedBy || input.capturedBy || body.capturedBy) || undefined,
+      reviewFlags: Array.isArray(attachment.reviewFlags) ? attachment.reviewFlags : ["IDI_ASSET_SEARCH_REVIEW_REQUIRED"],
+    },
+  };
+}
+
+function idiAssetImportFactsFromBody(runId: string, seed: IntakeSeed, body: Record<string, unknown> = {}): SourceFact[] {
+  const input = idiAssetImportInputFromBody(body);
+  return input ? buildIdiAssetSearchFacts(runId, seed, input) : [];
 }
 
 function factValuePresent(value: unknown): boolean {
@@ -1146,10 +1192,17 @@ function sourceStatusEvidence(source: string, code: unknown, facts: SourceFact[]
 function satisfiedEvidenceForCheck(source: string, check: Record<string, unknown>, sourceFacts: SourceFact[] = []): Array<Record<string, unknown>> {
   const codes = detailEvidenceFactTypes[String(check.code || "")] || [];
   const facts = sourceFacts.filter((factItem) => factItem.source === source);
+  const checkCode = String(check.code || "");
   const byFactType = facts.filter((factItem) =>
     codes.includes(String(factItem.factType))
       && factValuePresent(factItem.value)
       && !sourceFactHasBlockingFlag(factItem)
+      && (checkCode !== "idi_contact_review" || ["accepted", "promoted"].includes(String((factItem.value as Record<string, unknown> | undefined)?.reviewStatus || "")))
+      && (checkCode !== "idi_paid_run_approval" || Boolean(
+        (factItem.value as Record<string, unknown> | undefined)?.paidRunApproved
+          || (factItem.value as Record<string, unknown> | undefined)?.approvalRecord
+          || (factItem.value as Record<string, unknown> | undefined)?.paidRun === true
+      ))
   );
   const statusFacts = sourceStatusEvidence(source, check.code, facts);
   return [...byFactType, ...statusFacts].map((factItem) => ({
@@ -1232,6 +1285,7 @@ async function externalSourceRunResponse(request: Request, url: URL, env: Cloudf
   const sourceFacts = [
     ...pipeline.facts,
     ...capturedSourceFacts,
+    ...idiAssetImportFactsFromBody(pipeline.runId, seed, body),
   ].filter((factItem) => discoverySourceLabels.some((source) => source.source === factItem.source));
   const sourceSummaries = summarizeSourceRunFacts(sourceFacts);
   const sourceRunProof = sourceRunProofLedger(sourceSummaries, sourceFacts);

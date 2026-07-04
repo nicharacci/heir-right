@@ -15296,7 +15296,8 @@ function defaultIdiCoreImportForRow(row) {
         addressHistory: row?.address ? [row.address] : [],
         ownerLastNameMatch: true,
         confidence: 92,
-        reviewStatus: "accepted"
+        reviewStatus: "imported",
+        reviewFlags: ["CONTACT_REVIEW_REQUIRED"]
       }
     ],
     reviewFlags: ["IDI_CORE_REPORT_IMPORTED", "CONTACTS_REVIEW_GATED"]
@@ -16563,7 +16564,9 @@ function collectSourceCapturePayload(root, row) {
 }
 
 function externalSourceRunPayload(row, capture, key) {
-  return {
+  const idiImport = idiImportForRow(row);
+  const contactReviews = contactReviewsForRow(row);
+  const payload = {
     assetKey: key,
     leadId: row?.id,
     seed: {
@@ -16578,6 +16581,27 @@ function externalSourceRunPayload(row, capture, key) {
     capture,
     includeSkipTrace: false
   };
+  if (idiImport) {
+    payload.idiAssetImport = {
+      provider: idiImport.provider || "idi",
+      mode: idiImport.mode || "operator_import",
+      paidRun: Boolean(idiImport.paidRun),
+      paidRunApproved: idiImport.mode === "live_idi_core" || idiImport.paidRun === true,
+      readbackStatus: idiImport.readbackStatus || "",
+      apiKeySource: idiImport.apiKeySource || "",
+      approvalRecord: idiImport.sourceEvidence || idiImport.approvalRecord || null,
+      lockKey: idiImport.lockKey || assetDiscoveryKey(row),
+      importedText: idiImport.importedText || "",
+      adminOverrideReason: idiImport.adminOverrideReason || "",
+      attachment: idiImport.attachment || null,
+      contactReviews,
+      candidates: contactCandidatesForRow(row).map((candidate) => ({
+        ...candidate,
+        reviewStatus: candidateReviewState(row, candidate)
+      }))
+    };
+  }
+  return payload;
 }
 
 function sourceFactByType(facts = [], source, factTypes = []) {

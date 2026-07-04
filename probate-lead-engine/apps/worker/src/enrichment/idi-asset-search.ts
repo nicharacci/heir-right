@@ -5,7 +5,15 @@ const PRIMARY_RELATIONSHIPS = new Set(["spouse", "wife", "husband", "child", "ch
 
 export interface IdiAssetImportInput {
   provider?: "idi" | string;
+  mode?: string;
+  paidRun?: boolean;
+  paidRunApproved?: boolean;
+  approvalRecord?: unknown;
+  readbackStatus?: string;
+  apiKeySource?: string;
   importedText?: string;
+  candidates?: Array<Partial<ContactCandidate> & Record<string, unknown>>;
+  contactReviews?: Record<string, { status?: ContactCandidate["reviewStatus"] } | ContactCandidate["reviewStatus"] | undefined>;
   capturedBy?: string;
   attachment?: Partial<SourceAttachmentRef>;
   adminOverrideReason?: string;
@@ -83,6 +91,63 @@ function ownerNameMatches(candidateName: string, ownerName: string): boolean {
   return Boolean(last && candidateName.toLowerCase().split(/\s+/).at(-1) === last);
 }
 
+function reviewStatusFrom(value: unknown): ContactCandidate["reviewStatus"] {
+  return value === "accepted" || value === "rejected" || value === "promoted" ? value : "imported";
+}
+
+function candidateReviewFlags(status: ContactCandidate["reviewStatus"]): ContactCandidate["reviewFlags"] {
+  return status === "accepted" || status === "promoted" ? [] : ["CONTACT_REVIEW_REQUIRED"];
+}
+
+function suppliedReviewStatus(
+  candidate: Partial<ContactCandidate> & Record<string, unknown>,
+  contactReviews: IdiAssetImportInput["contactReviews"] = {},
+): ContactCandidate["reviewStatus"] {
+  const id = String(candidate.id || "");
+  const review = id ? contactReviews?.[id] : undefined;
+  if (typeof review === "string") return reviewStatusFrom(review);
+  if (review && typeof review === "object") return reviewStatusFrom(review.status);
+  return reviewStatusFrom(candidate.reviewStatus);
+}
+
+function normalizeSuppliedCandidate(
+  candidate: Partial<ContactCandidate> & Record<string, unknown>,
+  index: number,
+  seed: IntakeSeed,
+  ref: SourceRef,
+  contactReviews: IdiAssetImportInput["contactReviews"] = {},
+): ContactCandidate {
+  const name = String(candidate.name || `Imported contact ${index + 1}`).trim();
+  const relationship = String(candidate.relationship || "relative").trim();
+  const status = suppliedReviewStatus(candidate, contactReviews);
+  const phones = Array.isArray(candidate.phones) ? candidate.phones.map(String).filter(Boolean) : [];
+  const emails = Array.isArray(candidate.emails) ? candidate.emails.map(String).filter(Boolean) : [];
+  const addressHistory = Array.isArray(candidate.addressHistory) ? candidate.addressHistory.map(String).filter(Boolean) : [];
+  const currentAddress = String(candidate.currentAddress || addressHistory[0] || "").trim();
+  const group = candidate.group === "primary" || candidate.group === "alternative"
+    ? candidate.group
+    : candidateGroup(relationship);
+  return {
+    id: String(candidate.id || `${idiRunLockKey(seed)}:contact:${index + 1}`),
+    name,
+    relationship,
+    group,
+    phones,
+    emails,
+    currentAddress: currentAddress || undefined,
+    addressHistory,
+    ownerLastNameMatch: typeof candidate.ownerLastNameMatch === "boolean"
+      ? candidate.ownerLastNameMatch
+      : ownerNameMatches(name, seed.ownerName ?? seed.estateName ?? ""),
+    confidence: typeof candidate.confidence === "number"
+      ? Math.max(0, Math.min(candidate.confidence > 1 ? candidate.confidence / 100 : candidate.confidence, 1))
+      : group === "primary" ? 0.86 : 0.58,
+    sourceRefs: [ref],
+    reviewStatus: status,
+    reviewFlags: candidateReviewFlags(status),
+  };
+}
+
 export function parseIdiAssetSearchText(importedText: string, seed: IntakeSeed, ref: SourceRef): ContactCandidate[] {
   const blocks = importedText
     .split(/\n{2,}|(?=\n\s*(?:relative|associate|spouse|child|son|daughter)\s*[:\-])/i)
@@ -108,7 +173,7 @@ export function parseIdiAssetSearchText(importedText: string, seed: IntakeSeed, 
       confidence: primary ? 0.86 : sameLastName ? 0.72 : 0.58,
       sourceRefs: [ref],
       reviewStatus: "imported",
-      reviewFlags: ["CONTACT_REVIEW_REQUIRED"],
+      reviewFlags: candidateReviewFlags("imported"),
     };
   });
 }
@@ -131,9 +196,13 @@ export function buildIdiAssetSearchFacts(runId: string, seed: IntakeSeed, input:
     }
     : undefined;
   const ref = sourceRef("idi", rawId, fetchedAt);
-  const candidates = parseIdiAssetSearchText(input.importedText ?? "", seed, ref);
+  const suppliedCandidates = Array.isArray(input.candidates)
+    ? input.candidates.map((candidate, index) => normalizeSuppliedCandidate(candidate, index, seed, ref, input.contactReviews))
+    : [];
+  const candidates = suppliedCandidates.length ? suppliedCandidates : parseIdiAssetSearchText(input.importedText ?? "", seed, ref);
   const primaryCandidates = candidates.filter((candidate) => candidate.group === "primary");
   const alternativeCandidates = candidates.filter((candidate) => candidate.group === "alternative");
+  const acceptedCandidateCount = candidates.filter((candidate) => candidate.reviewStatus === "accepted" || candidate.reviewStatus === "promoted").length;
 
   return [
     fact({
@@ -151,11 +220,21 @@ export function buildIdiAssetSearchFacts(runId: string, seed: IntakeSeed, input:
         importedAt: fetchedAt,
         duplicateGuard: input.adminOverrideReason ? "admin_override_recorded" : "first_import_only",
         adminOverrideReason: input.adminOverrideReason,
+        contactPreviewCount: candidates.length,
+        acceptedContactCount: acceptedCandidateCount,
+        mode: input.mode || "operator_import",
+        paidRun: Boolean(input.paidRun),
+        paidRunApproved: Boolean(input.paidRunApproved || input.paidRun === true || input.approvalRecord),
+        approvalRecord: input.approvalRecord || undefined,
+        readbackStatus: input.readbackStatus,
+        apiKeySource: input.apiKeySource,
       },
       confidence: candidates.length ? 0.7 : 0.35,
       sourceUrl: attachment?.sourceUrl,
       attachment,
-      reviewFlags: candidates.length ? ["CONTACT_REVIEW_REQUIRED"] : ["IDI_ASSET_SEARCH_REVIEW_REQUIRED", "CONTACT_REVIEW_REQUIRED"],
+      reviewFlags: acceptedCandidateCount
+        ? ["HUMAN_REVIEW_REQUIRED"]
+        : candidates.length ? ["CONTACT_REVIEW_REQUIRED"] : ["IDI_ASSET_SEARCH_REVIEW_REQUIRED", "CONTACT_REVIEW_REQUIRED"],
     }),
     ...(attachment ? [fact({
       runId,

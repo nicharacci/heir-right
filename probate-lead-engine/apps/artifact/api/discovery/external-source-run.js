@@ -20,6 +20,9 @@ function sourceRunSeedFromBody(body = {}) {
   const seed = body.seed && typeof body.seed === "object" ? body.seed : {};
   const capture = body.capture && typeof body.capture === "object" ? body.capture : body;
   const taxReceipt = capture.taxReceipt && typeof capture.taxReceipt === "object" ? capture.taxReceipt : {};
+  const confirmedSourceFacts = Array.isArray(seed.confirmedSourceFacts)
+    ? seed.confirmedSourceFacts
+    : Array.isArray(body.confirmedSourceFacts) ? body.confirmedSourceFacts : undefined;
   return {
     ownerName: stringValue(seed.ownerName) || stringValue(body.ownerName) || stringValue(body.owner) || "Fresh public-source lead",
     estateName: stringValue(seed.estateName) || stringValue(body.estateName) || undefined,
@@ -32,7 +35,51 @@ function sourceRunSeedFromBody(body = {}) {
     source: "operator_cli",
     includeDealMath: false,
     includeSkipTrace: body.includeSkipTrace === true,
+    ...(confirmedSourceFacts ? { confirmedSourceFacts } : {}),
   };
+}
+
+function objectValue(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function idiAssetImportInputFromBody(body = {}) {
+  const capture = objectValue(body.capture);
+  const input = objectValue(body.idiAssetImport || body.idiImport || capture.idiAssetImport || capture.idiImport);
+  const importedText = stringValue(input.importedText || body.idiImportedText);
+  const attachment = objectValue(input.attachment);
+  const sourceUrl = stringValue(attachment.sourceUrl || input.sourceUrl || input.reportSourceUrl);
+  if (!importedText && !sourceUrl && !Array.isArray(input.candidates)) return null;
+  return {
+    provider: stringValue(input.provider) || "idi",
+    mode: stringValue(input.mode) || undefined,
+    paidRun: input.paidRun === true,
+    paidRunApproved: input.paidRunApproved === true,
+    approvalRecord: input.approvalRecord || undefined,
+    readbackStatus: stringValue(input.readbackStatus) || undefined,
+    apiKeySource: stringValue(input.apiKeySource) || undefined,
+    importedText,
+    candidates: Array.isArray(input.candidates) ? input.candidates : undefined,
+    contactReviews: objectValue(input.contactReviews || body.contactReviews),
+    capturedBy: stringValue(input.capturedBy || body.capturedBy) || undefined,
+    adminOverrideReason: stringValue(input.adminOverrideReason) || undefined,
+    attachment: {
+      label: stringValue(attachment.label || input.label) || "IDI expanded asset search",
+      sourceUrl: sourceUrl || undefined,
+      fileKind: stringValue(attachment.fileKind || input.fileKind) || (sourceUrl ? "link" : "text"),
+      fileName: stringValue(attachment.fileName || input.fileName) || undefined,
+      capturedAt: stringValue(attachment.capturedAt) || new Date().toISOString(),
+      capturedBy: stringValue(attachment.capturedBy || input.capturedBy || body.capturedBy) || undefined,
+      reviewFlags: Array.isArray(attachment.reviewFlags) ? attachment.reviewFlags : ["IDI_ASSET_SEARCH_REVIEW_REQUIRED"],
+    },
+  };
+}
+
+function idiAssetImportFactsFromBody(runId, seed, body = {}) {
+  const input = idiAssetImportInputFromBody(body);
+  if (!input) return [];
+  const { buildIdiAssetSearchFacts } = require("../../../worker/dist/enrichment/idi-asset-search");
+  return buildIdiAssetSearchFacts(runId, seed, input);
 }
 
 function factValuePresent(value) {
@@ -311,10 +358,13 @@ function sourceStatusEvidence(source, code, facts = []) {
 function satisfiedEvidenceForCheck(source, check, sourceFacts = []) {
   const codes = detailEvidenceFactTypes[check.code] || [];
   const facts = sourceFacts.filter((fact) => fact.source === source);
+  const checkCode = String(check.code || "");
   const byFactType = facts.filter((fact) =>
     codes.includes(fact.factType)
       && factValuePresent(fact.value)
       && !sourceFactHasBlockingFlag(fact)
+      && (checkCode !== "idi_contact_review" || ["accepted", "promoted"].includes(String(fact.value?.reviewStatus || "")))
+      && (checkCode !== "idi_paid_run_approval" || Boolean(fact.value?.paidRunApproved || fact.value?.approvalRecord || fact.value?.paidRun === true))
   );
   const statusFacts = sourceStatusEvidence(source, check.code, facts);
   return [...byFactType, ...statusFacts].map((fact) => ({
@@ -410,6 +460,7 @@ async function localWorkerRun(body) {
   const sourceFacts = [
     ...pipeline.facts,
     ...capturedSourceFacts,
+    ...idiAssetImportFactsFromBody(pipeline.runId, seed, body),
   ].filter((fact) => discoverySourceLabels.some((item) => item.source === fact.source));
   const sourceSummaries = summarizeFacts(sourceFacts);
   const sourceRunProof = sourceRunProofLedger(sourceSummaries, sourceFacts);

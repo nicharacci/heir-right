@@ -44,7 +44,7 @@ delete process.env.WORKER_API_URL;
 delete process.env.WORKER_BASE_URL;
 
 try {
-  const result = await callHandler(externalSourceRun, {
+  const baseSourceRunPayload = {
     assetKey: "source-run-contract-proof",
     estateName: "Estate of Contract Proof",
     ownerName: "Estate of Contract Proof",
@@ -109,7 +109,39 @@ try {
         deathCertificateStatus: "Requested",
       },
     },
-  });
+    idiAssetImport: {
+      provider: "idi",
+      importedText: [
+        "Spouse: Marie Contract Proof",
+        "Phone: 305-555-0199",
+        "Address: 20611 NW 33rd Pl, Miami Gardens, FL 33056",
+      ].join("\n"),
+      attachment: {
+        label: "IDI expanded asset search",
+        sourceUrl: "idi-report://contract-proof.pdf",
+        fileKind: "pdf",
+        capturedAt: "2026-07-03T12:00:00.000Z",
+        capturedBy: "contract-test",
+        reviewFlags: ["IDI_ASSET_SEARCH_REVIEW_REQUIRED"],
+      },
+      candidates: [{
+        id: "idi-candidate-1",
+        name: "Marie Contract Proof",
+        relationship: "spouse",
+        group: "primary",
+        phones: ["305-555-0199"],
+        emails: [],
+        currentAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+        addressHistory: ["20611 NW 33rd Pl, Miami Gardens, FL 33056"],
+        ownerLastNameMatch: true,
+        confidence: 0.86,
+        reviewStatus: "imported",
+      }],
+      contactReviews: {},
+    },
+  };
+
+  const result = await callHandler(externalSourceRun, baseSourceRunPayload);
 
   assert.equal(result.statusCode, 200);
   assert.equal(result.json.mode, "external_source_run");
@@ -187,7 +219,7 @@ try {
     /MIAMI_DADE_CLERK_AUTH_KEY/,
     "Official Records proof must expose the credential gate for audit metadata"
   );
-  assert.equal(proofBySource.get("idi").proofState, "evidence_required");
+  assert.equal(proofBySource.get("idi").proofState, "facts_returned_review_required");
   const idiDetails = proofBySource.get("idi").detailChecks || [];
   const idiCodes = new Set(idiDetails.map((check) => check.code));
   for (const code of [
@@ -202,6 +234,30 @@ try {
   assert.ok(
     idiDetails.every((check) => check.legalTemplateAutofillAllowed === false && check.automationAllowed === false),
     "IDI source detail checks must stay approval-gated and never allow legal autofill"
+  );
+  assert.ok(
+    idiDetails.some((check) =>
+      check.code === "idi_report_import"
+        && check.status === "evidence_returned_review_required"
+        && check.satisfiedFactTypes.includes("idi_asset_search_status")
+    ),
+    "IDI report import checklist step must resolve from approved imported report evidence"
+  );
+  assert.ok(
+    idiDetails.some((check) =>
+      check.code === "idi_paid_run_approval"
+        && check.status === "approval_required"
+        && !check.resolved
+    ),
+    "Imported IDI report evidence must not pretend that paid-run approval was separately proven"
+  );
+  assert.ok(
+    idiDetails.some((check) =>
+      check.code === "idi_contact_review"
+        && check.status === "manual_review_required"
+        && !check.resolved
+    ),
+    "Imported IDI contact candidates must not clear the contact-review gate until accepted or promoted"
   );
   const skipTraceDetails = proofBySource.get("skip_trace").detailChecks || [];
   const skipTraceCodes = new Set(skipTraceDetails.map((check) => check.code));
@@ -249,6 +305,37 @@ try {
   assert.ok(
     sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "unpaid_tax_years" && fact.value?.includes?.(2024) && fact.value?.includes?.(2025)),
     "source facts must parse unpaid Tax Collector years from listing/receipt page text"
+  );
+  assert.ok(
+    sourceFacts.some((fact) => fact.source === "idi" && fact.factType === "idi_asset_report_attachment"),
+    "source facts must include the approved IDI report attachment when imported into source-run"
+  );
+  assert.ok(
+    sourceFacts.some((fact) => fact.source === "idi" && fact.factType === "primary_contact_profile" && fact.value?.reviewStatus === "imported"),
+    "source facts must include imported IDI contact candidates without pretending they are accepted"
+  );
+
+  const acceptedIdiResult = await callHandler(externalSourceRun, {
+    ...baseSourceRunPayload,
+    idiAssetImport: {
+      ...baseSourceRunPayload.idiAssetImport,
+      contactReviews: {
+        "idi-candidate-1": { status: "accepted" },
+      },
+    },
+  });
+  const acceptedIdiProof = new Map(acceptedIdiResult.json.sourceRunProof.sources.map((item) => [item.source, item])).get("idi");
+  assert.ok(
+    acceptedIdiProof.detailChecks.some((check) =>
+      check.code === "idi_contact_review"
+        && check.status === "evidence_returned_review_required"
+        && check.satisfiedFactTypes.includes("primary_contact_profile")
+    ),
+    "Accepted IDI contacts must resolve the contact-review detail check without legal-template autofill"
+  );
+  assert.ok(
+    acceptedIdiResult.json.sourceFacts.some((fact) => fact.source === "idi" && fact.factType === "primary_contact_profile" && fact.value?.reviewStatus === "accepted"),
+    "Accepted contact-review state must be preserved in source-run facts"
   );
   const artifactReceipt = discoverTaxCollectorReceipt({
     listingUrl: "https://miamidade.county-taxes.test/listing/3411330360010",
@@ -344,6 +431,7 @@ try {
       "source_proof_detail_checks",
       "blocking_detail_checks_gate_readiness",
       "idi_core_guardrail_detail_checks",
+      "idi_import_and_contact_review_split",
       "governed_manual_and_paid_sources_visible",
       "operator_visible_source_proof_copy",
       "preview_fit_css",

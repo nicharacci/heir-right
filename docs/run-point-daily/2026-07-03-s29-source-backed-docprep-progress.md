@@ -752,6 +752,30 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
     - `legalTemplateAutofillAllowed: false`.
   - Chrome DevTools proof filled only Tax Collector listing URL plus listing HTML, clicked `Run Source Search`, and confirmed the visible fields populated with receipt link, paid by, paid date, amount due, unpaid years, and reassessment. The proof rendered 40 detail rows, showed `Evidence found`, kept the no-fake-API claim clean, and had no console or network failures.
 
+## Thirty-Third Repair Pass: IDI Import Evidence In Source Run
+
+- Wired approved IDI report import evidence into `/api/discovery/external-source-run` across:
+  - artifact serverless route;
+  - local artifact server;
+  - Cloudflare worker route;
+  - Doc Prep `Run Source Search` payload.
+- Preserved `seed.confirmedSourceFacts` instead of dropping confirmed source facts at the source-run boundary.
+- Extended IDI import fact building so supplied IDI candidates and contact-review state can be carried through the source-run proof.
+- Corrected the IDI detail resolver:
+  - imported report evidence resolves `idi_report_import`;
+  - imported contacts do **not** resolve `idi_contact_review` until accepted or promoted;
+  - imported reports do **not** resolve `idi_paid_run_approval` unless a live approved run or approval record is present;
+  - legal-template autofill remains false in every IDI state.
+- Removed the legacy proof seed's pre-accepted IDI contact. Any seeded IDI contact now starts as imported/review-gated.
+- Proof:
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed and reported `idi_import_and_contact_review_split`.
+  - Route proof on `http://localhost:4192/api/discovery/external-source-run` returned:
+    - imported-only: `idi_report_import = evidence_returned_review_required`, `idi_contact_review = manual_review_required`, `idi_paid_run_approval = approval_required`, `legalTemplateAutofillAllowed = false`;
+    - accepted-contact: `idi_contact_review = evidence_returned_review_required` while `idi_paid_run_approval` stayed `approval_required`;
+    - live-approved payload: `idi_paid_run_approval = evidence_returned_review_required`.
+  - Clean Chrome DevTools proof on `localhost:4192` imported an IDI report, clicked `Run Source Search`, saw contact review stay `Manual`, then accepted the contact and saw only contact review change to `Evidence found`. Paid-run approval stayed `Approval`, no fake API claim appeared, no raw env names were visible, and console/network failures were empty.
+  - Screenshot evidence: `docs/run-point-daily/2026-07-03-s29-idi-source-run-browser-proof.png`.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.
