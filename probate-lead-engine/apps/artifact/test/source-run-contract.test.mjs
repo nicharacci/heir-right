@@ -55,10 +55,20 @@ try {
       taxReceipt: {
         listingUrl: "https://miamidade.county-taxes.test/listing/3411330360010",
         receiptLink: "https://miamidade.county-taxes.test/receipt/2025-paid.pdf",
-        paidBy: "Estate representative",
-        paidDate: "2025-03-14",
-        amountDue: "$0.00",
-        unpaidYears: "None shown",
+        listingHtml: `
+          <main>
+            <dl>
+              <dt>Paid By</dt><dd>Estate representative</dd>
+              <dt>Paid Date</dt><dd>03/14/2025</dd>
+              <dt>Amount Due</dt><dd>$1,234.56</dd>
+              <dt>Unpaid Years</dt><dd>2024, 2025</dd>
+              <dt>Reassessment</dt><dd>No reassessment change shown</dd>
+            </dl>
+            <aside style="float:right">
+              <a class="receipt-link" href="/receipt/2025-paid.pdf">Print receipt</a>
+            </aside>
+          </main>
+        `,
       },
       propertyAppraiser: {
         sourceUrl: "https://www.miamidade.gov/Apps/PA/property/3411330360010",
@@ -224,9 +234,31 @@ try {
     sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "tax_receipt_link"),
     "source facts must include the Tax Collector receipt link"
   );
+  assert.ok(
+    sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "tax_last_paid_by" && fact.value === "Estate representative"),
+    "source facts must parse the Tax Collector paid-by party from listing/receipt page text"
+  );
+  assert.ok(
+    sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "tax_paid_date" && fact.value === "03/14/2025"),
+    "source facts must parse the Tax Collector paid date from listing/receipt page text"
+  );
+  assert.ok(
+    sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "tax_amount_due" && fact.value?.amount === 1234.56 && fact.value?.currency === "USD"),
+    "source facts must parse the Tax Collector amount due from listing/receipt page text"
+  );
+  assert.ok(
+    sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "unpaid_tax_years" && fact.value?.includes?.(2024) && fact.value?.includes?.(2025)),
+    "source facts must parse unpaid Tax Collector years from listing/receipt page text"
+  );
   const artifactReceipt = discoverTaxCollectorReceipt({
     listingUrl: "https://miamidade.county-taxes.test/listing/3411330360010",
     listingHtml: `
+      <dl>
+        <dt>Paid By</dt><dd>Estate representative</dd>
+        <dt>Paid Date</dt><dd>03/14/2025</dd>
+        <dt>Amount Due</dt><dd>$1,234.56</dd>
+        <dt>Unpaid Years</dt><dd>2024, 2025</dd>
+      </dl>
       <main>
         <a href="/payments/history">Payment history</a>
         <aside style="float:right">
@@ -242,6 +274,10 @@ try {
     "https://miamidade.county-taxes.test/receipts/2025-artifact.pdf",
     "artifact source-capture helper must prefer the listing-card receipt over footer payment links"
   );
+  assert.equal(artifactReceipt?.details?.paidBy, "Estate representative");
+  assert.equal(artifactReceipt?.details?.paidDate, "03/14/2025");
+  assert.equal(artifactReceipt?.details?.amountDue?.amount, 1234.56);
+  assert.deepEqual(artifactReceipt?.details?.unpaidYears, [2024, 2025]);
 
   const bundle = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
   assert.ok(bundle.includes("What this run proved"));
@@ -303,6 +339,7 @@ try {
       "no_discovery_completion_without_blockers_cleared",
       "no_legal_template_autofill",
       "tax_receipt_link_preserved",
+      "tax_collector_listing_detail_parser",
       "captured_source_facts_reduce_detail_blockers",
       "source_proof_detail_checks",
       "blocking_detail_checks_gate_readiness",

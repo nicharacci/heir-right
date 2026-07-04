@@ -721,6 +721,37 @@ IDI Core shared-default proof is blocked by missing deployment/runtime config:
   - Browser proof found no console errors and no failed network requests.
   - Screenshot evidence: `docs/run-point-daily/2026-07-03-s29-source-detail-browser-proof.png`.
 
+## Thirty-Second Repair Pass: Tax Collector Listing Detail Parser
+
+- Added deterministic Tax Collector page-detail extraction for listing/receipt HTML or text.
+- The parser now extracts:
+  - bottom-right receipt link;
+  - paid-by party;
+  - paid date;
+  - amount due as a USD amount object;
+  - unpaid tax years;
+  - reassessment/status note.
+- Wired the parser through:
+  - artifact serverless source-capture;
+  - local artifact server source-capture;
+  - Cloudflare worker source-capture;
+  - worker Tax Collector acquisition facts from direct listing / Browserbase returns.
+- Added the missing visible `Reassessment` field in Doc Prep public-record capture.
+- Fixed the client fact picker so the UI prefers non-empty parsed facts over earlier placeholder/null facts from the dry pipeline.
+- Proof:
+  - `pnpm --dir probate-lead-engine --filter @ple/artifact test`: passed and reported `tax_collector_listing_detail_parser`.
+  - `pnpm --dir probate-lead-engine test`: passed.
+  - Local route proof on `http://localhost:4191/api/discovery/external-source-run` using only Tax Collector listing HTML returned:
+    - receipt link `https://miamidade.county-taxes.test/receipt/2025-paid.pdf`;
+    - paid by `Estate representative`;
+    - paid date `03/14/2025`;
+    - amount due `{ amount: 1234.56, currency: "USD", years: [2024, 2025] }`;
+    - unpaid years `[2024, 2025]`;
+    - reassessment `No reassessment change shown`;
+    - `payer_review` and `bottom_right_receipt` as `evidence_returned_review_required`;
+    - `legalTemplateAutofillAllowed: false`.
+  - Chrome DevTools proof filled only Tax Collector listing URL plus listing HTML, clicked `Run Source Search`, and confirmed the visible fields populated with receipt link, paid by, paid date, amount due, unpaid years, and reassessment. The proof rendered 40 detail rows, showed `Evidence found`, kept the no-fake-API claim clean, and had no console or network failures.
+
 ## Next Work
 
 - Deploy/configure the real Browserbase Functions for Tax Collector and vital/obituary, then run against the real public sites rather than the mocked Browserbase API.

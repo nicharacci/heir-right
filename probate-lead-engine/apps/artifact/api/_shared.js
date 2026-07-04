@@ -116,6 +116,83 @@ function stripTags(value) {
     .trim();
 }
 
+function sourceText(input = {}) {
+  return [
+    input.listingText,
+    input.receiptText,
+    input.detailsText,
+    input.listingHtml ? stripTags(input.listingHtml) : "",
+    input.receiptHtml ? stripTags(input.receiptHtml) : "",
+  ].map((item) => String(item || "").trim()).filter(Boolean).join(" ");
+}
+
+function compactWhitespace(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function labeledValue(text, labels, stopPattern = /(?:paid\s+by|payor|payer|paid\s+date|payment\s+date|date\s+paid|amount\s+due|total\s+due|balance\s+due|unpaid\s+years?|delinquent\s+years?|tax\s+year|status|print|receipt|folio|parcel)\b/i) {
+  for (const label of labels) {
+    const pattern = new RegExp(`${label}\\s*[:#-]?\\s*([^|\\n\\r]+?)(?=\\s{2,}|\\s+${stopPattern.source}|$)`, "i");
+    const match = text.match(pattern);
+    if (match?.[1]) return compactWhitespace(match[1]);
+  }
+  return "";
+}
+
+function parseMoney(value) {
+  const match = String(value || "").match(/\$?\s*([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)(?:\.[0-9]{2})?/);
+  if (!match) return null;
+  const amount = Number(match[0].replace(/[^0-9.]/g, ""));
+  return Number.isFinite(amount) ? amount : null;
+}
+
+function parseYears(value) {
+  if (Array.isArray(value)) {
+    return Array.from(new Set(value.map((item) => Number(String(item).replace(/\D/g, ""))).filter((year) => year >= 1900 && year <= 2200)));
+  }
+  return Array.from(new Set((String(value || "").match(/\b(?:19|20)\d{2}\b/g) || []).map(Number)));
+}
+
+function normalizeTaxAmountDue(value, years = []) {
+  if (value && typeof value === "object" && !Array.isArray(value) && typeof value.amount === "number") return value;
+  const amount = parseMoney(value);
+  if (amount === null) return undefined;
+  return {
+    amount,
+    currency: "USD",
+    years: Array.isArray(years) ? years : [],
+  };
+}
+
+function extractTaxCollectorDetails(input = {}) {
+  const text = sourceText(input);
+  const paidBy = compactWhitespace(input.paidBy || input.payerIdentity)
+    || labeledValue(text, ["paid\\s+by", "payor", "payer"]);
+  const paidDate = compactWhitespace(input.paidDate)
+    || labeledValue(text, ["paid\\s+date", "payment\\s+date", "date\\s+paid"])
+    || (text.match(/\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12]\d|3[01])[/-](?:19|20)\d{2}\b/) || [])[0]
+    || "";
+  const unpaidYearText = compactWhitespace(input.unpaidYears)
+    || labeledValue(text, ["unpaid\\s+years?", "delinquent\\s+years?", "unpaid\\s+tax\\s+years?"]);
+  const unpaidYears = parseYears(unpaidYearText);
+  const amountLabel = compactWhitespace(input.amountDue)
+    || labeledValue(text, ["amount\\s+due", "total\\s+due", "balance\\s+due", "amount\\s+paid"]);
+  const amountDue = normalizeTaxAmountDue(amountLabel, unpaidYears);
+  const reassessment = compactWhitespace(input.reassessment)
+    || labeledValue(text, ["reassessment", "assessed\\s+value\\s+change"]);
+  const receiptStatus = compactWhitespace(input.status)
+    || labeledValue(text, ["receipt\\s+status", "payment\\s+status", "status"]);
+  return {
+    paidBy: paidBy || undefined,
+    payerIdentity: paidBy || undefined,
+    paidDate: paidDate || undefined,
+    unpaidYears: unpaidYears.length ? unpaidYears : undefined,
+    amountDue,
+    reassessment: reassessment || undefined,
+    receiptStatus: receiptStatus || undefined,
+  };
+}
+
 function resolveUrl(href, baseUrl) {
   try {
     return new URL(href, baseUrl || "https://miamidade.county-taxes.com/").toString();
@@ -127,12 +204,14 @@ function resolveUrl(href, baseUrl) {
 function discoverTaxCollectorReceipt(input = {}) {
   const explicitUrl = String(input.receiptUrl || input.receiptLink || "").trim();
   const listingUrl = String(input.listingUrl || input.sourceUrl || "").trim();
+  const details = extractTaxCollectorDetails(input);
   if (explicitUrl) {
     const url = resolveUrl(explicitUrl, listingUrl);
     return {
       listingUrl,
       receiptUrl: url,
       mode: "explicit",
+      details,
       candidates: [{ href: explicitUrl, url, text: "Operator supplied receipt link", index: 0 }],
       reviewFlags: ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"],
     };
@@ -158,6 +237,7 @@ function discoverTaxCollectorReceipt(input = {}) {
     listingUrl,
     receiptUrl: receipt.url,
     mode: "listing_page_bottom_right",
+    details,
     candidates,
     reviewFlags: ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"],
   };
@@ -179,6 +259,7 @@ function taxReceiptCandidateScore(candidate = {}) {
 
 module.exports = {
   discoverTaxCollectorReceipt,
+  extractTaxCollectorDetails,
   idiLockKey,
   methodGuard,
   proxyWorkerJson,

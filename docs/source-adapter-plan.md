@@ -145,6 +145,7 @@ Stop and report a blocker instead of forcing source extraction when:
 - One blocked source must not fail the whole run.
 - Missing facts create visible `reviewFlags`.
 - Source-capture facts must be folded back into the external-source run proof. A captured source fact may resolve only its matching source checklist row to `Evidence found`; it must not mark Discovery complete, suppress unrelated blockers, or enable legal-template autofill.
+- Tax Collector listing/receipt HTML or text must be parsed for receipt link, paid-by party, paid date, amount due, unpaid years, and reassessment/status before leaving those fields blank.
 - Friday mode must not synthesize tax, probate, death, lien, or heirship facts.
 - Friday mode must not use enrichment or skip trace.
 - Friday mode can produce source-health facts while marking unverified property/title claims for review.
@@ -161,7 +162,7 @@ Stop and report a blocker instead of forcing source extraction when:
 6. Internal summary document packet.
 7. Dashboard/intake and Friday handoff.
 8. Workflow rule engine for disqualifications and review-required states.
-9. Tax Collector search/listing client that lands on the listing page and extracts the bottom-right receipt link; direct listing/template path and saved browser-workflow blockers are implemented, Browserbase/Chrome capture remains for GovHub/Cloudflare.
+9. Tax Collector search/listing client that lands on the listing page and extracts the bottom-right receipt link plus payer/date/amount/unpaid-year/reassessment detail fields; direct listing/template path and saved browser-workflow blockers are implemented, Browserbase/Chrome capture remains for GovHub/Cloudflare.
 10. Tax Collector browser-workflow API hook and direct Browserbase Function invocation via `TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID`; deployable function source exists and the hook is route-proven with a mocked Browserbase API, real GovHub proof remains.
 11. Miami-Dade Clerk Commercial Data Services clients for Official Records by folio and Civil/Family/Probate by case number; AuthKey-gated client implemented, credentialed proof remains.
 12. Vital/obituary/marriage/death workflow API hook and direct Browserbase Function invocation via `OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID`; deployable function source exists and the hook is route-proven with a mocked Browserbase API, real controlled-browser/API source proof remains.

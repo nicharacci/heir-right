@@ -16401,6 +16401,7 @@ function assetCaptureFormHtml(row = selectedRow()) {
         <div class="field"><label>Paid date</label><input data-source-capture-field="taxReceipt.paidDate" value="${escapeHtml(capture.taxReceipt?.paidDate ?? "")}" placeholder="Date shown on receipt"></div>
         <div class="field"><label>Amount due</label><input data-source-capture-field="taxReceipt.amountDue" value="${escapeHtml(capture.taxReceipt?.amountDue ?? "")}" placeholder="$0.00 or amount from record"></div>
         <div class="field"><label>Unpaid years</label><input data-source-capture-field="taxReceipt.unpaidYears" value="${escapeHtml(capture.taxReceipt?.unpaidYears ?? "")}" placeholder="Example: 2024, 2025"></div>
+        <div class="field"><label>Reassessment</label><input data-source-capture-field="taxReceipt.reassessment" value="${escapeHtml(capture.taxReceipt?.reassessment ?? "")}" placeholder="Reassessment note from tax record"></div>
         <div class="field"><label>Receipt status</label><select data-source-capture-field="taxReceipt.status"><option value="">Needs review</option><option value="receipt_link_captured" ${capture.taxReceipt?.status === "receipt_link_captured" ? "selected" : ""}>Receipt link captured</option><option value="paid_receipt_reviewed" ${capture.taxReceipt?.status === "paid_receipt_reviewed" ? "selected" : ""}>Paid receipt reviewed</option><option value="browser_workflow_required" ${capture.taxReceipt?.status === "browser_workflow_required" ? "selected" : ""}>Browser workflow blocked</option><option value="unavailable_after_listing_check" ${capture.taxReceipt?.status === "unavailable_after_listing_check" ? "selected" : ""}>Unavailable after listing check</option></select></div>
         <div class="field full"><label>Official Records search page</label><input data-source-capture-field="deed.sourceUrl" value="${escapeHtml(capture.deed?.sourceUrl ?? "")}" placeholder="Official Records search/result URL"></div>
         <div class="field"><label>Deed OR / instrument</label><input data-source-capture-field="deed.instrument" value="${escapeHtml(capture.deed?.instrument ?? capture.deed?.instrumentNumber ?? "")}" placeholder="OR book/page or instrument"></div>
@@ -16581,11 +16582,28 @@ function externalSourceRunPayload(row, capture, key) {
 
 function sourceFactByType(facts = [], source, factTypes = []) {
   const types = new Set(factTypes);
-  return facts.find((fact) => fact?.source === source && types.has(fact.factType));
+  const matches = facts.filter((fact) => fact?.source === source && types.has(fact.factType));
+  return matches.find((fact) => {
+    if (fact.value === undefined || fact.value === null || fact.value === "") return false;
+    if (Array.isArray(fact.value)) return fact.value.length > 0;
+    if (typeof fact.value === "object") return Object.keys(fact.value).length > 0;
+    return true;
+  }) || matches[0];
 }
 
 function sourceFactHasFlag(fact, flag) {
   return Array.isArray(fact?.reviewFlags) && fact.reviewFlags.includes(flag);
+}
+
+function taxCaptureDisplayValue(value) {
+  if (Array.isArray(value)) return value.join(", ");
+  if (value && typeof value === "object" && "amount" in value) {
+    const amount = Number(value.amount);
+    const amountText = Number.isFinite(amount) ? `$${amount.toFixed(2)}` : cleanDisplayValue(value.amount);
+    const years = Array.isArray(value.years) && value.years.length ? ` (${value.years.join(", ")})` : "";
+    return `${amountText}${years}`;
+  }
+  return cleanDisplayValue(value);
 }
 
 function applyExternalSourceRunResult(row, capture, result) {
@@ -16623,6 +16641,18 @@ function applyExternalSourceRunResult(row, capture, result) {
     setNestedValue(stored, "taxReceipt.receiptLink", receiptLinkFact.value);
     setNestedValue(stored, "taxReceipt.status", "receipt_link_captured");
   }
+  const taxFactMappings = [
+    ["tax_last_paid_by", "taxReceipt.paidBy"],
+    ["tax_payer_identity", "taxReceipt.payerIdentity"],
+    ["tax_paid_date", "taxReceipt.paidDate"],
+    ["tax_amount_due", "taxReceipt.amountDue"],
+    ["unpaid_tax_years", "taxReceipt.unpaidYears"],
+    ["tax_reassessment_signal", "taxReceipt.reassessment"],
+  ];
+  taxFactMappings.forEach(([factType, targetPath]) => {
+    const fact = sourceFactByType(sourceFacts, "tax_collector", [factType]);
+    if (fact?.value) setNestedValue(stored, targetPath, taxCaptureDisplayValue(fact.value));
+  });
   const propertySourceFact = sourceFactByType(sourceFacts, "property_appraiser", ["source_search_url"]);
   if (propertySourceFact?.value && !stored.propertyAppraiser?.sourceUrl) setNestedValue(stored, "propertyAppraiser.sourceUrl", propertySourceFact.value);
   const mailingFact = sourceFactByType(sourceFacts, "property_appraiser", ["mailing_address", "mailing_address_signal"]);

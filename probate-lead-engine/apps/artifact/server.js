@@ -8,7 +8,7 @@ const activepiecesHandler = require("./api/outreach/activepieces.js");
 const supportLinearHandler = require("./api/support/linear.js");
 const adminAccessHandler = require("./api/admin/access.js");
 const { buildConnectionStatuses, buildIdiCoreStatus } = require("./api/connections/status.js");
-const { discoverTaxCollectorReceipt } = require("./api/_shared.js");
+const { discoverTaxCollectorReceipt, extractTaxCollectorDetails } = require("./api/_shared.js");
 
 function loadLocalEnvFile(filePath) {
   if (!existsSync(filePath)) return;
@@ -504,6 +504,10 @@ function localSourceFactsFromCapture(body = {}) {
     };
   };
   const receiptDiscovery = discoverTaxCollectorReceipt(taxReceipt);
+  const taxDetails = {
+    ...extractTaxCollectorDetails(taxReceipt),
+    ...(receiptDiscovery?.details || {}),
+  };
   const receiptUrl = receiptDiscovery?.receiptUrl || stringValue(taxReceipt.receiptUrl) || stringValue(taxReceipt.receiptLink);
   const listingUrl = receiptDiscovery?.listingUrl || stringValue(taxReceipt.listingUrl) || stringValue(taxReceipt.sourceUrl);
   const taxReceiptStatus = stringValue(taxReceipt.status);
@@ -542,15 +546,15 @@ function localSourceFactsFromCapture(body = {}) {
     reviewFlags: receiptDiscovery?.reviewFlags || ["TAX_RECEIPT_LINK_CAPTURED", "HUMAN_REVIEW_REQUIRED"],
   } : undefined;
   addFact("tax_collector", "source_status", taxSourceStatus, listingUrl || receiptUrl, undefined, taxSourceStatusFlags);
-  addFact("tax_collector", "tax_last_paid_by", taxReceipt.paidBy, listingUrl || receiptUrl);
-  addFact("tax_collector", "tax_payer_identity", taxReceipt.paidBy || taxReceipt.payerIdentity, listingUrl || receiptUrl);
-  addFact("tax_collector", "tax_paid_date", taxReceipt.paidDate, listingUrl || receiptUrl);
-  addFact("tax_collector", "tax_receipt_status", taxReceipt.status || (receiptUrl ? "receipt_link_captured" : undefined), listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_last_paid_by", taxReceipt.paidBy || taxDetails.paidBy, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_payer_identity", taxReceipt.paidBy || taxReceipt.payerIdentity || taxDetails.payerIdentity, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_paid_date", taxReceipt.paidDate || taxDetails.paidDate, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_receipt_status", taxReceipt.status || taxDetails.receiptStatus || (receiptUrl ? "receipt_link_captured" : undefined), listingUrl || receiptUrl);
   addFact("tax_collector", "tax_receipt_link", receiptUrl, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
   addFact("tax_collector", "tax_receipt_attachment", receiptAttachment, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
-  addFact("tax_collector", "tax_amount_due", taxReceipt.amountDue, listingUrl || receiptUrl);
-  addFact("tax_collector", "unpaid_tax_years", taxReceipt.unpaidYears, listingUrl || receiptUrl);
-  addFact("tax_collector", "tax_reassessment_signal", taxReceipt.reassessment, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_amount_due", taxDetails.amountDue || taxReceipt.amountDue, listingUrl || receiptUrl);
+  addFact("tax_collector", "unpaid_tax_years", taxDetails.unpaidYears || taxReceipt.unpaidYears, listingUrl || receiptUrl);
+  addFact("tax_collector", "tax_reassessment_signal", taxReceipt.reassessment || taxDetails.reassessment, listingUrl || receiptUrl);
   const deedSourceUrl = deed.documentUrl || deed.sourceUrl || deed.fileName;
   const orBookPage = compactObject({
     book: deed.book,
