@@ -222,7 +222,190 @@ function setupContactForm(): void {
   });
 }
 
+function setupArchiveGallery(): void {
+  const gallery = document.querySelector<HTMLElement>("[data-archive-gallery]");
+  const feature = gallery?.querySelector<HTMLElement>(".archive-feature");
+  const featureImage = gallery?.querySelector<HTMLImageElement>("[data-archive-feature]");
+  const tiles = Array.from(gallery?.querySelectorAll<HTMLButtonElement>("[data-gallery-src]") ?? []);
+  const supportsHover = window.matchMedia("(hover: hover)").matches;
+  let swapTimer: number | undefined;
+
+  if (!gallery || !feature || !featureImage || !tiles.length) return;
+
+  const setActive = (tile: HTMLButtonElement) => {
+    const src = tile.dataset.gallerySrc;
+    const alt = tile.dataset.galleryAlt;
+
+    if (!src || !alt) return;
+
+    tiles.forEach((entry) => {
+      const isActive = entry === tile;
+      entry.classList.toggle("is-active", isActive);
+      if (isActive) {
+        entry.setAttribute("aria-current", "true");
+      } else {
+        entry.removeAttribute("aria-current");
+      }
+    });
+
+    if (featureImage.getAttribute("src") === src) return;
+
+    window.clearTimeout(swapTimer);
+    feature.classList.add("is-swapping");
+    featureImage.src = src;
+    featureImage.alt = alt;
+    swapTimer = window.setTimeout(() => feature.classList.remove("is-swapping"), 220);
+  };
+
+  tiles.forEach((tile) => {
+    tile.addEventListener("click", () => setActive(tile));
+    tile.addEventListener("focus", () => setActive(tile));
+
+    if (supportsHover) {
+      tile.addEventListener("pointerenter", () => setActive(tile));
+    }
+  });
+}
+
+function setupTestimonialPlayer(): void {
+  const player = document.querySelector<HTMLElement>("[data-testimonial-player]");
+  const video = player?.querySelector<HTMLVideoElement>("[data-testimonial-video]");
+  const source = player?.querySelector<HTMLSourceElement>("[data-testimonial-source]");
+  const dock = player?.querySelector<HTMLElement>("[data-testimonial-dock]");
+  const thumbs = Array.from(player?.querySelectorAll<HTMLButtonElement>("[data-video-src]") ?? []);
+
+  if (!player || !video || !source || !dock || !thumbs.length) return;
+
+  let activeIndex = Math.max(
+    thumbs.findIndex((thumb) => thumb.classList.contains("is-active")),
+    0
+  );
+  let cycleTimer: number | undefined;
+  let userPausedCycle = false;
+
+  const clearNeighborLift = () => {
+    thumbs.forEach((thumb) => thumb.classList.remove("is-near"));
+  };
+
+  const syncNeighborLift = (index: number) => {
+    thumbs.forEach((thumb, thumbIndex) => {
+      thumb.classList.toggle("is-near", Math.abs(thumbIndex - index) === 1);
+    });
+  };
+
+  const setActive = (index: number, playAfterSwap = false) => {
+    const nextThumb = thumbs[index];
+    const src = nextThumb?.dataset.videoSrc;
+    const poster = nextThumb?.dataset.videoPoster;
+
+    if (!nextThumb || !src || !poster) return;
+
+    activeIndex = index;
+    thumbs.forEach((thumb, thumbIndex) => {
+      const isActive = thumbIndex === activeIndex;
+      thumb.classList.toggle("is-active", isActive);
+      if (isActive) {
+        thumb.setAttribute("aria-current", "true");
+      } else {
+        thumb.removeAttribute("aria-current");
+      }
+    });
+
+    const absoluteSrc = new URL(src, window.location.href).href;
+    if (source.src !== absoluteSrc) {
+      video.pause();
+      source.src = src;
+      video.poster = poster;
+      video.load();
+    }
+
+    const playerRect = player.getBoundingClientRect();
+    const playerIsVisible = playerRect.bottom > 0 && playerRect.top < window.innerHeight;
+
+    if (playerIsVisible) {
+      nextThumb.scrollIntoView({
+        block: "nearest",
+        inline: "center",
+        behavior: reducedMotion ? "auto" : "smooth",
+      });
+    }
+
+    if (playAfterSwap) {
+      void video.play().catch(() => undefined);
+    }
+  };
+
+  const stopCycle = () => {
+    window.clearInterval(cycleTimer);
+    cycleTimer = undefined;
+  };
+
+  const advance = () => {
+    setActive((activeIndex + 1) % thumbs.length);
+  };
+
+  const startCycle = () => {
+    if (reducedMotion || userPausedCycle || cycleTimer) return;
+
+    cycleTimer = window.setInterval(() => {
+      if (!document.hidden && video.paused) {
+        advance();
+      }
+    }, 8500);
+  };
+
+  thumbs.forEach((thumb, index) => {
+    thumb.addEventListener("click", () => {
+      userPausedCycle = true;
+      stopCycle();
+      setActive(index);
+    });
+
+    thumb.addEventListener("pointerenter", () => syncNeighborLift(index));
+    thumb.addEventListener("focus", () => {
+      dock.classList.add("is-open");
+      syncNeighborLift(index);
+    });
+  });
+
+  dock.addEventListener("pointerleave", clearNeighborLift);
+  dock.addEventListener("focusout", () => {
+    window.setTimeout(() => {
+      if (!dock.contains(document.activeElement)) {
+        dock.classList.remove("is-open");
+        clearNeighborLift();
+      }
+    }, 0);
+  });
+
+  player.addEventListener("mouseenter", stopCycle);
+  player.addEventListener("mouseleave", startCycle);
+  player.addEventListener("focusin", stopCycle);
+
+  video.addEventListener("play", () => {
+    userPausedCycle = true;
+    stopCycle();
+  });
+  video.addEventListener("ended", () => {
+    userPausedCycle = false;
+    advance();
+    startCycle();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopCycle();
+    } else {
+      startCycle();
+    }
+  });
+
+  setActive(activeIndex);
+  startCycle();
+}
+
 setupAmbientCanvas();
 setupAnchorScroll();
 setupActiveNavigation();
 setupContactForm();
+setupArchiveGallery();
+setupTestimonialPlayer();
