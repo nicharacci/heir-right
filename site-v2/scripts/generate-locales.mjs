@@ -112,7 +112,6 @@ const text = new Map([
   ["Guidance", "Orientacion"],
   ["You may be left to coordinate attorneys, advisors, and title questions alone.", "Puede quedar coordinando solo abogados, asesores y preguntas de titulo."],
   ["Professional legal counsel is coordinated when needed, with plain next steps before you decide.", "Se coordina asesoria legal profesional cuando hace falta, con pasos claros antes de decidir."],
-  ["Client stories and Google reviews", "Historias de clientes y resenas de Google"],
   ["Testimonials from real HeirRight clients.", "Testimonios de clientes reales de HeirRight."],
   ["View more", "Ver mas"],
   ["Google Business Profile", "Perfil de Empresa en Google"],
