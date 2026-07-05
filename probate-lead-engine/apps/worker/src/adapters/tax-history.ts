@@ -3,7 +3,7 @@ import { fact, intakeSubject, nowIso, seedIdentity, slug } from "../lib";
 import { acquireTaxCollectorReceipt } from "./tax-collector-receipt";
 
 const TAX_COLLECTOR_REVIEW_URL = "https://www.miamidade.gov/global/service.page?Mduid_service=ser1499797463762502";
-const TAX_COLLECTOR_PUBLIC_SEARCH_URL = "https://miamidade.county-taxes.com/public";
+const TAX_COLLECTOR_PUBLIC_SEARCH_URL = "https://county-taxes.net/fl-miamidade/property-tax";
 const TAX_COLLECTOR_RECEIPT_NOTE = "Open the Tax Collector listing page and capture the receipt link shown in the bottom-right corner.";
 
 type RuntimeEnv = Record<string, string | undefined>;

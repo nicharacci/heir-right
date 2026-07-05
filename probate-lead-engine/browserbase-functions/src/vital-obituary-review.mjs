@@ -28,8 +28,8 @@ async function openBrowserPage(context) {
 async function collectCandidatePages(page, params = {}) {
   const candidates = [];
   for (const url of searchUrls(params)) {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => {});
-    await page.waitForLoadState("networkidle", { timeout: 12000 }).catch(() => {});
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 25000 }).catch(() => {});
+    await page.waitForTimeout(1500);
     const html = await page.content().catch(() => "");
     candidates.push(...anchorCandidates(html, page.url()));
     candidates.push({
@@ -42,7 +42,7 @@ async function collectCandidatePages(page, params = {}) {
   return candidates;
 }
 
-export default defineFn(async (context, params = {}) => {
+defineFn("vital-obituary-review", async (context, params = {}) => {
   const { browser, page } = await openBrowserPage(context);
   try {
     const candidates = await collectCandidatePages(page, params);
@@ -50,8 +50,8 @@ export default defineFn(async (context, params = {}) => {
     let text = "";
     let sourceUrl = best?.url || "";
     if (sourceUrl) {
-      await page.goto(sourceUrl, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => {});
-      await page.waitForLoadState("networkidle", { timeout: 12000 }).catch(() => {});
+      await page.goto(sourceUrl, { waitUntil: "domcontentloaded", timeout: 25000 }).catch(() => {});
+      await page.waitForTimeout(1500);
       sourceUrl = page.url();
       text = normalizeWhitespace(await page.locator("body").innerText({ timeout: 8000 }).catch(() => ""));
     }

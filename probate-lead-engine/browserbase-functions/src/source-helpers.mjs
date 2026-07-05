@@ -50,14 +50,15 @@ export function taxReceiptCandidateScore(candidate = {}) {
   const haystack = `${candidate.href || ""} ${candidate.url || ""} ${candidate.text || ""}`.toLowerCase();
   const anchorHtml = String(candidate.html || "").toLowerCase();
   let score = 0;
-  if (/receipt|receipts/.test(haystack)) score += 12;
+  if (/local\s+business\s+tax|lbt\s+tax\s+receipt|business-tax|business\s+tax\s+receipt/.test(haystack)) score -= 25;
+  if (/receipt|receipts/.test(haystack) && /(print|payment|paid|tax\s*-?\s*bill|taxbill|real\s+estate|property|parcel|folio|ad\s+valorem)/.test(haystack)) score += 12;
   if (/tax\s*-?\s*bill|taxbill/.test(haystack)) score += 8;
   if (/print/.test(haystack) && /(receipt|bill)/.test(haystack)) score += 6;
   if (/payment/.test(haystack) && /(receipt|tax\s*-?\s*bill|taxbill)/.test(haystack)) score += 4;
   if (/class=["'][^"']*(receipt|print|tax|bill|payment)[^"']*["']/.test(anchorHtml)) score += 3;
-  if (/(bottom|right|float\s*:\s*right|text-align\s*:\s*right|pull-right|align-right|justify-content\s*:\s*end|justify-content\s*:\s*flex-end)/.test(anchorHtml)) score += 5;
+  if (score > 0 && /(bottom|right|float\s*:\s*right|text-align\s*:\s*right|pull-right|align-right|justify-content\s*:\s*end|justify-content\s*:\s*flex-end)/.test(anchorHtml)) score += 5;
   if (/history|account|login|search|privacy|terms|contact|help|faq/.test(haystack)) score -= 10;
-  return score + Number(candidate.index || 0) / 1000;
+  return score > 0 ? score + Number(candidate.index || 0) / 1000 : 0;
 }
 
 export function discoverTaxCollectorReceipt(input = {}) {
@@ -94,8 +95,10 @@ export function discoverTaxCollectorReceipt(input = {}) {
 export function obituaryLinkScore(candidate = {}) {
   const haystack = `${candidate.url || ""} ${candidate.text || ""}`.toLowerCase();
   let score = 0;
+  if (/funeral-homes|cemeteries|bill-pay|privacy|terms|careers|contact-us|about-us|do-not-sell|accessibility/.test(haystack)) score -= 6;
   if (/obituar|memorial|death-notice|tribute/.test(haystack)) score += 4;
-  if (/legacy\.com|findagrave\.com|dignitymemorial\.com|everloved\.com/.test(haystack)) score += 3;
+  if (/legacy\.com|findagrave\.com|everloved\.com/.test(haystack)) score += 3;
+  if (/dignitymemorial\.com\/obituaries\//.test(haystack)) score += 3;
   if (/facebook|instagram|linkedin|peoplefinders|whitepages/.test(haystack)) score -= 3;
   if (/miamidadeclerk|marriage|license/.test(haystack)) score += 1;
   return score;
@@ -110,15 +113,21 @@ export function pickBestObituaryLink(candidates = []) {
 
 export function extractDateSignals(text = "") {
   const normalized = normalizeWhitespace(text);
-  const datePattern = "([A-Z][a-z]+\\s+\\d{1,2},\\s+\\d{4}|\\d{1,2}/\\d{1,2}/\\d{2,4}|\\d{4}-\\d{2}-\\d{2})";
+  const months = "January|February|March|April|May|June|July|August|September|October|November|December";
+  const longDatePattern = `((?:${months})\\s+\\d{1,2},\\s+\\d{4})`;
+  const datePattern = `((?:${months})\\s+\\d{1,2},\\s+\\d{4}|\\d{1,2}/\\d{1,2}/\\d{2,4}|\\d{4}-\\d{2}-\\d{2})`;
+  const normalizeDateCase = (value) => value ? value.replace(new RegExp(`\\b(?:${months})\\b`, "gi"), (month) => (
+    month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()
+  )) : null;
   const findAfter = (keywords) => {
     const keyword = keywords.join("|");
     const match = normalized.match(new RegExp(`\\b(?:${keyword})\\b([^.]{0,80})`, "i"));
     if (!match) return null;
-    return match[1]?.match(new RegExp(datePattern))?.[1] || null;
+    return normalizeDateCase(match[1]?.match(new RegExp(datePattern, "i"))?.[1] || "");
   };
+  const headerRange = normalized.match(new RegExp(`${longDatePattern}\\s*[\\u2013\\u2014-]\\s*${longDatePattern}`, "i"));
   return {
-    dateOfBirth: findAfter(["born", "birth", "dob"]),
-    dateOfDeath: findAfter(["died", "death", "dod", "passed away", "deceased"]),
+    dateOfBirth: findAfter(["born", "birth", "dob"]) || normalizeDateCase(headerRange?.[1] || ""),
+    dateOfDeath: findAfter(["died", "death", "dod", "passed away", "deceased"]) || normalizeDateCase(headerRange?.[2] || ""),
   };
 }

@@ -83,7 +83,7 @@ export interface TaxCollectorReceiptAcquisitionOptions {
   fetchImpl?: FetchImpl;
 }
 
-const DEFAULT_TAX_COLLECTOR_SEARCH_URL = "https://miamidade.county-taxes.com/public";
+const DEFAULT_TAX_COLLECTOR_SEARCH_URL = "https://county-taxes.net/fl-miamidade/property-tax";
 const DEFAULT_REVIEW_FLAGS: ReviewFlag[] = [
   "TAX_COLLECTOR_LISTING_PAGE_REQUIRED",
   "TAX_RECEIPT_LINK_REQUIRED",
@@ -259,6 +259,87 @@ function browserbaseApiKey(env: RuntimeEnv): string {
   return stringValue(env.BROWSERBASE_API_KEY);
 }
 
+function truthyEnv(value: unknown): boolean {
+  return ["1", "true", "yes", "on"].includes(stringValue(value).toLowerCase());
+}
+
+function browserbaseSessionCreateParams(env: RuntimeEnv): JsonRecord {
+  const params: JsonRecord = {
+    browserSettings: {
+      viewport: { width: 1365, height: 900 },
+      recordSession: true,
+      logSession: true,
+      solveCaptchas: true,
+      enablePdfViewer: true,
+    },
+    timeout: 900,
+  };
+  if (truthyEnv(env.TAX_COLLECTOR_BROWSERBASE_PROXY_ENABLED) || truthyEnv(env.BROWSERBASE_PROXY_ENABLED)) {
+    params.proxies = [{
+      type: "browserbase",
+      domainPattern: stringValue(env.TAX_COLLECTOR_BROWSERBASE_PROXY_DOMAIN_PATTERN)
+        || stringValue(env.BROWSERBASE_PROXY_DOMAIN_PATTERN)
+        || "county-taxes.net",
+    }];
+  }
+  return params;
+}
+
+function browserbaseInvocationStatus(invocation: JsonRecord): string {
+  return stringValue(invocation.status).toUpperCase();
+}
+
+function isPendingBrowserbaseInvocation(invocation: JsonRecord): boolean {
+  return ["PENDING", "RUNNING"].includes(browserbaseInvocationStatus(invocation));
+}
+
+function browserbaseInvocationSummary(invocation: JsonRecord): string {
+  return JSON.stringify({
+    invocationId: invocation.id,
+    sessionId: invocation.sessionId,
+    status: invocation.status,
+  }).slice(0, 500);
+}
+
+function browserbaseResultMode(result: JsonRecord): TaxCollectorReceiptAcquisitionResult["mode"] {
+  const mode = stringValue(result.mode);
+  if (mode === "listing_page_no_receipt") return "listing_page_no_receipt";
+  if (mode === "browser_navigation_blocked" || mode === "listing_page_blocked") return "listing_page_blocked";
+  return "browser_workflow_required";
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForBrowserbaseInvocation(
+  invocation: JsonRecord,
+  env: RuntimeEnv,
+  apiKey: string,
+  fetchImpl: FetchImpl,
+): Promise<JsonRecord> {
+  const invocationId = stringValue(invocation.id);
+  if (!invocationId || !isPendingBrowserbaseInvocation(invocation)) return invocation;
+
+  const apiBase = browserbaseApiBase(env).replace(/\/$/, "");
+  const deadline = Date.now() + 45_000;
+  let latest = invocation;
+  while (Date.now() < deadline && isPendingBrowserbaseInvocation(latest)) {
+    await sleep(2_000);
+    const statusResponse = await fetchImpl(`${apiBase}/v1/functions/invocations/${encodeURIComponent(invocationId)}`, {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        "x-bb-api-key": apiKey,
+      },
+    });
+    const statusBody = await statusResponse.json().catch(() => ({})) as JsonRecord;
+    latest = Object.keys(statusBody).length ? statusBody : latest;
+    if (!statusResponse.ok) break;
+  }
+  return latest;
+}
+
 function asRecord(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : {};
 }
@@ -287,14 +368,15 @@ function taxReceiptCandidateScore(candidate: TaxCollectorReceiptCandidate): numb
   const haystack = `${candidate.href} ${candidate.url} ${candidate.text}`.toLowerCase();
   const anchorHtml = stringValue((candidate as TaxCollectorReceiptCandidate & { html?: string }).html).toLowerCase();
   let score = 0;
-  if (/receipt|receipts/.test(haystack)) score += 12;
+  if (/local\s+business\s+tax|lbt\s+tax\s+receipt|business-tax|business\s+tax\s+receipt/.test(haystack)) score -= 25;
+  if (/receipt|receipts/.test(haystack) && /(print|payment|paid|tax\s*-?\s*bill|taxbill|real\s+estate|property|parcel|folio|ad\s+valorem)/.test(haystack)) score += 12;
   if (/tax\s*-?\s*bill|taxbill/.test(haystack)) score += 8;
   if (/print/.test(haystack) && /(receipt|bill)/.test(haystack)) score += 6;
   if (/payment/.test(haystack) && /(receipt|tax\s*-?\s*bill|taxbill)/.test(haystack)) score += 4;
   if (/class=["'][^"']*(receipt|print|tax|bill|payment)[^"']*["']/.test(anchorHtml)) score += 3;
-  if (/(bottom|right|float\s*:\s*right|text-align\s*:\s*right|pull-right|align-right|justify-content\s*:\s*end|justify-content\s*:\s*flex-end)/.test(anchorHtml)) score += 5;
+  if (score > 0 && /(bottom|right|float\s*:\s*right|text-align\s*:\s*right|pull-right|align-right|justify-content\s*:\s*end|justify-content\s*:\s*flex-end)/.test(anchorHtml)) score += 5;
   if (/history|account|login|search|privacy|terms|contact|help|faq/.test(haystack)) score -= 10;
-  return score + candidate.index / 1000;
+  return score > 0 ? score + candidate.index / 1000 : 0;
 }
 
 export function discoverTaxCollectorReceipt(input: TaxCollectorReceiptInput): TaxCollectorReceiptDiscovery | null {
@@ -401,7 +483,7 @@ export async function acquireTaxCollectorReceipt(
       }
       return {
         ok: false,
-        mode: "browser_workflow_required",
+        mode: browserbaseResultMode(data),
         listingUrl: workflowListingUrl,
         searchUrl,
         status: response.status,
@@ -443,21 +525,12 @@ export async function acquireTaxCollectorReceipt(
             propertyAddress: stringValue(input.propertyAddress),
             ownerName: stringValue(input.ownerName),
           },
-          sessionCreateParams: {
-            browserSettings: {
-              viewport: { width: 1365, height: 900 },
-              recordSession: true,
-              logSession: true,
-              advancedStealth: true,
-              enablePdfViewer: true,
-              allowedDomains: ["miamidade.county-taxes.com", "county-taxes.com"],
-            },
-            timeout: 900,
-          },
+          sessionCreateParams: browserbaseSessionCreateParams(env),
         }),
       });
       const invocation = await response.json().catch(() => ({})) as JsonRecord;
-      const result = asRecord(invocation.results);
+      const completedInvocation = await waitForBrowserbaseInvocation(invocation, env, apiKey, fetchImpl);
+      const result = asRecord(completedInvocation.results);
       const workflowListingUrl = stringValue(result.listingUrl) || stringValue(result.finalUrl) || searchUrl;
       const workflowDiscovery = discoverTaxCollectorReceipt({
         ...input,
@@ -475,22 +548,27 @@ export async function acquireTaxCollectorReceipt(
           status: response.status,
           finalUrl: workflowListingUrl,
           discovery: workflowDiscovery,
-          bodySnippet: JSON.stringify({ invocationId: invocation.id, sessionId: invocation.sessionId, status: invocation.status }).slice(0, 500),
+          bodySnippet: browserbaseInvocationSummary(completedInvocation),
           reviewFlags: workflowDiscovery.reviewFlags,
         };
       }
       return {
         ok: false,
-        mode: "browser_workflow_required",
+        mode: browserbaseResultMode(result),
         listingUrl: workflowListingUrl,
         searchUrl,
         status: response.status,
         finalUrl: workflowListingUrl,
-        bodySnippet: stringValue(result.message) || stringValue(result.error) || JSON.stringify({ invocationId: invocation.id, sessionId: invocation.sessionId, status: invocation.status }).slice(0, 500),
+        bodySnippet: stringValue(result.bodySnippet)
+          || stringValue(result.message)
+          || stringValue(result.error)
+          || browserbaseInvocationSummary(completedInvocation),
         blocker: stringValue(result.message)
           || stringValue(result.error)
           || (response.ok
-            ? "Browserbase Tax Collector function did not return a bottom-right receipt link yet."
+            ? (isPendingBrowserbaseInvocation(completedInvocation)
+              ? "Browserbase Tax Collector function is still running after the route wait window; retry the run to read the completed invocation."
+              : "Browserbase Tax Collector function did not return a bottom-right receipt link.")
             : `Browserbase Tax Collector function invocation failed with HTTP ${response.status}.`),
         reviewFlags: BROWSER_WORKFLOW_FLAGS,
       };

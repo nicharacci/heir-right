@@ -247,14 +247,15 @@ function taxReceiptCandidateScore(candidate = {}) {
   const haystack = `${candidate.href || ""} ${candidate.url || ""} ${candidate.text || ""}`.toLowerCase();
   const anchorHtml = String(candidate.html || "").toLowerCase();
   let score = 0;
-  if (/receipt|receipts/.test(haystack)) score += 12;
+  if (/local\s+business\s+tax|lbt\s+tax\s+receipt|business-tax|business\s+tax\s+receipt/.test(haystack)) score -= 25;
+  if (/receipt|receipts/.test(haystack) && /(print|payment|paid|tax\s*-?\s*bill|taxbill|real\s+estate|property|parcel|folio|ad\s+valorem)/.test(haystack)) score += 12;
   if (/tax\s*-?\s*bill|taxbill/.test(haystack)) score += 8;
   if (/print/.test(haystack) && /(receipt|bill)/.test(haystack)) score += 6;
   if (/payment/.test(haystack) && /(receipt|tax\s*-?\s*bill|taxbill)/.test(haystack)) score += 4;
   if (/class=["'][^"']*(receipt|print|tax|bill|payment)[^"']*["']/.test(anchorHtml)) score += 3;
-  if (/(bottom|right|float\s*:\s*right|text-align\s*:\s*right|pull-right|align-right|justify-content\s*:\s*end|justify-content\s*:\s*flex-end)/.test(anchorHtml)) score += 5;
+  if (score > 0 && /(bottom|right|float\s*:\s*right|text-align\s*:\s*right|pull-right|align-right|justify-content\s*:\s*end|justify-content\s*:\s*flex-end)/.test(anchorHtml)) score += 5;
   if (/history|account|login|search|privacy|terms|contact|help|faq/.test(haystack)) score -= 10;
-  return score + Number(candidate.index || 0) / 1000;
+  return score > 0 ? score + Number(candidate.index || 0) / 1000 : 0;
 }
 
 module.exports = {

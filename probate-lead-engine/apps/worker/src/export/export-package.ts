@@ -92,7 +92,7 @@ function taxCollectorSourceConnectionStatus(env: RuntimeEnv, checkedAt: string):
       scriptLiveProbeEnabled,
       browserWorkflowConfigured,
       browserbaseFunctionConfigured,
-      publicSearchUrl: env.TAX_COLLECTOR_SEARCH_URL || "https://miamidade.county-taxes.com/public",
+      publicSearchUrl: env.TAX_COLLECTOR_SEARCH_URL || "https://county-taxes.net/fl-miamidade/property-tax",
     },
   };
 }

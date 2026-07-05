@@ -42,6 +42,66 @@ function browserbaseApiKey(env: RuntimeEnv): string {
   return stringValue(env.BROWSERBASE_API_KEY);
 }
 
+function truthyEnv(value: unknown): boolean {
+  return ["1", "true", "yes", "on"].includes(stringValue(value).toLowerCase());
+}
+
+function browserbaseSessionCreateParams(env: RuntimeEnv): JsonRecord {
+  const params: JsonRecord = {
+    browserSettings: {
+      viewport: { width: 1365, height: 900 },
+      recordSession: true,
+      logSession: true,
+      solveCaptchas: true,
+      enablePdfViewer: true,
+    },
+    timeout: 900,
+  };
+  if (truthyEnv(env.OBITUARY_VITAL_BROWSERBASE_PROXY_ENABLED) || truthyEnv(env.BROWSERBASE_PROXY_ENABLED)) {
+    params.proxies = [{
+      type: "browserbase",
+      domainPattern: stringValue(env.OBITUARY_VITAL_BROWSERBASE_PROXY_DOMAIN_PATTERN)
+        || stringValue(env.BROWSERBASE_PROXY_DOMAIN_PATTERN)
+        || "*",
+    }];
+  }
+  return params;
+}
+
+function browserbaseInvocationStatus(invocation: JsonRecord): string {
+  return stringValue(invocation.status).toUpperCase();
+}
+
+function isPendingBrowserbaseInvocation(invocation: JsonRecord): boolean {
+  return ["PENDING", "RUNNING"].includes(browserbaseInvocationStatus(invocation));
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForBrowserbaseInvocation(invocation: JsonRecord, apiBase: string, apiKey: string): Promise<JsonRecord> {
+  const invocationId = stringValue(invocation.id);
+  if (!invocationId || !isPendingBrowserbaseInvocation(invocation)) return invocation;
+
+  const deadline = Date.now() + 45_000;
+  let latest = invocation;
+  while (Date.now() < deadline && isPendingBrowserbaseInvocation(latest)) {
+    await sleep(2_000);
+    const statusResponse = await fetch(`${apiBase}/v1/functions/invocations/${encodeURIComponent(invocationId)}`, {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        "x-bb-api-key": apiKey,
+      },
+    });
+    const statusBody = await statusResponse.json().catch(() => ({})) as JsonRecord;
+    latest = Object.keys(statusBody).length ? statusBody : latest;
+    if (!statusResponse.ok) break;
+  }
+  return latest;
+}
+
 async function fetchVitalWorkflow(seed: IntakeSeed, env: RuntimeEnv): Promise<{ ok: boolean; status: number; url: string; data: JsonRecord; error?: string } | null> {
   const url = workflowUrl(env);
   const params = {
@@ -93,7 +153,8 @@ async function fetchVitalWorkflow(seed: IntakeSeed, env: RuntimeEnv): Promise<{ 
   const apiKey = browserbaseApiKey(env);
   if (!functionId || !apiKey) return null;
 
-  const invokeUrl = `${browserbaseApiBase(env).replace(/\/$/, "")}/v1/functions/${encodeURIComponent(functionId)}/invoke`;
+  const apiBase = browserbaseApiBase(env).replace(/\/$/, "");
+  const invokeUrl = `${apiBase}/v1/functions/${encodeURIComponent(functionId)}/invoke`;
   try {
     const response = await fetch(invokeUrl, {
       method: "POST",
@@ -104,43 +165,29 @@ async function fetchVitalWorkflow(seed: IntakeSeed, env: RuntimeEnv): Promise<{ 
       },
       body: JSON.stringify({
         params,
-        sessionCreateParams: {
-          browserSettings: {
-            viewport: { width: 1365, height: 900 },
-            recordSession: true,
-            logSession: true,
-            advancedStealth: true,
-            enablePdfViewer: true,
-            allowedDomains: [
-              "www2.miamidadeclerk.gov",
-              "miamidadeclerk.gov",
-              "google.com",
-              "www.google.com",
-              "legacy.com",
-              "www.legacy.com",
-              "findagrave.com",
-              "www.findagrave.com",
-            ],
-          },
-          timeout: 900,
-        },
+        sessionCreateParams: browserbaseSessionCreateParams(env),
       }),
     });
     const invocation = await response.json().catch(() => ({})) as JsonRecord;
-    const data = invocation.results && typeof invocation.results === "object" && !Array.isArray(invocation.results)
-      ? invocation.results as JsonRecord
+    const completedInvocation = await waitForBrowserbaseInvocation(invocation, apiBase, apiKey);
+    const data = completedInvocation.results && typeof completedInvocation.results === "object" && !Array.isArray(completedInvocation.results)
+      ? completedInvocation.results as JsonRecord
       : {};
     return {
-      ok: response.ok && invocation.status !== "FAILED" && data.ok !== false,
+      ok: response.ok && completedInvocation.status !== "FAILED" && !isPendingBrowserbaseInvocation(completedInvocation) && data.ok !== false,
       status: response.status,
       url: `browserbase:function:${functionId}`,
       data: {
         ...data,
-        browserbaseInvocationId: invocation.id ?? null,
-        browserbaseSessionId: invocation.sessionId ?? null,
-        browserbaseStatus: invocation.status ?? null,
+        browserbaseInvocationId: completedInvocation.id ?? null,
+        browserbaseSessionId: completedInvocation.sessionId ?? null,
+        browserbaseStatus: completedInvocation.status ?? null,
       },
-      error: stringValue(data.error) || stringValue(data.message) || (response.ok ? "" : `HTTP ${response.status}`),
+      error: stringValue(data.error)
+        || stringValue(data.message)
+        || (isPendingBrowserbaseInvocation(completedInvocation)
+          ? "Browserbase vital/obituary workflow is still running after the route wait window."
+          : response.ok ? "" : `HTTP ${response.status}`),
     };
   } catch (error) {
     return {

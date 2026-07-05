@@ -68,7 +68,7 @@ function searchInputFromBody(body = {}, input = taxCollectorInputFromBody(body))
     folio: input.parcelId || "",
     propertyAddress: input.propertyAddress || "",
     ownerName: input.ownerName || "",
-    searchUrl: process.env.TAX_COLLECTOR_SEARCH_URL || "https://miamidade.county-taxes.com/public",
+    searchUrl: process.env.TAX_COLLECTOR_SEARCH_URL || "https://county-taxes.net/fl-miamidade/property-tax",
   };
 }
 
@@ -95,7 +95,7 @@ async function acquire(input, env, fetchImpl) {
       ok: true,
       mode: discovery.mode,
       listingUrl: discovery.listingUrl,
-      searchUrl: env.TAX_COLLECTOR_SEARCH_URL || "https://miamidade.county-taxes.com/public",
+      searchUrl: env.TAX_COLLECTOR_SEARCH_URL || "https://county-taxes.net/fl-miamidade/property-tax",
       finalUrl: discovery.listingUrl,
       discovery,
       reviewFlags: discovery.reviewFlags,
@@ -104,7 +104,7 @@ async function acquire(input, env, fetchImpl) {
       ok: false,
       mode: "not_configured",
       listingUrl: "",
-      searchUrl: env.TAX_COLLECTOR_SEARCH_URL || "https://miamidade.county-taxes.com/public",
+      searchUrl: env.TAX_COLLECTOR_SEARCH_URL || "https://county-taxes.net/fl-miamidade/property-tax",
       blocker: "Tax Collector search needs the worker adapter build before it can run.",
       reviewFlags: ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
     };
@@ -266,7 +266,7 @@ async function runTaxCollectorReceiptSearch(body = {}, options = {}) {
       ok: false,
       mode: "not_configured",
       listingUrl: "",
-      searchUrl: process.env.TAX_COLLECTOR_SEARCH_URL || "https://miamidade.county-taxes.com/public",
+      searchUrl: process.env.TAX_COLLECTOR_SEARCH_URL || "https://county-taxes.net/fl-miamidade/property-tax",
       blocker: "Tax Collector receipt search needs a folio, property address, owner, or existing Property Appraiser fact before it can run.",
       reviewFlags: ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
     }, body, input);
