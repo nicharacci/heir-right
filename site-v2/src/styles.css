@@ -433,6 +433,11 @@
   text-wrap: balance;
 }
 
+.reason-section .section-kicker > p {
+  font-size: clamp(1.35rem, 2vw, 1.925rem);
+  line-height: 1.16;
+}
+
 .support-layout,
 .legal-trust-section,
 .about-band {

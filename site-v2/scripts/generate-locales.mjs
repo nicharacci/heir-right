@@ -179,7 +179,6 @@ const text = new Map([
   ["Relocating", "Mudanza"],
   ["Retirement", "Jubilacion"],
   ["Health Issues", "Problemas de salud"],
-  ["Plain text documents", "Documentos en texto claro"],
   ["Terms, privacy, and first-step boundaries.", "Terminos, privacidad y limites del primer paso."],
   ["Read the full Terms of Use and Privacy Policy.", "Lea los Terminos de uso y la Politica de privacidad completos."],
   [
