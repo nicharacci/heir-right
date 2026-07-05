@@ -1367,6 +1367,11 @@
   gap: 1rem;
 }
 
+.contact-intro > .eyebrow {
+  font-size: clamp(1.05rem, 1.284vw, 1.2575rem);
+  line-height: 1.12;
+}
+
 .contact-intro h2 {
   margin-top: 0;
   font-size: clamp(2.2rem, 4vw, 4.15rem);

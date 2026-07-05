@@ -13,7 +13,7 @@ const text = new Map([
   ["Gallery", "Galeria"],
   ["Reviews", "Resenas"],
   ["Legal", "Legal"],
-  ["Free consult", "Consulta gratis"],
+  ["Book A Call", "Agendar llamada"],
   ["Inheritance recovery across South Florida and Texas", "Recuperacion de herencias en el sur de Florida y Texas"],
   ["Resolve your inherited property hassle-free!", "Resuelva su propiedad heredada sin complicaciones!"],
   [
@@ -187,6 +187,7 @@ const text = new Map([
   ],
   ["Read legal", "Leer documentos legales"],
   ["Free consultation", "Consulta gratis"],
+  ["We handle the hassle, you collect the check.", "Nosotros manejamos las complicaciones, usted cobra el cheque."],
   ["Curious to know how much your inheritance is worth?", "Quiere saber cuanto vale su herencia?"],
   [
     "You do not have to wait on every other heir to ask questions. Contact HeirRight today and we will break the process down, answer what we can, and help you decide whether a hassle-free sale makes sense.",
