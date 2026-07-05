@@ -92,7 +92,6 @@ const text = new Map([
   ["Readable Terms of Use and Privacy Policy", "Terminos de uso y politica de privacidad faciles de leer"],
   ["No website promise of legal advice", "El sitio web no promete asesoria legal"],
   ["Real properties, closings, and families from our work!", "Propiedades reales, cierres y familias de nuestro trabajo!"],
-  ["Compare your options", "Compare sus opciones"],
   ["Traditional sale vs. HeirRight", "Venta tradicional vs. HeirRight"],
   ["What matters", "Lo importante"],
   ["Traditional sale", "Venta tradicional"],
