@@ -1794,7 +1794,12 @@
 .landing-page .contact-step {
   border: 1px solid var(--border-soft);
   background:
-    linear-gradient(180deg, rgba(255, 255, 252, 0.8), rgba(239, 237, 228, 0.72));
+    linear-gradient(180deg, rgba(255, 255, 252, 0.76), rgba(239, 237, 228, 0.66)),
+    #000;
+}
+
+.landing-page .contact-step span {
+  color: rgba(16, 35, 60, 0.42);
 }
 
 .landing-page .contact-step b {
