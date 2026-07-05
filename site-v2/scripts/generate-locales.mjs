@@ -15,10 +15,10 @@ const text = new Map([
   ["Legal", "Legal"],
   ["Free consult", "Consulta gratis"],
   ["Inheritance recovery across South Florida and Texas", "Recuperacion de herencias en el sur de Florida y Texas"],
-  ["Resolve your inherited property hassle-free.", "Resuelva su propiedad heredada sin complicaciones."],
+  ["Resolve your inherited property hassle-free!", "Resuelva su propiedad heredada sin complicaciones!"],
   [
-    "We specialize in offering a quick solution to help clients settle inherited homes. We handle the legal fees, coordinate the heavy lifting, and help families move toward a clear as-is resolution.",
-    "Nos especializamos en ofrecer una solucion rapida para ayudar a nuestros clientes a resolver casas heredadas. Cubrimos los honorarios legales, coordinamos el trabajo pesado y ayudamos a las familias a avanzar hacia una solucion clara, en condicion actual."
+    "We specialize in offering a quick solution to help clients settle inherited homes. We handle the legal fees, coordinate the heavy lifting, and help families move toward a clear as-is resolution!",
+    "Nos especializamos en ofrecer una solucion rapida para ayudar a nuestros clientes a resolver casas heredadas. Cubrimos los honorarios legales, coordinamos el trabajo pesado y ayudamos a las familias a avanzar hacia una solucion clara, en condicion actual!"
   ],
   ["Get free consultation", "Obtenga una consulta gratis"],
   ["Call 786-962-3457", "Llame al 786-962-3457"],
@@ -27,8 +27,7 @@ const text = new Map([
   ["where-is property purchase path", "opcion de compra en la condicion actual"],
   ["Heirs", "Herederos"],
   ["liens, taxes, and disputes reviewed", "gravamenes, impuestos y disputas revisados"],
-  ["Get paid for your inheritance without complications", "Reciba pago por su herencia sin complicaciones"],
-  ["Tell us what is stuck. We will break down the process.", "Cuentenos que esta detenido. Le explicaremos el proceso."],
+  ["Get paid without complications", "Reciba pago sin complicaciones"],
   ["Probate, title, lien, and co-heir concerns", "Asuntos de sucesion, titulo, gravamenes y coherederos"],
   ["As-is sale options with no repairs required to start", "Opciones de venta tal como esta, sin reparaciones para empezar"],
   ["A plain-language review before any next step", "Una revision en lenguaje claro antes de cualquier siguiente paso"],
@@ -92,8 +91,7 @@ const text = new Map([
   ["Free consultation before any proposed transaction", "Consulta gratis antes de cualquier transaccion propuesta"],
   ["Readable Terms of Use and Privacy Policy", "Terminos de uso y politica de privacidad faciles de leer"],
   ["No website promise of legal advice", "El sitio web no promete asesoria legal"],
-  ["HeirRight archive", "Archivo de HeirRight"],
-  ["Real properties, closings, and families from our work.", "Propiedades reales, cierres y familias de nuestro trabajo."],
+  ["Real properties, closings, and families from our work!", "Propiedades reales, cierres y familias de nuestro trabajo!"],
   ["Compare your options", "Compare sus opciones"],
   ["Traditional sale vs. HeirRight", "Venta tradicional vs. HeirRight"],
   ["What matters", "Lo importante"],
