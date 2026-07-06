@@ -283,6 +283,8 @@ const attributes = new Map([
   ["Google Business Profile review screenshot from Daniela Armenta", "Captura de resena de Google de Daniela Armenta"],
   ["Google Business Profile review screenshots from Max Khalus, David Diaz, and Jessica Escobar-Ramos", "Capturas de resenas de Google de Max Khalus, David Diaz y Jessica Escobar-Ramos"],
   ["Joshua standing in a suit beside a family photo", "Joshua con traje junto a una foto familiar"],
+  ["Founder Joshua Hernandez in a suit", "Fundador Joshua Hernandez con traje"],
+  ["Joshua Hernandez seated with his family", "Joshua Hernandez sentado con su familia"],
   ["HeirRight heritage facts", "Datos de trayectoria de HeirRight"],
   ["Traditional sale", "Venta tradicional"],
   ["123 Estate Lane", "123 Calle Herencia"],
@@ -337,7 +339,7 @@ html = html
   .replace('<a class="brand" href="/" aria-label="HeirRight start">', '<a class="brand" href="/es/" aria-label="HeirRight start">')
   .replace('<a href="/legal.html">Legal</a>', '<a href="/legal.html" hreflang="en">Legal</a>')
   .replace('<a class="inline-cta" href="/legal.html">', '<a class="inline-cta" href="/legal.html" hreflang="en">')
-  .replace('<a href="/">\n        <img src="/assets/heirright-logo-light.svg"', '<a href="/es/">\n        <img src="/assets/heirright-logo-light.svg"')
+  .replace('<a class="footer-brand" href="/" aria-label="HeirRight home">', '<a class="footer-brand" href="/es/" aria-label="Inicio de HeirRight">')
   .replaceAll('href="/es/" lang="es" hreflang="es">Español', 'href="/" lang="en" hreflang="en">English');
 
 html = translateAttributes(translateTextNodes(html));
