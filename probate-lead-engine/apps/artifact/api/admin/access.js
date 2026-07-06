@@ -1,11 +1,5 @@
-const { methodGuard, readJsonBody, receiptId, sendJson } = require("../_shared");
-
-function normalizedAccessValue(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^@+/, "")
-    .toLowerCase();
-}
+const { readJsonBody, receiptId, sendJson } = require("../_shared");
+const { accessConfig, applyAccessChange, normalizedAccessValue, validAccessValue } = require("./access-config");
 
 function linearConfig() {
   return {
@@ -60,46 +54,71 @@ async function createAccessTicket(config, payload) {
 }
 
 module.exports = async function handler(request, response) {
-  if (methodGuard(request, response)) return;
+  if (request.method === "GET" || request.method === "HEAD") {
+    sendJson(response, 200, { ok: true, ...accessConfig(process.env) });
+    return;
+  }
+  if (request.method !== "POST") {
+    response.setHeader("Allow", "GET, POST");
+    sendJson(response, 405, { ok: false, error: "method_not_allowed" });
+    return;
+  }
   try {
     const body = await readJsonBody(request);
     const action = body.action === "remove" ? "remove" : "add";
     const value = normalizedAccessValue(body.value);
-    if (!value || !/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$|^[a-z0-9.-]+\.[a-z]{2,}$/i.test(value)) {
+    if (!value || !validAccessValue(value)) {
       sendJson(response, 400, { ok: false, error: "invalid_access_value", message: "Enter a valid company email or domain." });
       return;
     }
+    const applied = applyAccessChange(action, value, process.env);
     const payload = {
       action,
       value,
+      domain: applied.domain,
+      allowedDomains: applied.allowedDomains,
       actor: body.actor || "office user",
       requestedAt: body.requestedAt || new Date().toISOString(),
       requestId: receiptId("access"),
     };
+    let routing = { status: "not_configured", message: "Access list updated in HeirRight. Configure support routing for external approval tracking." };
     const webhookUrl = process.env.HEIRRIGHT_ACCESS_WEBHOOK_URL;
     if (webhookUrl) {
-      const forwarded = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!forwarded.ok) throw new Error(`Access webhook failed with ${forwarded.status}`);
-      sendJson(response, 200, { ok: true, status: "webhook_queued", payload });
-      return;
+      try {
+        const forwarded = await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!forwarded.ok) throw new Error(`Access webhook failed with ${forwarded.status}`);
+        routing = { status: "webhook_queued" };
+      } catch (error) {
+        routing = { status: "routing_failed", message: error.message || "Access webhook failed." };
+      }
+    } else {
+      const config = linearConfig();
+      if (config.apiKey && config.teamId) {
+        try {
+          const issue = await createAccessTicket(config, payload);
+          routing = { status: "linear_ticket_created", issue };
+        } catch (error) {
+          routing = { status: "routing_failed", message: error.message || "Linear access ticket failed." };
+        }
+      }
     }
-    const config = linearConfig();
-    if (config.apiKey && config.teamId) {
-      const issue = await createAccessTicket(config, payload);
-      sendJson(response, 200, { ok: true, status: "linear_ticket_created", issue, payload });
-      return;
-    }
-    sendJson(response, 202, {
+    sendJson(response, 200, {
       ok: true,
-      status: "local_queue",
-      message: "Access request captured locally. Configure HEIRRIGHT_ACCESS_WEBHOOK_URL or Linear env vars for live routing.",
+      status: action === "remove" ? "access_removed" : "access_added",
+      routing,
+      allowedDomains: applied.allowedDomains,
+      allowedEmails: accessConfig(process.env).allowedEmails,
       payload,
     });
   } catch (error) {
-    sendJson(response, 500, { ok: false, error: "access_request_failed", message: error.message || "Access request failed." });
+    sendJson(response, error.code === "invalid_access_value" ? 400 : 500, {
+      ok: false,
+      error: error.code || "access_request_failed",
+      message: error.message || "Access request failed.",
+    });
   }
 };

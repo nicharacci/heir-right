@@ -322,7 +322,7 @@ function html(body: string, init: ResponseInit = {}): Response {
 function emailAllowed(email: string | undefined, env: CloudflareEnv): boolean {
   const normalized = String(email || "").toLowerCase();
   const domain = normalized.split("@")[1] || "";
-  const domains = splitList(env.AUTH_ALLOWED_DOMAINS, "heirright.com");
+  const domains = splitList(env.AUTH_ALLOWED_DOMAINS, "heirright.com,solvys.io,texasequitypros.com");
   const emails = splitList(env.AUTH_ALLOWED_EMAILS || env.SOLVYS_ADMIN_EMAILS);
   return emails.includes(normalized) || domains.includes(domain);
 }

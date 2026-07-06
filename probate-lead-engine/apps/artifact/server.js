@@ -7,6 +7,7 @@ const reportPdfHandler = require("./api/reports/pdf.js");
 const activepiecesHandler = require("./api/outreach/activepieces.js");
 const supportLinearHandler = require("./api/support/linear.js");
 const adminAccessHandler = require("./api/admin/access.js");
+const { allowedDomains: configuredAllowedDomains, allowedEmails: configuredAllowedEmails } = require("./api/admin/access-config.js");
 const taxCollectorReceiptHandler = require("./api/discovery/tax-collector/receipt-run.js");
 const { buildConnectionStatuses, buildIdiCoreStatus } = require("./api/connections/status.js");
 const { discoverTaxCollectorReceipt, extractTaxCollectorDetails } = require("./api/_shared.js");
@@ -74,23 +75,16 @@ function firstExistingPath(...paths) {
   return paths.find((path) => existsSync(path));
 }
 
-function splitList(value) {
-  return String(value || "")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-}
-
 function authRequired() {
   return process.env.AUTH_REQUIRED !== "false";
 }
 
 function allowedDomains() {
-  return splitList(process.env.AUTH_ALLOWED_DOMAINS || "heirright.com");
+  return configuredAllowedDomains(process.env);
 }
 
 function allowedEmails() {
-  return splitList(process.env.AUTH_ALLOWED_EMAILS || process.env.SOLVYS_ADMIN_EMAILS || "");
+  return configuredAllowedEmails(process.env);
 }
 
 function originFor(req) {

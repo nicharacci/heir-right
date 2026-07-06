@@ -11222,7 +11222,7 @@ const state = {
     state: "idle",
     message: ""
   },
-  adminAccessDomains: ["heirright.com", "texasequitypros.com"],
+  adminAccessDomains: ["heirright.com", "solvys.io", "texasequitypros.com"],
   shellSettings: {
     signalWeight: "3",
     taxThreshold: "2",
@@ -13714,9 +13714,9 @@ function persistDocPrepEstateState() {
 function loadAdminAccessDomains() {
   try {
     const stored = JSON.parse(storageGetItem(adminAccessDomainsKey) ?? "[]");
-    state.adminAccessDomains = Array.isArray(stored) && stored.length ? stored.map(String).filter(Boolean) : ["heirright.com", "texasequitypros.com"];
+    state.adminAccessDomains = Array.isArray(stored) && stored.length ? stored.map(String).filter(Boolean) : ["heirright.com", "solvys.io", "texasequitypros.com"];
   } catch {
-    state.adminAccessDomains = ["heirright.com", "texasequitypros.com"];
+    state.adminAccessDomains = ["heirright.com", "solvys.io", "texasequitypros.com"];
   }
 }
 
@@ -17322,6 +17322,32 @@ async function postJson(url, payload) {
   return json;
 }
 
+function applyAdminAccessConfig(config = {}) {
+  const domains = Array.isArray(config.allowedDomains) ? config.allowedDomains : [];
+  if (!domains.length) return false;
+  state.adminAccessDomains = Array.from(new Set(domains.map((domain) => String(domain || "").trim().toLowerCase()).filter(Boolean)));
+  persistAdminAccessDomains();
+  if (state.session?.auth) state.session.auth.allowedDomains = [...state.adminAccessDomains];
+  return true;
+}
+
+async function loadAdminAccessConfig({ rerender = true } = {}) {
+  try {
+    const response = await fetch("/api/admin/access", { cache: "no-store" });
+    if (!response.ok) throw new Error("Access list unavailable");
+    const config = await response.json();
+    const changed = applyAdminAccessConfig(config);
+    if (rerender && changed) {
+      renderSession(state.session);
+      if (state.activeView === "admin") renderAdminLoopView();
+      if (state.activeView === "settings") renderSettingsView();
+    }
+    return config;
+  } catch {
+    return null;
+  }
+}
+
 function rerenderAssetDiscoverySurface() {
   persistAssetDiscoveryState();
   renderResults();
@@ -20116,14 +20142,12 @@ async function submitAdminAccessForm(form) {
   state.adminAccessStatus = { state: "processing", message: `${action === "add" ? "Adding" : "Removing"} access...` };
   renderAdminLoopView();
   try {
-    await postJson("/api/admin/access", { action, value, actor: currentActorEmail(), requestedAt: isoNow() });
     const normalized = value.replace(/^@+/, "").toLowerCase();
-    state.adminAccessDomains = action === "add"
-      ? [...new Set([...state.adminAccessDomains, normalized])]
-      : state.adminAccessDomains.filter((item) => item !== normalized);
-    persistAdminAccessDomains();
-    state.adminAccessStatus = { state: "success", message: action === "add" ? "Access request queued and whitelisted locally." : "Removal request queued and removed locally." };
-    addShellEvent("Leads engine access updated", `${normalized} was ${action === "add" ? "added to" : "removed from"} the Leads engine access list.`, "ready", false);
+    const result = await postJson("/api/admin/access", { action, value, actor: currentActorEmail(), requestedAt: isoNow() });
+    applyAdminAccessConfig(result);
+    await loadSession();
+    state.adminAccessStatus = { state: "success", message: action === "add" ? "Domain added to the live sign-in gate." : "Domain removed from the live sign-in gate." };
+    addShellEvent("Leads engine access updated", `${normalized} was ${action === "add" ? "added to" : "removed from"} the live sign-in gate.`, "ready", false);
     renderAdminLoopView();
     window.setTimeout(() => {
       state.adminAccessStatus = { state: "fading", message: state.adminAccessStatus.message };
@@ -24064,7 +24088,8 @@ if (initialView === "dossiers" && initialUrlParams.get("docprep") === "estate") 
     window.setTimeout(() => scrollDocPrepDeepLinkSection(initialUrlParams.get("section")), 200);
   }
 }
-loadSession().then((session) => {
+loadSession().then(async (session) => {
+  await loadAdminAccessConfig({ rerender: true });
   if (!authGateBlocking(session)) loadRun();
 });
 if (initialUrlParams.get("walkthrough") !== "off") {
