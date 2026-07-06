@@ -384,58 +384,6 @@ function setupArchiveGallery(): void {
   });
 }
 
-function setupHeritageViewer(): void {
-  const viewer = document.querySelector<HTMLElement>("[data-heritage-viewer]");
-  const panels = Array.from(viewer?.querySelectorAll<HTMLElement>("[data-heritage-panel]") ?? []);
-  const tabs = Array.from(viewer?.querySelectorAll<HTMLButtonElement>("[data-heritage-target]") ?? []);
-  const caption = viewer?.querySelector<HTMLElement>("[data-heritage-caption]");
-  const supportsHover = window.matchMedia("(hover: hover)").matches;
-
-  if (!viewer || !panels.length || !tabs.length) return;
-
-  const setActive = (index: number) => {
-    const activeTab = tabs[index];
-    if (!activeTab) return;
-
-    panels.forEach((panel, panelIndex) => {
-      const isActive = panelIndex === index;
-      panel.classList.toggle("is-active", isActive);
-      panel.setAttribute("aria-hidden", String(!isActive));
-    });
-
-    tabs.forEach((tab, tabIndex) => {
-      const isActive = tabIndex === index;
-      tab.classList.toggle("is-active", isActive);
-      tab.setAttribute("aria-selected", String(isActive));
-      tab.tabIndex = isActive ? 0 : -1;
-    });
-
-    if (caption && activeTab.dataset.heritageCaption) {
-      caption.textContent = activeTab.dataset.heritageCaption;
-    }
-  };
-
-  tabs.forEach((tab, index) => {
-    tab.addEventListener("click", () => setActive(index));
-    tab.addEventListener("focus", () => setActive(index));
-
-    if (supportsHover) {
-      tab.addEventListener("pointerenter", () => setActive(index));
-    }
-
-    tab.addEventListener("keydown", (event) => {
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-      event.preventDefault();
-      const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextIndex = (index + direction + tabs.length) % tabs.length;
-      setActive(nextIndex);
-      tabs[nextIndex]?.focus();
-    });
-  });
-
-  setActive(Math.max(tabs.findIndex((tab) => tab.classList.contains("is-active")), 0));
-}
-
 function setupTestimonialPlayer(): void {
   const player = document.querySelector<HTMLElement>("[data-testimonial-player]");
   const video = player?.querySelector<HTMLVideoElement>("[data-testimonial-video]");
@@ -527,5 +475,4 @@ setupAnchorScroll();
 setupActiveNavigation();
 setupContactForm();
 setupArchiveGallery();
-setupHeritageViewer();
 setupTestimonialPlayer();
