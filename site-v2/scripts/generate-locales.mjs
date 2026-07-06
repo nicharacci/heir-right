@@ -7,7 +7,7 @@ const sourcePath = resolve(root, "index.html");
 const spanishPath = resolve(root, "es/index.html");
 
 const text = new Map([
-  ["HeirRight | Inherited Property Settlement", "HeirRight | Solucion para propiedades heredadas"],
+  ["HeirRight Real Estate", "HeirRight Real Estate"],
   ["How it works", "Como funciona"],
   ["What we handle", "Lo que manejamos"],
   ["Gallery", "Galeria"],
@@ -334,7 +334,6 @@ html = html
   .replace('<html lang="en">', '<html lang="es">')
   .replace('<body class="landing-page">', '<body class="landing-page" data-locale="es">')
   .replace('<link rel="canonical" href="https://heirright.com/" />', '<link rel="canonical" href="https://heirright.com/es/" />')
-  .replace('<meta property="og:title" content="HeirRight | Inherited Property Settlement" />', '<meta property="og:title" content="HeirRight | Solucion para propiedades heredadas" />')
   .replace('<a class="brand" href="/" aria-label="HeirRight start">', '<a class="brand" href="/es/" aria-label="HeirRight start">')
   .replace('<a href="/legal.html">Legal</a>', '<a href="/legal.html" hreflang="en">Legal</a>')
   .replace('<a class="inline-cta" href="/legal.html">', '<a class="inline-cta" href="/legal.html" hreflang="en">')
