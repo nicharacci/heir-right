@@ -1820,17 +1820,20 @@
 }
 
 .landing-page .contact-step {
-  border: 1px solid var(--border-soft);
+  border: 1px solid rgba(180, 135, 50, 0.3);
   background:
-    linear-gradient(180deg, rgba(255, 255, 252, 0.76), rgba(239, 237, 228, 0.66)),
-    #000;
+    linear-gradient(180deg, rgba(255, 253, 247, 0.96), rgba(245, 236, 216, 0.9)),
+    #fffaf0;
+  color: #14243b;
+  box-shadow: 0 12px 34px rgba(16, 35, 60, 0.08);
 }
 
 .landing-page .contact-step span {
-  color: rgba(16, 35, 60, 0.42);
+  color: #405066;
 }
 
 .landing-page .contact-step b {
+  color: #14243b;
   letter-spacing: 0;
 }
 
@@ -3635,17 +3638,22 @@ main {
 }
 
 .landing-page .contact-step {
-  border-color: var(--border-soft);
+  border-color: rgba(180, 135, 50, 0.3);
 }
 
 .contact-step.is-active {
-  border-color: rgba(205, 168, 92, 0.58);
+  border-color: rgba(180, 135, 50, 0.72);
+  background:
+    linear-gradient(180deg, rgba(255, 249, 234, 0.98), rgba(238, 218, 176, 0.92)),
+    #fff5dc;
+  color: #101827;
+  box-shadow: 0 16px 38px rgba(167, 121, 35, 0.14);
 }
 
 .contact-step i,
 .landing-page .contact-step i {
-  border: 1.5px solid rgba(205, 168, 92, 0.62);
-  background: transparent;
+  border: 1.5px solid rgba(167, 121, 35, 0.78);
+  background: rgba(255, 255, 255, 0.48);
   color: transparent;
   box-shadow: none;
   transition:
