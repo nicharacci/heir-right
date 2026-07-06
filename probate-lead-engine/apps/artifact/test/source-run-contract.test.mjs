@@ -216,9 +216,16 @@ try {
   );
   assert.match(
     proofBySource.get("official_records").credentialGate,
-    /MIAMI_DADE_CLERK_AUTH_KEY/,
-    "Official Records proof must expose the credential gate for audit metadata"
+    /Commercial Data Services access/,
+    "Official Records proof must expose the operator credential gate for audit metadata"
   );
+  for (const source of result.json.sourceRunProof.sources) {
+    assert.doesNotMatch(
+      String(source.credentialGate || ""),
+      /\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b/,
+      "Source proof credential gates must not expose raw environment names"
+    );
+  }
   assert.equal(proofBySource.get("idi").proofState, "facts_returned_review_required");
   const idiDetails = proofBySource.get("idi").detailChecks || [];
   const idiCodes = new Set(idiDetails.map((check) => check.code));

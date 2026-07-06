@@ -147,10 +147,10 @@ function sourceEvidenceFacts(facts = []) {
 
 function sourceRunCredentialGate(source) {
   if (source === "property_appraiser") return "Public county property search";
-  if (source === "tax_collector") return "Direct Tax Collector listing URL, TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID, or TAX_COLLECTOR_BROWSER_WORKFLOW_URL";
-  if (source === "official_records" || source === "probate_court") return "MIAMI_DADE_CLERK_AUTH_KEY with Clerk Commercial Data Services units";
-  if (source === "clerk_of_courts") return "OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID or OBITUARY_VITAL_WORKFLOW_URL";
-  if (source === "idi") return "IDI_CORE_API_URL plus shared IDI_CORE_API_KEY and IDI_CORE_LIVE_RUN_APPROVED=true, or approved operator report import";
+  if (source === "tax_collector") return "Direct Tax Collector listing, approved Browserbase capture, or saved browser workflow";
+  if (source === "official_records" || source === "probate_court") return "Miami-Dade Clerk Commercial Data Services access with prepaid units";
+  if (source === "clerk_of_courts") return "Approved Browserbase vital-source capture or saved vital-source workflow";
+  if (source === "idi") return "IDI Core vendor API access with shared team approval, personal approved key, or approved operator report import";
   if (source === "skip_trace") return "Approved skip-trace provider plus operator approval";
   if (source === "source_governance") return "Operator approval for manual, paid, voter, social, license, business/address, and field research";
   return "Source-specific evidence or operator review";

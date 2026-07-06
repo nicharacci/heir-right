@@ -19973,7 +19973,7 @@ function renderQueueView() {
 }
 
 function adminErrorItems() {
-  const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "IDI Core", "Activepieces", "Linear Support", "Leads Engine Access"];
+  const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "IDI Core", "Browserbase Usage", "Activepieces", "Linear Support", "Leads Engine Access"];
   const actionItems = state.actionErrorLog.map((item) => ({ ...item, ready: false }));
   const loggedActionTitles = new Set(actionItems.map((item) => item.title));
   const blockedEventItems = state.shellEvents
@@ -20357,6 +20357,12 @@ function integrationOnboardingCardHtml(kind) {
       action: "Review vital workflow",
       steps: ["Run the approved obituary and vital-source browser workflow", "Capture obituary, marriage, death, memorial, and deceased-indicator evidence", "Keep DOB, DOD, spouse, and heir signals review-gated before Closing Prep"]
     },
+    browserbase: {
+      name: "Browserbase Usage",
+      title: "Browserbase Usage",
+      action: "Review browser usage",
+      steps: ["Single-estate source capture can run when credentials and functions are ready", "Paid batch runs require explicit batch approval", "Split large batches at the configured session cap before capture starts"]
+    },
     idi: {
       name: "IDI Core",
       title: "IDI Core",
@@ -20431,11 +20437,13 @@ function handleIntegrationOnboarding(kind) {
                   ? "Miami-Dade Clerk API"
                   : kind === "vital"
                     ? "Vital/Obituary Workflow"
-                    : kind === "idi"
-                      ? "IDI Core"
-                      : kind === "leads"
-                        ? "Leads Engine Access"
-                        : "Podio";
+                    : kind === "browserbase"
+                      ? "Browserbase Usage"
+                      : kind === "idi"
+                        ? "IDI Core"
+                        : kind === "leads"
+                          ? "Leads Engine Access"
+                          : "Podio";
   const isGoogle = kind === "google";
   const connection = connectionByName(name);
   if (isGoogle && !state.session?.auth?.configured) {
@@ -20450,7 +20458,7 @@ function handleIntegrationOnboarding(kind) {
 }
 
 function integrationStatusRowsHtml() {
-  const names = ["Podio", "Google", "IDI Core", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
+  const names = ["Podio", "Google", "IDI Core", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "Browserbase Usage", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
   const items = names.map((name) => {
     const connection = connectionByName(name);
     const connected = Boolean(connection?.ok && connection?.mode === "live");
@@ -20514,9 +20522,10 @@ function settingsReadinessBandHtml() {
   const domains = settingsAllowedDomains();
   const authConfigured = Boolean(state.session?.auth?.configured);
   const idi = connectionByName("IDI Core");
+  const browserbase = connectionByName("Browserbase Usage");
   const idiCredential = idiCoreCredentialStatus(idi);
   const outreachReady = ["Podio", "Resend", "SMS Gateway"].some((name) => connectionReadyState(name) === "ready");
-  const sourceReviewCount = ["Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "IDI Core"].filter((name) => connectionReadyState(name) !== "blocked").length;
+  const sourceReviewCount = ["Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "IDI Core", "Browserbase Usage"].filter((name) => connectionReadyState(name) !== "blocked").length;
   return `
     <div class="settings-readiness-band" aria-label="Workspace readiness summary">
       <article class="settings-readiness-tile">
@@ -20526,8 +20535,13 @@ function settingsReadinessBandHtml() {
       </article>
       <article class="settings-readiness-tile">
         <p class="eyebrow">Source readiness</p>
-        <strong>${sourceReviewCount} of 4 source groups reviewable</strong>
-        <span>Tax receipts, Clerk records, vital sources, and IDI stay gated until proof is captured.</span>
+        <strong>${sourceReviewCount} of 5 source groups reviewable</strong>
+        <span>Tax receipts, Clerk records, vital sources, IDI, and browser usage stay gated until proof is captured.</span>
+      </article>
+      <article class="settings-readiness-tile">
+        <p class="eyebrow">Browserbase</p>
+        <strong>${browserbase?.ok ? "Single-estate capture ready" : "Browser capture blocked"}</strong>
+        <span>${escapeHtml(operatorConnectionMessage(browserbase, "Browserbase Usage"))}</span>
       </article>
       <article class="settings-readiness-tile">
         <p class="eyebrow">IDI Core API</p>
@@ -20620,6 +20634,7 @@ function renderIntegrationSettingsPanel() {
         ${integrationOnboardingCardHtml("tax")}
         ${integrationOnboardingCardHtml("clerk")}
         ${integrationOnboardingCardHtml("vital")}
+        ${integrationOnboardingCardHtml("browserbase")}
         ${integrationOnboardingCardHtml("activepieces")}
         ${integrationOnboardingCardHtml("linear")}
         ${integrationOnboardingCardHtml("web")}
@@ -20655,6 +20670,7 @@ function renderSourceSettingsPanel() {
   const clerk = connectionByName("Miami-Dade Clerk API");
   const vital = connectionByName("Vital/Obituary Workflow");
   const idi = connectionByName("IDI Core");
+  const browserbase = connectionByName("Browserbase Usage");
   return `
     ${settingsSectionShell("Source and enrichment controls", "Discovery", "Manual proof stays visible", `
       <div class="source-receipt-callout">
@@ -20691,6 +20707,17 @@ function renderSourceSettingsPanel() {
           checks: [
             { state: vital?.sourceAutomation?.workflowConfigured ? "ready" : "blocked", copy: "Findagrave, Legacy, marriage, death, DOB/DOD, and deceased indicators need a saved workflow." },
             { state: "review", copy: "Returned family-tree facts stay review-gated before Closing Prep." },
+          ]
+        })}
+        ${sourceControlCardHtml({
+          name: "Browserbase Usage",
+          title: "Browserbase source usage",
+          badge: browserbase?.usagePolicy?.batchApprovalRequired ? "Batch approval" : "Batch review",
+          copy: operatorConnectionMessage(browserbase, "Browserbase Usage"),
+          checks: [
+            { state: browserbase?.usagePolicy?.taxCollectorFunctionConfigured ? "ready" : "blocked", copy: "Tax Collector browser function is ready for estate-fact receipt capture." },
+            { state: browserbase?.usagePolicy?.vitalObituaryFunctionConfigured ? "ready" : "review", copy: "Vital and obituary browser capture has a saved function or remains review-only." },
+            { state: browserbase?.usagePolicy?.batchApprovalRequired ? "review" : "ready", copy: `Paid batch capture cap: ${browserbase?.usagePolicy?.maxBatchSessions || 10} estates, ${browserbase?.usagePolicy?.maxConcurrency || 2} at a time.` },
           ]
         })}
         ${sourceControlCardHtml({
@@ -22887,6 +22914,7 @@ function operatorConnectionMessage(connection, name) {
     if (name === "Miami-Dade Clerk API") return "Clerk records are not connected yet. Official Records and court docket checks stay review-blocked until commercial access is added.";
     if (name === "Vital/Obituary Workflow") return "Obituary and vital-source review needs the browser workflow before it can return source links automatically.";
     if (name === "IDI Core") return "idiCORE portal access is not confirmed yet. Keep Discovery blocked until an approved operator search is imported or vendor API access is provisioned.";
+    if (name === "Browserbase Usage") return "Browserbase browser capture is not ready yet. Single-estate source capture and paid batch approval stay blocked until access and function checks are configured.";
     if (name === "Activepieces") return "Backstage outreach handoff is not configured yet. Outreach will use the first-party fallback package and stay queued for Podio review.";
     if (name === "Linear Support") return "Linear support routing is not configured yet. Admin tickets stay local until the Worker has API access and a team route.";
     if (name === "Leads Engine Access") return "Leads engine access changes are captured in-app until support routing or the access webhook is configured.";

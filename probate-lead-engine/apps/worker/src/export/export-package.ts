@@ -12,8 +12,11 @@ import {
   podioAppId,
   podioAppToken,
   podioAuthConfigured,
+  podioAuthSummary,
+  podioBrowserRefreshToken,
   podioClientId,
   podioClientSecret,
+  podioServerRefreshToken,
   podioRefreshToken,
   resolvePodioFieldMap,
   type PodioFieldKind,
@@ -93,6 +96,58 @@ function taxCollectorSourceConnectionStatus(env: RuntimeEnv, checkedAt: string):
       browserWorkflowConfigured,
       browserbaseFunctionConfigured,
       publicSearchUrl: env.TAX_COLLECTOR_SEARCH_URL || "https://county-taxes.net/fl-miamidade/property-tax",
+    },
+  };
+}
+
+function truthyEnv(value: string | undefined): boolean {
+  return ["1", "true", "yes", "on"].includes(String(value || "").toLowerCase());
+}
+
+function positiveIntegerEnv(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+function browserbaseUsageConnectionStatus(env: RuntimeEnv, checkedAt: string): ConnectionStatus {
+  const taxCollectorFunctionConfigured = Boolean(
+    env.BROWSERBASE_API_KEY
+      && (env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID || env.BROWSERBASE_TAX_COLLECTOR_FUNCTION_ID)
+  );
+  const vitalObituaryFunctionConfigured = Boolean(
+    env.BROWSERBASE_API_KEY
+      && (env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID
+        || env.VITAL_OBITUARY_BROWSERBASE_FUNCTION_ID
+        || env.MARRIAGE_DEATH_BROWSERBASE_FUNCTION_ID
+        || env.BROWSERBASE_VITAL_OBITUARY_FUNCTION_ID)
+  );
+  const apiConfigured = Boolean(env.BROWSERBASE_API_KEY);
+  const projectConfigured = Boolean(env.BROWSERBASE_PROJECT_ID);
+  const configured = Boolean(apiConfigured && (projectConfigured || taxCollectorFunctionConfigured || vitalObituaryFunctionConfigured));
+  const maxBatchSessions = positiveIntegerEnv(env.BROWSERBASE_BATCH_MAX_SESSIONS, 10);
+  const maxConcurrency = positiveIntegerEnv(env.BROWSERBASE_BATCH_CONCURRENCY, 2);
+  const batchApprovalRequired = env.BROWSERBASE_BATCH_APPROVAL_REQUIRED !== "false";
+  const batchApprovedByEnv = truthyEnv(env.BROWSERBASE_BATCH_RUN_APPROVED);
+  return {
+    name: "Browserbase Usage",
+    ok: configured,
+    mode: configured ? "review" : "blocked",
+    configuredMode: configured ? "usage_policy" : "none",
+    message: configured
+      ? `Browserbase is configured for single-estate source capture. Paid batch source runs are capped at ${maxBatchSessions} estates with ${maxConcurrency} running at a time and require explicit batch approval.`
+      : "Browserbase is not connected. Tax Collector and vital-source browser workflows stay blocked until source capture is configured.",
+    checkedAt,
+    blockers: configured ? [] : ["Connect Browserbase source capture before claiming automated browser retrieval."],
+    usagePolicy: {
+      apiConfigured,
+      projectConfigured,
+      taxCollectorFunctionConfigured,
+      vitalObituaryFunctionConfigured,
+      proxyEnabled: truthyEnv(env.BROWSERBASE_PROXY_ENABLED) || truthyEnv(env.TAX_COLLECTOR_BROWSERBASE_PROXY_ENABLED),
+      batchApprovalRequired,
+      batchApprovedByEnv,
+      maxBatchSessions,
+      maxConcurrency,
     },
   };
 }
@@ -705,12 +760,14 @@ function invalidEncodedValue(kind: PodioFieldKind, value: unknown): string | nul
     : `Podio category field value must resolve to a numeric option id; received ${String(value)}.`;
 }
 
-export async function resolvePodioAccessToken(env: RuntimeEnv): Promise<{ token?: string; mode: "bearer" | "app_auth" | "refresh" | "missing"; blocker?: string }> {
+export async function resolvePodioAccessToken(env: RuntimeEnv): Promise<{ token?: string; mode: "bearer" | "app_auth" | "refresh" | "browser_refresh" | "missing"; blocker?: string; refreshTokenRotated?: boolean }> {
   const clientId = podioClientId(env);
   const clientSecret = podioClientSecret(env);
   const appId = podioAppId(env);
   const appToken = podioAppToken(env);
-  const refreshToken = podioRefreshToken(env);
+  const serverRefreshToken = podioServerRefreshToken(env);
+  const browserRefreshToken = podioBrowserRefreshToken(env);
+  const refreshToken = serverRefreshToken || browserRefreshToken;
   const accessToken = podioAccessToken(env);
 
   if (clientId && clientSecret && appId && appToken) {
@@ -747,12 +804,16 @@ export async function resolvePodioAccessToken(env: RuntimeEnv): Promise<{ token?
       headers: { "content-type": "application/x-www-form-urlencoded; charset=utf-8" },
       body,
     });
-    const data = await response.json().catch(() => ({})) as { access_token?: string; error?: string; error_description?: string };
+    const data = await response.json().catch(() => ({})) as { access_token?: string; refresh_token?: string; error?: string; error_description?: string };
     if (response.ok && data.access_token) {
-      return { token: data.access_token, mode: "refresh" };
+      return {
+        token: data.access_token,
+        mode: serverRefreshToken ? "refresh" : "browser_refresh",
+        refreshTokenRotated: Boolean(data.refresh_token && data.refresh_token !== refreshToken),
+      };
     }
     return {
-      mode: "refresh",
+      mode: serverRefreshToken ? "refresh" : "browser_refresh",
       blocker: `Podio refresh-token exchange failed: ${response.status}${data.error ? ` ${data.error}` : ""}${data.error_description ? ` - ${data.error_description}` : ""}`,
     };
   }
@@ -782,7 +843,7 @@ export function podioReadbackBlockerMessage(status: number, body: unknown): stri
   return "Podio access is configured, but the Leads app readback did not complete. Keep outreach staged until the app readback succeeds.";
 }
 
-async function podioAuthHeaders(env: RuntimeEnv): Promise<{ headers?: Record<string, string>; mode: "bearer" | "app_auth" | "refresh" | "missing"; blocker?: string }> {
+async function podioAuthHeaders(env: RuntimeEnv): Promise<{ headers?: Record<string, string>; mode: "bearer" | "app_auth" | "refresh" | "browser_refresh" | "missing"; blocker?: string }> {
   const resolved = await resolvePodioAccessToken(env);
   if (!resolved.token) return { mode: resolved.mode, blocker: resolved.blocker };
   return {
@@ -1064,6 +1125,7 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
   const missingPodio = podioMissingExportConfig(env);
   const podioApproved = podioLiveWriteApproved(env);
   const podioBackup = podioCsvBackupConfirmed(env);
+  const podioAuthState = podioAuthSummary(env);
   const podioAuth = missingPodio.length ? { token: undefined, blocker: missingPodio.join(", ") } : await resolvePodioAccessToken(env);
   const configuredPodioAppId = podioAppId(env) || "24265877";
   const podioReadback = podioAuth.token
@@ -1088,18 +1150,21 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
   return [
     {
       name: "Podio",
-      ok: !missingPodio.length && podioApproved && podioBackup && podioReadback.ok,
-      mode: !missingPodio.length && podioApproved && podioBackup && podioReadback.ok ? "live" : "blocked",
+      ok: !missingPodio.length && podioApproved && podioBackup && podioReadback.ok && (!podioAuthState.durableRequired || podioAuthState.durableTeamAuth),
+      mode: !missingPodio.length && podioApproved && podioBackup && podioReadback.ok && (!podioAuthState.durableRequired || podioAuthState.durableTeamAuth) ? "live" : podioReadback.ok ? "review" : "blocked",
       message: missingPodio.length
         ? `Podio export/readback config is missing: ${missingPodio.join(", ")}.`
         : !podioReadback.ok
           ? podioReadbackBlockerMessage(podioReadback.status, podioReadback.body)
+        : podioAuthState.reconnectRequired
+          ? "Podio readback works from this browser session, but team-durable access is not configured. Add the Leads app token or server refresh access before calling Podio production-ready."
         : !podioApproved
           ? `Podio bearer-token export config is present; controlled write still requires ${PODIO_LIVE_WRITE_APPROVAL_KEY}=true.`
           : !podioBackup
             ? `Podio controlled write still requires ${PODIO_CSV_BACKUP_CONFIRMATION_KEY}=true before mutation.`
             : "Podio access, Leads app readback, CSV backup confirmation, and controlled write approval are present.",
       checkedAt,
+      auth: podioAuthState,
     },
     {
       name: "Google",
@@ -1143,6 +1208,7 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
     clerkCommercialApiConnectionStatus(env, checkedAt),
     vitalObituaryWorkflowConnectionStatus(env, checkedAt),
     idiCoreConnectionStatus(env, checkedAt),
+    browserbaseUsageConnectionStatus(env, checkedAt),
     {
       name: "Activepieces",
       ok: activepiecesReady,

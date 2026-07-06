@@ -1,5 +1,5 @@
 import type { FactType, FreshLeadBatchRequest, FreshLeadSearchMode, IntakeSeed, RawDossier, ReviewFlag, SourceAttachmentRef, SourceFact } from "@ple/types";
-import { discoverTaxCollectorReceipt, extractTaxCollectorDetails } from "./adapters/tax-collector-receipt";
+import { acquireTaxCollectorReceipt, discoverTaxCollectorReceipt, extractTaxCollectorDetails } from "./adapters/tax-collector-receipt";
 import { runDailyProduction } from "./daily/run-daily";
 import { buildControlledPodioTestSeed } from "./export/controlled-test-lead";
 import { connectionStatuses, exportCompletedReport, podioReadbackBlockerMessage, resolvePodioAccessToken } from "./export/export-package";
@@ -16,6 +16,9 @@ interface CloudflareEnv {
   COUNTY_LIST?: string;
   PODIO_ACCESS_TOKEN?: string;
   PODIO_REFRESH_TOKEN?: string;
+  PODIO_DURABLE_REFRESH_TOKEN?: string;
+  PODIO_TEAM_REFRESH_TOKEN?: string;
+  PODIO_BROWSER_REFRESH_TOKEN?: string;
   PODIO_CLIENT_ID?: string;
   PODIO_CLIENT_SECRET?: string;
   PODIO_APP_TOKEN?: string;
@@ -34,6 +37,12 @@ interface CloudflareEnv {
   PODIO_OAUTH_COOKIE_SECRET?: string;
   PODIO_OAUTH_STATE_COOKIE?: string;
   PODIO_OAUTH_REFRESH_COOKIE?: string;
+  PODIO_OAUTH_REFRESH_KV_KEY?: string;
+  PODIO_TOKEN_STORE?: {
+    get(key: string): Promise<string | null>;
+    put(key: string, value: string, options?: { expirationTtl?: number; metadata?: unknown }): Promise<void>;
+    delete(key: string): Promise<void>;
+  };
   AUTH_REQUIRED?: string;
   AUTH_SESSION_SECRET?: string;
   AUTH_SESSION_COOKIE?: string;
@@ -70,6 +79,28 @@ interface CloudflareEnv {
   LINEAR_PROJECT_ID?: string;
   HEIRRIGHT_LINEAR_DEFAULT_ASSIGNEE_ID?: string;
   LINEAR_DEFAULT_ASSIGNEE_ID?: string;
+  BROWSERBASE_API_KEY?: string;
+  BROWSERBASE_PROJECT_ID?: string;
+  BROWSERBASE_API_BASE?: string;
+  BROWSERBASE_PROXY_ENABLED?: string;
+  BROWSERBASE_BATCH_APPROVAL_REQUIRED?: string;
+  BROWSERBASE_BATCH_RUN_APPROVED?: string;
+  BROWSERBASE_BATCH_MAX_SESSIONS?: string;
+  BROWSERBASE_BATCH_CONCURRENCY?: string;
+  TAX_COLLECTOR_LISTING_URL?: string;
+  TAX_COLLECTOR_LISTING_URL_TEMPLATE?: string;
+  TAX_COLLECTOR_LIVE_ACQUISITION_ENABLED?: string;
+  TAX_COLLECTOR_SEARCH_URL?: string;
+  TAX_COLLECTOR_BROWSER_WORKFLOW_URL?: string;
+  TAX_COLLECTOR_BROWSER_WORKFLOW_TOKEN?: string;
+  TAX_COLLECTOR_BROWSER_WORKFLOW_ENABLED?: string;
+  TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID?: string;
+  BROWSERBASE_TAX_COLLECTOR_FUNCTION_ID?: string;
+  TAX_COLLECTOR_BROWSERBASE_PROXY_ENABLED?: string;
+  OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID?: string;
+  VITAL_OBITUARY_BROWSERBASE_FUNCTION_ID?: string;
+  MARRIAGE_DEATH_BROWSERBASE_FUNCTION_ID?: string;
+  BROWSERBASE_VITAL_OBITUARY_FUNCTION_ID?: string;
 }
 
 const DEFAULT_ADDRESS = "20611 NW 33rd Pl, Miami Gardens, FL 33056";
@@ -103,6 +134,7 @@ function routeList(): string[] {
     "/api/discovery/idi-core/status",
     "/api/discovery/idi-asset-search/import",
     "/api/discovery/source-capture",
+    "/api/discovery/external-source-run",
     "/api/discovery/contact-candidates/:id/review",
     "/api/closing-docs/export-google",
     "/api/outreach/sync",
@@ -198,6 +230,10 @@ function podioRefreshCookieName(env: CloudflareEnv): string {
   return env.PODIO_OAUTH_REFRESH_COOKIE || "hr_podio_refresh";
 }
 
+function podioRefreshKvKey(env: CloudflareEnv): string {
+  return env.PODIO_OAUTH_REFRESH_KV_KEY || "heirright:podio:team-refresh";
+}
+
 function podioCookieSecret(env: CloudflareEnv): string {
   return env.PODIO_OAUTH_COOKIE_SECRET || env.AUTH_SESSION_SECRET || env.HEIRRIGHT_API_TOKEN || "";
 }
@@ -249,8 +285,29 @@ async function decryptCookieValue(value: string | undefined, env: CloudflareEnv)
 
 async function podioRuntimeEnv(request: Request, env: CloudflareEnv): Promise<CloudflareEnv> {
   const refreshCookie = parseCookie(request.headers.get("cookie"))[podioRefreshCookieName(env)];
-  const refreshToken = await decryptCookieValue(refreshCookie, env);
-  return refreshToken ? { ...env, PODIO_REFRESH_TOKEN: refreshToken } : env;
+  const browserRefreshToken = await decryptCookieValue(refreshCookie, env);
+  const storedRefreshToken = await podioStoredRefreshToken(env);
+  if (storedRefreshToken) return { ...env, PODIO_DURABLE_REFRESH_TOKEN: storedRefreshToken };
+  return browserRefreshToken ? { ...env, PODIO_BROWSER_REFRESH_TOKEN: browserRefreshToken } : env;
+}
+
+async function podioStoredRefreshToken(env: CloudflareEnv): Promise<string | null> {
+  const encrypted = await env.PODIO_TOKEN_STORE?.get(podioRefreshKvKey(env)).catch(() => null);
+  return decryptCookieValue(encrypted || undefined, env);
+}
+
+async function storePodioRefreshToken(refreshToken: string, env: CloudflareEnv): Promise<boolean> {
+  if (!env.PODIO_TOKEN_STORE) return false;
+  const encrypted = await encryptCookieValue(refreshToken, env);
+  if (!encrypted) return false;
+  await env.PODIO_TOKEN_STORE.put(podioRefreshKvKey(env), encrypted, {
+    metadata: {
+      provider: "podio",
+      storedAt: nowIso(),
+      purpose: "team_durable_refresh",
+    },
+  });
+  return true;
 }
 
 function html(body: string, init: ResponseInit = {}): Response {
@@ -891,6 +948,265 @@ function objectValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+function compactObject(input: Record<string, unknown> = {}): Record<string, unknown> | undefined {
+  const output = Object.fromEntries(Object.entries(input).filter(([, value]) => {
+    if (Array.isArray(value)) return value.length > 0;
+    if (value && typeof value === "object") return Object.keys(value as Record<string, unknown>).length > 0;
+    return value !== undefined && value !== null && value !== "";
+  }));
+  return Object.keys(output).length ? output : undefined;
+}
+
+const BROWSERBASE_BATCH_APPROVAL_MARKER = "approved_paid_browserbase_batch_run";
+
+function truthyEnvValue(value: unknown): boolean {
+  return ["1", "true", "yes", "on"].includes(stringValue(value).toLowerCase());
+}
+
+function positiveIntegerEnvValue(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+function browserbaseBatchEstateCount(body: Record<string, unknown> = {}): number {
+  if (Array.isArray(body.estates)) return body.estates.length;
+  if (Array.isArray(body.rows)) return body.rows.length;
+  if (Array.isArray(body.items)) return body.items.length;
+  if (Number(body.estateCount) > 0) return Math.floor(Number(body.estateCount));
+  if (Number(body.count) > 0) return Math.floor(Number(body.count));
+  return 1;
+}
+
+function browserbaseBatchRequested(body: Record<string, unknown> = {}): boolean {
+  return body.batch === true
+    || body.isBatch === true
+    || body.batchRun === true
+    || stringValue(body.mode).toLowerCase() === "batch"
+    || browserbaseBatchEstateCount(body) > 1;
+}
+
+function browserbaseBatchApproved(body: Record<string, unknown> = {}, env: CloudflareEnv): boolean {
+  return truthyEnvValue(env.BROWSERBASE_BATCH_RUN_APPROVED)
+    || body.browserbaseUsageApproval === BROWSERBASE_BATCH_APPROVAL_MARKER
+    || body.browserbaseBatchApproval === BROWSERBASE_BATCH_APPROVAL_MARKER
+    || body.approvalMarker === BROWSERBASE_BATCH_APPROVAL_MARKER;
+}
+
+function browserbaseBatchGuard(body: Record<string, unknown> = {}, env: CloudflareEnv): Record<string, unknown> | null {
+  if (!browserbaseBatchRequested(body)) return null;
+  const maxBatchSessions = positiveIntegerEnvValue(env.BROWSERBASE_BATCH_MAX_SESSIONS, 10);
+  const batchCount = browserbaseBatchEstateCount(body);
+  if (batchCount > maxBatchSessions) {
+    return {
+      code: "BROWSERBASE_BATCH_LIMIT_EXCEEDED",
+      batchCount,
+      maxBatchSessions,
+      message: `Browserbase batch source runs are capped at ${maxBatchSessions} estates per approval. Split this batch before running paid browser capture.`,
+    };
+  }
+  if (env.BROWSERBASE_BATCH_APPROVAL_REQUIRED !== "false" && !browserbaseBatchApproved(body, env)) {
+    return {
+      code: "BROWSERBASE_BATCH_APPROVAL_REQUIRED",
+      batchCount,
+      maxBatchSessions,
+      message: "Browserbase paid batch source runs need explicit batch approval before Tax Collector or vital-source browser capture starts.",
+    };
+  }
+  return null;
+}
+
+function taxCollectorInputFromSourceRun(body: Record<string, unknown>, seed: IntakeSeed, capture: Record<string, unknown>): Record<string, unknown> {
+  const taxReceipt = objectValue(capture.taxReceipt);
+  const seedExtras = seed as IntakeSeed & Record<string, unknown>;
+  const propertyAppraiser = objectValue(capture.propertyAppraiser || seedExtras.propertyAppraiserEvidence);
+  return {
+    listingHtml: taxReceipt.listingHtml || body.listingHtml,
+    receiptHtml: taxReceipt.receiptHtml || body.receiptHtml,
+    listingText: taxReceipt.listingText || body.listingText,
+    receiptText: taxReceipt.receiptText || body.receiptText,
+    detailsText: taxReceipt.detailsText || body.detailsText,
+    listingUrl: taxReceipt.listingUrl || taxReceipt.sourceUrl || seed.taxCollectorListingUrl || body.listingUrl || body.sourceUrl,
+    receiptUrl: taxReceipt.receiptUrl || taxReceipt.receiptLink || taxReceipt.sourceUrl || seed.taxCollectorReceiptUrl || body.receiptUrl || body.receiptLink,
+    receiptLink: taxReceipt.receiptLink || seed.taxCollectorReceiptUrl || body.receiptLink,
+    sourceUrl: taxReceipt.sourceUrl || body.sourceUrl,
+    paidBy: taxReceipt.paidBy || body.paidBy,
+    payerIdentity: taxReceipt.payerIdentity || body.payerIdentity,
+    paidDate: taxReceipt.paidDate || body.paidDate,
+    amountDue: taxReceipt.amountDue || body.amountDue,
+    unpaidYears: taxReceipt.unpaidYears || body.unpaidYears,
+    reassessment: taxReceipt.reassessment || body.reassessment,
+    status: taxReceipt.status || body.status,
+    parcelId: seed.parcelId || propertyAppraiser.folio || propertyAppraiser.parcelId || body.parcelId || body.folio,
+    propertyAddress: seed.propertyAddress || body.propertyAddress || body.address,
+    ownerName: seed.ownerName || seed.estateName || body.ownerName || body.owner || body.estateName,
+  };
+}
+
+function taxCollectorHasTarget(input: Record<string, unknown>): boolean {
+  return Boolean(
+    stringValue(input.parcelId)
+      || stringValue(input.propertyAddress)
+      || stringValue(input.ownerName)
+      || stringValue(input.listingUrl)
+      || stringValue(input.receiptUrl)
+      || stringValue(input.receiptLink)
+      || stringValue(input.listingHtml)
+  );
+}
+
+function taxCollectorRunFromAcquisition(
+  seed: IntakeSeed,
+  input: Record<string, unknown>,
+  acquisition: Awaited<ReturnType<typeof acquireTaxCollectorReceipt>>,
+): Record<string, unknown> {
+  const details = {
+    ...extractTaxCollectorDetails(input),
+    ...(acquisition.discovery?.details || {}),
+  };
+  const receiptUrl = acquisition.discovery?.receiptUrl || "";
+  const receipt = compactObject({
+    receiptUrl,
+    artifactUrl: receiptUrl,
+    contentType: /\.pdf($|\?)/i.test(receiptUrl) ? "application/pdf" : receiptUrl ? "text/html" : undefined,
+    paidBy: details.paidBy,
+    payerIdentity: details.payerIdentity,
+    paidDate: details.paidDate,
+    amountDue: details.amountDue,
+    unpaidYears: details.unpaidYears,
+    reassessment: details.reassessment,
+    receiptStatus: details.receiptStatus || (receiptUrl ? "receipt_link_captured" : undefined),
+    receiptLinkPosition: acquisition.discovery?.mode === "listing_page_bottom_right" ? "listing_page_bottom_right" : acquisition.discovery?.mode,
+  }) || {};
+  const matchedListing = compactObject({
+    listingUrl: acquisition.discovery?.listingUrl || acquisition.finalUrl || acquisition.listingUrl,
+    sourcePage: acquisition.finalUrl || acquisition.listingUrl || acquisition.discovery?.listingUrl,
+    status: acquisition.status,
+    matchReason: acquisition.discovery
+      ? "Matched from folio/address search result and captured the bottom-right receipt link."
+      : acquisition.mode === "browser_workflow_required"
+        ? "Public search requires the controlled browser workflow before listing review can complete."
+        : "No matching Tax Collector listing was confirmed.",
+  }) || {};
+  const blocker = acquisition.ok
+    ? ""
+    : acquisition.blocker || "Tax Collector receipt run did not return the bottom-right receipt link.";
+  return {
+    ok: Boolean(acquisition.ok && receiptUrl),
+    mode: acquisition.mode,
+    flow: "tax_collector_receipt",
+    estateId: seedIdentity(seed),
+    paidRun: false,
+    searchInput: {
+      estateId: seedIdentity(seed),
+      county: seed.county || "miami-dade",
+      folio: stringValue(input.parcelId),
+      propertyAddress: stringValue(input.propertyAddress),
+      ownerName: stringValue(input.ownerName),
+      searchUrl: acquisition.searchUrl,
+    },
+    matchedListing,
+    receipt,
+    sourceEvidence: compactObject({
+      source: "tax_collector",
+      sourcePage: matchedListing.sourcePage,
+      searchUrl: acquisition.searchUrl,
+      finalUrl: acquisition.finalUrl,
+      status: acquisition.status,
+      fetchedAt: nowIso(),
+      bodySnippet: acquisition.bodySnippet,
+      reviewFlags: acquisition.reviewFlags,
+    }),
+    blockers: blocker ? [blocker] : [],
+    reviewRequired: true,
+    reviewFlags: acquisition.reviewFlags,
+    message: acquisition.ok && receiptUrl
+      ? "Tax Collector listing was reached from estate facts and the bottom-right receipt link was captured for review."
+      : blocker,
+  };
+}
+
+function addTaxFact(
+  facts: SourceFact[],
+  runId: string,
+  seed: IntakeSeed,
+  factType: SourceFact["factType"],
+  value: unknown,
+  sourceUrl: string | undefined,
+  reviewFlags: ReviewFlag[],
+  confidence = 0.78,
+): void {
+  if (!factValuePresent(value)) return;
+  facts.push(fact({
+    runId,
+    source: "tax_collector",
+    rawId: `tax-collector:${slug(String(factType))}`,
+    fetchedAt: nowIso(),
+    county: seed.county || "miami-dade",
+    subject: intakeSubject(seed),
+    factType,
+    value,
+    confidence,
+    sourceUrl,
+    reviewFlags,
+  }));
+}
+
+function taxCollectorSourceFactsFromRun(runId: string, seed: IntakeSeed, run: Record<string, unknown>): SourceFact[] {
+  const receipt = objectValue(run.receipt);
+  const matchedListing = objectValue(run.matchedListing);
+  const sourceEvidence = objectValue(run.sourceEvidence);
+  const flags = (Array.isArray(run.reviewFlags) ? run.reviewFlags : []) as ReviewFlag[];
+  const sourceUrl = stringValue(receipt.receiptUrl) || stringValue(matchedListing.listingUrl) || stringValue(sourceEvidence.sourcePage) || stringValue(sourceEvidence.searchUrl) || undefined;
+  const facts: SourceFact[] = [];
+  addTaxFact(facts, runId, seed, "source_status", compactObject({
+    mode: run.mode,
+    ok: Boolean(run.ok),
+    listingUrl: matchedListing.listingUrl,
+    receiptUrl: receipt.receiptUrl,
+    searchUrl: sourceEvidence.searchUrl,
+    note: run.message,
+    status: sourceEvidence.status,
+  }), sourceUrl, flags, run.ok ? 0.86 : 0.35);
+  addTaxFact(facts, runId, seed, "tax_receipt_status", receipt.receiptStatus || run.mode, sourceUrl, flags, run.ok ? 0.86 : 0.35);
+  addTaxFact(facts, runId, seed, "tax_receipt_link", receipt.receiptUrl, stringValue(receipt.receiptUrl) || sourceUrl, flags, 0.9);
+  addTaxFact(facts, runId, seed, "tax_receipt_attachment", receipt.receiptUrl ? {
+    label: "Tax Collector receipt",
+    sourceUrl: receipt.receiptUrl,
+    fileKind: receipt.contentType === "application/pdf" ? "pdf" : "link",
+    capturedAt: stringValue(sourceEvidence.fetchedAt) || nowIso(),
+    capturedBy: "tax-collector-receipt-run",
+    reviewFlags: flags,
+  } : null, stringValue(receipt.receiptUrl) || sourceUrl, flags, 0.9);
+  addTaxFact(facts, runId, seed, "tax_last_paid_by", receipt.paidBy, sourceUrl, ["HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"], 0.78);
+  addTaxFact(facts, runId, seed, "tax_payer_identity", receipt.payerIdentity || receipt.paidBy, sourceUrl, ["HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"], 0.78);
+  addTaxFact(facts, runId, seed, "tax_paid_date", receipt.paidDate, sourceUrl, ["HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"], 0.78);
+  addTaxFact(facts, runId, seed, "tax_amount_due", receipt.amountDue, sourceUrl, ["HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"], 0.78);
+  addTaxFact(facts, runId, seed, "unpaid_tax_years", receipt.unpaidYears, sourceUrl, ["HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"], 0.78);
+  addTaxFact(facts, runId, seed, "tax_reassessment_signal", receipt.reassessment, sourceUrl, ["HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"], 0.7);
+  return facts;
+}
+
+function browserbaseBatchGuardFacts(runId: string, seed: IntakeSeed, guard: Record<string, unknown>): SourceFact[] {
+  return [fact({
+    runId,
+    source: "tax_collector",
+    rawId: "tax-collector:browserbase-batch-guard",
+    fetchedAt: nowIso(),
+    county: seed.county || "miami-dade",
+    subject: intakeSubject(seed),
+    factType: "source_status",
+    value: compactObject({
+      mode: "browserbase_batch_blocked",
+      ok: false,
+      note: guard.message,
+      batchCount: guard.batchCount,
+      maxBatchSessions: guard.maxBatchSessions,
+    }),
+    confidence: 0.35,
+    reviewFlags: [String(guard.code || "BROWSERBASE_BATCH_APPROVAL_REQUIRED") as ReviewFlag, "SOURCE_BLOCKED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+  })];
+}
+
 function idiAssetImportInputFromBody(body: Record<string, unknown> = {}): Record<string, unknown> | null {
   const capture = objectValue(body.capture);
   const input = objectValue(body.idiAssetImport || body.idiImport || capture.idiAssetImport || capture.idiImport);
@@ -988,10 +1304,10 @@ function summarizeSourceRunFacts(facts: SourceFact[]): Array<Record<string, unkn
 
 function sourceRunCredentialGate(source: string): string {
   if (source === "property_appraiser") return "Public county property search";
-  if (source === "tax_collector") return "Direct Tax Collector listing URL, TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID, or TAX_COLLECTOR_BROWSER_WORKFLOW_URL";
-  if (source === "official_records" || source === "probate_court") return "MIAMI_DADE_CLERK_AUTH_KEY with Clerk Commercial Data Services units";
-  if (source === "clerk_of_courts") return "OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID or OBITUARY_VITAL_WORKFLOW_URL";
-  if (source === "idi") return "IDI_CORE_API_URL plus shared IDI_CORE_API_KEY and IDI_CORE_LIVE_RUN_APPROVED=true, or approved operator report import";
+  if (source === "tax_collector") return "Direct Tax Collector listing, approved Browserbase capture, or saved browser workflow";
+  if (source === "official_records" || source === "probate_court") return "Miami-Dade Clerk Commercial Data Services access with prepaid units";
+  if (source === "clerk_of_courts") return "Approved Browserbase vital-source capture or saved vital-source workflow";
+  if (source === "idi") return "IDI Core vendor API access with shared team approval, personal approved key, or approved operator report import";
   if (source === "skip_trace") return "Approved skip-trace provider plus operator approval";
   if (source === "source_governance") return "Operator approval for manual, paid, voter, social, license, business/address, and field research";
   return "Source-specific evidence or operator review";
@@ -1296,9 +1612,33 @@ async function externalSourceRunResponse(request: Request, url: URL, env: Cloudf
   const seed = sourceRunSeedFromBody(body, seedFromUrl(url, env));
   const pipeline = await runDryPipeline(seed, { env: env as Record<string, string | undefined> });
   const capture = body.capture && typeof body.capture === "object" ? body.capture as Record<string, unknown> : body;
+  const batchGuard = browserbaseBatchGuard(body, env);
+  const taxCollectorInput = taxCollectorInputFromSourceRun(body, seed, capture);
+  let taxCollectorReceiptRun: Record<string, unknown> | null = null;
+  let taxCollectorSourceFacts: SourceFact[] = [];
+  if (batchGuard) {
+    taxCollectorReceiptRun = {
+      ok: false,
+      mode: "browserbase_batch_blocked",
+      flow: "tax_collector_receipt",
+      estateId: seedIdentity(seed),
+      paidRun: true,
+      batchGuard,
+      blockers: [String(batchGuard.message || "Browserbase paid batch source run needs approval.")],
+      reviewRequired: true,
+      reviewFlags: [String(batchGuard.code || "BROWSERBASE_BATCH_APPROVAL_REQUIRED"), "SOURCE_BLOCKED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+      message: batchGuard.message,
+    };
+    taxCollectorSourceFacts = browserbaseBatchGuardFacts(pipeline.runId, seed, batchGuard);
+  } else if (taxCollectorHasTarget(taxCollectorInput)) {
+    const acquisition = await acquireTaxCollectorReceipt(taxCollectorInput, { env: env as Record<string, string | undefined> });
+    taxCollectorReceiptRun = taxCollectorRunFromAcquisition(seed, taxCollectorInput, acquisition);
+    taxCollectorSourceFacts = taxCollectorSourceFactsFromRun(pipeline.runId, seed, taxCollectorReceiptRun);
+  }
   const capturedSourceFacts = sourceFactsFromCapture(pipeline.runId, seed, capture);
   const sourceFacts = [
     ...pipeline.facts,
+    ...taxCollectorSourceFacts,
     ...capturedSourceFacts,
     ...idiAssetImportFactsFromBody(pipeline.runId, seed, body),
   ].filter((factItem) => discoverySourceLabels.some((source) => source.source === factItem.source));
@@ -1322,6 +1662,7 @@ async function externalSourceRunResponse(request: Request, url: URL, env: Cloudf
     sourceSummaries,
     sourceRunProof,
     sourceFacts,
+    taxCollectorReceiptRun,
     dossier: pipeline.dossier,
     blockers,
     message: blockers.length
@@ -1672,6 +2013,7 @@ async function outreachSyncResponse(request: Request, env: CloudflareEnv): Promi
 
 async function deepHealthResponse(request: Request, env: CloudflareEnv): Promise<Response> {
   const runtimeEnv = await podioRuntimeEnv(request, env);
+  const storedRefreshConfigured = Boolean(runtimeEnv.PODIO_DURABLE_REFRESH_TOKEN && !env.PODIO_DURABLE_REFRESH_TOKEN);
   const statuses = await connectionStatuses(runtimeEnv as Record<string, string | undefined>);
   return json({
     ok: true,
@@ -1680,7 +2022,8 @@ async function deepHealthResponse(request: Request, env: CloudflareEnv): Promise
     deploymentKey: env.DEPLOYMENT_KEY || "heirright",
     routes: Object.fromEntries(routeList().map((route) => [route, "available"])),
     connections: statuses,
-    podioBrowserBackedRefresh: Boolean(runtimeEnv.PODIO_REFRESH_TOKEN && !env.PODIO_REFRESH_TOKEN),
+    podioBrowserBackedRefresh: Boolean(runtimeEnv.PODIO_BROWSER_REFRESH_TOKEN && !env.PODIO_BROWSER_REFRESH_TOKEN),
+    podioStoredRefreshConfigured: storedRefreshConfigured,
   }, { headers: { "cache-control": "no-store" } });
 }
 
@@ -1715,6 +2058,7 @@ async function podioJson(path: string, env: CloudflareEnv): Promise<{ ok: boolea
 
 async function podioDiagnosticsResponse(request: Request, env: CloudflareEnv): Promise<Response> {
   const runtimeEnv = await podioRuntimeEnv(request, env);
+  const storedRefreshConfigured = Boolean(runtimeEnv.PODIO_DURABLE_REFRESH_TOKEN && !env.PODIO_DURABLE_REFRESH_TOKEN);
   const appId = runtimeEnv.PODIO_APP_ID || TEXAS_EQUITY_PROS_LEADS_APP_ID;
   const spaceId = runtimeEnv.PODIO_SPACE_ID || TEXAS_EQUITY_PROS_LEADS_SPACE_ID;
   const auth = await resolvePodioAccessToken(runtimeEnv as Record<string, string | undefined>);
@@ -1731,6 +2075,7 @@ async function podioDiagnosticsResponse(request: Request, env: CloudflareEnv): P
     ...memberRows.map((item) => podioProfileCandidate(item, "space_member")),
   ].filter((item): item is Record<string, unknown> => Boolean(item));
   const podioAuthOk = Boolean(auth.token && userStatus.ok && app.ok && members.ok);
+  const durableTeamAuth = auth.mode === "app_auth" || auth.mode === "refresh" || auth.mode === "bearer";
   const authBlocker = auth.blocker || podioReadbackBlockerMessage(
     app.status || userStatus.status || members.status,
     app.data || userStatus.data || members.data,
@@ -1740,12 +2085,16 @@ async function podioDiagnosticsResponse(request: Request, env: CloudflareEnv): P
     appId,
     spaceId,
     authMode: auth.mode,
-    browserBackedRefresh: Boolean(runtimeEnv.PODIO_REFRESH_TOKEN && !env.PODIO_REFRESH_TOKEN),
+    browserBackedRefresh: Boolean(runtimeEnv.PODIO_BROWSER_REFRESH_TOKEN && !env.PODIO_BROWSER_REFRESH_TOKEN),
+    storedRefreshConfigured,
+    durableTeamAuth,
+    reconnectRequired: auth.mode === "browser_refresh",
     authOk: podioAuthOk,
     authBlocker: podioAuthOk ? null : authBlocker,
-    setupOptions: podioAuthOk ? [] : [
-      "Reconnect Podio once with the approved HeirRight account so the Worker can use refresh-token auth.",
-      "Fallback: add the Podio Leads app token so the Worker can request fresh app-scoped access without relying on a stale bearer token.",
+    setupOptions: durableTeamAuth ? [] : [
+      "Add the Podio Leads app token for team-durable CRM access.",
+      "Or add the approved server refresh access so every logged-in user uses the same Podio connection.",
+      "Browser reconnect remains available as a temporary single-browser session path.",
     ],
     userStatus: { ok: userStatus.ok, status: userStatus.status },
     app: {
@@ -1880,16 +2229,19 @@ async function podioOAuthCallbackResponse(request: Request, url: URL, env: Cloud
   if (!refreshCookie) {
     return html(podioSetupHtml(
       "Podio Refresh Could Not Be Saved",
-      "HeirRight could not protect the Podio refresh access in the browser session. Add the Podio app token fallback before exporting.",
+      "HeirRight could not protect the Podio refresh access. Add the Podio app token fallback before exporting.",
       "blocked",
     ), { status: 503 });
   }
+  const storedForTeam = await storePodioRefreshToken(token.refresh_token, env);
   const headers = new Headers({ "cache-control": "no-store" });
   headers.append("set-cookie", clearResponseCookie(request, podioStateCookieName(env)));
   headers.append("set-cookie", responseCookie(request, podioRefreshCookieName(env), refreshCookie, PODIO_OAUTH_REFRESH_TTL_SECONDS));
   return html(podioSetupHtml(
-    "Podio Connected",
-    "HeirRight can now refresh Podio access from this approved browser session. Settings will show Podio live after the Leads app readback succeeds.",
+    storedForTeam ? "Podio Team Access Connected" : "Podio Session Connected",
+    storedForTeam
+      ? "HeirRight saved the approved Podio connection for the team. Settings will show durable Podio access after the Leads app readback succeeds."
+      : "HeirRight can refresh Podio from this browser session. Add the Podio Leads app token, server refresh access, or Worker token storage before calling this team-durable.",
   ), {
     headers,
   });

@@ -11,7 +11,28 @@ function podioAccessToken(env) {
 }
 
 function podioRefreshToken(env) {
-  return envValue(env, ["PODIO_REFRESH_TOKEN", "PODIO_OAUTH_REFRESH_TOKEN", "PODIO_REFRESH_ACCESS_TOKEN"]);
+  return envValue(env, [
+    "PODIO_DURABLE_REFRESH_TOKEN",
+    "PODIO_TEAM_REFRESH_TOKEN",
+    "PODIO_REFRESH_TOKEN",
+    "PODIO_OAUTH_REFRESH_TOKEN",
+    "PODIO_REFRESH_ACCESS_TOKEN",
+    "PODIO_BROWSER_REFRESH_TOKEN",
+  ]);
+}
+
+function podioServerRefreshToken(env) {
+  return envValue(env, [
+    "PODIO_DURABLE_REFRESH_TOKEN",
+    "PODIO_TEAM_REFRESH_TOKEN",
+    "PODIO_REFRESH_TOKEN",
+    "PODIO_OAUTH_REFRESH_TOKEN",
+    "PODIO_REFRESH_ACCESS_TOKEN",
+  ]);
+}
+
+function podioBrowserRefreshToken(env) {
+  return envValue(env, ["PODIO_BROWSER_REFRESH_TOKEN"]);
 }
 
 function podioClientId(env) {
@@ -48,6 +69,44 @@ function podioAutoRefreshConfigured(env) {
       && clientSecret
       && (podioRefreshToken(env) || (podioAppId(env) && podioAppToken(env)))
   );
+}
+
+function podioAuthSummary(env) {
+  const clientId = podioClientId(env);
+  const clientSecret = podioClientSecret(env);
+  const appTokenConfigured = Boolean(clientId && clientSecret && podioAppId(env) && podioAppToken(env));
+  const serverRefreshConfigured = Boolean(clientId && clientSecret && podioServerRefreshToken(env));
+  const browserSessionRefresh = Boolean(clientId && clientSecret && podioBrowserRefreshToken(env));
+  const bearerTokenConfigured = Boolean(podioAccessToken(env));
+  const durableTeamAuth = appTokenConfigured || serverRefreshConfigured || bearerTokenConfigured;
+  const durableRequired = env.PODIO_DURABLE_AUTH_REQUIRED !== "false";
+  return {
+    mode: appTokenConfigured
+      ? "app_auth"
+      : serverRefreshConfigured
+        ? "refresh"
+        : browserSessionRefresh
+          ? "browser_refresh"
+          : bearerTokenConfigured
+            ? "bearer"
+            : "missing",
+    durableTeamAuth,
+    appTokenConfigured,
+    serverRefreshConfigured,
+    browserSessionRefresh,
+    bearerTokenConfigured,
+    reconnectRequired: durableRequired && !durableTeamAuth,
+    durableRequired,
+  };
+}
+
+function truthyEnv(value) {
+  return ["1", "true", "yes", "on"].includes(String(value || "").toLowerCase());
+}
+
+function positiveIntegerEnv(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
 }
 
 function podioMissingConfig(env) {
@@ -196,6 +255,49 @@ function vitalObituaryWorkflowStatus(env, checkedAt = new Date().toISOString()) 
   };
 }
 
+function browserbaseUsageStatus(env, checkedAt = new Date().toISOString()) {
+  const taxCollectorFunctionConfigured = Boolean(
+    env.BROWSERBASE_API_KEY
+      && (env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID || env.BROWSERBASE_TAX_COLLECTOR_FUNCTION_ID)
+  );
+  const vitalObituaryFunctionConfigured = Boolean(
+    env.BROWSERBASE_API_KEY
+      && (env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID
+        || env.VITAL_OBITUARY_BROWSERBASE_FUNCTION_ID
+        || env.MARRIAGE_DEATH_BROWSERBASE_FUNCTION_ID
+        || env.BROWSERBASE_VITAL_OBITUARY_FUNCTION_ID)
+  );
+  const apiConfigured = Boolean(env.BROWSERBASE_API_KEY);
+  const projectConfigured = Boolean(env.BROWSERBASE_PROJECT_ID);
+  const configured = Boolean(apiConfigured && (projectConfigured || taxCollectorFunctionConfigured || vitalObituaryFunctionConfigured));
+  const maxBatchSessions = positiveIntegerEnv(env.BROWSERBASE_BATCH_MAX_SESSIONS, 10);
+  const maxConcurrency = positiveIntegerEnv(env.BROWSERBASE_BATCH_CONCURRENCY, 2);
+  const batchApprovalRequired = env.BROWSERBASE_BATCH_APPROVAL_REQUIRED !== "false";
+  const batchApprovedByEnv = truthyEnv(env.BROWSERBASE_BATCH_RUN_APPROVED);
+  return {
+    name: "Browserbase Usage",
+    ok: configured,
+    mode: configured ? "review" : "blocked",
+    configuredMode: configured ? "usage_policy" : "none",
+    message: configured
+      ? `Browserbase is configured for single-estate source capture. Paid batch source runs are capped at ${maxBatchSessions} estates with ${maxConcurrency} running at a time and require explicit batch approval.`
+      : "Browserbase is not connected. Tax Collector and vital-source browser workflows stay blocked until source capture is configured.",
+    checkedAt,
+    blockers: configured ? [] : ["Connect Browserbase source capture before claiming automated browser retrieval."],
+    usagePolicy: {
+      apiConfigured,
+      projectConfigured,
+      taxCollectorFunctionConfigured,
+      vitalObituaryFunctionConfigured,
+      proxyEnabled: truthyEnv(env.BROWSERBASE_PROXY_ENABLED) || truthyEnv(env.TAX_COLLECTOR_BROWSERBASE_PROXY_ENABLED),
+      batchApprovalRequired,
+      batchApprovedByEnv,
+      maxBatchSessions,
+      maxConcurrency,
+    },
+  };
+}
+
 function idiCoreStatus(env, checkedAt = new Date().toISOString()) {
   const api = idiCoreApiDetails(env);
   const apiConfigured = idiCoreApiConfigured(env);
@@ -310,6 +412,7 @@ function buildConnectionStatuses(env = process.env, options = {}) {
   const podioApproved = env.PODIO_LIVE_WRITE_APPROVED === "true";
   const podioBackupConfirmed = env.PODIO_CSV_BACKUP_CONFIRMED === "true";
   const podioHasRefreshPath = podioAutoRefreshConfigured(env);
+  const podioAuthState = podioAuthSummary(env);
   const missingGoogle = googleMissingConfig(env);
   const googleApproved = env.GOOGLE_LIVE_WRITE_APPROVED === "true";
   const missingResend = resendMissingConfig(env);
@@ -323,10 +426,12 @@ function buildConnectionStatuses(env = process.env, options = {}) {
   return [
     {
       name: "Podio",
-      ok: !missingPodio.length && podioApproved && podioBackupConfirmed && podioHasRefreshPath,
-      mode: !missingPodio.length && podioApproved && podioBackupConfirmed && podioHasRefreshPath ? "live" : "blocked",
+      ok: !missingPodio.length && podioApproved && podioBackupConfirmed && podioHasRefreshPath && (!podioAuthState.durableRequired || podioAuthState.durableTeamAuth),
+      mode: !missingPodio.length && podioApproved && podioBackupConfirmed && podioHasRefreshPath && (!podioAuthState.durableRequired || podioAuthState.durableTeamAuth) ? "live" : podioHasRefreshPath ? "review" : "blocked",
       message: !missingPodio.length
-        ? !podioHasRefreshPath
+        ? podioAuthState.reconnectRequired
+          ? "Podio is connected for this browser session only. Add the Leads app token or approved server refresh access so the team stays linked."
+          : !podioHasRefreshPath
           ? "Podio access needs reconnect. Reconnect with the approved HeirRight account, or add the Podio Leads app token fallback before export/readback."
           : !podioApproved
           ? "Podio handoff access is present; final sample-card approval still needs confirmation."
@@ -335,6 +440,7 @@ function buildConnectionStatuses(env = process.env, options = {}) {
             : "Podio handoff access, backup confirmation, and approval are present."
         : `Podio handoff setup is incomplete: ${operatorAccessList(missingPodio)}.`,
       checkedAt,
+      auth: podioAuthState,
     },
     {
       name: "Google",
@@ -380,6 +486,7 @@ function buildConnectionStatuses(env = process.env, options = {}) {
     clerkCommercialApiStatus(env, checkedAt),
     vitalObituaryWorkflowStatus(env, checkedAt),
     idiCoreStatus(env, checkedAt),
+    browserbaseUsageStatus(env, checkedAt),
     {
       name: "Activepieces",
       ok: !missingActivepieces.length,

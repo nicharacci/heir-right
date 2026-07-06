@@ -17,6 +17,65 @@ function compactObject(input = {}) {
   return Object.keys(output).length ? output : undefined;
 }
 
+const BROWSERBASE_BATCH_APPROVAL_MARKER = "approved_paid_browserbase_batch_run";
+
+function truthyEnv(value) {
+  return ["1", "true", "yes", "on"].includes(String(value || "").toLowerCase());
+}
+
+function positiveIntegerEnv(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+function browserbaseBatchEstateCount(body = {}) {
+  if (Array.isArray(body.estates)) return body.estates.length;
+  if (Array.isArray(body.rows)) return body.rows.length;
+  if (Array.isArray(body.items)) return body.items.length;
+  if (Number(body.estateCount) > 0) return Math.floor(Number(body.estateCount));
+  if (Number(body.count) > 0) return Math.floor(Number(body.count));
+  return 1;
+}
+
+function browserbaseBatchRequested(body = {}) {
+  return body.batch === true
+    || body.isBatch === true
+    || body.batchRun === true
+    || String(body.mode || "").toLowerCase() === "batch"
+    || browserbaseBatchEstateCount(body) > 1;
+}
+
+function browserbaseBatchApproved(body = {}, env = process.env) {
+  return truthyEnv(env.BROWSERBASE_BATCH_RUN_APPROVED)
+    || body.browserbaseUsageApproval === BROWSERBASE_BATCH_APPROVAL_MARKER
+    || body.browserbaseBatchApproval === BROWSERBASE_BATCH_APPROVAL_MARKER
+    || body.approvalMarker === BROWSERBASE_BATCH_APPROVAL_MARKER;
+}
+
+function browserbaseBatchGuard(body = {}, env = process.env) {
+  if (!browserbaseBatchRequested(body)) return null;
+  const maxBatchSessions = positiveIntegerEnv(env.BROWSERBASE_BATCH_MAX_SESSIONS, 10);
+  const batchCount = browserbaseBatchEstateCount(body);
+  if (batchCount > maxBatchSessions) {
+    return {
+      code: "BROWSERBASE_BATCH_LIMIT_EXCEEDED",
+      batchCount,
+      maxBatchSessions,
+      message: `Browserbase batch source runs are capped at ${maxBatchSessions} estates per approval. Split this batch before running paid browser capture.`,
+    };
+  }
+  const approvalRequired = env.BROWSERBASE_BATCH_APPROVAL_REQUIRED !== "false";
+  if (approvalRequired && !browserbaseBatchApproved(body, env)) {
+    return {
+      code: "BROWSERBASE_BATCH_APPROVAL_REQUIRED",
+      batchCount,
+      maxBatchSessions,
+      message: "Browserbase paid batch source runs need explicit batch approval before Tax Collector or vital-source browser capture starts.",
+    };
+  }
+  return null;
+}
+
 function safeBodySnippet(value) {
   return stringValue(value)
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
@@ -273,6 +332,22 @@ async function runTaxCollectorReceiptSearch(body = {}, options = {}) {
     result.sourceFacts = taxCollectorConfirmedFactsFromRun(result);
     return result;
   }
+  const batchGuard = browserbaseBatchGuard(body, options.env || process.env);
+  if (batchGuard) {
+    const result = normalizeAcquisitionResult({
+      ok: false,
+      mode: "browser_workflow_required",
+      listingUrl: "",
+      searchUrl: process.env.TAX_COLLECTOR_SEARCH_URL || "https://county-taxes.net/fl-miamidade/property-tax",
+      blocker: batchGuard.message,
+      reviewFlags: [batchGuard.code, "SOURCE_BLOCKED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+    }, body, input);
+    result.mode = "browserbase_batch_blocked";
+    result.paidRun = true;
+    result.batchGuard = batchGuard;
+    result.sourceFacts = taxCollectorConfirmedFactsFromRun(result);
+    return result;
+  }
   const acquisition = await acquire(input, options.env || process.env, options.fetchImpl || fetch);
   const result = normalizeAcquisitionResult(acquisition, body, input);
   result.sourceFacts = taxCollectorConfirmedFactsFromRun(result);
@@ -301,5 +376,6 @@ module.exports = {
   taxCollectorCaptureFromRun,
   taxCollectorConfirmedFactsFromRun,
   taxCollectorInputFromBody,
+  browserbaseBatchGuard,
   withoutTaxCollectorAcquisitionEnv,
 };

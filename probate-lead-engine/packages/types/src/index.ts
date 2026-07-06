@@ -493,13 +493,23 @@ export interface ExportResult {
 }
 
 export interface ConnectionStatus {
-  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search" | "Tax Collector Source" | "Miami-Dade Clerk API" | "Vital/Obituary Workflow" | "IDI Core" | "Activepieces" | "Linear Support" | "Leads Engine Access";
+  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search" | "Tax Collector Source" | "Miami-Dade Clerk API" | "Vital/Obituary Workflow" | "IDI Core" | "Browserbase Usage" | "Activepieces" | "Linear Support" | "Leads Engine Access";
   ok: boolean;
   mode: "live" | "dry_run" | "review" | "blocked";
   message: string;
   checkedAt: string;
-  configuredMode?: "api" | "commercial_api" | "operator_portal" | "script_listing" | "browser_workflow" | "none";
+  configuredMode?: "api" | "commercial_api" | "operator_portal" | "script_listing" | "browser_workflow" | "usage_policy" | "none";
   blockers?: string[];
+  auth?: {
+    mode: "bearer" | "app_auth" | "refresh" | "browser_refresh" | "missing";
+    durableTeamAuth: boolean;
+    appTokenConfigured: boolean;
+    serverRefreshConfigured: boolean;
+    browserSessionRefresh: boolean;
+    bearerTokenConfigured: boolean;
+    reconnectRequired: boolean;
+    durableRequired: boolean;
+  };
   portal?: {
     configured: boolean;
     searchUrl: string;
@@ -524,6 +534,17 @@ export interface ConnectionStatus {
     baseUrl?: string;
     workflowConfigured?: boolean;
     supports?: string[];
+  };
+  usagePolicy?: {
+    apiConfigured: boolean;
+    projectConfigured: boolean;
+    taxCollectorFunctionConfigured: boolean;
+    vitalObituaryFunctionConfigured: boolean;
+    proxyEnabled: boolean;
+    batchApprovalRequired: boolean;
+    batchApprovedByEnv: boolean;
+    maxBatchSessions: number;
+    maxConcurrency: number;
   };
 }
 
