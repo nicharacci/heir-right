@@ -3862,3 +3862,210 @@ main {
     stroke-dashoffset: 0;
   }
 }
+
+.landing-page .about-band {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  margin-top: clamp(3.8rem, 8vw, 7rem);
+  padding: clamp(4.5rem, 8vw, 7.5rem) max(1.25rem, calc((100vw - 1240px) / 2)) clamp(4.8rem, 8vw, 7rem);
+  grid-template-columns: minmax(18rem, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 11% 18%, rgba(205, 168, 92, 0.24), transparent 27rem),
+    radial-gradient(circle at 94% 10%, rgba(105, 138, 120, 0.22), transparent 26rem),
+    linear-gradient(135deg, #061221 0%, #0b1b2d 46%, #10233c 100%);
+  color: rgba(255, 253, 247, 0.82);
+}
+
+.landing-page .about-band::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: clamp(4.5rem, 9vw, 8rem) clamp(4.5rem, 9vw, 8rem);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+  opacity: 0.46;
+}
+
+.landing-page .about-band::after {
+  content: "";
+  position: absolute;
+  inset: auto -8vw -22vw auto;
+  z-index: -1;
+  width: min(58vw, 46rem);
+  aspect-ratio: 1;
+  border: 1px solid rgba(205, 168, 92, 0.24);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(205, 168, 92, 0.16), transparent 66%);
+  opacity: 0.72;
+}
+
+.landing-page .about-heading {
+  align-content: center;
+  gap: clamp(1.3rem, 3vw, 2.2rem);
+}
+
+.landing-page .about-heading .eyebrow,
+.landing-page .about-band .heritage-facts span {
+  color: #e6b85a;
+}
+
+.landing-page .about-band h2 {
+  max-width: 12ch;
+  color: #fffdf7;
+  font-size: clamp(3.05rem, 6vw, 6rem);
+  line-height: 0.9;
+  letter-spacing: 0;
+}
+
+.landing-page .about-copy {
+  position: relative;
+  z-index: 1;
+  gap: 1.15rem;
+  max-width: 42rem;
+}
+
+.landing-page .about-copy > p {
+  color: rgba(248, 251, 247, 0.9);
+  font-size: clamp(1rem, 1.16vw, 1.08rem);
+  line-height: 1.58;
+}
+
+.landing-page .about-band .about-copy > p {
+  color: rgba(248, 251, 247, 0.9);
+}
+
+.landing-page .heritage-portrait {
+  width: min(100%, 34rem);
+  max-width: 34rem;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.landing-page .heritage-collage {
+  position: relative;
+  min-height: clamp(23rem, 36vw, 30rem);
+  display: grid;
+  grid-template-columns: minmax(7.25rem, 0.52fr) minmax(0, 1fr);
+  align-items: end;
+  gap: clamp(0.55rem, 1.3vw, 1rem);
+  padding: 0;
+  background: transparent;
+}
+
+.landing-page .heritage-collage::before {
+  content: "";
+  position: absolute;
+  inset: 7% -4% 4% 10%;
+  z-index: -1;
+  border: 1px solid rgba(205, 168, 92, 0.34);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 253, 247, 0.1), rgba(255, 253, 247, 0.02)),
+    rgba(255, 255, 255, 0.04);
+  transform: rotate(1.2deg);
+}
+
+.landing-page .heritage-collage img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  border: 1px solid rgba(230, 184, 90, 0.48);
+  border-radius: 8px;
+  background: rgba(4, 11, 21, 0.72);
+  box-shadow: 0 28px 68px rgba(0, 0, 0, 0.34);
+}
+
+.landing-page .heritage-founder {
+  align-self: stretch;
+  max-height: clamp(22rem, 34vw, 29.5rem);
+  aspect-ratio: 260 / 510;
+  transform: rotate(-2.4deg) translateY(0.55rem);
+}
+
+.landing-page .heritage-collage .heritage-family {
+  align-self: end;
+  max-height: clamp(15.5rem, 26vw, 23rem);
+  aspect-ratio: 1;
+  transform: rotate(1.4deg) translateX(-0.35rem);
+}
+
+.landing-page .heritage-portrait figcaption {
+  left: 0.6rem;
+  bottom: -0.8rem;
+  border-color: rgba(230, 184, 90, 0.34);
+  background: rgba(6, 18, 33, 0.84);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+}
+
+.landing-page .heritage-facts {
+  gap: 0.72rem;
+  margin-top: 0.35rem;
+}
+
+.landing-page .heritage-facts article {
+  min-height: 8.5rem;
+  border-color: rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 253, 247, 0.13), rgba(255, 253, 247, 0.06)),
+    rgba(255, 255, 255, 0.055);
+  box-shadow: none;
+}
+
+.landing-page .heritage-facts p {
+  color: rgba(248, 251, 247, 0.78);
+}
+
+.landing-page .about-band .heritage-facts p {
+  color: rgba(248, 251, 247, 0.78);
+}
+
+@media (max-width: 1120px) {
+  .landing-page .about-band {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.5rem;
+  }
+
+  .landing-page .about-band h2 {
+    max-width: 13ch;
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-page .about-band {
+    margin-top: 3.25rem;
+    padding: 3.5rem 1.25rem 4rem;
+  }
+
+  .landing-page .about-band h2 {
+    font-size: clamp(2.5rem, 13vw, 4rem);
+  }
+
+  .landing-page .heritage-portrait {
+    width: min(100%, 24rem);
+  }
+
+  .landing-page .heritage-collage {
+    min-height: auto;
+    grid-template-columns: minmax(5.6rem, 0.48fr) minmax(0, 1fr);
+  }
+
+  .landing-page .heritage-founder {
+    max-height: 19.5rem;
+  }
+
+  .landing-page .heritage-collage .heritage-family {
+    max-height: 15.5rem;
+  }
+}
