@@ -1203,8 +1203,8 @@
 
 .heritage-portrait {
   position: relative;
-  width: min(100%, 42rem);
-  max-width: 42rem;
+  width: min(100%, 38rem);
+  max-width: 38rem;
   margin: 0;
   overflow: hidden;
   border: 1px solid #d9e1e8;
@@ -1213,12 +1213,11 @@
 }
 
 .heritage-collage {
-  min-height: clamp(27rem, 41vw, 36rem);
+  min-height: clamp(22rem, 36vw, 31rem);
   display: grid;
-  grid-template-columns: minmax(12rem, 0.92fr) minmax(13rem, 0.88fr);
-  gap: clamp(0.72rem, 1.4vw, 1rem);
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+  gap: 0.72rem;
   padding: 0.72rem;
-  align-items: center;
   background:
     linear-gradient(135deg, rgba(8, 20, 37, 0.86), rgba(16, 35, 60, 0.96)),
     #081425;
@@ -1234,21 +1233,14 @@
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
 }
 
-.heritage-collage .heritage-founder {
-  min-height: clamp(25rem, 38vw, 34rem);
-  object-fit: contain;
-  object-position: center;
-  background: rgba(5, 14, 27, 0.92);
+.heritage-founder {
+  object-position: 58% 38%;
 }
 
 .heritage-collage .heritage-family {
-  justify-self: end;
-  align-self: end;
-  width: 100%;
+  align-self: center;
   height: auto;
-  max-height: clamp(18rem, 31vw, 29rem);
   aspect-ratio: 1;
-  object-fit: cover;
   object-position: center;
 }
 
@@ -2260,20 +2252,6 @@
   .heritage-collage img {
     aspect-ratio: 4 / 3;
     height: auto;
-  }
-
-  .heritage-collage .heritage-founder {
-    justify-self: center;
-    width: min(72%, 16.25rem);
-    height: auto;
-    min-height: 0;
-    aspect-ratio: 260 / 510;
-    object-fit: contain;
-  }
-
-  .heritage-collage .heritage-family {
-    justify-self: stretch;
-    max-height: none;
   }
 
   .landing-page .teaser-panel img {
