@@ -1232,7 +1232,7 @@
   border-radius: 7px;
   background:
     linear-gradient(135deg, rgba(8, 20, 37, 0.34), rgba(8, 20, 37, 0.62)),
-    url("/assets/old-site/heritage/joshua-founder.jpg") 58% 42% / cover no-repeat;
+    url("/assets/old-site/heritage/joshua-founder-wide.jpg") 50% 48% / cover no-repeat;
   filter: blur(18px) saturate(0.92);
   opacity: 0.52;
   transform: scale(1.08);
