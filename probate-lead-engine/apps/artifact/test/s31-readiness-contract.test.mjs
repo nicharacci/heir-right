@@ -26,6 +26,8 @@ assert.ok(server.includes('prompt: "select_account"'), "Google login must force 
 assert.ok(bundle.includes("positionTableFiltersPopover"), "Estate list filters must calculate viewport-safe popover placement.");
 assert.ok(bundle.includes("--table-filters-popover-max-height"), "Estate list filters must cap height from the visible viewport.");
 assert.ok(bundle.includes("overscroll-behavior: contain"), "Estate list filters must scroll internally instead of bleeding past the viewport.");
+assert.ok(bundle.includes("@media (min-width: 821px) and (max-height: 720px)"), "Desktop shell must have a short-height scroll fallback.");
+assert.ok(bundle.includes("min-height: 720px"), "Desktop shell must preserve a minimum usable height when the viewport is compressed.");
 
 for (const copy of [
   "IDI Core API access",
