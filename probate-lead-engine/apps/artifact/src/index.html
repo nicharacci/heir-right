@@ -11127,6 +11127,7 @@ const state = {
   exportResult: null,
   rows: [],
   filteredRows: [],
+  demoEstateLeadsActive: false,
   resultsPage: 1,
   resultsPageSize: 10,
   selectedId: null,
@@ -11866,10 +11867,18 @@ function persistClosingExportState() {
 
 function loadCrmImports() {
   try {
-    const stored = JSON.parse(storageGetItem(crmImportStateKey) ?? "[]");
+    const storedValue = storageGetItem(crmImportStateKey);
+    if (storedValue === null) {
+      state.crmImports = demoEstateLeadImports();
+      state.demoEstateLeadsActive = true;
+      return;
+    }
+    const stored = JSON.parse(storedValue || "[]");
     state.crmImports = Array.isArray(stored) ? stored.map(normalizeCrmImport) : [];
+    state.demoEstateLeadsActive = state.crmImports.some(isDemoEstateImport);
   } catch {
-    state.crmImports = [];
+    state.crmImports = demoEstateLeadImports();
+    state.demoEstateLeadsActive = true;
   }
 }
 
@@ -11910,6 +11919,7 @@ function persistDealStatusLabels() {
 
 function persistCrmImports(reason = "") {
   state.crmImports = state.crmImports.map(normalizeCrmImport);
+  state.demoEstateLeadsActive = state.crmImports.some(isDemoEstateImport);
   storageSetItem(crmImportStateKey, JSON.stringify(state.crmImports));
   if (reason) addShellEvent(reason, "The imported estate is saved locally in the HRight workspace. Live CRM writes and readback remain gated.", "review", false);
 }
@@ -12046,6 +12056,7 @@ function applyServerBackedStateValue(key, value) {
   }
   if (key === crmImportStateKey) {
     state.crmImports = Array.isArray(parsed) ? parsed.map(normalizeCrmImport) : [];
+    state.demoEstateLeadsActive = state.crmImports.some(isDemoEstateImport);
     return true;
   }
   if (key === docPrepEstateStateKey) {
@@ -12912,6 +12923,160 @@ function crmProviderLabel(provider = "podio") {
   }[provider] ?? displayStatus(provider, "CRM");
 }
 
+const demoEstateLeadMeta = {
+  "demo-estate-001": {
+    score: 72,
+    evidence: 6,
+    status: "review",
+    classification: "Tax receipt needed",
+    next: "Capture Tax Collector receipt",
+    dealStatus: "pre-discovery",
+    facts: [
+      { factType: "date_of_passing", value: "2021-08-14" },
+      { factType: "last_sale_date", value: "2014-03-06" }
+    ]
+  },
+  "demo-estate-002": {
+    score: 58,
+    evidence: 5,
+    status: "review",
+    classification: "Deed review",
+    next: "Attach deed and OR book/page",
+    dealStatus: "pre-discovery",
+    facts: [
+      { factType: "date_of_passing", value: "2020-11-02" },
+      { factType: "last_sale_date", value: "2012-09-18" }
+    ]
+  },
+  "demo-estate-003": {
+    score: 86,
+    evidence: 8,
+    status: "review",
+    classification: "Discovery reviewed",
+    next: "Review heirs before outreach",
+    dealStatus: "post-discovery",
+    facts: [
+      { factType: "date_of_passing", value: "2019-05-27" },
+      { factType: "last_sale_date", value: "2006-01-20" }
+    ]
+  },
+  "demo-estate-004": {
+    score: 80,
+    evidence: 7,
+    status: "review",
+    classification: "Closing prep ready",
+    next: "Fill closing template fields",
+    dealStatus: "warm",
+    facts: [
+      { factType: "date_of_passing", value: "2022-02-09" },
+      { factType: "last_sale_date", value: "2010-10-15" }
+    ]
+  },
+  "demo-estate-005": {
+    score: 41,
+    evidence: 4,
+    status: "blocked",
+    classification: "Recent sale review",
+    next: "Review sale date before paid sources",
+    dealStatus: "cold",
+    facts: [
+      { factType: "date_of_passing", value: "2023-01-11" },
+      { factType: "last_sale_date", value: "2025-02-12" }
+    ]
+  },
+  "demo-estate-006": {
+    score: 67,
+    evidence: 6,
+    status: "review",
+    classification: "Probate docket needed",
+    next: "Check probate and family records",
+    dealStatus: "pre-discovery",
+    facts: [
+      { factType: "date_of_passing", value: "2018-07-31" },
+      { factType: "last_sale_date", value: "2001-04-03" }
+    ]
+  }
+};
+
+function demoEstateLeadImports() {
+  return [
+    {
+      id: "demo-estate-001",
+      provider: "podio",
+      estateName: "Estate of Lucia Alvarez",
+      ownerName: "LUCIA ALVAREZ EST OF",
+      propertyAddress: "1840 NW 55 ST, Miami, FL 33142",
+      county: "miami-dade",
+      parcelId: "01-3115-021-0440",
+      sourceRecordId: "SAMPLE-CRM-001",
+      notes: "Sample estate lead for table review only. Begin with owner, tax receipt, deed, and probate checks."
+    },
+    {
+      id: "demo-estate-002",
+      provider: "google-sheets",
+      estateName: "Estate of Walter Green",
+      ownerName: "WALTER GREEN EST OF",
+      propertyAddress: "7230 NW 12 AVE, Miami, FL 33150",
+      county: "miami-dade",
+      parcelId: "01-3112-038-0090",
+      sourceRecordId: "SAMPLE-SHEET-002",
+      notes: "Sample estate lead for document-prep table review. Deed and OR book/page still need evidence."
+    },
+    {
+      id: "demo-estate-003",
+      provider: "csv",
+      estateName: "Estate of Carmen Rosales",
+      ownerName: "CARMEN ROSALES EST OF",
+      propertyAddress: "1551 SW 19 TER, Miami, FL 33145",
+      county: "miami-dade",
+      parcelId: "01-4110-014-0830",
+      sourceRecordId: "SAMPLE-CSV-003",
+      notes: "Sample post-discovery estate. Review heirs and contacts before any outreach."
+    },
+    {
+      id: "demo-estate-004",
+      provider: "podio",
+      estateName: "Estate of Harold Milton",
+      ownerName: "HAROLD MILTON EST OF",
+      propertyAddress: "20215 NW 33 CT, Miami Gardens, FL 33056",
+      county: "miami-dade",
+      parcelId: "34-1133-027-1180",
+      sourceRecordId: "SAMPLE-CRM-004",
+      notes: "Sample warm estate for Closing Prep review. Fill buyer, signer, title, and bank-transfer fields before export."
+    },
+    {
+      id: "demo-estate-005",
+      provider: "google-sheets",
+      estateName: "Estate of Denise Parker",
+      ownerName: "DENISE PARKER EST OF",
+      propertyAddress: "481 NW 102 ST, Miami, FL 33150",
+      county: "miami-dade",
+      parcelId: "30-3102-011-0410",
+      sourceRecordId: "SAMPLE-SHEET-005",
+      notes: "Sample blocked estate. Recent sale review must clear before any paid source or outreach work."
+    },
+    {
+      id: "demo-estate-006",
+      provider: "csv",
+      estateName: "Estate of Samuel Baptiste",
+      ownerName: "SAMUEL BAPTISTE EST OF",
+      propertyAddress: "930 NE 138 ST, North Miami, FL 33161",
+      county: "miami-dade",
+      parcelId: "06-2129-031-0220",
+      sourceRecordId: "SAMPLE-CSV-006",
+      notes: "Sample probate-review estate. Check civil, family, probate, official records, and affidavit-of-heirs paths."
+    }
+  ].map(normalizeCrmImport);
+}
+
+function isDemoEstateImport(item = {}) {
+  return /^demo-estate-\d+$/i.test(String(item?.id || ""));
+}
+
+function demoEstateMetaFor(rowOrImport = {}) {
+  return demoEstateLeadMeta[String(rowOrImport?.id || "")] || {};
+}
+
 function normalizeCrmImport(input = {}) {
   const provider = ["podio", "google-sheets", "csv"].includes(input.provider) ? input.provider : "podio";
   const estateName = String(input.estateName || input.ownerName || "Imported estate").trim().slice(0, 120);
@@ -13010,7 +13175,9 @@ function crmImportRow(imported) {
   const dossier = minimalImportedDossier(normalized);
   const missing = buildMissingSections(dossier);
   const archived = Boolean(normalized.archivedAt);
-  const estateFileName = estateFileDisplayLabel(normalized.estateName, normalized.ownerName);
+  const demoMeta = demoEstateMetaFor(normalized);
+  const baseEstateFileName = estateFileDisplayLabel(normalized.estateName, normalized.ownerName);
+  const estateFileName = isDemoEstateImport(normalized) ? `Sample: ${baseEstateFileName}` : baseEstateFileName;
   const row = {
     id: normalized.id,
     kind: "CRM Import",
@@ -13025,14 +13192,14 @@ function crmImportRow(imported) {
     county: normalized.county,
     parcel: normalized.parcelId,
     owner: normalized.ownerName,
-    score: 44,
-    evidence: 3,
+    score: demoMeta.score ?? 44,
+    evidence: demoMeta.evidence ?? 3,
     evidenceTotal: 9,
-    status: archived ? "archived" : "review",
-    next: archived ? "Archived" : "Begin Estate Discovery",
-    classification: archived ? "Archived Import" : "CRM Import",
+    status: archived ? "archived" : (demoMeta.status || "review"),
+    next: archived ? "Archived" : (demoMeta.next || "Begin Estate Discovery"),
+    classification: archived ? "Archived Import" : (demoMeta.classification || "CRM Import"),
     missing,
-    search: `${normalized.estateName} ${normalized.ownerName} ${normalized.propertyAddress} ${normalized.parcelId} ${normalized.sourceRecordId} ${crmProviderLabel(normalized.provider)} imported crm closing docs discovery`,
+    search: `${normalized.estateName} ${normalized.ownerName} ${estateFileName} ${normalized.propertyAddress} ${normalized.parcelId} ${normalized.sourceRecordId} ${crmProviderLabel(normalized.provider)} imported crm closing docs discovery sample demo ${demoMeta.classification || ""}`,
     leadType: "probate",
     dossier,
     data: {
@@ -13044,7 +13211,7 @@ function crmImportRow(imported) {
         county: normalized.county,
         parcelId: normalized.parcelId
       },
-      facts: []
+      facts: Array.isArray(demoMeta.facts) ? demoMeta.facts : []
     }
   };
   return { ...row, tone: rowTone(row) };
@@ -13057,6 +13224,22 @@ function crmImportRows() {
     .map(crmImportRow);
 }
 
+function seedDemoEstatePreviewState() {
+  const demoRows = state.rows.filter((row) => row.sourceKind === "crm-import" && isDemoEstateImport(row));
+  state.demoEstateLeadsActive = Boolean(demoRows.length && state.crmImports.some(isDemoEstateImport));
+  document.documentElement.dataset.demoEstateLeads = state.demoEstateLeadsActive ? "true" : "false";
+  if (!demoRows.length) return;
+  demoRows.forEach((row) => {
+    const status = demoEstateMetaFor(row).dealStatus || "pre-discovery";
+    const key = assetDiscoveryKey(row);
+    if (!state.dealStatuses[key]) state.dealStatuses[key] = status;
+  });
+  if (!state.selectedId || !rowById(state.selectedId)) state.selectedId = demoRows[0].id;
+  if (!state.queueIds.size && !state.selectedIds.size) {
+    demoRows.slice(0, 2).forEach((row) => state.queueIds.add(row.id));
+  }
+}
+
 function crmImportCounts() {
   const active = state.crmImports.filter((item) => !item.deletedAt && !item.archivedAt).length;
   const archived = state.crmImports.filter((item) => !item.deletedAt && item.archivedAt).length;
@@ -13067,6 +13250,7 @@ function rebuildRowsFromCurrentSources() {
   state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
   ensureCompletedDocPrepProofFile();
   pruneBatchSets();
+  seedDemoEstatePreviewState();
 }
 
 function syncEstateArchiveToggle() {
@@ -18541,6 +18725,7 @@ function docPrepFileStatusItems(row = selectedRow()) {
 
 function docPrepEstateLabel(row) {
   if (!row) return "Current estate";
+  if (isDemoEstateImport(row) && row.leadName) return row.leadName;
   const dossier = dossierForRow(row);
   return estateFileDisplayLabel(
     row.leadName,
@@ -23060,6 +23245,7 @@ function renderLoadedState(data, dossier) {
   state.rows = buildRows(data, dossier);
   ensureCompletedDocPrepProofFile();
   pruneBatchSets();
+  seedDemoEstatePreviewState();
   state.selectedId = state.selectedId ?? state.rows[0]?.id ?? null;
   document.getElementById("topStatus").textContent = `${data.facts?.length ?? 0} evidence items loaded from the latest lead review.`;
   updateFooterLeadContext(selectedRow());
@@ -23160,6 +23346,7 @@ async function loadRun() {
     state.selectedId = state.rows[0]?.id ?? null;
     state.selectedIds.clear();
     state.queueIds.clear();
+    seedDemoEstatePreviewState();
     document.getElementById("topStatus").textContent = error.message;
     document.getElementById("resultsBody").innerHTML = state.rows.length
       ? ""

@@ -28,6 +28,11 @@ assert.ok(bundle.includes("--table-filters-popover-max-height"), "Estate list fi
 assert.ok(bundle.includes("overscroll-behavior: contain"), "Estate list filters must scroll internally instead of bleeding past the viewport.");
 assert.ok(bundle.includes("@media (min-width: 821px) and (max-height: 720px)"), "Desktop shell must have a short-height scroll fallback.");
 assert.ok(bundle.includes("min-height: 720px"), "Desktop shell must preserve a minimum usable height when the viewport is compressed.");
+assert.ok(bundle.includes("demoEstateLeadImports"), "The live demo must seed sample estate leads when no saved estate list exists.");
+assert.ok(bundle.includes("seedDemoEstatePreviewState"), "Sample estate leads must hydrate the shared table, document prep, and queue state.");
+assert.ok(bundle.includes("Sample: "), "Sample estate rows must be visibly labeled instead of looking like real sourced leads.");
+assert.ok(bundle.includes("SAMPLE-CRM-001"), "Sample CRM rows must include reviewable source record IDs.");
+assert.ok(bundle.includes('document.documentElement.dataset.demoEstateLeads = state.demoEstateLeadsActive ? "true" : "false"'), "The shell must expose whether demo estate leads are active for browser verification.");
 
 for (const copy of [
   "IDI Core API access",
@@ -68,5 +73,6 @@ console.log(JSON.stringify({
     "source_enrichment_readiness_controls",
     "outreach_first_party_review_package_without_activepieces_builder",
     "send_locked_guardrail_visible",
+    "sample_estate_leads_seeded_for_table_preview",
   ],
 }, null, 2));
