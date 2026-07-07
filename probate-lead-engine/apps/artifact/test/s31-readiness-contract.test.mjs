@@ -28,6 +28,10 @@ assert.ok(bundle.includes("--table-filters-popover-max-height"), "Estate list fi
 assert.ok(bundle.includes("overscroll-behavior: contain"), "Estate list filters must scroll internally instead of bleeding past the viewport.");
 assert.ok(bundle.includes("@media (min-width: 821px) and (max-height: 720px)"), "Desktop shell must have a short-height scroll fallback.");
 assert.ok(bundle.includes("min-height: 720px"), "Desktop shell must preserve a minimum usable height when the viewport is compressed.");
+assert.ok(bundle.includes(".workspace.is-collapsed .user-strip"), "Collapsed sidebar account chip rules must remain present.");
+assert.ok(bundle.includes("width: 44px;\n      height: 44px;\n      min-height: 44px;"), "Collapsed account chip must align to the same 44px rail geometry as nav items.");
+assert.ok(bundle.includes(".workspace.is-collapsed .user-strip .avatar"), "Collapsed account emblem must have explicit centered avatar geometry.");
+assert.ok(bundle.includes("width: 42px;\n      height: 42px;\n      border-radius: inherit;"), "Collapsed account emblem must match the 42px nav icon well.");
 assert.ok(bundle.includes("demoEstateLeadImports"), "The live demo must seed sample estate leads when no saved estate list exists.");
 assert.ok(bundle.includes("seedDemoEstatePreviewState"), "Sample estate leads must hydrate the shared table, document prep, and queue state.");
 assert.ok(bundle.includes("Sample: "), "Sample estate rows must be visibly labeled instead of looking like real sourced leads.");

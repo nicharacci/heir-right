@@ -715,7 +715,22 @@
     .user-name { font-weight: 700; font-size: 12px; }
     .user-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
     .workspace.is-collapsed .user-strip,
-    .workspace.is-auto-collapsed .user-strip { grid-template-columns: 32px; padding: 7px 6px; }
+    .workspace.is-auto-collapsed .user-strip {
+      width: 44px;
+      height: 44px;
+      min-height: 44px;
+      grid-template-columns: 1fr;
+      place-items: center;
+      justify-self: center;
+      padding: 0;
+      border-radius: 12px;
+    }
+    .workspace.is-collapsed .user-strip .avatar,
+    .workspace.is-auto-collapsed .user-strip .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: inherit;
+    }
     .workspace.is-collapsed .user-name,
     .workspace.is-collapsed .user-meta,
     .workspace.is-auto-collapsed .user-name,
