@@ -229,7 +229,7 @@ const text = new Map([
     "Contactenos hoy al 786-962-3457. Le explicaremos el proceso, responderemos sus preguntas y, si tiene sentido, haremos que sea una venta sin complicaciones."
   ],
   ["Submit", "Enviar"],
-  ["Start a free consultation with HeirRight.", "Inicie una consulta gratis con HeirRight."],
+  ["Inheritance without Hassle.", "Herencia sin complicaciones."],
   ["Terms of Use", "Terminos de uso"],
   ["Privacy Policy", "Politica de privacidad"],
   ["Tell us about the inherited home, liens, repairs, heirs, or timing.", "Cuentenos sobre la casa heredada, gravamenes, reparaciones, herederos o tiempos."]
