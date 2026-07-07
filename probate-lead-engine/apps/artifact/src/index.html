@@ -1623,12 +1623,13 @@
     }
 
     .table-filters-popover {
-      position: absolute;
-      right: 0;
-      top: calc(100% + 9px);
+      position: fixed;
+      right: var(--table-filters-popover-right, 24px);
+      top: var(--table-filters-popover-top, 96px);
       z-index: 230;
-      width: min(360px, calc(100vw - 32px));
-      max-height: min(620px, calc(100vh - 180px));
+      width: var(--table-filters-popover-width, min(360px, calc(100vw - 32px)));
+      max-height: var(--table-filters-popover-max-height, min(620px, calc(100dvh - 32px)));
+      overscroll-behavior: contain;
       overflow: auto;
       display: grid;
       gap: 12px;
@@ -22476,6 +22477,7 @@ function renderTableFiltersPopover() {
     </div>
     <button class="btn quick table-filters-toggle" type="button" data-reset-table-filters>Clear filters</button>
   `;
+  positionTableFiltersPopover();
   popover.querySelectorAll("[data-filter-proxy]").forEach((control) => {
     const applyProxy = () => {
       const target = document.getElementById(control.dataset.filterProxy);
@@ -22514,6 +22516,26 @@ function renderTableFiltersPopover() {
     applyFilters();
     renderTableFiltersPopover();
   });
+}
+
+function positionTableFiltersPopover() {
+  const popover = document.getElementById("tableFiltersPopover");
+  const toggle = document.getElementById("tableFiltersToggle");
+  if (!popover || !toggle || popover.hidden) return;
+  const margin = window.matchMedia("(max-width: 760px)").matches ? 12 : 16;
+  const gap = 9;
+  const rect = toggle.getBoundingClientRect();
+  const width = Math.min(360, Math.max(260, window.innerWidth - margin * 2));
+  const right = Math.max(margin, window.innerWidth - rect.right);
+  const top = Math.min(
+    rect.bottom + gap,
+    Math.max(margin, window.innerHeight - margin - 260)
+  );
+  const maxHeight = Math.max(220, window.innerHeight - top - margin);
+  popover.style.setProperty("--table-filters-popover-right", `${Math.round(right)}px`);
+  popover.style.setProperty("--table-filters-popover-top", `${Math.round(top)}px`);
+  popover.style.setProperty("--table-filters-popover-width", `${Math.round(width)}px`);
+  popover.style.setProperty("--table-filters-popover-max-height", `${Math.round(maxHeight)}px`);
 }
 
 function setFilterPopoverOpen(open) {
@@ -23978,6 +24000,7 @@ function wireEvents() {
     applyFilterWidth();
     state.railWidth = clampRailWidth(state.railWidth);
     setRailOpen(state.railOpen);
+    positionTableFiltersPopover();
     positionWalkthrough();
   });
   syncSidebarState();

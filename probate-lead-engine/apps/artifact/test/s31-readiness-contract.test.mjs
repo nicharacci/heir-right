@@ -23,6 +23,9 @@ assert.ok(bundle.includes("auth-gate"), "Auth gate overlay markup/styles must re
 assert.ok(bundle.includes('body[data-auth-gated="true"] .workspace'), "Auth gate must blur the app shell.");
 assert.ok(bundle.includes("data-settings-account-menu"), "Settings must expose the account menu control.");
 assert.ok(server.includes('prompt: "select_account"'), "Google login must force account selection.");
+assert.ok(bundle.includes("positionTableFiltersPopover"), "Estate list filters must calculate viewport-safe popover placement.");
+assert.ok(bundle.includes("--table-filters-popover-max-height"), "Estate list filters must cap height from the visible viewport.");
+assert.ok(bundle.includes("overscroll-behavior: contain"), "Estate list filters must scroll internally instead of bleeding past the viewport.");
 
 for (const copy of [
   "IDI Core API access",
