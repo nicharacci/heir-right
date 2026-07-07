@@ -1213,19 +1213,34 @@
 }
 
 .heritage-collage {
-  min-height: clamp(22rem, 36vw, 31rem);
-  display: grid;
-  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
-  gap: 0.72rem;
+  position: relative;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
   padding: 0.72rem;
   background:
     linear-gradient(135deg, rgba(8, 20, 37, 0.86), rgba(16, 35, 60, 0.96)),
     #081425;
 }
 
+.heritage-collage::before {
+  content: "";
+  position: absolute;
+  inset: 0.72rem;
+  z-index: -1;
+  border-radius: 7px;
+  background:
+    linear-gradient(135deg, rgba(8, 20, 37, 0.34), rgba(8, 20, 37, 0.62)),
+    url("/assets/old-site/heritage/joshua-founder.jpg") 58% 42% / cover no-repeat;
+  filter: blur(18px) saturate(0.92);
+  opacity: 0.52;
+  transform: scale(1.08);
+}
+
 .heritage-collage img {
-  width: 100%;
-  height: 100%;
+  position: relative;
+  z-index: 1;
   display: block;
   border: 1px solid rgba(205, 168, 92, 0.36);
   border-radius: 7px;
@@ -1233,19 +1248,28 @@
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
 }
 
-.heritage-founder {
-  object-position: 58% 38%;
+.heritage-collage .heritage-founder {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
 }
 
 .heritage-collage .heritage-family {
-  align-self: center;
-  height: auto;
+  position: absolute;
+  right: 0.72rem;
+  bottom: 0.72rem;
+  width: min(54%, 19rem);
   aspect-ratio: 1;
+  height: auto;
+  object-fit: cover;
   object-position: center;
+  z-index: 2;
 }
 
 .heritage-portrait figcaption {
   position: absolute;
+  z-index: 3;
   left: 0.75rem;
   bottom: 0.75rem;
   max-width: calc(100% - 1.5rem);
@@ -2246,13 +2270,16 @@
   }
 
   .heritage-collage {
-    min-height: auto;
-    grid-template-columns: 1fr;
+    height: auto;
   }
 
-  .heritage-collage img {
-    aspect-ratio: 4 / 3;
+  .heritage-collage .heritage-founder {
+    width: 100%;
     height: auto;
+  }
+
+  .heritage-collage .heritage-family {
+    width: min(50%, 16.5rem);
   }
 
   .landing-page .teaser-panel img {
