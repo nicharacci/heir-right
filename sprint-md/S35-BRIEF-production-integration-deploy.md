@@ -2,7 +2,7 @@
 
 ## Intent
 
-Deploy the newly received HeirRight integration information into the production app without leaking secrets, then prove the client-facing app can run on `app.heirright.com` with enforced Google login, durable Podio connection, Miami-Dade Clerk API readiness, Browserbase source workflows, and honest idiCORE status. When this is done, a HeirRight operator should see clear connected/blocked states and should not need engineering help to understand what is usable today.
+Deploy the newly received HeirRight integration information into the production app without leaking secrets, then prove the client-facing app can run on `surface.heirright.com` with enforced Google login, durable Podio connection, Miami-Dade Clerk API readiness, Browserbase source workflows, and honest idiCORE status. When this is done, a HeirRight operator should see clear connected/blocked states and should not need engineering help to understand what is usable today.
 
 ## Branch Target
 
@@ -10,7 +10,7 @@ Deploy the newly received HeirRight integration information into the production 
 
 ## Scope -- Included
 
-- [ ] Set `app.heirright.com` as the intended production app domain and keep `heirright-leads.vercel.app` as an internal fallback alias only.
+- [ ] Set `surface.heirright.com` as the intended production app domain and keep `heirright-leads.vercel.app` as an internal fallback alias only.
 - [ ] Configure Vercel domain/DNS and OAuth callbacks for the production app URL.
 - [ ] Deploy the received Miami-Dade Clerk Auth Key as backend-only secrets for Vercel and Worker runtime.
 - [ ] Deploy the received Podio client ID and client secret as backend-only secrets.
@@ -77,13 +77,13 @@ Deployment/env targets:
   - `AUTH_ALLOWED_DOMAINS=heirright.com,solvys.io,texasequitypros.com`
   - `GOOGLE_OAUTH_CLIENT_ID`
   - `GOOGLE_OAUTH_CLIENT_SECRET`
-  - `GOOGLE_OAUTH_REDIRECT_URI=https://app.heirright.com/auth/callback`
+  - `GOOGLE_OAUTH_REDIRECT_URI=https://surface.heirright.com/auth/callback`
   - `AUTH_SESSION_SECRET`
   - `HEIRRIGHT_WORKER_URL`
   - `HEIRRIGHT_API_TOKEN`
   - `PODIO_CLIENT_ID`
   - `PODIO_CLIENT_SECRET`
-  - `PODIO_OAUTH_REDIRECT_URI=https://app.heirright.com/api/podio/oauth/callback`
+  - `PODIO_OAUTH_REDIRECT_URI=https://surface.heirright.com/api/podio/oauth/callback`
   - `PODIO_DURABLE_AUTH_REQUIRED=true`
   - `MIAMI_DADE_CLERK_AUTH_KEY`
   - `BROWSERBASE_API_KEY`
@@ -95,7 +95,7 @@ Deployment/env targets:
   - `HEIRRIGHT_API_TOKEN`
   - `PODIO_CLIENT_ID`
   - `PODIO_CLIENT_SECRET`
-  - `PODIO_OAUTH_REDIRECT_URI=https://app.heirright.com/api/podio/oauth/callback`
+  - `PODIO_OAUTH_REDIRECT_URI=https://surface.heirright.com/api/podio/oauth/callback`
   - `PODIO_DURABLE_AUTH_REQUIRED=true`
   - `MIAMI_DADE_CLERK_AUTH_KEY`
   - `BROWSERBASE_API_KEY`
@@ -158,9 +158,9 @@ When IDI issues credentials later, add a follow-up brief to map API Secret, Site
    - Confirm no current repo file contains the newly received keys.
 
 2. **Domain and auth configuration**
-   - Add `app.heirright.com` to Vercel.
-   - Configure DNS `app` record to Vercel.
-   - Update Google OAuth allowed redirect URI to `https://app.heirright.com/auth/callback`.
+   - Add `surface.heirright.com` to Vercel.
+   - Configure DNS `surface` record to Vercel.
+   - Update Google OAuth allowed redirect URI to `https://surface.heirright.com/auth/callback`.
    - Set Vercel auth env vars and `AUTH_REQUIRED=true`.
    - Verify production `/auth/session` reports `required: true`, `configured: true`, and allowed domains include `heirright.com`, `solvys.io`, and `texasequitypros.com`.
 
@@ -172,7 +172,7 @@ When IDI issues credentials later, add a follow-up brief to map API Secret, Site
    - Ensure `HEIRRIGHT_API_TOKEN` is shared between app and Worker without exposing it.
 
 4. **Podio durable OAuth**
-   - Configure Podio redirect URI as `https://app.heirright.com/api/podio/oauth/callback`.
+   - Configure Podio redirect URI as `https://surface.heirright.com/api/podio/oauth/callback`.
    - Open the production Podio connect flow from Settings.
    - Complete OAuth with approved HeirRight account.
    - Confirm refresh token storage is durable server-side/KV-backed.
@@ -206,7 +206,7 @@ When IDI issues credentials later, add a follow-up brief to map API Secret, Site
 9. **Production validation**
    - Run build/test locally.
    - Deploy app and Worker.
-   - Use browser proof on `https://app.heirright.com`.
+   - Use browser proof on `https://surface.heirright.com`.
    - Verify login overlay, allowed-domain behavior, avatar/account menu, Settings statuses, Podio connection, Miami-Dade source run, Browserbase source run, and export PDF.
    - Rerun `/solvys-audit` style checks focused on auth, route guards, provider statuses, and user loop.
 
@@ -217,7 +217,7 @@ When IDI issues credentials later, add a follow-up brief to map API Secret, Site
 
 ## Acceptance Criteria
 
-- [ ] `https://app.heirright.com` resolves and is the production app URL.
+- [ ] `https://surface.heirright.com` resolves and is the production app URL.
 - [ ] `heirright-leads.vercel.app` remains an internal fallback, not the client-facing URL.
 - [ ] Unauthenticated users see the blurred Google login gate.
 - [ ] Disallowed email domains cannot clear the gate.
@@ -255,7 +255,7 @@ rg -n --hidden -g '!node_modules/**' -g '!dist/**' -g '!output/**' -g '!apps/art
 
 # Production route proof after deploy
 node - <<'NODE'
-const base = 'https://app.heirright.com';
+const base = 'https://surface.heirright.com';
 for (const path of ['/auth/session', '/api/admin/access', '/api/connections/status']) {
   const res = await fetch(base + path);
   console.log(path, res.status, res.headers.get('content-type'));

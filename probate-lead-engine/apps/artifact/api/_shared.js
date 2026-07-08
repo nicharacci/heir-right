@@ -46,7 +46,7 @@ function workerApiBase() {
 }
 
 function originFor(request) {
-  const host = request?.headers?.["x-forwarded-host"] || request?.headers?.host || "app.heirright.com";
+  const host = request?.headers?.["x-forwarded-host"] || request?.headers?.host || "surface.heirright.com";
   const proto = request?.headers?.["x-forwarded-proto"] || (String(host).startsWith("localhost") ? "http" : "https");
   return `${proto}://${host}`;
 }

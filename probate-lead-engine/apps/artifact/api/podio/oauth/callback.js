@@ -16,7 +16,7 @@ module.exports = async function handler(request, response) {
   }
   if (authGate(request, response)) return;
   try {
-    const url = new URL(request.url || "/api/podio/oauth/callback", "https://app.heirright.com");
+    const url = new URL(request.url || "/api/podio/oauth/callback", "https://surface.heirright.com");
     const proxied = await proxyWorkerHttp(request, response, `${url.pathname}${url.search}`);
     if (!proxied) {
       sendJson(response, 503, {

@@ -25,7 +25,7 @@ function allowedEmails() {
 }
 
 function originFor(req) {
-  const host = req.headers["x-forwarded-host"] || req.headers.host || "app.heirright.com";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || "surface.heirright.com";
   const proto = req.headers["x-forwarded-proto"] || (String(host).startsWith("localhost") ? "http" : "https");
   return `${proto}://${host}`;
 }
@@ -168,6 +168,46 @@ function loginPage(req, message = "Sign in with your HeirRight Google account to
 </html>`;
 }
 
+function deniedAccessPage(req, email = "") {
+  const domainText = allowedDomains().join(", ") || "heirright.com";
+  const deniedDomain = String(email || "").toLowerCase().split("@").at(-1) || "this account";
+  const safeDeniedCopy = deniedDomain.includes(".")
+    ? `The ${deniedDomain} domain is not on the approved HeirRight access list.`
+    : "This Google account is not on the approved HeirRight access list.";
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="6; url=/">
+  <title>Access not approved</title>
+  <style>
+    :root { color-scheme: light; --page:#f2f2f7; --text:#1d1d1f; --muted:#6e7681; --line:rgba(16,24,40,.12); --glass:rgba(255,255,255,.78); --danger:#a12c2c; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--page); color:var(--text); font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif; }
+    main { width:min(440px, calc(100vw - 32px)); padding:24px; border:1px solid var(--line); border-radius:14px; background:var(--glass); backdrop-filter:saturate(180%) blur(28px); -webkit-backdrop-filter:saturate(180%) blur(28px); box-shadow:0 18px 70px rgba(15,23,42,.14); }
+    .eyebrow { margin:0 0 8px; color:var(--danger); font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    h1 { margin:0 0 8px; font-size:24px; letter-spacing:0; }
+    p { margin:0 0 14px; color:var(--muted); line-height:1.45; }
+    a { display:inline-flex; align-items:center; justify-content:center; min-height:40px; width:100%; color:#fff; background:#2f3137; text-decoration:none; border-radius:9px; font-weight:720; }
+    .meta { margin-top:14px; padding-top:14px; border-top:1px solid var(--line); font-size:12px; }
+    code { font-family:"SFMono-Regular","SF Mono",ui-monospace,Menlo,Consolas,monospace; color:var(--text); }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">Access denied</p>
+    <h1>Access not approved</h1>
+    <p>${escapeHtml(safeDeniedCopy)}</p>
+    <p>Use an approved business Google account to enter HeirRight. You will be returned to the home page in a few seconds.</p>
+    <a href="/">Return to HeirRight</a>
+    <p class="meta">Approved domains: <code>${escapeHtml(domainText)}</code></p>
+  </main>
+  <script>window.setTimeout(function(){ window.location.replace("/"); }, 6000);</script>
+</body>
+</html>`;
+}
+
 function sessionBody(req) {
   const session = readSession(req);
   return {
@@ -216,6 +256,7 @@ module.exports = {
   createSessionToken,
   emailAllowed,
   exchangeGoogleCode,
+  deniedAccessPage,
   loginPage,
   oauthConfigured,
   parseCookies,

@@ -8,6 +8,8 @@ process.env.AUTH_REQUIRED = "false";
 const require = createRequire(import.meta.url);
 const { handleRequest } = require("../server.js");
 const authSession = require("../api/auth/session.js");
+const { deniedAccessPage } = require("../api/auth/_shared.js");
+const authCallback = require("../api/auth/callback.js");
 const podioDiagnostics = require("../api/podio/diagnostics.js");
 const podioOAuthStart = require("../api/podio/oauth/start.js");
 const podioOAuthCallback = require("../api/podio/oauth/callback.js");
@@ -24,8 +26,8 @@ function callServer(method, path, body) {
     request.method = method;
     request.url = path;
     request.headers = {
-      host: "app.heirright.com",
-      "x-forwarded-host": "app.heirright.com",
+      host: "surface.heirright.com",
+      "x-forwarded-host": "surface.heirright.com",
       "x-forwarded-proto": "https",
     };
 
@@ -97,7 +99,7 @@ for (const [name, handler] of [
     handler({
       method: "POST",
       url: "/api/podio/oauth/start",
-      headers: { host: "app.heirright.com", "x-forwarded-host": "app.heirright.com", "x-forwarded-proto": "https" },
+      headers: { host: "surface.heirright.com", "x-forwarded-host": "surface.heirright.com", "x-forwarded-proto": "https" },
     }, {
       statusCode: 200,
       headers: {},
@@ -118,7 +120,7 @@ const unauthenticatedPodioStart = await new Promise((resolve) => {
   podioOAuthStart({
     method: "GET",
     url: "/api/podio/oauth/start",
-    headers: { host: "app.heirright.com", "x-forwarded-host": "app.heirright.com", "x-forwarded-proto": "https" },
+    headers: { host: "surface.heirright.com", "x-forwarded-host": "surface.heirright.com", "x-forwarded-proto": "https" },
   }, {
     statusCode: 200,
     headers: {},
@@ -132,6 +134,68 @@ const unauthenticatedPodioStart = await new Promise((resolve) => {
 });
 assert.equal(unauthenticatedPodioStart.statusCode, 401, "Podio OAuth start must require a signed-in app user.");
 assert.match(unauthenticatedPodioStart.text, /Sign in before connecting Podio/);
+
+const deniedPage = deniedAccessPage({
+  headers: {
+    host: "surface.heirright.com",
+    "x-forwarded-host": "surface.heirright.com",
+    "x-forwarded-proto": "https",
+  },
+}, "blocked@gmail.com");
+assert.match(deniedPage, /Access not approved/);
+assert.match(deniedPage, /gmail\.com domain is not on the approved HeirRight access list/);
+assert.match(deniedPage, /http-equiv="refresh" content="6; url=\/"/);
+assert.match(deniedPage, /window\.location\.replace\("\/"\)/);
+
+process.env.GOOGLE_OAUTH_CLIENT_ID = "google-client";
+process.env.GOOGLE_OAUTH_CLIENT_SECRET = "google-secret";
+process.env.AUTH_SESSION_SECRET = "session-secret";
+process.env.AUTH_ALLOWED_DOMAINS = "heirright.com,solvys.io,texasequitypros.com";
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (url) => {
+  const href = String(url);
+  if (href.includes("oauth2.googleapis.com/token")) {
+    return new Response(JSON.stringify({ access_token: "blocked-profile-token" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  if (href.includes("googleapis.com/oauth2/v3/userinfo")) {
+    return new Response(JSON.stringify({ email: "blocked@gmail.com", name: "Blocked User" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  throw new Error(`Unexpected fetch in auth callback test: ${href}`);
+};
+const deniedCallback = await new Promise((resolve, reject) => {
+  const response = {
+    statusCode: 200,
+    headers: {},
+    setHeader(key, value) {
+      this.headers[key.toLowerCase()] = value;
+    },
+    end(payload = "") {
+      resolve({ statusCode: this.statusCode, headers: this.headers, text: String(payload || "") });
+    },
+  };
+  authCallback({
+    method: "GET",
+    url: "/auth/callback?code=fake-code&state=state-proof",
+    headers: {
+      host: "surface.heirright.com",
+      "x-forwarded-host": "surface.heirright.com",
+      "x-forwarded-proto": "https",
+      cookie: "hr_oauth_state=state-proof; hr_session=stale-session",
+    },
+  }, response).catch(reject);
+});
+globalThis.fetch = originalFetch;
+assert.equal(deniedCallback.statusCode, 403, "Disallowed Google domains must land on the denied page.");
+assert.match(deniedCallback.text, /Access not approved/);
+assert.match(deniedCallback.text, /url=\/"/);
+assert.ok(String(deniedCallback.headers["set-cookie"]).includes("hr_session="), "Denied callback must clear stale sessions.");
+assert.ok(String(deniedCallback.headers["set-cookie"]).includes("hr_oauth_state="), "Denied callback must clear OAuth state.");
 
 const vercelConfig = readFileSync(new URL("../vercel.json", import.meta.url), "utf8");
 assert.ok(vercelConfig.includes('"source": "/auth/:path*"'), "Vercel must rewrite /auth routes to dynamic auth functions.");
@@ -147,8 +211,8 @@ const authRoute = await new Promise((resolve, reject) => {
     method: "GET",
     url: "/auth/session",
     headers: {
-      host: "app.heirright.com",
-      "x-forwarded-host": "app.heirright.com",
+      host: "surface.heirright.com",
+      "x-forwarded-host": "surface.heirright.com",
       "x-forwarded-proto": "https",
     },
   };
@@ -185,6 +249,8 @@ console.log(JSON.stringify({
     "worker_tax_collector_receipt_route_present",
     "podio_oauth_routes_proxy_worker",
     "podio_oauth_requires_signed_in_user",
+    "denied_domain_page_bounces_home",
+    "disallowed_google_callback_clears_auth_state",
     "vercel_auth_rewrite_configured",
     "static_auth_session_removed",
     "dynamic_auth_session_configured",

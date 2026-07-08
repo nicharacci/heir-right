@@ -1,6 +1,7 @@
 const {
   clearCookie,
   createSessionToken,
+  deniedAccessPage,
   emailAllowed,
   exchangeGoogleCode,
   loginPage,
@@ -17,7 +18,7 @@ module.exports = async function handler(request, response) {
     sendHtml(response, 405, loginPage(request, "Use the Google sign-in button to continue."));
     return;
   }
-  const url = new URL(request.url || "/", `https://${request.headers.host || "app.heirright.com"}`);
+  const url = new URL(request.url || "/", `https://${request.headers.host || "surface.heirright.com"}`);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const expectedState = parseCookies(request)[stateCookie];
@@ -29,7 +30,12 @@ module.exports = async function handler(request, response) {
   try {
     const profile = await exchangeGoogleCode(request, code);
     if (!profile.email || !emailAllowed(profile.email)) {
-      sendHtml(response, 403, loginPage(request, "This Google account is not approved for the HeirRight workspace."));
+      sendHtml(response, 403, deniedAccessPage(request, profile.email), {
+        "set-cookie": [
+          clearCookie(sessionCookie, request),
+          clearCookie(stateCookie, request),
+        ],
+      });
       return;
     }
     response.statusCode = 302;

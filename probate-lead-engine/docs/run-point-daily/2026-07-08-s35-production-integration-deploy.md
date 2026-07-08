@@ -10,8 +10,8 @@ Deploy the received HeirRight integration information safely, harden production 
 - Vercel project: `heirright-landing-demo`
 - Worker deployment: `https://heirright-probate-lead-engine.sam-e7a.workers.dev`
 - Worker version proved after deploy: `5b316922-8876-4d8a-bac8-662aece18067`
-- Intended client URL: `https://app.heirright.com`
-- Domain status: Vercel has the domain request, but external DNS is still missing `A app.heirright.com -> 76.76.21.21`; `app.heirright.com` did not resolve during proof.
+- Intended client URL: `https://surface.heirright.com`
+- Domain status: Vercel has the domain request, but external DNS is still missing `A surface.heirright.com -> 76.76.21.21`; `surface.heirright.com` did not resolve during proof.
 
 ## Backend Secrets And Runtime Config
 
@@ -64,8 +64,8 @@ Deploy the received HeirRight integration information safely, harden production 
 
 ## Remaining External Actions
 
-- Add DNS record at the domain provider: `A app.heirright.com -> 76.76.21.21`, then retry the Vercel alias/certificate.
-- Provide or create Google OAuth client ID and client secret for `https://app.heirright.com/auth/callback`; until then the auth gate is enforced but cannot be cleared.
+- Add DNS record at the domain provider: `A surface.heirright.com -> 76.76.21.21`, then retry the Vercel alias/certificate.
+- Provide or create Google OAuth client ID and client secret for `https://surface.heirright.com/auth/callback`; until then the auth gate is enforced but cannot be cleared.
 - Fund or upgrade Browserbase; live Tax Collector source proof is blocked by Browserbase HTTP 402.
 - Complete Podio OAuth after Google auth and DNS are configured, then verify durable refresh storage and Lead Point profile readback.
 - Request idiCORE API Secret, Site Key, and Company Key from IDI support before backend idiCORE live runs can be claimed.
