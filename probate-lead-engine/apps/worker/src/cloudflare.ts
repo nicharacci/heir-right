@@ -118,6 +118,19 @@ function json(data: unknown, init: ResponseInit = {}): Response {
   });
 }
 
+function methodNotAllowed(allow = "POST"): Response {
+  return json({ ok: false, error: "method_not_allowed" }, {
+    status: 405,
+    headers: { allow },
+  });
+}
+
+function externalSourceRunApproved(body: Record<string, unknown>): boolean {
+  return body.operatorIntent === "run_external_source_search"
+    || body.operatorAction === "run_external_source_search"
+    || body.sourceRunApproval === "approved_external_source_search";
+}
+
 function routeList(): string[] {
   return [
     "/dry-run",
@@ -135,6 +148,7 @@ function routeList(): string[] {
     "/api/discovery/idi-asset-search/import",
     "/api/discovery/source-capture",
     "/api/discovery/external-source-run",
+    "/api/discovery/tax-collector/receipt-run",
     "/api/discovery/contact-candidates/:id/review",
     "/api/closing-docs/export-google",
     "/api/outreach/sync",
@@ -796,9 +810,8 @@ function freshLeadRequestFromHttp(requestBody: FreshLeadBatchRequest | undefined
 }
 
 async function freshLeadBatchResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
-  const body = request.method === "POST"
-    ? await request.json().catch(() => undefined) as FreshLeadBatchRequest | undefined
-    : undefined;
+  if (request.method !== "POST") return methodNotAllowed();
+  const body = await request.json().catch(() => undefined) as FreshLeadBatchRequest | undefined;
   const result = await runFreshLeadBatch(freshLeadRequestFromHttp(body, url), {
     env: env as Record<string, string | undefined>,
   });
@@ -821,14 +834,13 @@ function exportSectionsForFlow(flow: "controlled-test" | "discovery" | "closing-
 }
 
 async function exportResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "POST") return methodNotAllowed();
   const dryRun = url.searchParams.get("dry-run") !== "false";
   const routesParam = url.searchParams.get("routes");
   const routes = routesParam
     ? routesParam.split(",").map((route) => route.trim()).filter((route): route is "google" | "podio" => route === "google" || route === "podio")
     : ["google", "podio"] as Array<"google" | "podio">;
-  const body = request.method === "POST"
-    ? await request.json().catch(() => undefined) as { seed?: IntakeSeed; routes?: Array<"google" | "podio">; dryRun?: boolean; controlledTest?: boolean; flow?: string; docPrepFlow?: string; batch?: boolean; estateId?: string; leadId?: string } | undefined
-    : undefined;
+  const body = await request.json().catch(() => undefined) as { seed?: IntakeSeed; routes?: Array<"google" | "podio">; dryRun?: boolean; controlledTest?: boolean; flow?: string; docPrepFlow?: string; batch?: boolean; estateId?: string; leadId?: string } | undefined;
   const seed = body?.controlledTest
     ? buildControlledPodioTestSeed(env as Record<string, string | undefined>)
     : body?.seed ?? seedFromUrl(url, env);
@@ -1606,9 +1618,18 @@ function sourceRunProofLedger(sourceSummaries: Array<Record<string, unknown>>, s
 }
 
 async function externalSourceRunResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
-  const body = request.method === "POST"
-    ? await request.json().catch(() => ({})) as Record<string, unknown>
-    : {};
+  if (request.method !== "POST") return methodNotAllowed();
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  if (!externalSourceRunApproved(body)) {
+    return json({
+      ok: false,
+      error: "source_run_intent_required",
+      message: "External source searches must be started from an explicit operator action.",
+    }, {
+      status: 400,
+      headers: { "cache-control": "no-store" },
+    });
+  }
   const seed = sourceRunSeedFromBody(body, seedFromUrl(url, env));
   const pipeline = await runDryPipeline(seed, { env: env as Record<string, string | undefined> });
   const capture = body.capture && typeof body.capture === "object" ? body.capture as Record<string, unknown> : body;
@@ -1668,6 +1689,56 @@ async function externalSourceRunResponse(request: Request, url: URL, env: Cloudf
     message: blockers.length
       ? "Discovery source checks ran and returned review blockers. The app did not assume missing public or paid-source facts."
       : "Discovery source checks returned structured source facts for review.",
+  }, { headers: { "cache-control": "no-store" } });
+}
+
+async function taxCollectorReceiptRunResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "POST") return methodNotAllowed();
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const seed = sourceRunSeedFromBody(body, seedFromUrl(url, env));
+  const capture = body.capture && typeof body.capture === "object" ? body.capture as Record<string, unknown> : body;
+  const batchGuard = browserbaseBatchGuard(body, env);
+  const taxCollectorInput = taxCollectorInputFromSourceRun(body, seed, capture);
+  let taxCollectorReceiptRun: Record<string, unknown>;
+  let sourceFacts: SourceFact[] = [];
+  const runId = `tax-receipt-${Date.now()}-${slug(seedIdentity(seed)).slice(0, 48)}`;
+
+  if (batchGuard) {
+    taxCollectorReceiptRun = {
+      ok: false,
+      mode: "browserbase_batch_blocked",
+      flow: "tax_collector_receipt",
+      estateId: seedIdentity(seed),
+      paidRun: true,
+      batchGuard,
+      blockers: [String(batchGuard.message || "Browserbase paid batch source run needs approval.")],
+      reviewRequired: true,
+      reviewFlags: [String(batchGuard.code || "BROWSERBASE_BATCH_APPROVAL_REQUIRED"), "SOURCE_BLOCKED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+      message: batchGuard.message,
+    };
+    sourceFacts = browserbaseBatchGuardFacts(runId, seed, batchGuard);
+  } else if (taxCollectorHasTarget(taxCollectorInput)) {
+    const acquisition = await acquireTaxCollectorReceipt(taxCollectorInput, { env: env as Record<string, string | undefined> });
+    taxCollectorReceiptRun = taxCollectorRunFromAcquisition(seed, taxCollectorInput, acquisition);
+    sourceFacts = taxCollectorSourceFactsFromRun(runId, seed, taxCollectorReceiptRun);
+  } else {
+    taxCollectorReceiptRun = {
+      ok: false,
+      mode: "missing_search_target",
+      flow: "tax_collector_receipt",
+      estateId: seedIdentity(seed),
+      paidRun: false,
+      blockers: ["Tax Collector receipt search needs a folio, property address, owner name, listing page, or receipt link."],
+      reviewRequired: true,
+      reviewFlags: ["TAX_COLLECTOR_LISTING_PAGE_REQUIRED", "TAX_RECEIPT_LINK_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"],
+      message: "Tax Collector receipt search needs a folio, property address, owner name, listing page, or receipt link.",
+    };
+  }
+
+  return json({
+    ...taxCollectorReceiptRun,
+    runId,
+    sourceFacts,
   }, { headers: { "cache-control": "no-store" } });
 }
 
@@ -2347,6 +2418,12 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return externalSourceRunResponse(request, url, env);
+    }
+
+    if (url.pathname === "/api/discovery/tax-collector/receipt-run") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return taxCollectorReceiptRunResponse(request, url, env);
     }
 
     const contactReviewMatch = url.pathname.match(/^\/api\/discovery\/contact-candidates\/([^/]+)\/review$/);

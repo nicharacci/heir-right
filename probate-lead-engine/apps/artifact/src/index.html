@@ -17386,6 +17386,7 @@ function externalSourceRunPayload(row, capture, key) {
   const idiImport = idiImportForRow(row);
   const contactReviews = contactReviewsForRow(row);
   const payload = {
+    operatorIntent: "run_external_source_search",
     assetKey: key,
     leadId: row?.id,
     seed: {

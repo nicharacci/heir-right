@@ -151,6 +151,7 @@ try {
   assert.doesNotMatch(taxResult.text, /s33-browserbase-secret|s33-shared-team-token/);
 
   const sourceResult = await callHandler(externalSourceRun, {
+    operatorIntent: "run_external_source_search",
     assetKey: "s33-external-proof",
     estateName: "Estate of S33 Proof",
     ownerName: "Estate of S33 Proof",

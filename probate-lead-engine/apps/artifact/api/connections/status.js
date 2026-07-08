@@ -329,10 +329,17 @@ function idiCoreStatus(env, checkedAt = new Date().toISOString()) {
       checkedAt,
       portal: { configured: true, searchUrl, loginUrl },
       api: { ...api, accessConfigured: false, liveRunApproved: liveApproved },
+      apiRequest: {
+        status: "pending_vendor_credentials",
+        requestedCredentials: ["API Secret", "Site Key", "Company Key"],
+        supportEmail: "idicoresupport@ididata.com",
+        backendAutomationAllowed: false,
+        manualImportAllowed: true,
+      },
       blockers: [
         api.endpointConfigured
           ? "Team-default IDI Core API access is not configured here; a user can paste their own key for one approved run."
-          : "Backend IDI Core live runs need a vendor API endpoint before they can execute from HeirRight."
+          : "Backend IDI Core live runs need IDI-issued API Secret, Site Key, and Company Key before they can execute from HeirRight."
       ],
     };
   }

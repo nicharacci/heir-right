@@ -45,11 +45,28 @@ function workerApiBase() {
   return process.env.HEIRRIGHT_WORKER_URL || process.env.WORKER_API_URL || process.env.WORKER_BASE_URL || "";
 }
 
+function originFor(request) {
+  const host = request?.headers?.["x-forwarded-host"] || request?.headers?.host || "app.heirright.com";
+  const proto = request?.headers?.["x-forwarded-proto"] || (String(host).startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+function workerProxyHeaders(request, headers = {}) {
+  const out = { ...headers };
+  if (process.env.HEIRRIGHT_API_TOKEN) out.authorization = `Bearer ${process.env.HEIRRIGHT_API_TOKEN}`;
+  if (request?.headers?.cookie) out.cookie = request.headers.cookie;
+  if (request) {
+    out["x-heirright-public-origin"] = originFor(request);
+    out["x-forwarded-host"] = request.headers["x-forwarded-host"] || request.headers.host || "";
+    out["x-forwarded-proto"] = request.headers["x-forwarded-proto"] || (originFor(request).startsWith("https:") ? "https" : "http");
+  }
+  return out;
+}
+
 async function proxyWorkerJson(pathname, body) {
   const base = workerApiBase().replace(/\/+$/, "");
   if (!base) return null;
-  const headers = { "content-type": "application/json" };
-  if (process.env.HEIRRIGHT_API_TOKEN) headers.authorization = `Bearer ${process.env.HEIRRIGHT_API_TOKEN}`;
+  const headers = workerProxyHeaders(null, { "content-type": "application/json" });
   const response = await fetch(`${base}${pathname}`, {
     method: "POST",
     headers,
@@ -60,6 +77,30 @@ async function proxyWorkerJson(pathname, body) {
     contentType: response.headers.get("content-type") || "application/json; charset=utf-8",
     body: await response.text(),
   };
+}
+
+async function proxyWorkerHttp(request, response, pathname, options = {}) {
+  const base = workerApiBase().replace(/\/+$/, "");
+  if (!base) return false;
+  const workerResponse = await fetch(`${base}${pathname}`, {
+    method: options.method || request.method || "GET",
+    headers: workerProxyHeaders(request, options.headers),
+    body: options.body,
+    redirect: "manual",
+  });
+  const headers = {
+    "Content-Type": workerResponse.headers.get("content-type") || "text/html; charset=utf-8",
+    "Cache-Control": workerResponse.headers.get("cache-control") || "no-store",
+  };
+  const location = workerResponse.headers.get("location");
+  if (location) headers.Location = location;
+  const setCookies = typeof workerResponse.headers.getSetCookie === "function"
+    ? workerResponse.headers.getSetCookie()
+    : [workerResponse.headers.get("set-cookie")].filter(Boolean);
+  if (setCookies.length) headers["Set-Cookie"] = setCookies;
+  response.writeHead(workerResponse.status, headers);
+  response.end(await workerResponse.text());
+  return true;
 }
 
 function sendProxied(response, proxied) {
@@ -263,6 +304,7 @@ module.exports = {
   extractTaxCollectorDetails,
   idiLockKey,
   methodGuard,
+  proxyWorkerHttp,
   proxyWorkerJson,
   readJsonBody,
   receiptId,

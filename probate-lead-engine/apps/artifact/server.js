@@ -194,6 +194,16 @@ function sendHtml(res, status, body, headers = {}) {
   res.end(body);
 }
 
+function sendMethodNotAllowed(res, allow = "POST") {
+  sendJson(res, 405, { ok: false, error: "method_not_allowed" }, { allow });
+}
+
+function externalSourceRunApproved(body = {}) {
+  return body.operatorIntent === "run_external_source_search"
+    || body.operatorAction === "run_external_source_search"
+    || body.sourceRunApproval === "approved_external_source_search";
+}
+
 function readRequestBody(req, maxBytes = 1_000_000) {
   return new Promise((resolve, reject) => {
     let body = "";
@@ -1319,7 +1329,19 @@ function mergeConfirmedFacts(seed, facts = []) {
 }
 
 async function handleExternalSourceRun(req, res) {
-  const body = req.method === "POST" ? await readJsonBody(req) : {};
+  if (req.method !== "POST") {
+    sendMethodNotAllowed(res);
+    return;
+  }
+  const body = await readJsonBody(req);
+  if (!externalSourceRunApproved(body)) {
+    sendJson(res, 400, {
+      ok: false,
+      error: "source_run_intent_required",
+      message: "External source searches must be started from an explicit operator action.",
+    });
+    return;
+  }
   const proxied = await proxyWorkerJson("/api/discovery/external-source-run", {
     req,
     method: "POST",
@@ -1517,7 +1539,11 @@ async function localControlledPodioExport() {
 }
 
 async function handleLocalExport(req, res) {
-  const body = req.method === "POST" ? await readJsonBody(req) : {};
+  if (req.method !== "POST") {
+    sendMethodNotAllowed(res);
+    return;
+  }
+  const body = await readJsonBody(req);
   const proxied = await proxyWorkerJson("/api/exports", {
     req,
     method: "POST",
@@ -1585,7 +1611,11 @@ async function handleLocalExport(req, res) {
 }
 
 async function handleFreshLeadBatch(req, res, options = {}) {
-  const body = req.method === "POST" ? await readJsonBody(req) : {};
+  if (req.method !== "POST") {
+    sendMethodNotAllowed(res);
+    return;
+  }
+  const body = await readJsonBody(req);
   if (!options.localOnly) {
     const proxied = await proxyWorkerJson("/api/leads/fresh-batch", {
       req,

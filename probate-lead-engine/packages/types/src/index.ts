@@ -522,6 +522,13 @@ export interface ConnectionStatus {
     userOverrideAllowed?: boolean;
     liveRunApproved: boolean;
   };
+  apiRequest?: {
+    status: "pending_vendor_credentials" | "not_requested" | "issued";
+    requestedCredentials?: string[];
+    supportEmail?: string;
+    backendAutomationAllowed: boolean;
+    manualImportAllowed: boolean;
+  };
   sourceAutomation?: {
     scriptDirectListingConfigured?: boolean;
     scriptLiveProbeEnabled?: boolean;

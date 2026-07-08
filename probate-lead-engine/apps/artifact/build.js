@@ -54,16 +54,6 @@ function writeJsonFallback(relativePath, value) {
   writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-writeJsonFallback("auth/session", {
-  authenticated: false,
-  user: null,
-  auth: {
-    required: false,
-    configured: false,
-    allowedDomains: ["heirright.com"],
-    allowedEmails: [],
-  },
-});
 writeJsonFallback("api/connections/status", buildConnectionStatuses(process.env, {
   freshBatchExists: existsSync(distFreshLeadBatchPath),
   latestRunExists: existsSync(join(distDir, "latest-run.json")),
