@@ -152,6 +152,17 @@
   text-wrap: pretty;
 }
 
+.hero-lede strong {
+  color: #fff;
+  font-weight: 800;
+}
+
+.hero-lede-short {
+  margin-top: 0.8rem;
+  color: #fff;
+  font-weight: 700;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
@@ -317,6 +328,11 @@
   border-radius: 999px;
   background: #10233c;
   color: #fff;
+}
+
+.lead-card .inline-cta {
+  background: #e5b75a;
+  color: #111827;
 }
 
 .trust-strip,
