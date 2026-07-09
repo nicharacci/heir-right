@@ -40,3 +40,19 @@ Applied the client's July 8 website copy and section requests to the active
 - 2026-07-09: Final dedicated review completed against the client plan. Source,
   generated Spanish page, built output, route status, stale-section search, and
   whitespace diff check all passed.
+- 2026-07-09: Pushed commit `c0bdff5` and deployed `site-v2` to the Vercel
+  production project `solvys/heirright`. Production deployment:
+  `dpl_Ef1Y9aKqrPAdiCDFJj2AEjmi6SC5` (`https://heirright.vercel.app`).
+- 2026-07-09: Live verification passed for `/`, `/es/`, `/contact.html`,
+  `/legal.html`, `/terms.html`, `/privacy.html`, and `/api/review-request`.
+  Desktop `1440x1000` and mobile `390x844` browser checks found no console or
+  network errors, broken images, or meaningful horizontal overflow. CTA and
+  required-field form progression passed without submitting a live follow-up
+  request. Screenshots: `/tmp/heirright-live-desktop.webp` and
+  `/tmp/heirright-live-mobile.webp`.
+- 2026-07-09: Custom-domain promotion remains externally blocked. Vercel has
+  `heirright.com` assigned to the new production deployment, but GoDaddy DNS
+  still resolves the apex to the previous WordPress host at `160.153.0.141`.
+  The required provider-side record is `A heirright.com 76.76.21.21` (or the
+  domain nameservers must move to Vercel). No GoDaddy/DNS credentials are
+  available in this workspace, so the public apex still serves the old site.
