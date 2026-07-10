@@ -56,3 +56,12 @@ Applied the client's July 8 website copy and section requests to the active
   The required provider-side record is `A heirright.com 76.76.21.21` (or the
   domain nameservers must move to Vercel). No GoDaddy/DNS credentials are
   available in this workspace, so the public apex still serves the old site.
+- 2026-07-09: Removed only the five client-identified carousel entries
+  `property-10.jpg` through `property-14.jpg`. Kept the brick-house feature
+  (`property-01.jpg`) and every other carousel entry and source asset intact.
+  Production build passed. Real-Chrome checks at desktop `1440x1000` and mobile
+  `390x844` verified all 10 remaining tiles, active-state switching, rapid
+  selection, horizontal mobile scrolling, zero broken images, zero document
+  overflow, and no console or network failures. Screenshots:
+  `/tmp/heirright-carousel-desktop.webp` and
+  `/tmp/heirright-carousel-mobile.webp`.
