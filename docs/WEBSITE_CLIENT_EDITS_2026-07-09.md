@@ -65,3 +65,10 @@ Applied the client's July 8 website copy and section requests to the active
   overflow, and no console or network failures. Screenshots:
   `/tmp/heirright-carousel-desktop.webp` and
   `/tmp/heirright-carousel-mobile.webp`.
+- 2026-07-09: Deployed the carousel cleanup to Vercel production as
+  `dpl_AesmFYp8Vqff726Vmbifixduzppx`. Live checks at
+  `https://heirright.vercel.app` confirmed the same 10 retained tiles, no
+  references or requests for `property-10.jpg` through `property-14.jpg`, the
+  brick house as the default feature, working tile selection, and clean mobile
+  console/network state. Live screenshot:
+  `/tmp/heirright-carousel-live-mobile.webp`.
