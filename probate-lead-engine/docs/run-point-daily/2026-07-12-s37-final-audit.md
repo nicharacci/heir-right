@@ -33,7 +33,7 @@ Warnings: **2 maintainability/deployment-environment warnings**
 | --- | --- | --- |
 | Auth-first initial paint | PASS | Production HTML starts with `data-auth-gated="true"`; the gate is present before hydration and CSS disables workspace pointer input. Anonymous protected routes return `401`. |
 | Allowed and denied Google login, reload, switch, logout | FAIL - external | `/auth/session` reports `auth.required:true`, `auth.configured:false`. The Google OAuth client, redirect configuration, and session secret are not deployed. |
-| `surface.heirright.com` | FAIL - external | Vercel assigned the alias, but public DNS returns no A/CNAME result and HTTPS cannot connect. `heirright-leads.vercel.app` serves the current deployment with `200`. |
+| `surface.heirright.com` | FAIL - external | Vercel assigned the alias, but the third-party domain still uses GoDaddy nameservers and public DNS returns no A/CNAME result. The DNS owner must add `A surface.heirright.com 76.76.21.21`; `heirright-leads.vercel.app` serves the current deployment with `200`. |
 | Protected operational routes | PASS | Static route inventory plus production probes cover Admin, connections, Discovery, documents, exports, outreach, support, Podio, and workspace state. |
 | Shared team state | PASS | Same-value production write returned verified readback; a stale revision returned `409 workspace_state_conflict`; subsequent read preserved the current value. |
 | Supporting-document lifecycle | PASS | Production upload, exact-byte readback, artifact ID/hash headers, delete readback, and post-delete `404` all passed. Invalid signatures and corrupted indexes are covered by focused tests. |
@@ -73,7 +73,7 @@ Alignment: blocked.
 
 Required corrections before complete:
 
-- Publish the DNS record for `surface.heirright.com` and deploy the approved Google OAuth client/session secret, then prove allowed and denied accounts in the deployed browser.
+- Add `A surface.heirright.com 76.76.21.21` at the current GoDaddy-backed DNS provider and deploy the approved Google OAuth client/session secret, then prove allowed and denied accounts in the deployed browser.
 - Activate Browserbase billing and rerun the estate-fact-to-listing-to-bottom-right-receipt path through production.
 - Reconnect the approved HeirRight Podio account and complete one controlled Leads-app write/readback across a fresh session.
 - Supply approved blank Closing originals, a designated field map, and legal approval; then generate and visually inspect Closing single and batch PDFs.
