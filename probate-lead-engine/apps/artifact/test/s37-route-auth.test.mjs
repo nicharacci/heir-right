@@ -67,6 +67,13 @@ const tokenResponse = await call(connectionStatus, {
 });
 assert.equal(tokenResponse.statusCode, 200, "internal bearer must preserve server-to-server access");
 
+const productionTokenResponse = await call(productionDiscoveryFile, {
+  method: "GET",
+  url: "/api/discovery/file?estateId=estate-test",
+  headers: { authorization: `Bearer ${process.env.HEIRRIGHT_API_TOKEN}` },
+});
+assert.equal(productionTokenResponse.statusCode, 200, "production wrappers must preserve internal bearer access through the server gate");
+
 const sessionToken = createSessionToken({ email: "operator@heirright.com", name: "Operator" });
 const sessionResponse = await call(adminAccess, {
   method: "GET",
@@ -103,6 +110,7 @@ for (const path of protectedHandlers) {
 console.log(JSON.stringify({ ok: true, checks: [
   "anonymous_operational_routes_rejected",
   "internal_bearer_preserved",
+  "production_wrapper_bearer_preserved",
   "approved_session_preserved",
   "initial_workspace_auth_gated",
   "protected_handler_inventory",

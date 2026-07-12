@@ -2041,8 +2041,7 @@ function handleRequest(req, res) {
   const session = readSession(req);
   if (authRequired() && !session) {
     if (url.pathname === "/latest-run.json" || url.pathname === "/daily-run.json" || url.pathname === "/qualification-review.json" || url.pathname === "/qualification-review.md" || url.pathname === "/readback-evidence.json" || url.pathname === "/readback-evidence.md" || url.pathname === "/thirty-day-milestone-evidence.json" || url.pathname === "/thirty-day-milestone-evidence.md" || url.pathname === "/thirty-day-review-script.md" || url.pathname.startsWith("/api/")) {
-      sendJson(res, 401, { ok: false, error: "auth_required", loginUrl: "/auth/login" });
-      return;
+      if (requireApiAuth(req, res)) return;
     }
   }
 
