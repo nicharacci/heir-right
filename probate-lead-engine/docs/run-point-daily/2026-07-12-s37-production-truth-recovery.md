@@ -134,6 +134,14 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Hardened `pnpm test:e2e` with an automatic artifact build so the browser cannot prove a stale `dist/index.html`. The final Chromium run passed both product-loop tests across `390x844`, `768x1024`, `1110x627`, `1280x720`, and `1440x900`, including vertical scrolling, Queue add/remove, all primary navigation, the real source-run request, Preview streaming, and `Option+Up` / `Option+Down`.
 - Anti-negligence review: the first responsive fix appeared ineffective because the E2E server was serving an old build. That release-process flaw was repaired before accepting the geometry result; the final proof now rebuilds and asserts owner, rail, Preview, and document bounds directly.
 
+### Milestone 9 - Uncached local release gates
+
+- Verified the pushed `4503bc3` milestone with `pnpm turbo run build --force` and `pnpm turbo run test --force`; remote caching was disabled and all three packages rebuilt. All five test tasks passed, including the 61-fact worker validation, route boundaries, source contracts, Discovery persistence, PDF content/integrity, and product-loop assertions.
+- Ran `pnpm test:e2e` from its new build-first contract. Chromium passed both end-to-end flows with one worker and no console/page errors.
+- Ran `pnpm lint` successfully, `pnpm audit --prod` with no known vulnerabilities, and the S37 secret fingerprint scan with no matches outside excluded secret/build/dependency paths.
+- Removed the generated Playwright last-run marker after proof collection so test output does not enter the release commit.
+- Anti-negligence review: no gate used a replayed test result. Lint's only package task reused the TypeScript build cache after the same source had already passed an uncached build; build and test truth came from the explicit `--force` runs.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint
