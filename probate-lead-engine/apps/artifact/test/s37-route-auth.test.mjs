@@ -13,6 +13,7 @@ const taxReceiptRun = require("../api/discovery/tax-collector/receipt-run.js");
 const podioDiagnostics = require("../api/podio/diagnostics.js");
 const podioOAuthStart = require("../api/podio/oauth/start.js");
 const productionPodioDiagnostics = require("../../../api/podio/diagnostics.js");
+const productionDiscoveryFile = require("../../../api/discovery/file.js");
 const { createSessionToken } = require("../api/auth/_shared.js");
 
 function call(handler, { method = "GET", body, headers = {}, url = "/" } = {}) {
@@ -52,6 +53,7 @@ for (const [name, handler, request] of [
   ["Podio diagnostics", podioDiagnostics, { method: "GET", url: "/api/podio/diagnostics" }],
   ["Podio OAuth start", podioOAuthStart, { method: "GET", url: "/api/podio/oauth/start" }],
   ["production Podio diagnostics wrapper", productionPodioDiagnostics, { method: "GET", url: "/api/podio/diagnostics" }],
+  ["production Discovery File wrapper", productionDiscoveryFile, { method: "GET", url: "/api/discovery/file?estateId=estate-test" }],
 ]) {
   const blocked = await call(handler, request);
   assert.equal(blocked.statusCode, 401, `${name} must reject anonymous requests before work begins`);
