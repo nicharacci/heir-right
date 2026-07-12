@@ -166,6 +166,18 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Fresh proof: Worker and artifact builds passed; the full artifact suite passed packet integrity, source workflow, auth inventory, attachment byte readback, Durable Object reload, 13-page single PDF, and 25-page batch PDF assertions; `pnpm test:e2e` passed 3/3.
 - Anti-negligence review: file names, animation completion, local storage, and HTTP success are no longer accepted as document or team-state proof. Each user-visible completion now depends on backend storage readback.
 
+### Milestone 12 - Production artifact and team-state round trip
+
+- Deployed Worker version `9362f78a-2f36-4acb-a4e7-1b86a6cc616b` with the `WorkspaceState` Durable Object, supporting-document lifecycle, packet-reference persistence, and existing KV bindings. Rotated the private Worker/Vercel bearer through provider secret stores without printing or committing it.
+- Deployed Vercel production `heirright-landing-demo-cv0hqqiwe-solvys.vercel.app`, assigned `surface.heirright.com`, and repointed `heirright-leads.vercel.app` to the same build. The custom hostname still has no public DNS record; the Vercel alias alone cannot make the hostname resolve.
+- Public-boundary security proof: anonymous Workspace state, supporting-document, and connection-status requests each returned `401`. The public auth session returned `200` with `authenticated:false` and `configured:false`, proving Google OAuth credentials are still absent rather than silently bypassed.
+- Team-state proof through Vercel: read the current CRM estate state, wrote the exact same value through the Durable Object, then read the same revision and value back. The write and read both returned `200` with `readbackStatus:verified`, preserving existing user data while proving production durability.
+- Supporting-document proof through Vercel: uploaded a controlled 35-byte PDF, fetched the exact bytes with matching artifact ID and content hash, deleted it, and confirmed the authenticated artifact route returned `404` afterward.
+- Discovery artifact proof through Vercel: reused the controlled `s37-production-proof` Discovery File, generated one validated PDF, fetched 30,231 bytes with matching ID/hash headers, and confirmed the packet reference was written back to the shared Discovery File with verified readback.
+- The controlled source record still carries six explicit provider/source blockers. The app preserved them and generated a review packet; it did not claim that missing Browserbase, Clerk, vital, or idiCORE evidence had been acquired.
+- Added the five production auth/domain variables reported by Vercel to Turbo's declared global environment contract, removing build-time ambiguity without placing values in source.
+- Anti-negligence review: the production probe preserved the current CRM state byte-for-byte and deleted its temporary attachment. The retained `s37-production-proof` Discovery record is an explicit audit fixture rather than an operator estate.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint
