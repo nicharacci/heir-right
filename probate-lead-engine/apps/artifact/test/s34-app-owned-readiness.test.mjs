@@ -17,6 +17,7 @@ function callHandler(handler, body) {
     const request = {
       method: "POST",
       body,
+      headers: {},
       on() {},
       destroy() {},
     };
@@ -68,22 +69,27 @@ const podioBase = {
 const browserOnlyPodio = byName(buildConnectionStatuses({
   ...podioBase,
   PODIO_BROWSER_REFRESH_TOKEN: "browser-session-refresh",
+  PODIO_PER_USER_AUTH_REQUIRED: "true",
+  PODIO_USER_SCOPED_REFRESH: "true",
 }), "Podio");
-assert.equal(browserOnlyPodio.ok, false);
-assert.equal(browserOnlyPodio.mode, "review");
+assert.equal(browserOnlyPodio.ok, true);
+assert.equal(browserOnlyPodio.mode, "live");
 assert.equal(browserOnlyPodio.auth.mode, "browser_refresh");
 assert.equal(browserOnlyPodio.auth.durableTeamAuth, false);
-assert.equal(browserOnlyPodio.auth.reconnectRequired, true);
-assert.match(browserOnlyPodio.message, /browser session only/i);
+assert.equal(browserOnlyPodio.auth.reconnectRequired, false);
+assert.equal(browserOnlyPodio.auth.userScopedRefresh, true);
+assert.match(browserOnlyPodio.message, /Your Podio handoff access/i);
 
 const durablePodio = byName(buildConnectionStatuses({
   ...podioBase,
   PODIO_APP_TOKEN: "durable-app-token",
+  PODIO_PER_USER_AUTH_REQUIRED: "true",
 }), "Podio");
-assert.equal(durablePodio.ok, true);
-assert.equal(durablePodio.mode, "live");
+assert.equal(durablePodio.ok, false);
+assert.equal(durablePodio.mode, "review");
 assert.equal(durablePodio.auth.mode, "app_auth");
 assert.equal(durablePodio.auth.durableTeamAuth, true);
+assert.equal(durablePodio.auth.reconnectRequired, true);
 
 const browserbaseMissing = byName(buildConnectionStatuses({}), "Browserbase Usage");
 assert.equal(browserbaseMissing.ok, false);
@@ -115,12 +121,14 @@ assert.ok(bundle.includes("Browserbase source usage"), "Source settings must sho
 assert.ok(bundle.includes("Paid batch capture cap"), "Source settings must explain the Browserbase batch cap.");
 assert.doesNotMatch(bundle, /Embed Builder|activepieces\.com\/docs|cdn\.activepieces\.com\/sdk|<iframe[^>]+activepieces/i);
 assert.ok(workerSource.includes("PODIO_TOKEN_STORE"), "Worker must bind durable Podio token storage.");
-assert.ok(workerSource.includes("storePodioRefreshToken"), "Podio OAuth callback must persist the team refresh token.");
-assert.ok(workerSource.includes("PODIO_DURABLE_REFRESH_TOKEN"), "Stored Podio refresh must feed durable team auth.");
-assert.ok(workerSource.includes("Podio Team Access Connected"), "OAuth success copy must distinguish durable team access.");
+assert.ok(workerSource.includes("storePodioRefreshToken"), "Podio OAuth callback must persist each user's refresh token.");
+assert.ok(workerSource.includes("user_scoped_durable_refresh"), "Stored Podio refresh must remain user-scoped.");
+assert.ok(workerSource.includes("Your Podio Account Is Connected"), "OAuth success copy must explain user-scoped access.");
+assert.ok(wranglerConfig.includes('PODIO_PER_USER_AUTH_REQUIRED = "true"'), "Production must require per-user Podio OAuth.");
 assert.ok(wranglerConfig.includes('binding = "PODIO_TOKEN_STORE"'), "Worker config must bind Podio KV token storage.");
 
 const envKeys = [
+  "AUTH_REQUIRED",
   "HEIRRIGHT_WORKER_URL",
   "WORKER_API_URL",
   "WORKER_BASE_URL",
@@ -135,6 +143,7 @@ const savedEnv = saveEnv(envKeys);
 const savedFetch = globalThis.fetch;
 
 try {
+  process.env.AUTH_REQUIRED = "false";
   delete process.env.HEIRRIGHT_WORKER_URL;
   delete process.env.WORKER_API_URL;
   delete process.env.WORKER_BASE_URL;
@@ -209,9 +218,9 @@ try {
 console.log(JSON.stringify({
   ok: true,
   checks: [
-    "podio_browser_session_not_durable",
-    "podio_app_token_durable",
-    "podio_oauth_kv_team_storage",
+    "podio_user_scoped_refresh_is_ready",
+    "podio_shared_app_token_rejected_for_per_user_mode",
+    "podio_oauth_kv_user_storage",
     "browserbase_usage_status_and_settings",
     "browserbase_batch_guard_blocks_unapproved_paid_capture",
     "browserbase_batch_approval_allows_capture_without_secret_leak",

@@ -107,6 +107,9 @@ export function podioAuthSummary(env: RuntimeEnv): {
   bearerTokenConfigured: boolean;
   reconnectRequired: boolean;
   durableRequired: boolean;
+  perUserRequired: boolean;
+  userScopedRefresh: boolean;
+  accessRequirementMet: boolean;
 } {
   const clientId = podioClientId(env);
   const clientSecret = podioClientSecret(env);
@@ -116,6 +119,9 @@ export function podioAuthSummary(env: RuntimeEnv): {
   const bearerTokenConfigured = Boolean(podioAccessToken(env));
   const durableTeamAuth = appTokenConfigured || serverRefreshConfigured || bearerTokenConfigured;
   const durableRequired = env.PODIO_DURABLE_AUTH_REQUIRED !== "false";
+  const perUserRequired = env.PODIO_PER_USER_AUTH_REQUIRED === "true";
+  const userScopedRefresh = env.PODIO_USER_SCOPED_REFRESH === "true" || browserSessionRefresh;
+  const accessRequirementMet = perUserRequired ? userScopedRefresh : (!durableRequired || durableTeamAuth);
   return {
     mode: appTokenConfigured
       ? "app_auth"
@@ -131,8 +137,11 @@ export function podioAuthSummary(env: RuntimeEnv): {
     serverRefreshConfigured,
     browserSessionRefresh,
     bearerTokenConfigured,
-    reconnectRequired: durableRequired && !durableTeamAuth,
+    reconnectRequired: !accessRequirementMet,
     durableRequired,
+    perUserRequired,
+    userScopedRefresh,
+    accessRequirementMet,
   };
 }
 

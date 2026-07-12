@@ -24,16 +24,15 @@ function text(value: unknown): string {
   return String(value).trim();
 }
 
-function fieldValue(input: ClosingFieldInput | undefined): string {
+const NOT_APPLICABLE_FIELDS = new Set(["foreclosure_case"]);
+
+function fieldValue(key: string, input: ClosingFieldInput | undefined): string {
   if (typeof input === "string") return input.trim();
   if (!input || typeof input !== "object") return "";
   const value = text(input.value);
   if (value) return value;
   const note = text(input.note);
-  if (input.resolution === "not_applicable" && note) return `N/A - ${note}`;
-  if (input.resolution === "supporting_document" && text(input.supportingDocumentId)) {
-    return `See supporting document ${text(input.supportingDocumentId)}`;
-  }
+  if (input.resolution === "not_applicable" && NOT_APPLICABLE_FIELDS.has(key) && note) return `N/A - ${note}`;
   return "";
 }
 
@@ -63,7 +62,7 @@ function inferredFields(dossier: RawDossier): Record<string, string> {
     probate_case: text(dossier.summary.caseNumber) || text(dossier.property.caseNumber.value) || text(dossier.probateDocket.caseNumber.value),
     offer_amount: offerValue(offer?.offerAmount),
     transfer_amount: offerValue(offer?.offerAmount),
-    purchase_price: offerValue(offer?.asIsValue),
+    purchase_price: offerValue(offer?.offerAmount),
     per_heir_amount: offerValue(offer?.equityPerHeir),
     taxes_due: text(dossier.taxHistory.amountDue.value),
     tax_paid_by: text(dossier.taxHistory.payerIdentity.value) || text(dossier.taxHistory.lastPaidBy?.value),
@@ -78,7 +77,7 @@ function estateInput(dossier: RawDossier, options: ClosingPacketOptions): Closin
 function resolvedFields(dossier: RawDossier, input: ClosingEstateInput): Record<string, string> {
   const resolved = { ...inferredFields(dossier) };
   for (const [key, value] of Object.entries(input.fields ?? {})) {
-    const override = fieldValue(value);
+    const override = fieldValue(key, value);
     if (override) resolved[key] = override;
   }
   return resolved;

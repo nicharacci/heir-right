@@ -7136,6 +7136,49 @@
       font-size: 12px;
     }
 
+    .closing-template-picker {
+      display: grid;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .closing-template-option {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border-top: 1px solid var(--line);
+      cursor: pointer;
+    }
+
+    .closing-template-option:first-child { border-top: 0; }
+
+    .closing-template-option input {
+      width: 16px;
+      height: 16px;
+      margin: 1px 0 0;
+      accent-color: var(--accent);
+    }
+
+    .closing-template-option strong,
+    .closing-template-option span {
+      display: block;
+      min-width: 0;
+    }
+
+    .closing-template-option strong { color: var(--text); font-size: 12px; }
+    .closing-template-option span { margin-top: 2px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+
+    .closing-template-option > em {
+      color: var(--muted);
+      font-size: 10px;
+      font-style: normal;
+      white-space: nowrap;
+    }
+
     .source-readiness-list strong,
     .source-proof-list strong,
     .source-run-list strong {
@@ -11316,6 +11359,7 @@ const state = {
   contactReviews: {},
   documentFiles: {},
   closingFieldValues: {},
+  closingTemplateSelections: {},
   closingExportState: {},
   workspaceStateRevisions: {},
   documentActionModal: {
@@ -11409,6 +11453,7 @@ const idiCoreUserApiKeyKey = "heirright:idi-core-user-api-key";
 const contactReviewStateKey = "heirright:contact-review-state";
 const documentFilesStateKey = "heirright:document-files-state";
 const closingFieldValuesStateKey = "heirright:closing-field-values";
+const closingTemplateSelectionsStateKey = "heirright:closing-template-selections";
 const closingExportStateKey = "heirright:closing-export-state";
 const columnOrderStateKey = "heirright:column-order-state";
 const searchHistoryStateKey = "heirright:search-history-state";
@@ -11430,6 +11475,7 @@ const serverBackedStateKeys = new Set([
   contactReviewStateKey,
   documentFilesStateKey,
   closingFieldValuesStateKey,
+  closingTemplateSelectionsStateKey,
   closingExportStateKey,
   outreachWorkspaceKey
 ]);
@@ -11650,45 +11696,40 @@ const closingTemplateFamilies = [
     title: "Fund Transfer / Bank Account Transfer",
     phaseId: "closing-package",
     type: "Disbursement setup",
-    copy: "Seller proceeds, wire/ACH destination, and payment authorization fields.",
-    variables: ["seller_heirs", "property_address", "offer_amount", "bank_transfer", "closing_date"],
-    required: ["seller_heirs", "property_address", "offer_amount", "bank_transfer", "closing_date"]
+    copy: "Seller proceeds and transfer authorization fields.",
+    required: ["seller_heirs", "property_address", "folio", "transfer_amount", "buyer_entity"]
   },
   {
     id: "contract-for-deed",
     title: "Contract for Deed",
     phaseId: "offer-underwriting",
     type: "Draft agreement",
-    copy: "Buyer, seller, purchase price, legal description, and default/recording review fields.",
-    variables: ["buyer_entity", "seller_heirs", "property_address", "folio", "offer_amount", "closing_date"],
-    required: ["buyer_entity", "seller_heirs", "property_address", "folio", "offer_amount"]
+    copy: "Buyer, seller, transfer amount, property, folio, and legal description.",
+    required: ["seller_heirs", "buyer_entity", "property_address", "folio", "legal_description", "transfer_amount"]
   },
   {
     id: "quit-claim-deed",
     title: "Quit Claim Deed",
     phaseId: "title-clearance",
     type: "Deed prep",
-    copy: "Grantor, grantee, legal description, folio, county, and recording review fields.",
-    variables: ["seller_heirs", "buyer_entity", "property_address", "county", "folio", "title_evidence"],
-    required: ["seller_heirs", "buyer_entity", "property_address", "county", "folio", "title_evidence"]
+    copy: "Grantor, grantee, legal description, folio, mailing address, and marital status.",
+    required: ["seller_heirs", "buyer_entity", "property_address", "folio", "legal_description", "seller_mailing_address", "seller_marital_status"]
   },
   {
     id: "limited-power-of-attorney",
     title: "Limited Power of Attorney",
     phaseId: "seller-approval",
     type: "Authority review",
-    copy: "Principal, attorney-in-fact, property scope, and expiration/authority review fields.",
-    variables: ["seller_heirs", "representative", "property_address", "county", "closing_date"],
-    required: ["seller_heirs", "representative", "property_address", "county"]
+    copy: "Principal, attorney-in-fact, and property scope.",
+    required: ["seller_heirs", "representative", "property_address"]
   },
   {
     id: "assignment-of-surplus-rights",
     title: "Assignment of Surplus Rights Purchase Agreement",
     phaseId: "offer-underwriting",
     type: "Surplus rights draft",
-    copy: "Surplus assignment terms with explicit entity review because the examples differ between HeirRight and Somi.",
-    variables: ["seller_heirs", "buyer_entity", "assignment_amount", "property_address", "probate_case"],
-    required: ["seller_heirs", "buyer_entity", "assignment_amount", "property_address"],
+    copy: "Surplus assignment parties, property, folio, and foreclosure case.",
+    required: ["seller_heirs", "buyer_entity", "property_address", "folio", "foreclosure_case"],
     reviewNote: "Template examples use both HeirRight, LLC and Somi Home Buyers, LLC. Confirm the correct buyer/assignee entity before external use."
   },
   {
@@ -11696,83 +11737,74 @@ const closingTemplateFamilies = [
     title: "Same Name Affidavit",
     phaseId: "seller-approval",
     type: "Identity affidavit",
-    copy: "Name variants, signer identity, estate relationship, and notarization review fields.",
-    variables: ["seller_heirs", "deceased_name", "property_address", "county", "name_variants"],
-    required: ["seller_heirs", "deceased_name", "property_address", "name_variants"]
+    copy: "Signer identity and reviewed name variants.",
+    required: ["seller_heirs", "name_variants"]
   },
   {
     id: "joinder-waiver-consent",
-    title: "Joinder / Waiver / Consent",
+    title: "Joinder, Waiver and Consent",
     phaseId: "seller-approval",
     type: "Consent packet",
-    copy: "Non-signing party consent, relationship, authority, and acknowledgement fields.",
-    variables: ["seller_heirs", "heir_relationships", "property_address", "probate_case"],
-    required: ["seller_heirs", "heir_relationships", "property_address"]
+    copy: "Estate, consenting party, and probate case.",
+    required: ["deceased_name", "seller_heirs", "probate_case"]
   },
   {
     id: "affidavit-of-heirs",
     title: "Affidavit of Heirs",
     phaseId: "seller-approval",
     type: "Heirship affidavit",
-    copy: "Family tree, deceased details, spouse/children, and heir-contact support fields.",
-    variables: ["deceased_name", "deceased_dob_dod", "seller_heirs", "heir_relationships", "property_address"],
-    required: ["deceased_name", "deceased_dob_dod", "seller_heirs", "heir_relationships"]
+    copy: "Deceased, reviewed heirs, relationships, and probate case.",
+    required: ["deceased_name", "seller_heirs", "heir_relationships", "probate_case"]
   },
   {
     id: "valuable-consideration-disbursement",
     title: "Valuable Consideration Disbursement",
     phaseId: "closing-package",
     type: "Payment review",
-    copy: "Per-heir consideration, amount, payment route, and review owner fields.",
-    variables: ["seller_heirs", "offer_amount", "per_heir_amount", "bank_transfer", "closing_date"],
-    required: ["seller_heirs", "offer_amount", "per_heir_amount", "bank_transfer"]
+    copy: "Grantor, grantee, property, and valuable-consideration amount.",
+    required: ["seller_heirs", "buyer_entity", "property_address", "valuable_consideration_amount"]
   },
   {
     id: "assignment-disclaimer-interest",
     title: "Assignment and Disclaimer of Interest",
     phaseId: "seller-approval",
     type: "Interest transfer",
-    copy: "Assignor, assignee, estate interest, relationship, and property reference fields.",
-    variables: ["seller_heirs", "buyer_entity", "heir_relationships", "property_address", "probate_case"],
-    required: ["seller_heirs", "buyer_entity", "heir_relationships", "property_address"]
+    copy: "Deceased, assigning party, disclaimer recipient, and probate case.",
+    required: ["deceased_name", "seller_heirs", "disclaimer_recipient", "probate_case"]
   },
   {
     id: "land-trust-agreement",
     title: "Land Trust Agreement",
     phaseId: "closing-package",
     type: "Trust setup",
-    copy: "Trust name, trustee, beneficiary, property, and recording/title review fields.",
-    variables: ["trust_name", "trustee", "buyer_entity", "property_address", "folio", "title_evidence"],
-    required: ["trust_name", "trustee", "buyer_entity", "property_address", "folio"]
+    copy: "Trust name, settlor, trustee, beneficiary, property, folio, and legal description.",
+    required: ["trust_name", "property_address", "folio", "legal_description", "settlor_entity", "trustee", "beneficiary"]
   },
   {
     id: "tax-reimbursement",
-    title: "Tax Reimbursement",
+    title: "Tax Reimbursement Credit",
     phaseId: "title-clearance",
     type: "Tax credit",
-    copy: "Paid-by party, unpaid years, tax amount, reimbursement party, and receipt fields.",
-    variables: ["seller_heirs", "property_address", "tax_paid_by", "taxes_due", "title_evidence"],
-    required: ["seller_heirs", "property_address", "tax_paid_by", "taxes_due"]
+    copy: "Property, folio, tax payer, amount due, and deceased owner.",
+    required: ["property_address", "folio", "tax_paid_by", "taxes_due", "deceased_name"]
   },
   {
     id: "buyer-purchase-agreement",
     title: "Buyer Purchase Agreement",
     phaseId: "offer-underwriting",
     type: "Purchase agreement",
-    copy: "Buyer/seller, price, property, assignment, inspection, and closing deadline fields.",
-    variables: ["buyer_entity", "seller_heirs", "property_address", "folio", "offer_amount", "closing_date"],
-    required: ["buyer_entity", "seller_heirs", "property_address", "folio", "offer_amount"]
+    copy: "Buyer, seller, purchase price, property, folio, and legal description.",
+    required: ["buyer_entity", "seller_heirs", "property_address", "folio", "legal_description", "purchase_price"]
   },
   {
     id: "unclaimed-funds-instructions",
     title: "Unclaimed Funds Instructions",
     phaseId: "closing-package",
     type: "Claim instructions",
-    copy: "Court/agency claim route, claimant identity, funds source, and supporting documents checklist.",
-    variables: ["seller_heirs", "probate_case", "deceased_name", "property_address", "claim_instructions"],
-    required: ["seller_heirs", "probate_case", "deceased_name", "claim_instructions"]
+    copy: "Claimant name and city for the approved unclaimed-funds instructions.",
+    required: ["claimant_last_name", "claimant_first_name", "claimant_city"]
   }
-];
+].map((template) => ({ ...template, variables: template.required }));
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -12009,6 +12041,10 @@ function persistClosingFieldValues() {
   storageSetItem(closingFieldValuesStateKey, JSON.stringify(state.closingFieldValues));
 }
 
+function persistClosingTemplateSelections() {
+  storageSetItem(closingTemplateSelectionsStateKey, JSON.stringify(state.closingTemplateSelections));
+}
+
 function persistClosingExportState() {
   storageSetItem(closingExportStateKey, JSON.stringify(state.closingExportState));
 }
@@ -12083,6 +12119,7 @@ function loadAssetDiscoveryState() {
   state.contactReviews = restoreObjectFromStorage(contactReviewStateKey, {});
   state.documentFiles = restoreObjectFromStorage(documentFilesStateKey, {});
   state.closingFieldValues = restoreObjectFromStorage(closingFieldValuesStateKey, {});
+  state.closingTemplateSelections = restoreObjectFromStorage(closingTemplateSelectionsStateKey, {});
   state.closingExportState = restoreObjectFromStorage(closingExportStateKey, {});
   const storedColumnOrder = restoreObjectFromStorage(columnOrderStateKey, {});
   state.columnOrder = {
@@ -12246,6 +12283,10 @@ function applyServerBackedStateValue(key, value) {
   }
   if (key === closingFieldValuesStateKey) {
     state.closingFieldValues = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    return true;
+  }
+  if (key === closingTemplateSelectionsStateKey) {
+    state.closingTemplateSelections = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
     return true;
   }
   if (key === closingExportStateKey) {
@@ -15003,6 +15044,44 @@ function queueItems() {
   }));
 }
 
+function closingTemplateSelectionRecord(row = selectedRow()) {
+  if (!row) return { selectedTemplateIds: [] };
+  const record = state.closingTemplateSelections?.[assetDiscoveryKey(row)];
+  return record && typeof record === "object" && !Array.isArray(record)
+    ? record
+    : { selectedTemplateIds: [] };
+}
+
+function selectedClosingTemplateIds(row = selectedRow()) {
+  const validIds = new Set(closingTemplateFamilies.map((template) => template.id));
+  return [...new Set((closingTemplateSelectionRecord(row).selectedTemplateIds ?? []).map(String))]
+    .filter((templateId) => validIds.has(templateId));
+}
+
+function selectedClosingTemplates(row = selectedRow()) {
+  const selectedIds = new Set(selectedClosingTemplateIds(row));
+  return closingTemplateFamilies.filter((template) => selectedIds.has(template.id));
+}
+
+function setClosingTemplateSelected(row = selectedRow(), templateId = "", included = false) {
+  if (!row || !closingTemplateFamilies.some((template) => template.id === templateId)) return;
+  const selectedIds = new Set(selectedClosingTemplateIds(row));
+  if (included) selectedIds.add(templateId);
+  else selectedIds.delete(templateId);
+  state.closingTemplateSelections[assetDiscoveryKey(row)] = {
+    selectedTemplateIds: [...selectedIds],
+    updatedAt: isoNow(),
+    updatedBy: state.session?.user?.email || "team"
+  };
+  persistClosingTemplateSelections();
+}
+
+function selectedClosingBlockers(row = selectedRow(), dossier = dossierForRow(row)) {
+  const templates = selectedClosingTemplates(row);
+  if (!templates.length) return [{ key: "template_selection", label: "Choose at least one Closing form", value: "No forms selected", resolved: false }];
+  return templates.flatMap((template) => closingTemplateBlockers(template, row, dossier));
+}
+
 function closingFieldRecord(row = selectedRow(), key = "") {
   const estateKey = assetDiscoveryKey(row);
   const record = state.closingFieldValues?.[estateKey] ?? {};
@@ -15013,10 +15092,15 @@ function closingFieldRecord(row = selectedRow(), key = "") {
 }
 
 function closingFieldOverrideValue(row = selectedRow(), key = "") {
-  return String(closingFieldRecord(row, key).value || "").trim();
+  const record = closingFieldRecord(row, key);
+  const value = String(record.value || "").trim();
+  if (value) return value;
+  const note = String(record.note || "").trim();
+  if (record.resolution === "not_applicable" && key === "foreclosure_case" && note) return `N/A - ${note}`;
+  return "";
 }
 
-function setClosingFieldOverride(row = selectedRow(), key = "", value = "", note = "") {
+function setClosingFieldOverride(row = selectedRow(), key = "", value = "", note = "", resolution = "provided", supportingDocumentId = "") {
   if (!row || !key) return;
   const estateKey = assetDiscoveryKey(row);
   state.closingFieldValues[estateKey] = {
@@ -15024,6 +15108,8 @@ function setClosingFieldOverride(row = selectedRow(), key = "", value = "", note
     [key]: {
       value: String(value || "").trim(),
       note: String(note || "").trim(),
+      resolution,
+      supportingDocumentId: String(supportingDocumentId || "").trim(),
       savedAt: isoNow(),
       savedBy: state.session?.user?.email || "team"
     }
@@ -15056,6 +15142,7 @@ function closingVariableRegistry(row = selectedRow(), dossier = dossierForRow(ro
   const contactRelationships = acceptedContacts.map((contact) => `${contact.name || "Contact"}: ${displayStatus(contact.relationship, "relationship needs review")}`).join("; ");
   const deceasedName = row?.owner || dossier?.owner?.name?.value || dossier?.summary?.estateName || row?.leadName;
   const deedInstrument = capture.deed?.instrument || dossier?.deedHistory?.latestInstrument || "";
+  const legalDescription = capture.deed?.legalDescription || capture.property?.legalDescription || dossier?.property?.legalDescription?.value || "";
   const taxPaidBy = capture.taxReceipt?.paidBy || report?.taxStatus?.paidBy || "";
   const titleEvidence = [deedInstrument ? `Deed ${deedInstrument}` : "", taxPaidBy ? `Tax receipt paid by ${taxPaidBy}` : ""].filter(Boolean).join("; ");
   const probateCase = row?.file || report?.probateStatus?.caseNumber || dossier?.probate?.caseNumber || "";
@@ -15069,24 +15156,37 @@ function closingVariableRegistry(row = selectedRow(), dossier = dossierForRow(ro
     closingRegistryEntry("property_address", "Property address", closingResolvedValue(row, "property_address", row?.address || dossier?.property?.address?.value)),
     closingRegistryEntry("county", "County", closingResolvedValue(row, "county", formatCountyName(row?.county || dossier?.property?.county?.value || "Miami-Dade County, FL"))),
     closingRegistryEntry("folio", "Folio / parcel", closingResolvedValue(row, "folio", row?.parcel || dossier?.property?.parcelId?.value || row?.folio)),
+    closingRegistryEntry("legal_description", "Legal description", closingResolvedValue(row, "legal_description", legalDescription), { fallback: "Needs reviewed deed or title evidence" }),
     closingRegistryEntry("seller_heirs", "Seller / heir signers", closingResolvedValue(row, "seller_heirs", sellerNames), { fallback: "Needs accepted signer contacts from Contact Review" }),
     closingRegistryEntry("heir_relationships", "Heir relationships", closingResolvedValue(row, "heir_relationships", contactRelationships), { fallback: "Needs family-tree relationship review" }),
+    closingRegistryEntry("seller_mailing_address", "Seller mailing address", closingResolvedValue(row, "seller_mailing_address", primaryContacts[0]?.likelyCurrentAddress || primaryContacts[0]?.addresses?.[0] || ""), { fallback: "Needs reviewed signer mailing address" }),
+    closingRegistryEntry("seller_marital_status", "Seller marital status", closingResolvedValue(row, "seller_marital_status", ""), { fallback: "Needs signer-confirmed marital status" }),
     closingRegistryEntry("buyer_entity", "Buyer / assignee entity", closingResolvedValue(row, "buyer_entity", ""), { fallback: "Confirm HeirRight, LLC vs Somi Home Buyers, LLC" }),
     closingRegistryEntry("representative", "Representative / attorney-in-fact", closingResolvedValue(row, "representative", primaryContacts[0]?.name || ""), { fallback: "Needs representative or attorney-in-fact" }),
     closingRegistryEntry("trust_name", "Land trust name", closingResolvedValue(row, "trust_name", ""), { fallback: "Needs title-approved trust name" }),
+    closingRegistryEntry("settlor_entity", "Settlor entity", closingResolvedValue(row, "settlor_entity", ""), { fallback: "Needs approved settlor entity" }),
     closingRegistryEntry("trustee", "Trustee", closingResolvedValue(row, "trustee", ""), { fallback: "Needs trustee" }),
+    closingRegistryEntry("beneficiary", "Beneficiary", closingResolvedValue(row, "beneficiary", ""), { fallback: "Needs approved trust beneficiary" }),
     closingRegistryEntry("title_company", "Title company / closer", closingResolvedValue(row, "title_company", ""), { fallback: "Needs title-company contact" }),
     closingRegistryEntry("offer_amount", "Offer amount", closingResolvedValue(row, "offer_amount", offerAmount)),
+    closingRegistryEntry("transfer_amount", "Transfer amount", closingResolvedValue(row, "transfer_amount", offerAmount)),
+    closingRegistryEntry("purchase_price", "Purchase price", closingResolvedValue(row, "purchase_price", offerAmount)),
     closingRegistryEntry("assignment_amount", "Assignment amount", closingResolvedValue(row, "assignment_amount", offerAmount)),
     closingRegistryEntry("per_heir_amount", "Per-heir amount", closingResolvedValue(row, "per_heir_amount", perHeirAmount)),
+    closingRegistryEntry("valuable_consideration_amount", "Valuable consideration amount", closingResolvedValue(row, "valuable_consideration_amount", ""), { fallback: "Needs approved disbursement amount" }),
     closingRegistryEntry("tax_paid_by", "Last tax paid by", closingResolvedValue(row, "tax_paid_by", taxPaidBy), { fallback: "Needs Tax Collector receipt payer" }),
     closingRegistryEntry("taxes_due", "Taxes due / reimbursement amount", closingResolvedValue(row, "taxes_due", taxesDue)),
     closingRegistryEntry("title_evidence", "Title / deed evidence", closingResolvedValue(row, "title_evidence", titleEvidence), { fallback: "Needs deed instrument and tax receipt evidence" }),
     closingRegistryEntry("probate_case", "Probate / court case", closingResolvedValue(row, "probate_case", probateCase), { fallback: "Needs probate or official-record case reference" }),
+    closingRegistryEntry("foreclosure_case", "Foreclosure case", closingResolvedValue(row, "foreclosure_case", ""), { fallback: "Needs foreclosure case or reviewed not-applicable value" }),
+    closingRegistryEntry("disclaimer_recipient", "Disclaimer recipient", closingResolvedValue(row, "disclaimer_recipient", ""), { fallback: "Needs approved recipient" }),
     closingRegistryEntry("bank_transfer", "Bank transfer instructions", closingResolvedValue(row, "bank_transfer", ""), { fallback: "Needs seller-approved disbursement instructions" }),
     closingRegistryEntry("closing_date", "Closing / signing date", closingResolvedValue(row, "closing_date", ""), { fallback: "Needs approved closing date" }),
     closingRegistryEntry("name_variants", "Name variants", closingResolvedValue(row, "name_variants", ""), { fallback: "Needs same-name review notes" }),
-    closingRegistryEntry("claim_instructions", "Claim instructions", closingResolvedValue(row, "claim_instructions", ""), { fallback: "Needs court or agency claim route" })
+    closingRegistryEntry("claim_instructions", "Claim instructions", closingResolvedValue(row, "claim_instructions", ""), { fallback: "Needs court or agency claim route" }),
+    closingRegistryEntry("claimant_last_name", "Claimant last name", closingResolvedValue(row, "claimant_last_name", ""), { fallback: "Needs approved claimant" }),
+    closingRegistryEntry("claimant_first_name", "Claimant first name", closingResolvedValue(row, "claimant_first_name", ""), { fallback: "Needs approved claimant" }),
+    closingRegistryEntry("claimant_city", "Claimant city", closingResolvedValue(row, "claimant_city", ""), { fallback: "Needs claimant city" })
   ];
 }
 
@@ -15102,8 +15202,9 @@ function closingTemplateBlockers(template, row = selectedRow(), dossier = dossie
 }
 
 function closingTemplateStatus(template, row = selectedRow(), dossier = dossierForRow(row)) {
+  if (!selectedClosingTemplateIds(row).includes(template.id)) return "Not included";
   const blockers = closingTemplateBlockers(template, row, dossier);
-  return blockers.length ? `Blocked: ${blockers.length} missing` : "Review draft";
+  return blockers.length ? `Blocked: ${blockers.length} missing` : "Ready to generate";
 }
 
 function closingVariableRowsHtml(template, row = selectedRow(), dossier = dossierForRow(row)) {
@@ -15134,7 +15235,10 @@ function closingTemplateSourceRows(row = selectedRow(), dossier = dossierForRow(
 }
 
 function closingPacketOverviewHtml(row = selectedRow(), dossier = dossierForRow(row)) {
-  const allBlockers = closingTemplateFamilies.flatMap((template) => closingTemplateBlockers(template, row, dossier).map((entry) => `${template.title}: ${entry.label}`));
+  const selectedIds = new Set(selectedClosingTemplateIds(row));
+  const allBlockers = selectedIds.size
+    ? selectedClosingTemplates(row).flatMap((template) => closingTemplateBlockers(template, row, dossier).map((entry) => `${template.title}: ${entry.label}`))
+    : ["Choose at least one Closing form"];
   return pageShellHtml("Closing Packet Review", row?.leadName ?? row?.title ?? "Lead file", `
     <p class="muted">Generated from the selected estate file and the reviewed closing-template packet. This is a field map and review draft, not a live closing action.</p>
     <div class="notice"><strong>Review draft only.</strong> No live Podio card, Google Doc, Google Sheet row, email, SMS, signature request, escrow instruction, recording task, or legal finalization is created from this preview.</div>
@@ -15146,7 +15250,7 @@ function closingPacketOverviewHtml(row = selectedRow(), dossier = dossierForRow(
           <tr>
             <td>${escapeHtml(template.title)}</td>
             <td>${escapeHtml(docPrepPhases("closing-docs").find((phase) => phase.id === template.phaseId)?.label || "Closing")}</td>
-            <td>${escapeHtml(closingTemplateStatus(template, row, dossier))}</td>
+            <td>${escapeHtml(selectedIds.has(template.id) ? closingTemplateStatus(template, row, dossier) : "Not included")}</td>
             <td>${escapeHtml((template.required ?? []).map(displayStatus).join(", "))}</td>
           </tr>
         `).join("")}
@@ -15185,7 +15289,8 @@ function closingTemplateDraftHtml(row = selectedRow(), dossier = dossierForRow(r
 }
 
 function closingTemplateDocuments(row = selectedRow(), dossier = dossierForRow(row)) {
-  const overviewBlockers = closingTemplateFamilies.reduce((count, template) => count + closingTemplateBlockers(template, row, dossier).length, 0);
+  const selectedTemplates = selectedClosingTemplates(row);
+  const overviewBlockers = selectedClosingBlockers(row, dossier).length;
   return [
     {
       id: "closing-packet-review",
@@ -15197,7 +15302,7 @@ function closingTemplateDocuments(row = selectedRow(), dossier = dossierForRow(r
       status: overviewBlockers ? `Blocked: ${overviewBlockers} missing` : "Review draft",
       body: closingPacketOverviewHtml(row, dossier)
     },
-    ...closingTemplateFamilies.map((template) => ({
+    ...selectedTemplates.map((template) => ({
       id: `closing-template-${template.id}`,
       title: template.title,
       flowId: "closing-docs",
@@ -15424,7 +15529,7 @@ function docPrepFlowIsComplete(row = selectedRow(), flowId = state.activeDocPrep
   const dossier = dossierForRow(row);
   const stats = documentPrepStats(row, dossier, flowId);
   const documentsComplete = stats.total > 0 && stats.missing === 0;
-  const closingFieldsComplete = flowId !== "closing-docs" || closingTemplateFamilies.every((template) => closingTemplateBlockers(template, row, dossier).length === 0);
+  const closingFieldsComplete = flowId !== "closing-docs" || (selectedClosingTemplates(row).length > 0 && selectedClosingBlockers(row, dossier).length === 0);
   return phaseComplete && documentsComplete && closingFieldsComplete;
 }
 
@@ -15526,7 +15631,7 @@ function docPrepStreamPhaseLines(row = selectedRow(), dossier = dossierForRow(ro
   const accepted = acceptedContactCandidates(row);
   const docs = docsForFlow(row, dossier, flowId);
   const discoveryStats = documentPrepStats(row, dossier, "discovery");
-  const closingBlockers = closingTemplateFamilies.flatMap((template) => closingTemplateBlockers(template, row, dossier).map((entry) => `${template.title}: ${entry.label}`));
+  const closingBlockers = selectedClosingBlockers(row, dossier).map((entry) => entry.label);
   const taxStatus = capture.taxReceipt?.status === "browser_workflow_required" ? "Browser workflow blocked" : capture.taxReceipt?.status || "Needs review";
   const taxBlocker = capture.taxReceipt?.sourceBlockedReason || capture.taxReceipt?.blocker || "";
   const common = [
@@ -15860,7 +15965,7 @@ function docPrepPhaseBlocker(row = selectedRow(), flowId = state.activeDocPrepFl
     if (phase.id === "contact-review" && !assetPhaseComplete(row, "contact-review")) return "Contact review needs at least one accepted or promoted spouse, child, heir, or representative contact.";
   }
   if (flowId === "closing-docs") {
-    const blockers = closingTemplateFamilies.flatMap((template) => closingTemplateBlockers(template, row, dossier));
+    const blockers = selectedClosingBlockers(row, dossier);
     if (phase.id === "closing-package" && blockers.length) return `${blockers.length} required Closing Prep field${blockers.length === 1 ? "" : "s"} must be filled or marked not applicable before export.`;
     if (phase.id === "title-clearance" && !assetPhaseComplete(row, "title-clearance")) return "Title Clearance needs deed and tax evidence from Discovery before Closing Prep can continue.";
     if (phase.id === "seller-approval" && !assetPhaseComplete(row, "seller-approval")) return "Seller Approval needs accepted signer/contact review before Closing Prep can continue.";
@@ -15915,17 +16020,15 @@ function linkGeneratedDocPrepPackets(row = selectedRow(), flowId = state.activeD
   return linked;
 }
 
-function closingGoogleExportControlHtml(row = selectedRow()) {
-  const exportState = closingExportForRow(row);
-  const googleRoute = exportState?.result?.export?.routes?.find?.((item) => item.route === "google");
-  const googleUrl = googleRoute?.url || "";
-  const googleReady = Boolean(googleRoute?.ok && googleUrl);
-  const googleNeedsAccessReview = Boolean(googleRoute && !googleRoute.ok);
-  const exportReady = discoveryProgress("closing-docs", row) >= 100;
+function closingPacketControlHtml(row = selectedRow()) {
+  const dossier = dossierForRow(row);
+  const packet = packetArtifactForRow(row, "closing-docs");
+  const blockers = selectedClosingBlockers(row, dossier);
+  const exportReady = selectedClosingTemplates(row).length > 0 && blockers.length === 0 && assetPhaseComplete(row, "title-clearance") && assetPhaseComplete(row, "seller-approval");
   return `
     <div class="docprep-run-actions">
-      <button class="docprep-main-run-button" type="button" data-export-closing-google ${exportReady ? "" : "disabled"}>Export to Google Workspace</button>
-      ${googleUrl ? `<a class="text-link" href="${escapeHtml(googleUrl)}" target="_blank" rel="noopener" data-google-doc-link>${escapeHtml(googleReady ? "Open Google Doc" : "Review Google Doc access")}</a>` : ""}
+      <button class="docprep-main-run-button" type="button" data-generate-closing-pdf ${exportReady ? "" : "disabled"}>Generate Closing PDF</button>
+      ${packet?.artifactUrl ? `<a class="text-link" href="${escapeHtml(packet.artifactUrl)}" target="_blank" rel="noopener">Open PDF</a>` : ""}
     </div>
   `;
 }
@@ -16357,7 +16460,8 @@ function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
   const discoveryStats = documentPrepStats(discoveryRow, discoveryDossier, "discovery");
   const closingStats = documentPrepStats(closingRow, closingDossier, "closing-docs");
   const discoveryDone = docPrepPhases("discovery").filter((phase) => phaseIsComplete(phase.id, discoveryRow, "discovery")).length;
-  const closingTemplateReady = closingTemplateFamilies.filter((template) => closingTemplateBlockers(template, closingRow, closingDossier).length === 0).length;
+  const selectedClosing = selectedClosingTemplates(closingRow);
+  const closingTemplateReady = selectedClosing.filter((template) => closingTemplateBlockers(template, closingRow, closingDossier).length === 0).length;
   const reviewTasks = taskCount(handoffDossier ?? {});
   const closingDocs = dossierDocuments(closingRow, closingDossier).filter((doc) => documentFlowMatches(doc, "closing-docs"));
   const readyDocs = docs.filter((doc) => !/blocked|locked|open/i.test(doc.status || "")).length;
@@ -16380,11 +16484,11 @@ function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
       rowId: closingRow?.id || "",
       estate: docPrepEstateLabel(closingRow),
       done: closingTemplateReady,
-      total: closingTemplateFamilies.length,
+      total: selectedClosing.length || 1,
       tag: docPrepFlow("closing-docs").tag,
       due: `${Math.max(0, closingDocs.length - closingStats.missing)}/${closingDocs.length} packet documents`,
-      status: closingTemplateReady >= closingTemplateFamilies.length ? "Ready to bundle" : `${closingTemplateReady}/${closingTemplateFamilies.length}`,
-      ready: closingTemplateReady >= closingTemplateFamilies.length
+      status: selectedClosing.length && closingTemplateReady >= selectedClosing.length ? "Ready to bundle" : selectedClosing.length ? `${closingTemplateReady}/${selectedClosing.length}` : "Choose forms",
+      ready: selectedClosing.length > 0 && closingTemplateReady >= selectedClosing.length
     },
     {
       id: "handoff-review",
@@ -17238,12 +17342,20 @@ function assetDiscoveryChecklistHtml(row = selectedRow()) {
 }
 
 function closingRequiredFieldInputsHtml(row = selectedRow(), dossier = dossierForRow(row)) {
-  const requiredKeys = [...new Set(closingTemplateFamilies.flatMap((template) => template.required ?? []))];
+  const selectedTemplates = selectedClosingTemplates(row);
+  if (!selectedTemplates.length) {
+    return `
+      <section class="glass-card rail-card">
+        <h3>Required closing fields</h3>
+        <p class="copy">Choose at least one form above. HeirRight will show only the fields required by that packet and will block export until each value is source-backed or entered.</p>
+      </section>
+    `;
+  }
+  const requiredKeys = [...new Set(selectedTemplates.flatMap((template) => template.required ?? []))];
   const variables = closingVariableMap(row, dossier);
   const rows = requiredKeys
     .map((key) => variables.get(key) || closingRegistryEntry(key, displayStatus(key), "", { fallback: "Needs review" }))
-    .filter((entry) => !entry.resolved)
-    .slice(0, 12);
+    .filter((entry) => !entry.resolved);
   if (!rows.length) {
     return `
       <section class="glass-card rail-card">
@@ -17259,11 +17371,18 @@ function closingRequiredFieldInputsHtml(row = selectedRow(), dossier = dossierFo
       <div class="asset-capture-grid">
         ${rows.map((entry) => {
           const record = closingFieldRecord(row, entry.key);
+          const resolution = record.resolution || "provided";
+          const inputValue = resolution === "supporting_document" ? record.supportingDocumentId || "" : resolution === "not_applicable" ? record.note || "" : record.value || "";
           return `
             <div class="field full">
               <label>${escapeHtml(entry.label)}</label>
-              <input data-closing-field="${escapeHtml(entry.key)}" value="${escapeHtml(record.value || "")}" placeholder="${escapeHtml(entry.value)}">
-              <span class="field-note">${escapeHtml(record.note || "Add a value, attach support in Discovery, or write not applicable after review.")}</span>
+              <select data-closing-resolution="${escapeHtml(entry.key)}">
+                <option value="provided" ${resolution === "provided" ? "selected" : ""}>Enter reviewed value</option>
+                <option value="supporting_document" ${resolution === "supporting_document" ? "selected" : ""}>Needs supporting document</option>
+                ${entry.key === "foreclosure_case" ? `<option value="not_applicable" ${resolution === "not_applicable" ? "selected" : ""}>Not applicable with reason</option>` : ""}
+              </select>
+              <input data-closing-field="${escapeHtml(entry.key)}" value="${escapeHtml(inputValue)}" placeholder="${escapeHtml(resolution === "supporting_document" ? "Supporting document ID or file name" : resolution === "not_applicable" ? "Why this field does not apply" : entry.value)}">
+              <span class="field-note">${escapeHtml(resolution === "supporting_document" ? "This remains blocked until the supporting document yields a reviewed value." : resolution === "not_applicable" ? "A reason is required and will be written as N/A in the approved blank." : "This value fills the mapped blank; legal template language stays unchanged.")}</span>
             </div>
           `;
         }).join("")}
@@ -17276,12 +17395,52 @@ function closingRequiredFieldInputsHtml(row = selectedRow(), dossier = dossierFo
   `;
 }
 
+function closingTemplateSelectionHtml(row = selectedRow(), dossier = dossierForRow(row)) {
+  const selectedIds = new Set(selectedClosingTemplateIds(row));
+  return `
+    <section class="glass-card rail-card">
+      <h3>Choose forms</h3>
+      <p class="copy">Include only the legal forms this estate needs. Unchecked forms are excluded from the PDF and do not create blockers.</p>
+      <div class="closing-template-picker" role="group" aria-label="Closing forms for this estate">
+        ${closingTemplateFamilies.map((template) => {
+          const included = selectedIds.has(template.id);
+          const blockerCount = included ? closingTemplateBlockers(template, row, dossier).length : 0;
+          return `
+            <label class="closing-template-option">
+              <input type="checkbox" data-closing-template="${escapeHtml(template.id)}" ${included ? "checked" : ""}>
+              <span><strong>${escapeHtml(template.title)}</strong><span>${escapeHtml(template.copy)}</span></span>
+              <em>${escapeHtml(included ? blockerCount ? `${blockerCount} missing` : "Ready" : "Excluded")}</em>
+            </label>
+          `;
+        }).join("")}
+      </div>
+      <span class="copy">${escapeHtml(selectedIds.size ? `${selectedIds.size} form${selectedIds.size === 1 ? "" : "s"} selected for this estate.` : "Choose at least one form to continue.")}</span>
+    </section>
+  `;
+}
+
 function wireClosingFieldControls(content, row = selectedRow()) {
+  content.querySelectorAll("[data-closing-template]").forEach((input) => {
+    input.addEventListener("change", () => {
+      setClosingTemplateSelected(row, input.dataset.closingTemplate, input.checked);
+      addShellEvent("Closing form selection saved", `${input.checked ? "Included" : "Excluded"} ${closingTemplateFamilies.find((template) => template.id === input.dataset.closingTemplate)?.title || "Closing form"} for ${docPrepEstateLabel(row)}.`, "review", false);
+      renderDossiersView();
+      renderRail();
+    });
+  });
   content.querySelector("[data-save-closing-fields]")?.addEventListener("click", () => {
     content.querySelectorAll("[data-closing-field]").forEach((input) => {
-      const value = input.value.trim();
-      if (!value) return;
-      setClosingFieldOverride(row, input.dataset.closingField, value, "Saved from Closing Prep required-field panel.");
+      const key = input.dataset.closingField;
+      const resolution = content.querySelector(`[data-closing-resolution="${CSS.escape(key)}"]`)?.value || "provided";
+      const entered = input.value.trim();
+      setClosingFieldOverride(
+        row,
+        key,
+        resolution === "provided" ? entered : "",
+        resolution === "not_applicable" ? entered : resolution === "supporting_document" ? "Waiting for supporting document review." : "Saved from Closing Prep required-field panel.",
+        resolution,
+        resolution === "supporting_document" ? entered : ""
+      );
     });
     addShellEvent("Closing fields saved", "Required Closing Prep values were saved to the estate file. Legal-template language was not changed.", "ready", false);
     renderDossiersView();
@@ -17292,16 +17451,14 @@ function wireClosingFieldControls(content, row = selectedRow()) {
 function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(row)) {
   const report = dossier?.completedLeadReport ?? {};
   const offer = report.offerMath ?? {};
-  const exportState = closingExportForRow(row);
-  const googleRoute = exportState?.result?.export?.routes?.find?.((item) => item.route === "google");
-  const googleUrl = googleRoute?.url || "";
-  const googleReady = Boolean(googleRoute?.ok && googleUrl);
-  const googleNeedsAccessReview = Boolean(googleRoute && !googleRoute.ok);
-  const exportReady = discoveryProgress("closing-docs", row) >= 100;
+  const packet = packetArtifactForRow(row, "closing-docs");
+  const selectedTemplates = selectedClosingTemplates(row);
+  const fieldBlockers = selectedClosingBlockers(row, dossier);
+  const exportReady = selectedTemplates.length > 0 && fieldBlockers.length === 0 && assetPhaseComplete(row, "title-clearance") && assetPhaseComplete(row, "seller-approval");
   const templateSummaries = closingTemplateFamilies.map((template) => ({
     title: template.title,
     status: closingTemplateStatus(template, row, dossier),
-    blockers: closingTemplateBlockers(template, row, dossier).length
+    blockers: selectedClosingTemplateIds(row).includes(template.id) ? closingTemplateBlockers(template, row, dossier).length : 0
   }));
   const rows = [
     ["CRM estate row", row?.sourceKind === "crm-import" ? `${displayStatus(row.sourceProvider)} import` : "Import from CRM or use current lead packet"],
@@ -17318,15 +17475,16 @@ function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(r
         ${rows.map(([label, value]) => `<li><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></li>`).join("")}
       </ul>
       <div class="discovery-actions">
-        <span class="copy">${escapeHtml(googleReady ? "Google Workspace Doc is linked with readback proof." : googleNeedsAccessReview ? (googleRoute?.blockers?.[0] || "Google Workspace export needs access review before handoff.") : exportReady ? "Closing Prep is ready for live Google Workspace export." : "Run Closing Prep before live Google Workspace export.")}</span>
-        <button class="btn primary solvys-liquid-glass" type="button" data-export-closing-google ${exportReady ? "" : "disabled"}>Export to Google Workspace</button>
+        <span class="copy">${escapeHtml(packet?.verification?.verified ? "The immutable Closing PDF passed artifact and Discovery File readback." : exportReady ? "The selected forms and required fields are ready to generate." : "Choose forms, resolve their required fields, and finish title/seller review before generation.")}</span>
+        <button class="btn primary solvys-liquid-glass" type="button" data-generate-closing-pdf ${exportReady ? "" : "disabled"}>Generate Closing PDF</button>
       </div>
-      ${googleUrl ? `<a class="text-link" href="${escapeHtml(googleUrl)}" target="_blank" rel="noopener" data-google-doc-link>${escapeHtml(googleReady ? "Open Google Doc" : "Review Google Doc access")}</a>` : ""}
+      ${packet?.artifactUrl ? `<a class="text-link" href="${escapeHtml(packet.artifactUrl)}" target="_blank" rel="noopener">Open verified PDF</a>` : ""}
     </section>
+    ${closingTemplateSelectionHtml(row, dossier)}
     ${closingRequiredFieldInputsHtml(row, dossier)}
     <section class="glass-card rail-card">
       <h3>Closing template families</h3>
-      <p class="copy">The generated packet maps every reviewed template family to estate facts and keeps missing fields visible before export.</p>
+      <p class="copy">Only selected forms enter the generated PDF; excluded forms create no blockers.</p>
       <ul class="mini-list">
         ${templateSummaries.map((item) => `<li><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.blockers ? `${item.blockers} blocker${item.blockers === 1 ? "" : "s"}` : item.status)}</span></li>`).join("")}
       </ul>
@@ -18905,75 +19063,32 @@ function closeDocPrepAddModal() {
   renderDossiersView();
 }
 
-async function exportClosingDocsToGoogle() {
+async function generateClosingPdf(source = null) {
   const row = selectedRow();
   if (!row) {
-    document.getElementById("topStatus").textContent = "Select an estate before exporting Closing Prep.";
+    document.getElementById("topStatus").textContent = "Select an estate before generating Closing Prep.";
     return;
   }
   const dossier = dossierForRow(row);
-  const fieldBlockers = closingTemplateFamilies.flatMap((template) => closingTemplateBlockers(template, row, dossier).map((entry) => `${template.title}: ${entry.label}`));
+  const fieldBlockers = selectedClosingBlockers(row, dossier).map((entry) => entry.label);
   if (fieldBlockers.length) {
-    document.getElementById("topStatus").textContent = `${fieldBlockers.length} required Closing Prep field${fieldBlockers.length === 1 ? "" : "s"} must be filled before export.`;
-    addShellEvent("Closing Prep export blocked", `${fieldBlockers.slice(0, 3).join("; ")}${fieldBlockers.length > 3 ? "..." : ""}`, "blocked", true);
+    document.getElementById("topStatus").textContent = `${fieldBlockers.length} Closing Prep blocker${fieldBlockers.length === 1 ? "" : "s"} must be resolved before generation.`;
+    addShellEvent("Closing PDF blocked", `${fieldBlockers.slice(0, 3).join("; ")}${fieldBlockers.length > 3 ? "..." : ""}`, "blocked", true);
     state.activeDocPrepFlow = "closing-docs";
     renderDossiersView();
     renderRail();
     return;
   }
-  const notes = state.discoveryNotes?.[assetDiscoveryKey(row)] || "";
-  const activeUserEmail = String(state.session?.user?.email || "").trim().toLowerCase();
-  const shareWithEmails = Array.from(new Set([
-    ...outreachAllowedApprovers,
-    activeUserEmail
-  ].filter((email) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))));
-  document.getElementById("topStatus").textContent = "Preparing Closing Prep packet for Google Workspace...";
-  addShellEvent("Closing Prep export started", `${docPrepEstateLabel(row)} is being checked for Google Workspace export.`, "review", false);
-  let result = null;
-  try {
-    result = await postJson("/api/closing-docs/export-google?dry-run=false", {
-      dossier,
-      seed: {
-        estateName: dossier?.summary?.estateName || row.title || row.leadName,
-        ownerName: dossier?.property?.ownerName?.value || row.owner || row.leadName,
-        propertyAddress: row.address || dossier?.property?.address?.value,
-        parcelId: row.folio || dossier?.property?.parcelId?.value,
-        county: row.county || dossier?.property?.county?.value || "miami-dade",
-        source: "operator_ui"
-      },
-      notes,
-      closingFieldValues: state.closingFieldValues?.[assetDiscoveryKey(row)] || {},
-      workspaceDestination: "heirright",
-      workspaceDestinationEmail: activeUserEmail || "sam@heirright.com",
-      shareWithEmails,
-      requestedByEmail: activeUserEmail || "sam@heirright.com",
-      dryRun: false
-    });
-  } catch (error) {
-    result = {
-      ok: false,
-      status: "blocked",
-      blockers: [error.message || "Closing Prep export route is unavailable."],
-      message: "Closing Prep export could not be prepared."
-    };
+  if (!assetPhaseComplete(row, "title-clearance") || !assetPhaseComplete(row, "seller-approval")) {
+    document.getElementById("topStatus").textContent = "Finish title evidence and accepted signer review before generating Closing Prep.";
+    addShellEvent("Closing PDF blocked", "Title evidence and accepted signer review are required before legal-template fill.", "blocked", true);
+    return;
   }
-  const blockers = Array.isArray(result?.blockers) ? result.blockers : [];
-  const route = result?.export?.routes?.find((item) => item.route === "google") || result?.routes?.find?.((item) => item.route === "google");
-  if (result?.ok && route?.url) {
-    document.getElementById("topStatus").textContent = "Closing Prep packet exported to Google Workspace.";
-    addShellEvent("Closing Prep exported", `${docPrepEstateLabel(row)} has a Google Workspace packet with readback evidence.`, "ready", false);
-  } else {
-    document.getElementById("topStatus").textContent = result?.message || "Closing Prep export needs review before it can complete.";
-    addShellEvent("Closing Prep export blocked", blockers[0] || "Google Workspace export is waiting on setup or required fields.", "blocked", false);
-  }
-  state.lastClosingDocsExport = {
-    rowId: row.id,
-    result,
-    updatedAt: isoNow()
-  };
-  state.closingExportState[assetDiscoveryKey(row)] = state.lastClosingDocsExport;
-  persistClosingExportState();
-  if (result?.ok && route?.url) {
+  document.getElementById("topStatus").textContent = "Building and verifying the immutable Closing PDF...";
+  const result = await generatePacketPreview(row, source, { flowId: "closing-docs", render: false });
+  if (result?.verification?.verified) {
+    document.getElementById("topStatus").textContent = "Closing PDF generated and verified.";
+    addShellEvent("Closing PDF ready", `${docPrepEstateLabel(row)} generated one immutable-template PDF with storage readback.`, "ready", false);
     setDealStatusForRow(row, "hot", { rerender: false });
   }
   renderDossiersView();
@@ -19311,7 +19426,7 @@ function renderDossiersView() {
                 <span>${escapeHtml(`${stats.linked}/${stats.total} documents`)}</span>
               </div>
               ${docPrepRunControlsHtml(row, flow.id)}
-              ${flow.id === "closing-docs" ? closingGoogleExportControlHtml(row) : ""}
+              ${flow.id === "closing-docs" ? closingPacketControlHtml(row) : ""}
             </div>
           </div>
           <div class="document-list">
@@ -19379,8 +19494,8 @@ function renderDossiersView() {
   target.querySelectorAll("[data-docprep-rerun-review]").forEach((button) => {
     button.addEventListener("click", (event) => openDocPrepRerunReview(button.dataset.docprepRerunReview || state.activeDocPrepFlow, event.currentTarget));
   });
-  target.querySelectorAll("[data-export-closing-google]").forEach((button) => {
-    button.addEventListener("click", exportClosingDocsToGoogle);
+  target.querySelectorAll("[data-generate-closing-pdf]").forEach((button) => {
+    button.addEventListener("click", (event) => generateClosingPdf(event.currentTarget));
   });
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
     addRowsToQueue(rowsForBatchAction());
@@ -19508,7 +19623,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   content.querySelectorAll("[data-docprep-rerun-review]").forEach((button) => {
     button.addEventListener("click", (event) => openDocPrepRerunReview(button.dataset.docprepRerunReview || state.activeDocPrepFlow, event.currentTarget));
   });
-  content.querySelector("[data-export-closing-google]")?.addEventListener("click", exportClosingDocsToGoogle);
+  content.querySelector("[data-generate-closing-pdf]")?.addEventListener("click", (event) => generateClosingPdf(event.currentTarget));
   wireAssetDiscoveryControls(content, row);
   wireClosingFieldControls(content, row);
   content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
@@ -23443,6 +23558,10 @@ async function generatePacketPreview(row = selectedRow(), source = null, options
       flow: flowId,
       estateId,
       dossier,
+      ...(flowId === "closing-docs" ? {
+        selectedClosingTemplateIds: selectedClosingTemplateIds(row),
+        closingFieldValues: state.closingFieldValues?.[assetDiscoveryKey(row)] || {}
+      } : {}),
       operatorIntent: "generate_packet"
     });
     if (!generated?.ok || !generated?.artifactUrl) throw new Error((generated?.blockers || []).join(" ") || "Packet generation is blocked.");
@@ -24276,6 +24395,14 @@ async function chooseExportRoute(route, source = null, rowsOverride = null) {
     nudgeDeniedAction(source, "Export blocked", "Every selected estate needs a loaded Discovery dossier before one combined PDF can be generated.", { pill: true, source: "packet-export" });
     return;
   }
+  if (!isControlledTest && state.activeDocPrepFlow === "closing-docs") {
+    const blockedRow = batchRows.find((row) => selectedClosingBlockers(row, dossierForRow(row)).length > 0);
+    if (blockedRow) {
+      const blockers = selectedClosingBlockers(blockedRow, dossierForRow(blockedRow));
+      nudgeDeniedAction(source, "Closing batch blocked", `${docPrepEstateLabel(blockedRow)}: ${blockers[0]?.label || "choose forms and resolve required fields"}.`, { pill: true, source: "packet-export" });
+      return;
+    }
+  }
   const checkedCount = batchRows.length;
   const isBatch = checkedCount > 1 && !isControlledTest;
   const batchCopy = isBatch
@@ -24307,6 +24434,10 @@ async function chooseExportRoute(route, source = null, rowsOverride = null) {
         estateIds: batchRows.map((row) => assetDiscoveryKey(row)),
         dossiers: packetDossiers,
         flow: state.activeDocPrepFlow,
+        ...(state.activeDocPrepFlow === "closing-docs" ? {
+          selectedClosingTemplateIdsByEstate: Object.fromEntries(batchRows.map((row) => [dossierForRow(row).id, selectedClosingTemplateIds(row)])),
+          closingFieldValuesByEstate: Object.fromEntries(batchRows.map((row) => [dossierForRow(row).id, state.closingFieldValues?.[assetDiscoveryKey(row)] || {}]))
+        } : {}),
         expectedArtifact: "single_pdf",
         operatorIntent: "generate_packet",
       }),

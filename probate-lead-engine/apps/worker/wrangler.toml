@@ -16,15 +16,14 @@ BROWSERBASE_BATCH_MAX_SESSIONS = "10"
 BROWSERBASE_BATCH_CONCURRENCY = "2"
 BROWSERBASE_PROXY_ENABLED = "true"
 PODIO_OAUTH_REDIRECT_URI = "https://surface.heirright.com/api/podio/oauth/callback"
-PODIO_DURABLE_AUTH_REQUIRED = "true"
+PODIO_PER_USER_AUTH_REQUIRED = "true"
+PODIO_DURABLE_AUTH_REQUIRED = "false"
 MIAMI_DADE_CLERK_API_BASE = "https://www2.miamidadeclerk.gov/Developers/api"
 # Set IDI_CORE_API_TOKEN as a Wrangler secret, not a plain var:
 # wrangler secret put IDI_CORE_API_TOKEN
-# Set Browserbase and Podio credentials as Wrangler secrets, not plain vars:
+# Set Browserbase and the shared Podio OAuth client secret as Wrangler secrets, not plain vars:
 # wrangler secret put BROWSERBASE_API_KEY
 # wrangler secret put PODIO_CLIENT_SECRET
-# wrangler secret put PODIO_APP_TOKEN
-# wrangler secret put PODIO_DURABLE_REFRESH_TOKEN
 # wrangler secret put MIAMI_DADE_CLERK_AUTH_KEY
 
 [[kv_namespaces]]

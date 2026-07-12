@@ -844,7 +844,9 @@ export async function resolvePodioAccessToken(env: RuntimeEnv): Promise<PodioAcc
   if (accessToken) return { token: accessToken, mode: "bearer" };
   return {
     mode: "missing",
-    blocker: "Missing Podio access: configure a Podio access token, refresh token, or client/app token set.",
+    blocker: env.PODIO_PER_USER_AUTH_REQUIRED === "true"
+      ? "Your Podio account is not connected. Open Settings and connect Podio with your own account before continuing."
+      : "Missing Podio access: configure a Podio access token, refresh token, or client/app token set.",
   };
 }
 
@@ -853,8 +855,8 @@ export function podioReadbackBlockerMessage(status: number, body: unknown): stri
   const normalized = raw.toLowerCase();
   if (status === 401 || normalized.includes("expired_token") || normalized.includes("unauthorized")) {
     return [
-      "Podio access has expired.",
-      "Reconnect Podio with the approved HeirRight account, or add the Leads app token as the fallback.",
+      "Your Podio access has expired.",
+      "Reconnect your account from Settings.",
       "Outreach stays staged for Podio review until the Leads app readback succeeds.",
     ].join(" ");
   }
@@ -1174,19 +1176,23 @@ export async function connectionStatuses(env: RuntimeEnv = process.env): Promise
   return [
     {
       name: "Podio",
-      ok: !missingPodio.length && podioApproved && podioBackup && podioReadback.ok && (!podioAuthState.durableRequired || podioAuthState.durableTeamAuth),
-      mode: !missingPodio.length && podioApproved && podioBackup && podioReadback.ok && (!podioAuthState.durableRequired || podioAuthState.durableTeamAuth) ? "live" : podioReadback.ok ? "review" : "blocked",
+      ok: !missingPodio.length && podioApproved && podioBackup && podioReadback.ok && podioAuthState.accessRequirementMet,
+      mode: !missingPodio.length && podioApproved && podioBackup && podioReadback.ok && podioAuthState.accessRequirementMet ? "live" : podioReadback.ok ? "review" : "blocked",
       message: missingPodio.length
         ? `Podio export/readback config is missing: ${missingPodio.join(", ")}.`
         : !podioReadback.ok
           ? podioReadbackBlockerMessage(podioReadback.status, podioReadback.body)
         : podioAuthState.reconnectRequired
-          ? "Podio readback works from this browser session, but team-durable access is not configured. Add the Leads app token or server refresh access before calling Podio production-ready."
+          ? podioAuthState.perUserRequired
+            ? "Connect your own Podio account from Settings. The saved connection is scoped to your signed-in Google user."
+            : "Podio readback works from this browser session, but durable access is not configured."
         : !podioApproved
           ? `Podio bearer-token export config is present; controlled write still requires ${PODIO_LIVE_WRITE_APPROVAL_KEY}=true.`
           : !podioBackup
             ? `Podio controlled write still requires ${PODIO_CSV_BACKUP_CONFIRMATION_KEY}=true before mutation.`
-            : "Podio access, Leads app readback, CSV backup confirmation, and controlled write approval are present.",
+            : podioAuthState.perUserRequired
+              ? "Your Podio account, Leads app readback, CSV backup confirmation, and controlled write approval are present."
+              : "Podio access, Leads app readback, CSV backup confirmation, and controlled write approval are present.",
       checkedAt,
       auth: podioAuthState,
     },

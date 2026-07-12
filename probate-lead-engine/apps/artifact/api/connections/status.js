@@ -80,6 +80,9 @@ function podioAuthSummary(env) {
   const bearerTokenConfigured = Boolean(podioAccessToken(env));
   const durableTeamAuth = appTokenConfigured || serverRefreshConfigured || bearerTokenConfigured;
   const durableRequired = env.PODIO_DURABLE_AUTH_REQUIRED !== "false";
+  const perUserRequired = env.PODIO_PER_USER_AUTH_REQUIRED === "true";
+  const userScopedRefresh = env.PODIO_USER_SCOPED_REFRESH === "true" || browserSessionRefresh;
+  const accessRequirementMet = perUserRequired ? userScopedRefresh : (!durableRequired || durableTeamAuth);
   return {
     mode: appTokenConfigured
       ? "app_auth"
@@ -95,8 +98,11 @@ function podioAuthSummary(env) {
     serverRefreshConfigured,
     browserSessionRefresh,
     bearerTokenConfigured,
-    reconnectRequired: durableRequired && !durableTeamAuth,
+    reconnectRequired: !accessRequirementMet,
     durableRequired,
+    perUserRequired,
+    userScopedRefresh,
+    accessRequirementMet,
   };
 }
 
@@ -433,18 +439,22 @@ function buildConnectionStatuses(env = process.env, options = {}) {
   return [
     {
       name: "Podio",
-      ok: !missingPodio.length && podioApproved && podioBackupConfirmed && podioHasRefreshPath && (!podioAuthState.durableRequired || podioAuthState.durableTeamAuth),
-      mode: !missingPodio.length && podioApproved && podioBackupConfirmed && podioHasRefreshPath && (!podioAuthState.durableRequired || podioAuthState.durableTeamAuth) ? "live" : podioHasRefreshPath ? "review" : "blocked",
+      ok: !missingPodio.length && podioApproved && podioBackupConfirmed && podioHasRefreshPath && podioAuthState.accessRequirementMet,
+      mode: !missingPodio.length && podioApproved && podioBackupConfirmed && podioHasRefreshPath && podioAuthState.accessRequirementMet ? "live" : podioHasRefreshPath ? "review" : "blocked",
       message: !missingPodio.length
         ? podioAuthState.reconnectRequired
-          ? "Podio is connected for this browser session only. Add the Leads app token or approved server refresh access so the team stays linked."
+          ? podioAuthState.perUserRequired
+            ? "Connect your own Podio account from Settings. This connection is stored against your signed-in Google user."
+            : "Podio access needs a durable refresh path."
           : !podioHasRefreshPath
           ? "Podio access needs reconnect. Reconnect with the approved HeirRight account, or add the Podio Leads app token fallback before export/readback."
           : !podioApproved
           ? "Podio handoff access is present; final sample-card approval still needs confirmation."
           : !podioBackupConfirmed
             ? "Podio handoff access is present; export a CSV backup before the controlled sample-card write."
-            : "Podio handoff access, backup confirmation, and approval are present."
+            : podioAuthState.perUserRequired
+              ? "Your Podio handoff access, backup confirmation, and approval are present."
+              : "Podio handoff access, backup confirmation, and approval are present."
         : `Podio handoff setup is incomplete: ${operatorAccessList(missingPodio)}.`,
       checkedAt,
       auth: podioAuthState,

@@ -56,7 +56,14 @@ assert.match(fullDiscoveryRun, /result\.persistence\?\.readbackStatus !== "verif
 assert.match(fullDiscoveryRun, /fetch\(`\/api\/discovery\/file\?estateId=/, "Opening Doc Prep must hydrate the team-persisted Discovery File.");
 
 const closingRoute = fs.readFileSync(path.resolve(here, "../../worker/src/cloudflare.ts"), "utf8");
-assert.match(closingRoute, /approved legal template files and designated fill-field map are not installed/);
+assert.match(closingRoute, /buildClosingPacketModel\(dossiers, closingPacketOptions\)/);
+assert.match(closingRoute, /await renderPacketPdf\(model\)/, "Closing packet must pass immutable-template layout preflight before storage or delivery.");
+assert.doesNotMatch(closingRoute, /\[NEEDS REVIEW\]|Draft - Review Required|approved legal template files and designated fill-field map are not installed/);
+assert.match(source, /selectedClosingTemplateIdsByEstate/);
+assert.match(source, /closingFieldValuesByEstate/);
+assert.match(source, /data-closing-template/);
+assert.match(source, /Generate Closing PDF/);
+assert.doesNotMatch(source, /data-export-closing-google|Export to Google Workspace/);
 
 console.log(JSON.stringify({
   ok: true,
@@ -72,7 +79,9 @@ console.log(JSON.stringify({
     "docprep_hydrates_team_discovery_file",
     "single_and_batch_download_actions",
     "single_pdf_api_contract",
-    "closing_requires_immutable_legal_templates",
+    "closing_uses_immutable_legal_templates",
+    "closing_forms_are_selected_per_estate",
+    "closing_batch_carries_per_estate_fields",
     "generated_documents_require_verified_artifact_readback",
     "supporting_documents_use_backend_storage",
     "legacy_fake_document_seeds_removed",

@@ -219,12 +219,23 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Completed the dedicated `/solvys-audit` and `/solvys-heir-audit` record in `2026-07-12-s37-final-audit.md`. There are zero app-owned failing gates, but the sprint remains blocked on client/provider production inputs and cannot be called 100% or complete.
 - Anti-negligence review: the final pass opened the actual PDF pages, attempted an unreviewed production export, exercised a stale state write, checked live provider classifications, and kept external/client failures visible. HTTP success, route existence, and local tests were not accepted as substitutes for those checks.
 
+### Milestone 17 - Immutable Closing packet generation and per-user Podio access
+
+- Converted the supplied filled historical Closing examples into one deterministic, sanitized 36-page template asset covering all fourteen form families. The build removes prior deal values, flattened highlight graphics, annotations, JavaScript, and interactive form state; a committed SHA-256 contract prevents runtime use if the legal pages drift.
+- Added a deterministic field map with 54 named fields and 164 fixed placements. Operators choose only the forms needed for an estate, and the UI/backend contract now fails when a form title, required field, input registry entry, page assignment, coordinate, or template byte changes unexpectedly.
+- Closing generation starts from the reviewed Discovery dossier plus explicit operator values. Missing required fields, unsupported not-applicable resolutions, supporting-document references without a reviewed value, and text overflow all block generation before storage or delivery.
+- Single Closing export produces one PDF containing a packet cover and only the selected legal pages. Batch Queue produces one combined PDF with a contents page, estate dividers, and isolated per-estate values; focused inspection produced a 3-page single and 7-page two-estate batch, while a 20-estate test proved contents pagination.
+- Replaced the legacy Closing Google route's fabricated markdown draft with the shared immutable PDF export path. The UI now says Generate Closing PDF and exposes explicit form selection and missing-field controls instead of promising a Google document that was not the legal packet.
+- Changed Podio from shared team-token behavior to one durable OAuth refresh record per signed-in Google user. OAuth state is signed against that same user, cross-user callbacks are rejected, storage keys use email hashes rather than addresses, and shared bearer/app/refresh credentials are ignored while per-user mode is enabled.
+- Fresh proof: Worker and artifact builds passed; the complete artifact suite passed; the 171-control inventory stayed green; Closing tests opened real single and batch PDFs; and the Podio test connected two users independently while rejecting a cross-user callback.
+- Anti-negligence review: no support-document filename becomes legal fill text, no unresolved value is truncated into a blank, no unselected form creates a blocker, no prior client identity remains in the field map, and no Podio failure message still recommends a shared app-token fallback.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint
-- [ ] Real Discovery/Closing single and batch PDFs
+- [x] Real Discovery/Closing single and batch PDFs
 - [ ] Estate-fact-driven Tax Collector receipt capture with live provider proof
-- [ ] Durable Podio session/readback proof
+- [x] Durable per-user Podio credential architecture and isolation proof
 - [x] Responsive Document Prep and keyboard/browser E2E
 - [ ] Production domain/OAuth deployment proof
 - [x] Final Solvys and HeirRight hostile review

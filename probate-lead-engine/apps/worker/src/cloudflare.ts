@@ -43,6 +43,8 @@ interface CloudflareEnv {
   PODIO_OAUTH_STATE_COOKIE?: string;
   PODIO_OAUTH_REFRESH_COOKIE?: string;
   PODIO_OAUTH_REFRESH_KV_KEY?: string;
+  PODIO_PER_USER_AUTH_REQUIRED?: string;
+  PODIO_USER_SCOPED_REFRESH?: string;
   PODIO_TOKEN_STORE?: {
     get(key: string): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number; metadata?: unknown }): Promise<void>;
@@ -261,8 +263,9 @@ function podioRefreshCookieName(env: CloudflareEnv): string {
   return env.PODIO_OAUTH_REFRESH_COOKIE || "hr_podio_refresh";
 }
 
-function podioRefreshKvKey(env: CloudflareEnv): string {
-  return env.PODIO_OAUTH_REFRESH_KV_KEY || "heirright:podio:team-refresh";
+async function podioRefreshKvKey(env: CloudflareEnv, userEmail: string): Promise<string> {
+  const prefix = env.PODIO_OAUTH_REFRESH_KV_KEY || "heirright:podio:user-refresh";
+  return `${prefix}:${await sha256Hex(userEmail.toLowerCase())}`;
 }
 
 function podioCookieSecret(env: CloudflareEnv): string {
@@ -315,17 +318,34 @@ async function decryptCookieValue(value: string | undefined, env: CloudflareEnv)
 }
 
 async function podioRuntimeEnv(request: Request, env: CloudflareEnv): Promise<CloudflareEnv> {
+  const userEmail = await signedSessionEmail(request, env);
+  const perUserRequired = env.PODIO_PER_USER_AUTH_REQUIRED === "true";
   const refreshCookie = parseCookie(request.headers.get("cookie"))[podioRefreshCookieName(env)];
-  const browserRefreshToken = await decryptCookieValue(refreshCookie, env);
-  const storedRefreshToken = await podioStoredRefreshToken(env);
+  const browserRefreshPayload = await decryptCookieValue(refreshCookie, env);
+  let browserRefresh: { email?: string; refreshToken?: string } = {};
+  try {
+    browserRefresh = browserRefreshPayload ? JSON.parse(browserRefreshPayload) as { email?: string; refreshToken?: string } : {};
+  } catch {
+    browserRefresh = {};
+  }
+  const browserRefreshToken = userEmail && browserRefresh.email === userEmail ? browserRefresh.refreshToken || null : null;
+  const storedRefreshToken = userEmail ? await podioStoredRefreshToken(env, userEmail) : null;
+  const baseEnv = perUserRequired ? {
+    ...env,
+    PODIO_ACCESS_TOKEN: undefined,
+    PODIO_REFRESH_TOKEN: undefined,
+    PODIO_DURABLE_REFRESH_TOKEN: undefined,
+    PODIO_TEAM_REFRESH_TOKEN: undefined,
+    PODIO_APP_TOKEN: undefined,
+  } : env;
   const tokenEnv = storedRefreshToken
-    ? { ...env, PODIO_DURABLE_REFRESH_TOKEN: storedRefreshToken }
+    ? { ...baseEnv, PODIO_DURABLE_REFRESH_TOKEN: storedRefreshToken, PODIO_USER_SCOPED_REFRESH: "true" }
     : browserRefreshToken
-      ? { ...env, PODIO_BROWSER_REFRESH_TOKEN: browserRefreshToken }
-      : env;
+      ? { ...baseEnv, PODIO_BROWSER_REFRESH_TOKEN: browserRefreshToken, PODIO_USER_SCOPED_REFRESH: "true" }
+      : baseEnv;
   const auth = await resolvePodioAccessToken(tokenEnv as Record<string, string | undefined>);
-  if (auth.nextRefreshToken && auth.refreshTokenRotated) {
-    await storePodioRefreshToken(auth.nextRefreshToken, env);
+  if (userEmail && auth.nextRefreshToken && auth.refreshTokenRotated) {
+    await storePodioRefreshToken(auth.nextRefreshToken, env, userEmail);
   }
   if (!auth.token) return tokenEnv;
   return {
@@ -335,20 +355,21 @@ async function podioRuntimeEnv(request: Request, env: CloudflareEnv): Promise<Cl
   };
 }
 
-async function podioStoredRefreshToken(env: CloudflareEnv): Promise<string | null> {
-  const encrypted = await env.PODIO_TOKEN_STORE?.get(podioRefreshKvKey(env)).catch(() => null);
+async function podioStoredRefreshToken(env: CloudflareEnv, userEmail: string): Promise<string | null> {
+  const encrypted = await env.PODIO_TOKEN_STORE?.get(await podioRefreshKvKey(env, userEmail)).catch(() => null);
   return decryptCookieValue(encrypted || undefined, env);
 }
 
-async function storePodioRefreshToken(refreshToken: string, env: CloudflareEnv): Promise<boolean> {
+async function storePodioRefreshToken(refreshToken: string, env: CloudflareEnv, userEmail: string): Promise<boolean> {
   if (!env.PODIO_TOKEN_STORE) return false;
   const encrypted = await encryptCookieValue(refreshToken, env);
   if (!encrypted) return false;
-  await env.PODIO_TOKEN_STORE.put(podioRefreshKvKey(env), encrypted, {
+  await env.PODIO_TOKEN_STORE.put(await podioRefreshKvKey(env, userEmail), encrypted, {
     metadata: {
       provider: "podio",
       storedAt: nowIso(),
-      purpose: "team_durable_refresh",
+      purpose: "user_scoped_durable_refresh",
+      userHash: await sha256Hex(userEmail.toLowerCase()),
     },
   });
   return true;
@@ -391,6 +412,25 @@ async function hasValidSession(request: Request, env: CloudflareEnv): Promise<bo
     return emailAllowed(body.email, env);
   } catch {
     return false;
+  }
+}
+
+async function signedSessionEmail(request: Request, env: CloudflareEnv): Promise<string | null> {
+  if (!env.AUTH_SESSION_SECRET) return null;
+  const cookieName = env.AUTH_SESSION_COOKIE || "hr_session";
+  const token = parseCookie(request.headers.get("cookie"))[cookieName];
+  if (!token || !token.includes(".")) return null;
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return null;
+  const expected = await hmacBase64Url(payload, env.AUTH_SESSION_SECRET);
+  if (expected !== signature) return null;
+  try {
+    const body = JSON.parse(atob(base64UrlToBase64(payload))) as { email?: string; exp?: number };
+    const email = String(body.email || "").trim().toLowerCase();
+    if (!body.exp || body.exp < Math.floor(Date.now() / 1000) || !emailAllowed(email, env)) return null;
+    return email;
+  } catch {
+    return null;
   }
 }
 
@@ -2342,118 +2382,24 @@ async function contactCandidateReviewResponse(request: Request, candidateId: str
   }, { headers: { "cache-control": "no-store" } });
 }
 
-function closingOverrideValue(values: Record<string, unknown>, key: string): string {
-  const raw = values[key];
-  if (typeof raw === "string") return raw.trim();
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) return stringValue((raw as Record<string, unknown>).value);
-  return "";
-}
-
-function closingDocValue(dossier: RawDossier, key: string, closingFieldValues: Record<string, unknown> = {}): string {
-  const override = closingOverrideValue(closingFieldValues, key);
-  if (override) return override;
-  const values: Record<string, unknown> = {
-    estate_name: dossier.summary.estateName || dossier.summary.displayName,
-    property_address: dossier.property.address.value,
-    county: dossier.property.county.value,
-    folio: dossier.property.parcelId.value,
-    case_number: dossier.summary.caseNumber || dossier.property.caseNumber.value,
-    owner_name: dossier.property.ownerName.value || dossier.summary.displayName,
-    offer_status: dossier.completedLeadReport?.reviewGate.reportStatus,
-    lead_bucket: dossier.completedLeadReport?.leadQualityProfile.leadBucket,
-    next_action: dossier.summary.nextBestAction,
-    tax_status: dossier.taxHistory.sourceStatus.value || dossier.taxHistory.receiptStatus.value,
-    probate_status: dossier.probateDocket.caseStatus.value || dossier.probateDocket.sourceStatus.value,
-    title_status: dossier.deedHistory.sourceStatus.value || dossier.deedHistory.ownershipActivity.value,
-  };
-  const value = values[key];
-  return value === undefined || value === null ? "" : String(value);
-}
-
-function buildClosingDocsPacket(dossier: RawDossier, notes = "", closingFieldValues: Record<string, unknown> = {}): { title: string; markdown: string; blockers: string[] } {
-  const templates = [
-    "Fund Transfer / Bank Account Transfer",
-    "Contract for Deed",
-    "Quit Claim Deed",
-    "Limited Power of Attorney",
-    "Assignment of Surplus Rights Purchase Agreement",
-    "Same Name Affidavit",
-    "Joinder, Waiver and Consent",
-    "Affidavit of Heirs",
-    "Valuable Consideration Disbursement",
-    "Assignment and Disclaimer of Interest",
-    "Land Trust Agreement",
-    "Tax Reimbursement Credit",
-    "Buyer Purchase Agreement",
-    "Unclaimed Funds Instructions",
-  ];
-  const required = ["estate_name", "property_address", "county", "folio", "owner_name", "tax_status", "title_status", "probate_status", "buyer_entity", "seller_heirs", "offer_amount"];
-  const blockers = required
-    .filter((key) => !closingDocValue(dossier, key, closingFieldValues))
-    .map((key) => `Missing closing-doc field: ${key.replace(/_/g, " ")}.`);
-  const title = `Closing Prep Packet - ${dossier.summary.displayName}`;
-  const facts = required.map((key) => `- ${key.replace(/_/g, " ")}: ${closingDocValue(dossier, key, closingFieldValues) || "[NEEDS REVIEW]"}`).join("\n");
-  const templateList = templates.map((template) => `- ${template}: Draft - Review Required`).join("\n");
-  const markdown = [
-    `# ${title}`,
-    "",
-    "Internal draft - review required before external use.",
-    "",
-    "## Estate Fields",
-    facts,
-    "",
-    "## Closing Templates",
-    templateList,
-    "",
-    "## Blockers",
-    blockers.length ? blockers.map((blocker) => `- ${blocker}`).join("\n") : "- No required closing fields are missing from this draft packet.",
-    "",
-    "## Operator Notes",
-    notes || "No operator notes were provided.",
-  ].join("\n");
-  return { title, markdown, blockers };
-}
-
 async function closingDocsGoogleExportResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
   const body = request.method === "POST"
-    ? await request.json().catch(() => ({})) as {
-      seed?: IntakeSeed;
-      dossier?: RawDossier;
-      dryRun?: boolean;
-      notes?: string;
-      workspaceDestination?: string;
-      workspaceDestinationEmail?: string;
-      shareWithEmails?: string[];
-      requestedByEmail?: string;
-      closingFieldValues?: Record<string, unknown>;
-    }
+    ? await request.json().catch(() => ({})) as Record<string, unknown>
     : {};
-  const pipeline = body.dossier
-    ? null
-    : await runDryPipeline(body.seed ?? seedFromUrl(url, env), { env: env as Record<string, string | undefined> });
-  const dossier = body.dossier ?? pipeline?.dossier;
-  if (!dossier) {
-    return json({ ok: false, error: "missing_dossier", message: "Closing Docs export needs a dossier or estate seed." }, { status: 400 });
-  }
-  const packet = buildClosingDocsPacket(dossier, body.notes, body.closingFieldValues || {});
-  const exportResult = await exportCompletedReport({
-    routes: ["google"],
-    dossier,
-    dryRun: body.dryRun ?? url.searchParams.get("dry-run") !== "false",
-    documentTitle: packet.title,
-    documentBody: packet.markdown,
-    workspaceDestination: body.workspaceDestination,
-    workspaceDestinationEmail: body.workspaceDestinationEmail,
-    shareWithEmails: Array.isArray(body.shareWithEmails) ? body.shareWithEmails : [],
-    requestedByEmail: body.requestedByEmail,
-  }, env as Record<string, string | undefined>);
-  return json({
-    ok: exportResult.ok && packet.blockers.length === 0,
-    status: packet.blockers.length ? "draft_review_required" : exportResult.ok ? "google_exported" : "blocked",
-    packet,
-    export: exportResult,
-    blockers: [...packet.blockers, ...exportResult.blockers],
-  }, { headers: { "cache-control": "no-store" } });
+  const forwardedUrl = new URL(url);
+  forwardedUrl.pathname = "/api/exports";
+  forwardedUrl.searchParams.set("routes", "google");
+  const forwardedRequest = new Request(forwardedUrl.toString(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      ...body,
+      flow: "closing-docs",
+      routes: ["google"],
+      operatorIntent: "generate_packet",
+    }),
+  });
+  return exportResponse(forwardedRequest, forwardedUrl, env);
 }
 
 async function linearSupportIssue(env: CloudflareEnv, title: string, description: string): Promise<Record<string, unknown> | null> {
@@ -2664,7 +2610,7 @@ async function outreachSyncResponse(request: Request, env: CloudflareEnv): Promi
 
 async function deepHealthResponse(request: Request, env: CloudflareEnv): Promise<Response> {
   const runtimeEnv = await podioRuntimeEnv(request, env);
-  const storedRefreshConfigured = Boolean(runtimeEnv.PODIO_DURABLE_REFRESH_TOKEN && !env.PODIO_DURABLE_REFRESH_TOKEN);
+  const userScopedRefreshConfigured = runtimeEnv.PODIO_USER_SCOPED_REFRESH === "true";
   const statuses = await connectionStatuses(runtimeEnv as Record<string, string | undefined>);
   return json({
     ok: true,
@@ -2674,7 +2620,8 @@ async function deepHealthResponse(request: Request, env: CloudflareEnv): Promise
     routes: Object.fromEntries(routeList().map((route) => [route, "available"])),
     connections: statuses,
     podioBrowserBackedRefresh: Boolean(runtimeEnv.PODIO_BROWSER_REFRESH_TOKEN && !env.PODIO_BROWSER_REFRESH_TOKEN),
-    podioStoredRefreshConfigured: storedRefreshConfigured,
+    podioStoredRefreshConfigured: userScopedRefreshConfigured,
+    podioUserScopedRefreshConfigured: userScopedRefreshConfigured,
   }, { headers: { "cache-control": "no-store" } });
 }
 
@@ -2705,7 +2652,7 @@ async function podioJson(path: string, token: string): Promise<{ ok: boolean; st
 
 async function podioDiagnosticsResponse(request: Request, env: CloudflareEnv): Promise<Response> {
   const runtimeEnv = await podioRuntimeEnv(request, env);
-  const storedRefreshConfigured = Boolean(runtimeEnv.PODIO_DURABLE_REFRESH_TOKEN && !env.PODIO_DURABLE_REFRESH_TOKEN);
+  const userScopedRefreshConfigured = runtimeEnv.PODIO_USER_SCOPED_REFRESH === "true";
   const appId = runtimeEnv.PODIO_APP_ID || TEXAS_EQUITY_PROS_LEADS_APP_ID;
   const spaceId = runtimeEnv.PODIO_SPACE_ID || TEXAS_EQUITY_PROS_LEADS_SPACE_ID;
   const auth = await resolvePodioAccessToken(runtimeEnv as Record<string, string | undefined>);
@@ -2725,7 +2672,7 @@ async function podioDiagnosticsResponse(request: Request, env: CloudflareEnv): P
     ...memberRows.map((item) => podioProfileCandidate(item, "space_member")),
   ].filter((item): item is Record<string, unknown> => Boolean(item));
   const podioAuthOk = Boolean(auth.token && userStatus.ok && app.ok && members.ok);
-  const durableTeamAuth = auth.mode === "app_auth" || auth.mode === "refresh" || auth.mode === "bearer";
+  const durableTeamAuth = env.PODIO_PER_USER_AUTH_REQUIRED !== "true" && (auth.mode === "app_auth" || auth.mode === "refresh" || auth.mode === "bearer");
   const authBlocker = auth.blocker || podioReadbackBlockerMessage(
     app.status || userStatus.status || members.status,
     app.data || userStatus.data || members.data,
@@ -2736,15 +2683,16 @@ async function podioDiagnosticsResponse(request: Request, env: CloudflareEnv): P
     spaceId,
     authMode: auth.mode,
     browserBackedRefresh: Boolean(runtimeEnv.PODIO_BROWSER_REFRESH_TOKEN && !env.PODIO_BROWSER_REFRESH_TOKEN),
-    storedRefreshConfigured,
+    storedRefreshConfigured: userScopedRefreshConfigured,
+    userScopedRefreshConfigured,
     durableTeamAuth,
-    reconnectRequired: auth.mode === "browser_refresh",
+    reconnectRequired: !userScopedRefreshConfigured,
     authOk: podioAuthOk,
     authBlocker: podioAuthOk ? null : authBlocker,
-    setupOptions: durableTeamAuth ? [] : [
-      "Add the Podio Leads app token for team-durable CRM access.",
-      "Or add the approved server refresh access so every logged-in user uses the same Podio connection.",
-      "Browser reconnect remains available as a temporary single-browser session path.",
+    setupOptions: userScopedRefreshConfigured ? [] : [
+      "Connect your own Podio account from Settings.",
+      "HeirRight stores the refresh token against your signed-in Google user.",
+      "Other users connect separately and cannot inherit your Podio session.",
     ],
     userStatus: { ok: userStatus.ok, status: userStatus.status },
     app: {
@@ -2793,6 +2741,14 @@ function podioSetupHtml(title: string, copy: string, status: "ok" | "blocked" = 
 }
 
 async function podioOAuthStartResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  const userEmail = await signedSessionEmail(request, env);
+  if (!userEmail) {
+    return html(podioSetupHtml(
+      "Sign In Before Connecting Podio",
+      "Return to HeirRight, sign in with your approved Google account, then connect your own Podio account from Settings.",
+      "blocked",
+    ), { status: 401 });
+  }
   if (!env.PODIO_CLIENT_ID) {
     return html(podioSetupHtml(
       "Podio Connect Is Missing API Details",
@@ -2808,7 +2764,7 @@ async function podioOAuthStartResponse(request: Request, env: CloudflareEnv): Pr
     ), { status: 503 });
   }
   const state = crypto.randomUUID();
-  const signedState = `${state}.${await hmacBase64Url(state, podioCookieSecret(env))}`;
+  const signedState = `${state}.${await hmacBase64Url(`${state}:${userEmail}`, podioCookieSecret(env))}`;
   const params = new URLSearchParams({
     client_id: env.PODIO_CLIENT_ID,
     redirect_uri: podioRedirectUri(request, env),
@@ -2826,12 +2782,13 @@ async function podioOAuthStartResponse(request: Request, env: CloudflareEnv): Pr
 }
 
 async function podioOAuthCallbackResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  const userEmail = await signedSessionEmail(request, env);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const stateCookie = parseCookie(request.headers.get("cookie"))[podioStateCookieName(env)];
   const [cookieState, cookieSignature] = String(stateCookie || "").split(".");
-  const expectedSignature = cookieState ? await hmacBase64Url(cookieState, podioCookieSecret(env)) : "";
-  if (!code || !state || !cookieState || state !== cookieState || cookieSignature !== expectedSignature) {
+  const expectedSignature = cookieState && userEmail ? await hmacBase64Url(`${cookieState}:${userEmail}`, podioCookieSecret(env)) : "";
+  if (!userEmail || !code || !state || !cookieState || state !== cookieState || cookieSignature !== expectedSignature) {
     return html(podioSetupHtml(
       "Podio Connect Expired",
       "Start the Podio connection again from Settings so HeirRight can verify the approved CRM account.",
@@ -2875,7 +2832,7 @@ async function podioOAuthCallbackResponse(request: Request, url: URL, env: Cloud
       headers: { "set-cookie": clearResponseCookie(request, podioStateCookieName(env)) },
     });
   }
-  const refreshCookie = await encryptCookieValue(token.refresh_token, env);
+  const refreshCookie = await encryptCookieValue(JSON.stringify({ email: userEmail, refreshToken: token.refresh_token }), env);
   if (!refreshCookie) {
     return html(podioSetupHtml(
       "Podio Refresh Could Not Be Saved",
@@ -2883,15 +2840,15 @@ async function podioOAuthCallbackResponse(request: Request, url: URL, env: Cloud
       "blocked",
     ), { status: 503 });
   }
-  const storedForTeam = await storePodioRefreshToken(token.refresh_token, env);
+  const storedForUser = await storePodioRefreshToken(token.refresh_token, env, userEmail);
   const headers = new Headers({ "cache-control": "no-store" });
   headers.append("set-cookie", clearResponseCookie(request, podioStateCookieName(env)));
   headers.append("set-cookie", responseCookie(request, podioRefreshCookieName(env), refreshCookie, PODIO_OAUTH_REFRESH_TTL_SECONDS));
   return html(podioSetupHtml(
-    storedForTeam ? "Podio Team Access Connected" : "Podio Session Connected",
-    storedForTeam
-      ? "HeirRight saved the approved Podio connection for the team. Settings will show durable Podio access after the Leads app readback succeeds."
-      : "HeirRight can refresh Podio from this browser session. Add the Podio Leads app token, server refresh access, or Worker token storage before calling this team-durable.",
+    storedForUser ? "Your Podio Account Is Connected" : "Podio Session Connected",
+    storedForUser
+      ? "HeirRight saved a protected refresh token for your signed-in user. Other HeirRight users must connect their own Podio accounts."
+      : "HeirRight connected Podio for this signed-in user in this browser. Durable reconnect needs Worker token storage.",
   ), {
     headers,
   });
