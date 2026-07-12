@@ -61,6 +61,22 @@ assert.equal(list.attachments.length, 1);
 assert.equal(list.attachments[0].documentId, "tax-receipt");
 assert.equal("dataBase64" in list.attachments[0], false);
 
+const indexKey = [...env.PACKET_ARTIFACTS.values.keys()].find((key) => key.startsWith("supporting-document-index:"));
+assert.ok(indexKey);
+env.PACKET_ARTIFACTS.values.set(indexKey, "{corrupted-index");
+const recoveredListResponse = await worker.fetch(new Request(`https://worker.test/api/documents/attachments?estateId=${encodeURIComponent(estateId)}`), env);
+assert.equal(recoveredListResponse.status, 200);
+assert.deepEqual((await recoveredListResponse.json()).attachments, []);
+
+const recoveredUpload = await upload({
+  estateId,
+  documentId: "deed",
+  fileName: "deed.pdf",
+  contentType: "application/pdf",
+  dataBase64,
+});
+assert.equal(recoveredUpload.response.status, 200);
+
 const deleteResponse = await worker.fetch(new Request(`https://worker.test${stored.body.attachment.artifactUrl}`, { method: "DELETE" }), env);
 const deleted = await deleteResponse.json();
 assert.equal(deleteResponse.status, 200);
@@ -74,6 +90,7 @@ console.log(JSON.stringify({ ok: true, checks: [
   "backend_storage_readback",
   "byte_exact_attachment_retrieval",
   "team_attachment_index",
+  "corrupted_attachment_index_recovers",
   "attachment_payload_not_returned_in_metadata",
   "attachment_delete_readback",
 ] }, null, 2));

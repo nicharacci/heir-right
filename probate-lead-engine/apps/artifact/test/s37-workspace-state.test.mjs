@@ -31,7 +31,7 @@ const firstValue = JSON.stringify([{ id: "crm-estate-1", estateName: "Estate of 
 const firstWrite = await request("/api/workspace/state", {
   method: "POST",
   headers: { "content-type": "application/json" },
-  body: JSON.stringify({ key, value: firstValue }),
+  body: JSON.stringify({ key, value: firstValue, expectedRevision: 0 }),
 });
 const firstResult = await firstWrite.json();
 assert.equal(firstWrite.status, 200);
@@ -47,9 +47,24 @@ const secondValue = JSON.stringify([{ id: "crm-estate-1" }, { id: "crm-estate-2"
 const secondWrite = await request("/api/workspace/state", {
   method: "POST",
   headers: { "content-type": "application/json" },
-  body: JSON.stringify({ key, value: secondValue }),
+  body: JSON.stringify({ key, value: secondValue, expectedRevision: 1 }),
 });
 assert.equal((await secondWrite.json()).revision, 2);
+
+const staleWrite = await request("/api/workspace/state", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ key, value: JSON.stringify([{ id: "stale-overwrite" }]), expectedRevision: 1 }),
+});
+assert.equal(staleWrite.status, 409);
+assert.equal((await staleWrite.json()).error, "workspace_state_conflict");
+
+const blindWrite = await request("/api/workspace/state", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ key, value: secondValue }),
+});
+assert.equal(blindWrite.status, 428);
 
 instance = new WorkspaceState({ storage });
 const reloadRead = await request(`/api/workspace/state?key=${encodeURIComponent(key)}`);
@@ -60,6 +75,7 @@ assert.equal(reloadRecord.revision, 2);
 console.log(JSON.stringify({ ok: true, checks: [
   "approved_state_keys_only",
   "serialized_revision_updates",
+  "stale_and_blind_writes_rejected",
   "write_readback_verified",
   "state_survives_worker_instance_reload",
 ] }, null, 2));

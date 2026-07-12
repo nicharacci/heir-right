@@ -916,6 +916,27 @@ function supportingDocumentMetadata(record: StoredSupportingDocument): Omit<Stor
   };
 }
 
+function storedStringArray(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function storedSupportingDocument(value: string | null | undefined): StoredSupportingDocument | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as Partial<StoredSupportingDocument>;
+    if (!parsed || typeof parsed !== "object" || !parsed.id || !parsed.estateId || !parsed.documentId || !parsed.dataBase64 || !parsed.contentHash) return null;
+    return parsed as StoredSupportingDocument;
+  } catch {
+    return null;
+  }
+}
+
 function supportingDocumentSignatureMatches(contentType: string, bytes: Uint8Array): boolean {
   const startsWith = (...signature: number[]) => signature.every((byte, index) => bytes[index] === byte);
   if (contentType === "application/pdf") return startsWith(0x25, 0x50, 0x44, 0x46, 0x2d);
@@ -992,9 +1013,7 @@ async function supportingDocumentResponse(request: Request, url: URL, env: Cloud
     }
     const indexKey = await supportingDocumentIndexKey(estateId);
     const existingIndex = await env.PACKET_ARTIFACTS.get(indexKey);
-    const attachmentIds = Array.isArray(existingIndex ? JSON.parse(existingIndex) : [])
-      ? JSON.parse(existingIndex || "[]").map(String)
-      : [];
+    const attachmentIds = storedStringArray(existingIndex);
     await env.PACKET_ARTIFACTS.put(indexKey, JSON.stringify([id, ...attachmentIds.filter((item: string) => item !== id)].slice(0, 200)), {
       metadata: { kind: "supporting_document_index", estateId },
     });
@@ -1009,7 +1028,8 @@ async function supportingDocumentResponse(request: Request, url: URL, env: Cloud
       }
       const stored = await env.PACKET_ARTIFACTS.get(supportingDocumentKey(attachmentId));
       if (!stored) return json({ ok: false, error: "supporting_document_not_found", message: "This supporting document is unavailable." }, { status: 404 });
-      const record = JSON.parse(stored) as StoredSupportingDocument;
+      const record = storedSupportingDocument(stored);
+      if (!record) return json({ ok: false, error: "supporting_document_integrity_failed", message: "Supporting document metadata is invalid." }, { status: 409 });
       const bytes = base64UrlToBytes(record.dataBase64);
       if (await sha256ByteHex(bytes) !== record.contentHash) {
         return json({ ok: false, error: "supporting_document_integrity_failed", message: "Supporting document integrity validation failed." }, { status: 409 });
@@ -1027,11 +1047,12 @@ async function supportingDocumentResponse(request: Request, url: URL, env: Cloud
     const estateId = stringValue(url.searchParams.get("estateId"));
     if (!estateId) return json({ ok: false, error: "estate_id_required", message: "Choose an estate before loading supporting documents." }, { status: 400 });
     const storedIndex = await env.PACKET_ARTIFACTS.get(await supportingDocumentIndexKey(estateId));
-    const attachmentIds = Array.isArray(storedIndex ? JSON.parse(storedIndex) : []) ? JSON.parse(storedIndex || "[]").map(String) : [];
+    const attachmentIds = storedStringArray(storedIndex);
     const records = await Promise.all(attachmentIds.map((id: string) => env.PACKET_ARTIFACTS?.get(supportingDocumentKey(id))));
     const attachments = records
-      .filter((record): record is string => Boolean(record))
-      .map((record) => supportingDocumentMetadata(JSON.parse(record) as StoredSupportingDocument));
+      .map((record) => storedSupportingDocument(record))
+      .filter((record): record is StoredSupportingDocument => Boolean(record))
+      .map(supportingDocumentMetadata);
     return json({ ok: true, estateId, attachments }, { headers: { "cache-control": "no-store" } });
   }
 
@@ -1042,11 +1063,12 @@ async function supportingDocumentResponse(request: Request, url: URL, env: Cloud
     }
     const stored = await env.PACKET_ARTIFACTS.get(supportingDocumentKey(attachmentId));
     if (!stored) return json({ ok: true, deleted: false, attachmentId, readbackStatus: "not_found" }, { headers: { "cache-control": "no-store" } });
-    const record = JSON.parse(stored) as StoredSupportingDocument;
+    const record = storedSupportingDocument(stored);
+    if (!record) return json({ ok: false, error: "supporting_document_integrity_failed", message: "Supporting document metadata is invalid." }, { status: 409 });
     await env.PACKET_ARTIFACTS.delete(supportingDocumentKey(attachmentId));
     const indexKey = await supportingDocumentIndexKey(record.estateId);
     const storedIndex = await env.PACKET_ARTIFACTS.get(indexKey);
-    const attachmentIds = Array.isArray(storedIndex ? JSON.parse(storedIndex) : []) ? JSON.parse(storedIndex || "[]").map(String) : [];
+    const attachmentIds = storedStringArray(storedIndex);
     await env.PACKET_ARTIFACTS.put(indexKey, JSON.stringify(attachmentIds.filter((id: string) => id !== attachmentId)), {
       metadata: { kind: "supporting_document_index", estateId: record.estateId },
     });
@@ -1100,13 +1122,26 @@ export class WorkspaceState {
     }
     if (request.method === "POST") {
       const value = typeof body.value === "string" ? body.value : "";
+      const expectedRevision = Number(body.expectedRevision);
+      if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
+        return json({ ok: false, error: "workspace_revision_required", message: "Reload the latest team version before saving this workspace update." }, { status: 428 });
+      }
       if (new TextEncoder().encode(value).byteLength > 750_000) {
         return json({ ok: false, error: "workspace_state_too_large", message: "This workspace update is too large to save." }, { status: 413 });
       }
       try { JSON.parse(value); }
       catch { return json({ ok: false, error: "workspace_state_invalid", message: "This workspace update is not valid structured data." }, { status: 400 }); }
       const previous = await this.storage.get<Record<string, unknown>>(`state:${key}`);
-      const revision = Number(previous?.revision || 0) + 1;
+      const currentRevision = Number(previous?.revision || 0);
+      if (expectedRevision !== currentRevision) {
+        return json({
+          ok: false,
+          error: "workspace_state_conflict",
+          message: "A teammate saved a newer version. HeirRight will reload it instead of overwriting their work.",
+          currentRevision,
+        }, { status: 409, headers: { "cache-control": "no-store" } });
+      }
+      const revision = currentRevision + 1;
       const updatedAt = nowIso();
       await this.storage.put(`state:${key}`, { value, revision, updatedAt });
       const readback = await this.storage.get<Record<string, unknown>>(`state:${key}`);

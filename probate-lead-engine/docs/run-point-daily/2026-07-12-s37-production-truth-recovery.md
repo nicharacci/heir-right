@@ -178,6 +178,15 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Added the five production auth/domain variables reported by Vercel to Turbo's declared global environment contract, removing build-time ambiguity without placing values in source.
 - Anti-negligence review: the production probe preserved the current CRM state byte-for-byte and deleted its temporary attachment. The retained `s37-production-proof` Discovery record is an explicit audit fixture rather than an operator estate.
 
+### Milestone 13 - Concurrent team-state and artifact-index hardening
+
+- Replaced blind last-write-wins workspace updates with revision-aware writes. The browser records every server revision, includes it on save, and reloads the newest team copy when another operator wins the race instead of overwriting their work.
+- The Durable Object now rejects missing revisions with `428` and stale revisions with `409`; the focused contract proves a stale payload cannot replace the current shared estate state and that state still survives a new Worker instance.
+- Hardened supporting-document indexes and records against malformed stored JSON. Listing recovers to an empty set, a subsequent upload rebuilds the index, corrupted file metadata returns an explicit integrity failure, and delete no longer crashes on a damaged index.
+- Replaced the premature “ready to link” section message with an instruction to generate and verify the PDF first, keeping operator copy aligned with the artifact contract.
+- Fresh proof: Worker build and the complete artifact test suite passed, including source orchestration, auth boundaries, PDF integrity, attachment recovery, workspace conflicts, Tax Collector, Discovery persistence, and product-loop assertions.
+- Anti-negligence review: serialized storage alone did not prevent logical lost updates because each browser writes whole snapshots. The revision check closes that team-use race at the write boundary rather than relying on users to avoid simultaneous work.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint

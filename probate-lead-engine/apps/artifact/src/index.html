@@ -11317,6 +11317,7 @@ const state = {
   documentFiles: {},
   closingFieldValues: {},
   closingExportState: {},
+  workspaceStateRevisions: {},
   documentActionModal: {
     open: false,
     docId: null,
@@ -11848,14 +11849,25 @@ async function persistServerState(key, value) {
   try {
     const text = String(value ?? "");
     const local = localStateEndpointEnabled();
+    const expectedRevision = state.workspaceStateRevisions[key];
+    if (!local && !Number.isInteger(expectedRevision)) {
+      addShellEvent("Workspace save blocked", "The latest team version has not loaded yet. Reload the workspace before saving this change.", "blocked", true);
+      return false;
+    }
     const response = await fetch(local ? `/local-state/${encodeURIComponent(key)}` : "/api/workspace/state", {
       method: "POST",
       headers: { "content-type": local ? "text/plain;charset=utf-8" : "application/json" },
-      body: local ? text : JSON.stringify({ key, value: text }),
+      body: local ? text : JSON.stringify({ key, value: text, expectedRevision }),
       keepalive: text.length < 60000
     });
     const result = await response.json().catch(() => ({}));
+    if (!local && response.status === 409) {
+      addShellEvent("Newer team version loaded", result.message || "A teammate saved this workspace first, so HeirRight reloaded the newest version instead of overwriting it.", "blocked", true);
+      await hydrateServerBackedState();
+      return false;
+    }
     const verified = response.ok && (local || result.readbackStatus === "verified");
+    if (verified && !local && Number.isInteger(result.revision)) state.workspaceStateRevisions[key] = result.revision;
     if (!verified) addShellEvent("Workspace save blocked", result.message || "A team workspace update did not pass storage readback.", "blocked", true);
     return verified;
   } catch {
@@ -12265,6 +12277,7 @@ async function hydrateServerBackedState() {
       const response = await fetch(path, { cache: "no-store" });
       if (!response.ok) continue;
       const payload = await response.json();
+      if (!local && Number.isInteger(payload.revision)) state.workspaceStateRevisions[key] = payload.revision;
       if (typeof payload.value === "string" && payload.value !== storageGetItem(key)) {
         storageSetItem(key, payload.value, { sync: false });
         changed = applyServerBackedStateValue(key, payload.value) || changed;
@@ -16500,7 +16513,7 @@ function documentRequirementStatus(doc, row = selectedRow()) {
   if (record) return { linked: true, label: documentFileLabel(record), action: "Run", recordSource: record.source };
   return {
     linked: false,
-    label: workflow.state === "complete" ? "Generated packet section is ready to link." : doc.copy,
+    label: workflow.state === "complete" ? "Generate and verify the PDF before linking this completed section." : doc.copy,
     action: "Run"
   };
 }
