@@ -142,6 +142,17 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Removed the generated Playwright last-run marker after proof collection so test output does not enter the release commit.
 - Anti-negligence review: no gate used a replayed test result. Lint's only package task reused the TypeScript build cache after the same source had already passed an uncached build; build and test truth came from the explicit `--force` runs.
 
+### Milestone 10 - Production Discovery persistence deployment
+
+- Deployed Worker version `54843af9-db50-465e-8324-3b3b1c909d41` with the protected Discovery File route and SHA-256 estate storage keys.
+- Rotated the shared backend bearer through Cloudflare and Vercel's provider secret stores without printing or committing it. The first Vercel add used a Sensitive variable type that was unavailable to the packaged function; it was converted back to the project's encrypted runtime type and deployed without cache.
+- Ran a controlled production external-source request, then fetched the estate-scoped Discovery File directly from the Worker. Both calls returned `200`, storage/readback were `verified`, revisions matched, and source facts plus the regenerated dossier survived the round trip.
+- The first Vercel deployment returned `404` because only the artifact-local handler existed. Added the root production wrapper, tested it, committed it, and redeployed.
+- The next live bearer proof found the root server gate accepted Google sessions but rejected the internal bearer before dispatch. Replaced that duplicate session-only check with the shared route guard, added a production-wrapper bearer regression assertion, and redeployed commit `d33e464`.
+- Final production proof on `heirright-landing-demo-ev4m9zubi-solvys.vercel.app`: auth-first HTML `200`, anonymous Discovery File `401`, backend-bearer Discovery File `200`, and verified KV record readback. Explicitly reassigned `heirright-leads.vercel.app` to the same deployment and repeated the same successful checks.
+- Deleted all temporary token and environment files after proof. `surface.heirright.com` remains assigned in Vercel but has no public A or CNAME response, so TLS/browser proof on that hostname remains blocked by DNS ownership outside the repository.
+- Anti-negligence review: two locally green seams failed in production, function packaging and the root auth dispatcher. Neither was accepted as a provider issue; each was repaired at the deployed boundary and retested through the actual public function URL.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint
