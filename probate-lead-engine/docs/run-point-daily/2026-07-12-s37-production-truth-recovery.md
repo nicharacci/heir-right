@@ -90,6 +90,16 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Browser proof: after a full reload, Queue showed no queued estates, the export action was disabled, and the screen instructed the user to select an estate. Fresh build and the complete artifact suite passed after the change.
 - Anti-negligence review: the original Queue copy promised an export while its button only changed local state, and demo rows were silently inserted. Both behaviors were removed instead of being explained away in Help content.
 
+### Milestone 6A - Production deployment and Podio route boundary correction
+
+- Deployed Worker version `8f427e58-7733-45c5-a8a3-f366f9ff4697` and Vercel production deployment `heirright-landing-demo-b23em4x3g-solvys.vercel.app`; Vercel assigned `surface.heirright.com`, but public DNS still has no record and the custom hostname does not resolve.
+- Verified the deployed HTML starts in the Checking access state and includes the new Preview download and Export combined PDF controls. The legacy production alias also serves the auth-first build.
+- Ran anonymous requests against Admin access, connection status, exports, source capture, Tax Collector, Outreach sync, support, and PDF retrieval. Each returned `401` before work began.
+- The same hostile check found `/api/podio/diagnostics` returning live connection metadata anonymously because the production server dispatched Podio routes before its global API gate.
+- Moved Podio diagnostics, OAuth start, and OAuth callback behind the shared signed-session/internal-bearer guard in both the production server and direct handlers. Added the exact Vercel wrapper to the route test, rather than relying on a neighboring handler with different dispatch order.
+- Fresh focused proof: the route-auth test passed anonymous rejection, internal bearer access, approved signed-session access, auth-first markup, and the expanded protected-handler inventory. The artifact rebuilt successfully afterward.
+- Anti-negligence review: this miss existed despite an earlier green route-inventory test because that test did not invoke the production wrapper. Future security proof now exercises the deployed dispatch seam itself.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint

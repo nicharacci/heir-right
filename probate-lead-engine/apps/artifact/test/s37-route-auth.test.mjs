@@ -9,6 +9,9 @@ const exportsHandler = require("../api/exports.js");
 const reportPdf = require("../api/reports/pdf.js");
 const sourceRun = require("../api/discovery/external-source-run.js");
 const taxReceiptRun = require("../api/discovery/tax-collector/receipt-run.js");
+const podioDiagnostics = require("../api/podio/diagnostics.js");
+const podioOAuthStart = require("../api/podio/oauth/start.js");
+const productionPodioDiagnostics = require("../../../api/podio/diagnostics.js");
 const { createSessionToken } = require("../api/auth/_shared.js");
 
 function call(handler, { method = "GET", body, headers = {}, url = "/" } = {}) {
@@ -44,6 +47,9 @@ for (const [name, handler, request] of [
   ["report PDF", reportPdf, { method: "GET", url: "/api/reports/pdf" }],
   ["source run", sourceRun, { method: "POST", body: {}, url: "/api/discovery/external-source-run" }],
   ["tax receipt", taxReceiptRun, { method: "POST", body: {}, url: "/api/discovery/tax-collector/receipt-run" }],
+  ["Podio diagnostics", podioDiagnostics, { method: "GET", url: "/api/podio/diagnostics" }],
+  ["Podio OAuth start", podioOAuthStart, { method: "GET", url: "/api/podio/oauth/start" }],
+  ["production Podio diagnostics wrapper", productionPodioDiagnostics, { method: "GET", url: "/api/podio/diagnostics" }],
 ]) {
   const blocked = await call(handler, request);
   assert.equal(blocked.statusCode, 401, `${name} must reject anonymous requests before work begins`);
@@ -78,6 +84,9 @@ const protectedHandlers = [
   "api/exports.js",
   "api/leads/fresh-batch.js",
   "api/outreach/activepieces.js",
+  "api/podio/diagnostics.js",
+  "api/podio/oauth/start.js",
+  "api/podio/oauth/callback.js",
   "api/reports/pdf.js",
   "api/support/linear.js",
 ];

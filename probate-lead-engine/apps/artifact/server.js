@@ -16,6 +16,7 @@ const {
   taxCollectorCaptureFromRun,
   withoutTaxCollectorAcquisitionEnv,
 } = require("./api/discovery/tax-collector/service.js");
+const { requireApiAuth } = require("./api/_shared.js");
 
 function loadLocalEnvFile(filePath) {
   if (!existsSync(filePath)) return;
@@ -1955,11 +1956,13 @@ function handleRequest(req, res) {
   }
 
   if (url.pathname === "/api/podio/diagnostics") {
+    if (requireApiAuth(req, res)) return;
     handlePodioDiagnostics(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
     return;
   }
 
   if (url.pathname === "/api/podio/oauth/start" || url.pathname === "/api/podio/oauth/callback") {
+    if (requireApiAuth(req, res)) return;
     proxyWorkerHttp(req, res, `${url.pathname}${url.search}`)
       .then((proxied) => {
         if (!proxied) {
