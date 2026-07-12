@@ -11067,7 +11067,7 @@
                 <div class="runtime-grid">
                   <div class="runtime-card">
                     <span><strong>Latest packet check</strong><span id="runtimeRunId">Waiting for the next lead packet.</span></span>
-                    <button class="btn" type="button" data-shell-command="dry-run">Note</button>
+                    <button class="btn" type="button" data-shell-command="refresh-packet">Refresh</button>
                   </div>
                   <div class="runtime-card">
                     <span><strong>Preview</strong><span>Shows the current lead report for team review.</span></span>
@@ -11075,7 +11075,7 @@
                   </div>
                   <div class="runtime-card">
                     <span><strong>Next review focus</strong><span id="linearSyncState">Finish review-screen polish, then clear CRM access and readback proof.</span></span>
-                    <button class="btn" type="button" data-shell-command="linear-sync">Sync</button>
+                    <button class="btn" type="button" data-shell-command="open-admin">Review</button>
                   </div>
                 </div>
               </section>
@@ -13296,7 +13296,7 @@ function minimalImportedDossier(imported) {
       offerMath: {},
       formats: {
         html: pageShellHtml("Imported Estate Review Packet", imported.estateName, `
-          <p class="muted">Imported from ${escapeHtml(provider)} for HeirRight review. This is a local workspace record until source evidence, approval, and readback are complete.</p>
+          <p class="muted">Imported from ${escapeHtml(provider)} into the shared HeirRight workspace. Source evidence, approval, and CRM confirmation are still required.</p>
           <table>
             <tr><th>Estate</th><td>${escapeHtml(imported.estateName)}</td></tr>
             <tr><th>Owner</th><td>${escapeHtml(imported.ownerName)}</td></tr>
@@ -13325,7 +13325,7 @@ function minimalImportedDossier(imported) {
         podioReadiness: {
           classification: "prep_only",
           missingConfig: ["Approved access", "Readback proof"],
-          blockers: ["CRM import is local until the real workspace connection and approved readback check are complete."],
+          blockers: ["The estate is shared in HeirRight, but its source CRM still needs an approved connection and confirmation check."],
           readbackChecks: ["Confirm imported estate row", "Confirm linked source facts", "Confirm no duplicate CRM item"]
         }
       }
@@ -13669,7 +13669,7 @@ function runSelectedEstateLifecycle(action, source = null) {
   }
   if (action === "delete") {
     const label = `${rows.length} imported estate${rows.length === 1 ? "" : "s"}`;
-    if (!window.confirm(`Delete ${label} from this local workspace?`)) {
+    if (!window.confirm(`Delete ${label} from the shared HeirRight workspace?`)) {
       source?.blur?.();
       return;
     }
@@ -13679,11 +13679,11 @@ function runSelectedEstateLifecycle(action, source = null) {
     if (updateImportedEstateLifecycle(row.id, action, { confirmDelete: false })) changed += 1;
   });
   document.getElementById("topStatus").textContent = action === "delete"
-    ? `${changed} imported estate${changed === 1 ? "" : "s"} deleted from the local estate list.`
+    ? `${changed} imported estate${changed === 1 ? "" : "s"} deleted from the shared estate list.`
     : `${changed} imported estate${changed === 1 ? "" : "s"} moved to Archive.`;
   addShellEvent(
     action === "delete" ? "Imported estates deleted" : "Imported estates archived",
-    `${changed} selected imported estate${changed === 1 ? "" : "s"} ${action === "delete" ? "deleted from the local list" : "moved to Archive"}.`,
+    `${changed} selected imported estate${changed === 1 ? "" : "s"} ${action === "delete" ? "deleted from the shared list" : "moved to Archive"}.`,
     "review",
     false
   );
@@ -19514,7 +19514,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
   content.querySelectorAll("[data-discovery-preference]").forEach((input) => {
     input.addEventListener("change", (event) => {
       setDocPrepPreference(event.target.dataset.discoveryPreference, event.target.checked, row, flow.id);
-      addShellEvent("DocPrep preference saved", "The workflow template preference was saved locally for this review session.", "review", false);
+      addShellEvent("DocPrep preference saved", "The workflow preference is saved in this browser and syncing to the shared team workspace.", "review", false);
     });
   });
   content.querySelectorAll("[data-dossier-doc]").forEach((button) => {
@@ -21871,7 +21871,8 @@ function closeWalkthrough(markSeen = false) {
 function shellCommandCopy(command) {
   const normalized = String(command || "").trim().toLowerCase();
   if (/flag|block/.test(normalized)) return "record-blocker";
-  if (/linear|sync/.test(normalized)) return "linear-sync";
+  if (/open-admin|admin/.test(normalized)) return "open-admin";
+  if (/refresh-packet|refresh/.test(normalized)) return "refresh-packet";
   if (/export|podio|google/.test(normalized)) return "stage-export";
   if (/report|rail|document/.test(normalized)) return "open-report";
   if (/dry|run|build|test/.test(normalized)) return "dry-run";
@@ -21903,12 +21904,14 @@ function runShellCommand(command, source = null, freeform = "") {
     document.getElementById("statusExport").textContent = "export: [PREPARED]";
     addShellEvent(exportSuccessActivityTitle(), exportSuccessActivityCopy("your integrated CRM"), "review", false);
     openReportRailForHandoff(source, "docs");
-  } else if (action === "linear-sync") {
-    document.getElementById("topStatus").textContent = "The project plan remains the source of truth for S11.";
-    addShellEvent("Project plan sync noted", "Sprint state stays anchored to the project plan; the shell only mirrors local review context.", "ready", false);
-  } else if (action === "dry-run") {
-    document.getElementById("topStatus").textContent = "Review pass noted. Run the local validation command from the repo for execution.";
-    addShellEvent("Review pass noted", "Internal validation was captured for review; no browser-side execution was attempted.", "review", false);
+  } else if (action === "open-admin") {
+    setActiveShellView("admin", "Admin");
+    document.getElementById("topStatus").textContent = "Admin readiness is open for review.";
+    addShellEvent("Admin review opened", "Review access, connections, support, and deployment readiness in one place.", "review", false);
+  } else if (action === "refresh-packet") {
+    document.getElementById("topStatus").textContent = "Refreshing the latest estate packet...";
+    addShellEvent("Packet refresh started", "HeirRight is loading the newest estate and source state.", "review", false);
+    loadRun();
   } else {
     addShellEvent("Command captured", freeform || "The command was captured as a review note for the current review session.", "review");
   }
@@ -22302,7 +22305,7 @@ function closeDiscoveryWizard() {
   state.discoveryOpen = false;
   state.railPreview = {
     title: `${flow.label} paused`,
-    markdown: `${currentDiscoveryPhase(flow.id, row).label} is saved locally for this estate. Continue from the fuse when ready.`,
+    markdown: `${currentDiscoveryPhase(flow.id, row).label} is saved in this browser and syncing to the shared team workspace. Continue from the fuse when ready.`,
     updatedAt: Date.now()
   };
   persistDiscoveryState();
@@ -23599,13 +23602,13 @@ function operatorConnectionMessage(connection, name) {
     if (name === "Resend") return "Resend fallback is not approved yet. Keep email drafts queued in Podio and use only controlled internal test recipients after approval.";
     if (name === "SMS Gateway") return "SMS delivery is not configured yet. Keep SMS templates in the app-owned queue until a carrier or Podio-native SMS path is approved.";
     if (name === "Web Search") return "Public-source validation needs a fresh checked lead packet before promotion.";
-    if (name === "Tax Collector Source") return "Tax Collector public search needs a browser workflow or a direct listing URL before receipt and payer capture can be called automated.";
+    if (name === "Tax Collector Source") return "Tax Collector receipt capture needs a funded browser workflow before HeirRight can search from estate facts and preserve the receipt automatically.";
     if (name === "Miami-Dade Clerk API") return "Clerk records are not connected yet. Official Records and court docket checks stay review-blocked until commercial access is added.";
     if (name === "Vital/Obituary Workflow") return "Obituary and vital-source review needs the browser workflow before it can return source links automatically.";
     if (name === "IDI Core") return "idiCORE portal access is not confirmed yet. Keep Discovery blocked until an approved operator search is imported or vendor API access is provisioned.";
     if (name === "Browserbase Usage") return "Browserbase browser capture is not ready yet. Single-estate source capture and paid batch approval stay blocked until access and function checks are configured.";
     if (name === "Activepieces") return "Backstage outreach handoff is not configured yet. Outreach will use the first-party fallback package and stay queued for Podio review.";
-    if (name === "Linear Support") return "Linear support routing is not configured yet. Admin tickets stay local until the Worker has API access and a team route.";
+    if (name === "Linear Support") return "Linear support routing is not connected yet. HeirRight will not claim a support ticket was filed until the team route confirms it.";
     if (name === "Leads Engine Access") return "Leads engine access changes are captured in-app until support routing or the access webhook is configured.";
   }
   return raw;

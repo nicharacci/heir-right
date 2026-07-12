@@ -30,6 +30,11 @@ async function expectVisibleButtonsNamed(page, root = "body") {
   expect(unnamed, `Visible buttons without an accessible name:\n${unnamed.join("\n")}`).toEqual([]);
 }
 
+async function expectNoDeveloperLanguage(page) {
+  const visibleText = await page.locator("body").innerText();
+  expect(visibleText).not.toMatch(/\b(?:JSON|payload|adapter|schema|endpoint|CLI|TypeScript|environment variable)\b/i);
+}
+
 test("estate identity, Queue handoff, removal, and primary navigation stay coherent", async ({ page }) => {
   const browserFailures = watchBrowserFailures(page);
   await openWorkspace(page);
@@ -61,9 +66,11 @@ test("estate identity, Queue handoff, removal, and primary navigation stay coher
     await page.locator(`[data-shell-nav="${view}"]`).click();
     await expect(page.locator(`[data-shell-nav="${view}"]`)).toHaveClass(/is-active/);
     await expect(page.locator(panel)).toBeVisible();
+    await expectNoDeveloperLanguage(page);
   }
   await page.locator('[data-shell-nav="find-estates"]').click();
   await expect(page.locator('.workbench-body[data-view-panel="find-estates"]')).toBeVisible();
+  await expectNoDeveloperLanguage(page);
 
   expect(browserFailures, browserFailures.join("\n")).toEqual([]);
 });

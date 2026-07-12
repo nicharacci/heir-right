@@ -47,7 +47,7 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Live proof: Worker version `a2316bd7-c413-408f-abc8-097879dfd0a7` and the new packet KV completed an authenticated artifact round trip. The downloaded live PDF was 13 pages / 30,692 bytes, all required Discovery headings extracted successfully, and forbidden placeholder identities were absent.
 - Fresh regression proof: `pnpm turbo run test --force` passed all five tasks uncached after deployment, including the 61-fact worker validation and the new PDF content/integrity assertions.
 - Rotated the shared Worker/Vercel bearer token and auth session secret as write-only provider secrets, then set the production Worker URL, Surface origin, OAuth redirect, allowed domains, and auth-required flag without committing values.
-- Anti-negligence review: Closing remains deliberately blocked because the repository and local machine contain the fourteen form names but none of the client legal template files or designated field map. The app no longer claims a Closing PDF exists when those immutable inputs are absent.
+- Anti-negligence review: Closing remains deliberately blocked. Two 54-page filled historical example packets are available, but they contain prior seller, property, trust, date, amount, and signature data, have no PDF form fields, and are not approved blank originals. The app will not erase and rewrite those examples; it requires the approved blank templates and designated field map before producing a Closing PDF.
 
 ### Milestone 3A - Tax Collector Browserbase production contract
 
@@ -196,6 +196,16 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Isolated the browser suite from deployed/paid providers with an explicit local-backend-only server mode, while requiring the real local source orchestrator to return `200` plus verified Discovery File persistence. This prevents inherited production secrets or provider billing from making local acceptance flaky.
 - Fresh proof: the control inventory passed all 171 buttons and the combined Playwright suite passed 4/4 end-to-end flows in 11.2 seconds with no console or page errors.
 - Anti-negligence review: a listener reference alone does not prove the surrounding user loop, and a visible modal does not prove its controls can be clicked. The browser test verifies each major control changes the intended visible state and can be reversed or completed without an orphaned or occluded panel.
+
+### Milestone 15 - Workflow, legal-template, and operator-language review
+
+- Reopened the client document inventory instead of accepting the earlier “templates absent” shorthand. `HeirRight_Workflow_Templates_11.15.25.pdf` is the 20-page operating playbook; the two `Automation Project` PDFs are 54-page filled historical Closing examples with prior seller, property, trust, date, amount, and signature data and no PDF form fields.
+- Confirmed the historical packets identify all fourteen Closing form families and one entity-name variation, but cannot be treated as approved blank legal templates without deleting or rewriting prior client facts. Closing remains correctly blocked until HeirRight supplies the approved blank originals and designated fill-field map.
+- Compared the Discovery packet model against the HeirRight deal-flow checklist and Amaranthe packet shape. The model covers owner and stop rules, mailing address, deed/title/OR book and page, sale and adverse-possession signals, tax receipt/payer/reassessment, court/probate/affidavit checks, vital records, backstory, reviewed family contacts, offer math, source evidence, blockers, and next action.
+- Removed stale local-only wording from CRM imports, shared-estate deletion, Doc Prep preferences, and paused phases. Replaced two legacy no-op dashboard commands with real packet refresh and Admin review actions, and corrected Tax Collector/Linear readiness copy to describe actual product behavior.
+- Added a browser assertion that every primary surface is free of raw engineering language including JSON, payload, adapter, schema, endpoint, CLI, TypeScript, and environment-variable wording.
+- Fresh proof: the 171-button control inventory passed and the full Playwright suite passed 4/4 in 13.3 seconds with no console/page errors or operator-language violations.
+- Anti-negligence review: example packets are evidence of the manual process, not safe fill-only templates. The product now states the exact missing legal input instead of implying no client documents exist or fabricating a Closing artifact from filled examples.
 
 ## Open Gates
 

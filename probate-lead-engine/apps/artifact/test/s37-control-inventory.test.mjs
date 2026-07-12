@@ -31,9 +31,15 @@ const unwired = openings.filter((opening) => {
 
 assert.ok(openings.length >= 150, `Expected the full product control inventory, found ${openings.length} buttons.`);
 assert.deepEqual(unwired, [], `Buttons without a command, form action, or accessible help behavior:\n${unwired.join("\n")}`);
+assert.doesNotMatch(html, /source of truth for S11|run the local validation command|data-shell-command="linear-sync"|data-shell-command="dry-run"/i);
+assert.match(html, /data-shell-command="refresh-packet"/);
+assert.match(html, /data-shell-command="open-admin"/);
+assert.match(html, /action === "refresh-packet"/);
+assert.match(html, /action === "open-admin"/);
 
 console.log(JSON.stringify({ ok: true, checks: [
   "every_button_has_a_command_or_form_contract",
   "companion_data_attributes_not_mistaken_for_actions",
   "focus_and_touch_help_control_has_visible_behavior",
+  "dashboard_commands_perform_real_product_actions",
 ], buttonCount: openings.length }, null, 2));
