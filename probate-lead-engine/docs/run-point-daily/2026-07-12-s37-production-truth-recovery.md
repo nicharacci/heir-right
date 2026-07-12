@@ -187,6 +187,16 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Fresh proof: Worker build and the complete artifact test suite passed, including source orchestration, auth boundaries, PDF integrity, attachment recovery, workspace conflicts, Tax Collector, Discovery persistence, and product-loop assertions.
 - Anti-negligence review: serialized storage alone did not prevent logical lost updates because each browser writes whole snapshots. The revision check closes that team-use race at the write boundary rather than relying on users to avoid simultaneous work.
 
+### Milestone 14 - Complete operator-control inventory and browser smoke loop
+
+- Added a release contract that inventories all 171 product buttons and fails when a control has no command handler, form submission, inline action, or accessible focus behavior. Companion metadata attributes are explicitly separated from command attributes so the check cannot pass on decorative state alone.
+- Expanded committed Chromium coverage through Report, History, Activity, Guide, single import, batch CSV import, all six Settings tabs, both Outreach side panels, the SMS editor, all three Help categories, and a walkthrough from launch through completion.
+- Added a browser-level accessible-name assertion for every visible enabled button in Settings and the Outreach editor, preventing icon-only or dynamically rendered controls from shipping without an operator-readable name.
+- The first hostile click pass found both CRM Import and the Outreach editor rendered below the top bar's stacking layer. Their header and close controls looked present but could not receive pointer events. Unified both modal layers above app chrome while preserving viewport-bounded bodies and internal scrolling.
+- Isolated the browser suite from deployed/paid providers with an explicit local-backend-only server mode, while requiring the real local source orchestrator to return `200` plus verified Discovery File persistence. This prevents inherited production secrets or provider billing from making local acceptance flaky.
+- Fresh proof: the control inventory passed all 171 buttons and the combined Playwright suite passed 4/4 end-to-end flows in 11.2 seconds with no console or page errors.
+- Anti-negligence review: a listener reference alone does not prove the surrounding user loop, and a visible modal does not prove its controls can be clicked. The browser test verifies each major control changes the intended visible state and can be reversed or completed without an orphaned or occluded panel.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint

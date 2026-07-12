@@ -17,7 +17,7 @@ export default defineConfig({
     video: "retain-on-failure"
   },
   webServer: {
-    command: "AUTH_REQUIRED=false pnpm --filter @ple/artifact dev",
+    command: "AUTH_REQUIRED=false HEIRRIGHT_LOCAL_BACKEND_ONLY=true pnpm --filter @ple/artifact dev",
     url: baseURL,
     reuseExistingServer: true,
     timeout: 30_000

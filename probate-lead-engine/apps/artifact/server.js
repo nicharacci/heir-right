@@ -398,6 +398,7 @@ function localConnectionStatuses() {
 }
 
 function workerApiBase() {
+  if (process.env.HEIRRIGHT_LOCAL_BACKEND_ONLY === "true") return "";
   return process.env.HEIRRIGHT_WORKER_URL || process.env.WORKER_API_URL || process.env.WORKER_BASE_URL || "";
 }
 
@@ -1347,6 +1348,7 @@ function mergeTaxCollectorCapture(capture = {}, taxCollectorReceiptRun = null) {
 }
 
 async function maybeRunTaxCollectorReceipt(body, seed) {
+  if (process.env.HEIRRIGHT_LOCAL_BACKEND_ONLY === "true") return null;
   const capture = body.capture && typeof body.capture === "object" ? body.capture : body;
   const existingReceipt = capture?.taxReceipt?.receiptLink || capture?.taxReceipt?.receiptUrl || capture?.taxReceipt?.sourceUrl;
   const existingListingHtml = capture?.taxReceipt?.listingHtml;

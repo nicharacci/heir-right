@@ -10,9 +10,24 @@ function watchBrowserFailures(page) {
 }
 
 async function openWorkspace(page) {
+  await page.addInitScript(() => localStorage.setItem("heirright:guided-walkthrough-seen", "true"));
   await page.goto("/");
   await expect(page.locator('[data-shell-nav="find-estates"]')).toBeVisible();
   await expect(page.locator("#authGate")).toBeHidden();
+}
+
+async function expectVisibleButtonsNamed(page, root = "body") {
+  const unnamed = await page.locator(`${root} button:visible`).evaluateAll((buttons) => buttons
+    .filter((button) => !button.disabled)
+    .filter((button) => {
+      const labelledBy = button.getAttribute("aria-labelledby");
+      const labelledText = labelledBy
+        ? labelledBy.split(/\s+/).map((id) => document.getElementById(id)?.textContent || "").join(" ").trim()
+        : "";
+      return !(button.getAttribute("aria-label") || button.title || labelledText || button.textContent?.trim());
+    })
+    .map((button) => button.outerHTML.slice(0, 240)));
+  expect(unnamed, `Visible buttons without an accessible name:\n${unnamed.join("\n")}`).toEqual([]);
 }
 
 test("estate identity, Queue handoff, removal, and primary navigation stay coherent", async ({ page }) => {
@@ -56,9 +71,15 @@ test("estate identity, Queue handoff, removal, and primary navigation stay coher
 test("Full Discovery invokes source orchestration before streaming packet sections", async ({ page }) => {
   const browserFailures = watchBrowserFailures(page);
   const sourceRequests = [];
+  const sourceResponses = [];
   page.on("request", (request) => {
     if (request.url().includes("/api/discovery/external-source-run") && request.method() === "POST") {
       sourceRequests.push(request.postDataJSON());
+    }
+  });
+  page.on("response", async (response) => {
+    if (response.url().includes("/api/discovery/external-source-run") && response.request().method() === "POST") {
+      sourceResponses.push({ status: response.status(), body: await response.json().catch(() => ({})) });
     }
   });
 
@@ -73,6 +94,9 @@ test("Full Discovery invokes source orchestration before streaming packet sectio
   expect(sourceRequests[0].operatorIntent).toBe("run_external_source_search");
   expect(sourceRequests[0].seed.propertyAddress).toContain("20611 NW 33rd Pl");
   expect(sourceRequests[0].seed.ownerName).toBeTruthy();
+  await expect.poll(() => sourceResponses.length, { timeout: 60_000 }).toBe(1);
+  expect(sourceResponses[0].status).toBe(200);
+  expect(sourceResponses[0].body.persistence?.readbackStatus).toBe("verified");
 
   const activeChip = page.locator('[data-docprep-section-jump][aria-selected="true"]');
   const before = await activeChip.getAttribute("data-docprep-section-jump");
@@ -204,7 +228,7 @@ test("supporting documents stay incomplete until backend artifact readback passe
 
   await openWorkspace(page);
   await page.locator('[data-shell-nav="dossiers"]').click();
-  await page.locator('[data-dossier-row="estate"]').click();
+  await page.locator('[data-dossier-row="demo-estate-001"]').click();
   const documentRow = page.locator("[data-document-row]").first();
   await expect(documentRow).toBeVisible();
   await documentRow.locator("[data-ui-menu-button]").click();
@@ -224,5 +248,72 @@ test("supporting documents stay incomplete until backend artifact readback passe
   await expect(page.locator("[data-document-modal-layer]")).toHaveCount(0);
   await expect(documentRow).toHaveClass(/is-linked/);
   await expect(page.locator("#topStatus")).toContainText("passed backend storage and artifact readback");
+  expect(browserFailures, browserFailures.join("\n")).toEqual([]);
+});
+
+test("operator rails, settings, Outreach, imports, and walkthrough controls complete their visible loops", async ({ page }) => {
+  const browserFailures = watchBrowserFailures(page);
+  await openWorkspace(page);
+
+  await page.locator("#quickReport").click();
+  await expect(page.locator("#researchRail")).toHaveAttribute("data-open", "true");
+  await page.locator("#closeRail").click();
+  await expect(page.locator("#researchRail")).toHaveAttribute("data-open", "false");
+
+  await page.locator("#historyToggle").click();
+  await expect(page.locator("#historyRail")).toHaveAttribute("data-open", "true");
+  await page.locator("#closeHistoryRail").click();
+  await expect(page.locator("#historyRail")).toHaveAttribute("data-open", "false");
+
+  await page.locator("#agentDrawerToggle").click();
+  await expect(page.locator("#agentDrawer")).toHaveAttribute("data-open", "true");
+  await page.locator("#closeAgentDrawer").click();
+  await expect(page.locator("#agentDrawer")).toHaveAttribute("data-open", "false");
+
+  await page.locator("#walkthroughReplay").click();
+  await expect(page.locator(".walkthrough-popover")).toBeVisible();
+  await page.locator("[data-walkthrough-close]").click();
+  await expect(page.locator(".walkthrough-popover")).toHaveCount(0);
+
+  await page.locator("#crmImportSingle").click();
+  await expect(page.locator("[data-crm-import-layer]")).toBeVisible();
+  await page.locator("[data-close-crm-import]").first().click();
+  await expect(page.locator("[data-crm-import-layer]")).toHaveCount(0);
+  await page.locator("#crmImportBatchToggle").click();
+  await expect(page.locator("#crmImportPopover")).toBeVisible();
+  await page.locator('[data-crm-batch-import="csv"]').click();
+  await expect(page.locator("[data-crm-import-layer]")).toBeVisible();
+  await page.locator("[data-close-crm-import]").last().click();
+
+  await page.locator('[data-shell-nav="settings"]').click();
+  for (const tab of ["access", "integrations", "sources", "outreach", "audit", "preferences"]) {
+    await page.locator(`[data-settings-tab="${tab}"]`).click();
+    await expect(page.locator(`[data-settings-tab="${tab}"]`)).toHaveAttribute("aria-pressed", "true");
+    await expectVisibleButtonsNamed(page, "#settingsView");
+  }
+
+  await page.locator('[data-shell-nav="drips"]').click();
+  await page.locator('[data-outreach-side-tab="preferences"]').click();
+  await expect(page.locator('[data-outreach-side-tab="preferences"]')).toHaveAttribute("aria-pressed", "true");
+  await page.locator('[data-outreach-side-tab="variables"]').click();
+  await page.locator('[data-new-template="sms"]').click();
+  await expect(page.locator("#outreachTemplateModalMount [role=dialog]")).toBeVisible();
+  await expectVisibleButtonsNamed(page, "#outreachTemplateModalMount");
+  await page.locator("[data-close-outreach-template]").first().click();
+  await expect(page.locator("#outreachTemplateModalMount [role=dialog]")).toHaveCount(0);
+
+  await page.locator('[data-shell-nav="help-demos"]').click();
+  for (const tab of ["docprep", "export", "admin"]) {
+    await page.locator(`[data-help-demo-tab="${tab}"]`).click();
+    await expect(page.locator(`[data-help-demo-tab="${tab}"]`)).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-help-demo-card]").first()).toBeVisible();
+  }
+  await page.locator("[data-help-demo-card]").first().click();
+  await expect(page.locator(".walkthrough-popover")).toBeVisible();
+  for (let step = 0; step < 10 && await page.locator("[data-walkthrough-next]").count(); step += 1) {
+    await page.locator("[data-walkthrough-next]").click();
+  }
+  await expect(page.locator(".walkthrough-popover")).toHaveCount(0);
+
   expect(browserFailures, browserFailures.join("\n")).toEqual([]);
 });
