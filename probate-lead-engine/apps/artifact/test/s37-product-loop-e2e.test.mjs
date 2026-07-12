@@ -21,6 +21,8 @@ for (const html of [source, dist]) {
   assert.match(html, /async function verifyPacketArtifact/);
   assert.match(html, /The stored packet did not pass artifact identity, hash, and content readback/);
   assert.match(html, /\/api\/documents\/attachments/);
+  assert.match(html, /Remove supporting file/);
+  assert.match(html, /method: "DELETE"/);
   assert.match(html, /\/api\/workspace\/state/);
   assert.match(html, /storageSetItem\(key, payload\.value, \{ sync: false \}\)/);
   assert.doesNotMatch(html, /saveDocumentFile\(doc\.id, null, "generated"\)/);

@@ -7,6 +7,7 @@ class MemoryKv {
   values = new Map();
   async get(key) { return this.values.get(key) || null; }
   async put(key, value) { this.values.set(key, value); }
+  async delete(key) { this.values.delete(key); }
 }
 
 const env = { AUTH_REQUIRED: "false", PACKET_ARTIFACTS: new MemoryKv() };
@@ -60,10 +61,19 @@ assert.equal(list.attachments.length, 1);
 assert.equal(list.attachments[0].documentId, "tax-receipt");
 assert.equal("dataBase64" in list.attachments[0], false);
 
+const deleteResponse = await worker.fetch(new Request(`https://worker.test${stored.body.attachment.artifactUrl}`, { method: "DELETE" }), env);
+const deleted = await deleteResponse.json();
+assert.equal(deleteResponse.status, 200);
+assert.equal(deleted.deleted, true);
+assert.equal(deleted.readbackStatus, "verified");
+const deletedReadback = await worker.fetch(new Request(`https://worker.test${stored.body.attachment.artifactUrl}`), env);
+assert.equal(deletedReadback.status, 404);
+
 console.log(JSON.stringify({ ok: true, checks: [
   "content_signature_required",
   "backend_storage_readback",
   "byte_exact_attachment_retrieval",
   "team_attachment_index",
   "attachment_payload_not_returned_in_metadata",
+  "attachment_delete_readback",
 ] }, null, 2));

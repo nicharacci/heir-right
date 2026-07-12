@@ -38,8 +38,8 @@ module.exports = async function handler(request, response) {
     sendJson(response, 503, { ok: false, error: "worker_unavailable", message: "Supporting document storage is unavailable." });
     return;
   }
-  if (request.method !== "GET" && request.method !== "POST") {
-    response.setHeader("Allow", "GET, POST");
+  if (!new Set(["GET", "POST", "DELETE"]).has(request.method)) {
+    response.setHeader("Allow", "GET, POST, DELETE");
     sendJson(response, 405, { ok: false, error: "method_not_allowed" });
     return;
   }

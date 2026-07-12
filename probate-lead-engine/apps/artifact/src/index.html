@@ -16497,7 +16497,7 @@ function processCardHtml(process) {
 function documentRequirementStatus(doc, row = selectedRow()) {
   const record = documentFileRecord(doc.id, row);
   const workflow = dossierDocWorkflowState(doc);
-  if (record) return { linked: true, label: documentFileLabel(record), action: "Run" };
+  if (record) return { linked: true, label: documentFileLabel(record), action: "Run", recordSource: record.source };
   return {
     linked: false,
     label: workflow.state === "complete" ? "Generated packet section is ready to link." : doc.copy,
@@ -16532,6 +16532,7 @@ function documentRequirementHtml(doc, row = selectedRow()) {
             <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("eye", 15)}<span>Preview</span></button>
             ${verifiedPacketReady ? `<button type="button" role="menuitem" data-ui-menu-action="link-generated" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("batch-tray", 15)}<span>Use verified packet</span></button>` : ""}
             <button type="button" role="menuitem" data-ui-menu-action="replace" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("packet-clock", 15)}<span>Save new version</span></button>
+            ${file.linked && file.recordSource === "supporting_document" ? `<button type="button" role="menuitem" data-ui-menu-action="remove" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("trash", 15)}<span>Remove supporting file</span></button>` : ""}
             <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("flag", 15)}<span>Stage for export</span></button>
           </span>
         </span>
@@ -16742,6 +16743,37 @@ async function saveDocumentFile(docId, file = null, source = "file") {
   renderCurrentLoopView();
   renderRail();
   closeDocumentActionModal();
+}
+
+async function removeSupportingDocument(docId) {
+  const row = selectedRow();
+  const record = documentFileRecord(docId, row);
+  if (!row || record?.source !== "supporting_document") return;
+  const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === docId) ?? selectedDossierDocument(row);
+  if (!window.confirm(`Remove all saved versions of ${doc?.title || "this supporting document"} from the shared workspace?`)) return;
+  try {
+    const listResponse = await fetch(`/api/documents/attachments?estateId=${encodeURIComponent(assetDiscoveryKey(row))}`, { cache: "no-store" });
+    const list = await listResponse.json().catch(() => ({}));
+    if (!listResponse.ok || !Array.isArray(list.attachments)) throw new Error(list.message || "Saved supporting documents could not be loaded.");
+    const attachments = list.attachments.filter((item) => item?.documentId === docId && item?.id);
+    const removals = await Promise.all(attachments.map(async (item) => {
+      const response = await fetch(`/api/documents/attachments?attachmentId=${encodeURIComponent(item.id)}`, { method: "DELETE" });
+      const result = await response.json().catch(() => ({}));
+      return response.ok && result?.readbackStatus === "verified";
+    }));
+    if (!attachments.length || removals.some((removed) => !removed)) throw new Error("One or more saved versions did not pass removal readback.");
+    delete state.documentFiles[documentStorageKey(row, docId)];
+    setDocumentAutomationState(docId, "", row);
+    persistDocumentFiles();
+    document.getElementById("topStatus").textContent = `${doc?.title || "Supporting document"} was removed from the shared workspace.`;
+    addShellEvent("Supporting document removed", "All saved versions passed backend removal readback.", "ready", false);
+    renderCurrentLoopView();
+    renderRail();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The supporting document could not be removed.";
+    document.getElementById("topStatus").textContent = `Removal blocked: ${message}`;
+    addShellEvent("Supporting document removal blocked", message, "blocked", true);
+  }
 }
 
 function documentNeedsHumanInput(docId, action = "add") {
@@ -17136,6 +17168,10 @@ function handleDocumentMenuAction(action, docId) {
   }
   if (action === "queue") {
     addRowsToQueue(rowsForBatchAction());
+    return;
+  }
+  if (action === "remove") {
+    removeSupportingDocument(docId);
     return;
   }
   if (action === "add") {

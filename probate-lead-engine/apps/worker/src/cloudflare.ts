@@ -50,6 +50,7 @@ interface CloudflareEnv {
   PACKET_ARTIFACTS?: {
     get(key: string): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number; metadata?: unknown }): Promise<void>;
+    delete(key: string): Promise<void>;
   };
   WORKSPACE_STATE?: {
     idFromName(name: string): unknown;
@@ -1034,7 +1035,27 @@ async function supportingDocumentResponse(request: Request, url: URL, env: Cloud
     return json({ ok: true, estateId, attachments }, { headers: { "cache-control": "no-store" } });
   }
 
-  return methodNotAllowed("GET, POST");
+  if (request.method === "DELETE") {
+    const attachmentId = stringValue(url.searchParams.get("attachmentId"));
+    if (!/^supporting-[0-9]+-[a-f0-9]{16}$/.test(attachmentId)) {
+      return json({ ok: false, error: "invalid_supporting_document_id", message: "Choose a valid supporting document." }, { status: 400 });
+    }
+    const stored = await env.PACKET_ARTIFACTS.get(supportingDocumentKey(attachmentId));
+    if (!stored) return json({ ok: true, deleted: false, attachmentId, readbackStatus: "not_found" }, { headers: { "cache-control": "no-store" } });
+    const record = JSON.parse(stored) as StoredSupportingDocument;
+    await env.PACKET_ARTIFACTS.delete(supportingDocumentKey(attachmentId));
+    const indexKey = await supportingDocumentIndexKey(record.estateId);
+    const storedIndex = await env.PACKET_ARTIFACTS.get(indexKey);
+    const attachmentIds = Array.isArray(storedIndex ? JSON.parse(storedIndex) : []) ? JSON.parse(storedIndex || "[]").map(String) : [];
+    await env.PACKET_ARTIFACTS.put(indexKey, JSON.stringify(attachmentIds.filter((id: string) => id !== attachmentId)), {
+      metadata: { kind: "supporting_document_index", estateId: record.estateId },
+    });
+    const readback = await env.PACKET_ARTIFACTS.get(supportingDocumentKey(attachmentId));
+    if (readback) return json({ ok: false, error: "supporting_document_delete_failed", message: "The supporting document did not pass removal readback." }, { status: 503 });
+    return json({ ok: true, deleted: true, attachmentId, estateId: record.estateId, documentId: record.documentId, readbackStatus: "verified" }, { headers: { "cache-control": "no-store" } });
+  }
+
+  return methodNotAllowed("GET, POST, DELETE");
 }
 
 const sharedWorkspaceStateKeys = new Set([
@@ -2838,7 +2859,7 @@ export default {
   async fetch(request: Request, env: CloudflareEnv): Promise<Response> {
     const url = new URL(request.url);
 
-    if (request.method !== "GET" && request.method !== "POST" && request.method !== "HEAD") {
+    if (request.method !== "GET" && request.method !== "POST" && request.method !== "HEAD" && request.method !== "DELETE") {
       return json({ ok: false, error: "Method not allowed." }, { status: 405 });
     }
 
