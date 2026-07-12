@@ -21,6 +21,8 @@ interface CloudflareEnv {
   PODIO_DURABLE_REFRESH_TOKEN?: string;
   PODIO_TEAM_REFRESH_TOKEN?: string;
   PODIO_BROWSER_REFRESH_TOKEN?: string;
+  PODIO_RESOLVED_ACCESS_TOKEN?: string;
+  PODIO_RESOLVED_AUTH_MODE?: string;
   PODIO_CLIENT_ID?: string;
   PODIO_CLIENT_SECRET?: string;
   PODIO_APP_TOKEN?: string;
@@ -308,8 +310,21 @@ async function podioRuntimeEnv(request: Request, env: CloudflareEnv): Promise<Cl
   const refreshCookie = parseCookie(request.headers.get("cookie"))[podioRefreshCookieName(env)];
   const browserRefreshToken = await decryptCookieValue(refreshCookie, env);
   const storedRefreshToken = await podioStoredRefreshToken(env);
-  if (storedRefreshToken) return { ...env, PODIO_DURABLE_REFRESH_TOKEN: storedRefreshToken };
-  return browserRefreshToken ? { ...env, PODIO_BROWSER_REFRESH_TOKEN: browserRefreshToken } : env;
+  const tokenEnv = storedRefreshToken
+    ? { ...env, PODIO_DURABLE_REFRESH_TOKEN: storedRefreshToken }
+    : browserRefreshToken
+      ? { ...env, PODIO_BROWSER_REFRESH_TOKEN: browserRefreshToken }
+      : env;
+  const auth = await resolvePodioAccessToken(tokenEnv as Record<string, string | undefined>);
+  if (auth.nextRefreshToken && auth.refreshTokenRotated) {
+    await storePodioRefreshToken(auth.nextRefreshToken, env);
+  }
+  if (!auth.token) return tokenEnv;
+  return {
+    ...tokenEnv,
+    PODIO_RESOLVED_ACCESS_TOKEN: auth.token,
+    PODIO_RESOLVED_AUTH_MODE: auth.mode,
+  };
 }
 
 async function podioStoredRefreshToken(env: CloudflareEnv): Promise<string | null> {
@@ -2247,13 +2262,9 @@ function podioProfileCandidate(value: Record<string, unknown>, source: string): 
   };
 }
 
-async function podioJson(path: string, env: CloudflareEnv): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const auth = await resolvePodioAccessToken(env as Record<string, string | undefined>);
-  if (!auth.token) {
-    return { ok: false, status: 0, data: { error: auth.blocker || "missing_podio_access_token" } };
-  }
+async function podioJson(path: string, token: string): Promise<{ ok: boolean; status: number; data: unknown }> {
   const response = await fetch(`https://api.podio.com${path}`, {
-    headers: { authorization: `Bearer ${auth.token}` },
+    headers: { authorization: `Bearer ${token}` },
   });
   return {
     ok: response.ok,
@@ -2268,11 +2279,14 @@ async function podioDiagnosticsResponse(request: Request, env: CloudflareEnv): P
   const appId = runtimeEnv.PODIO_APP_ID || TEXAS_EQUITY_PROS_LEADS_APP_ID;
   const spaceId = runtimeEnv.PODIO_SPACE_ID || TEXAS_EQUITY_PROS_LEADS_SPACE_ID;
   const auth = await resolvePodioAccessToken(runtimeEnv as Record<string, string | undefined>);
-  const [userStatus, app, members] = await Promise.all([
-    podioJson("/user/status", runtimeEnv),
-    podioJson(`/app/${appId}`, runtimeEnv),
-    podioJson(`/space/${spaceId}/member/`, runtimeEnv),
-  ]);
+  const missingAuth = { ok: false, status: 0, data: { error: auth.blocker || "missing_podio_access_token" } };
+  const [userStatus, app, members] = auth.token
+    ? await Promise.all([
+      podioJson("/user/status", auth.token),
+      podioJson(`/app/${appId}`, auth.token),
+      podioJson(`/space/${spaceId}/member/`, auth.token),
+    ])
+    : [missingAuth, missingAuth, missingAuth];
   const memberRows = Array.isArray(members.data) ? members.data as Array<Record<string, unknown>> : [];
   const appObject = app.data && typeof app.data === "object" ? app.data as Record<string, unknown> : {};
   const appConfig = appObject.config && typeof appObject.config === "object" ? appObject.config as Record<string, unknown> : {};

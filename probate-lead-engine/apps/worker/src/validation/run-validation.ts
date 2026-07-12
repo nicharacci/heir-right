@@ -6,7 +6,7 @@ import { acquireTaxCollectorReceipt } from "../adapters/tax-collector-receipt";
 import { fetchMarriageDeathIndicatorFacts } from "../adapters/marriage-death-indicators";
 import { buildRawDossier } from "../dossier/build-raw-dossier";
 import { buildControlledPodioTestSeed } from "../export/controlled-test-lead";
-import { connectionStatuses, exportCompletedReport } from "../export/export-package";
+import { connectionStatuses, exportCompletedReport, resolvePodioAccessToken } from "../export/export-package";
 import { PODIO_LIVE_WRITE_APPROVAL_KEY, TEXAS_EQUITY_PROS_LEADS_APP_ID } from "../export/podio-config";
 import { runDryPipeline } from "../index";
 import { fact, nowIso } from "../lib";
@@ -131,6 +131,31 @@ async function main(): Promise<void> {
       headers: { "content-type": "application/json" },
     }),
   });
+  const podioOriginalFetch = globalThis.fetch;
+  let podioRefreshCalls = 0;
+  globalThis.fetch = async () => {
+    podioRefreshCalls += 1;
+    return new Response(JSON.stringify({
+      access_token: "validation-access-token",
+      refresh_token: "validation-rotated-refresh-token",
+    }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  const podioRefreshProof = await resolvePodioAccessToken({
+    PODIO_CLIENT_ID: "validation-client",
+    PODIO_CLIENT_SECRET: "validation-secret",
+    PODIO_DURABLE_REFRESH_TOKEN: "validation-refresh-token",
+  });
+  const podioResolvedReuseProof = await resolvePodioAccessToken({
+    PODIO_RESOLVED_ACCESS_TOKEN: podioRefreshProof.token,
+    PODIO_RESOLVED_AUTH_MODE: podioRefreshProof.mode,
+    PODIO_CLIENT_ID: "validation-client",
+    PODIO_CLIENT_SECRET: "validation-secret",
+    PODIO_DURABLE_REFRESH_TOKEN: "validation-refresh-token",
+  });
+  globalThis.fetch = podioOriginalFetch;
   const vitalOriginalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify({
     id: "inv-vital-validation",
@@ -178,6 +203,8 @@ async function main(): Promise<void> {
   if (!taxCollectorBrowserbaseProof.ok || taxCollectorBrowserbaseProof.discovery?.receiptUrl !== "https://miamidade.county-taxes.test/receipts/2025-browserbase.pdf") failures.push("Tax Collector Browserbase function receipt proof failed.");
   if (!taxCollectorBrowserbaseProof.paidRun) failures.push("Successful Browserbase Tax Collector proof was not marked as a paid run.");
   if (taxCollectorBillingProof.mode !== "browserbase_billing_required" || !taxCollectorBillingProof.paidRun) failures.push("Browserbase billing failure was not classified as a paid provider run.");
+  if (podioRefreshProof.nextRefreshToken !== "validation-rotated-refresh-token" || !podioRefreshProof.refreshTokenRotated) failures.push("Podio rotated refresh token was not returned for durable storage.");
+  if (podioResolvedReuseProof.token !== "validation-access-token" || podioRefreshCalls !== 1) failures.push("Podio request-scoped access token did not prevent duplicate refresh exchanges.");
   if (!vitalBrowserbaseFacts.some((item) => item.factType === "date_of_death" && item.value === "2024-01-02")) failures.push("Vital/obituary Browserbase function proof failed.");
   if (!result.dossier.property.address.value) failures.push("Dossier address missing.");
   if (!result.dossier.audit.sourceRefs.length) failures.push("Dossier sourceRefs missing.");

@@ -767,7 +767,23 @@ function invalidEncodedValue(kind: PodioFieldKind, value: unknown): string | nul
     : `Podio category field value must resolve to a numeric option id; received ${String(value)}.`;
 }
 
-export async function resolvePodioAccessToken(env: RuntimeEnv): Promise<{ token?: string; mode: "bearer" | "app_auth" | "refresh" | "browser_refresh" | "missing"; blocker?: string; refreshTokenRotated?: boolean }> {
+export interface PodioAccessResolution {
+  token?: string;
+  mode: "bearer" | "app_auth" | "refresh" | "browser_refresh" | "missing";
+  blocker?: string;
+  refreshTokenRotated?: boolean;
+  nextRefreshToken?: string;
+}
+
+export async function resolvePodioAccessToken(env: RuntimeEnv): Promise<PodioAccessResolution> {
+  const resolvedAccessToken = env.PODIO_RESOLVED_ACCESS_TOKEN;
+  if (resolvedAccessToken) {
+    const resolvedMode = env.PODIO_RESOLVED_AUTH_MODE;
+    const mode = ["app_auth", "refresh", "browser_refresh", "bearer"].includes(String(resolvedMode))
+      ? resolvedMode as PodioAccessResolution["mode"]
+      : "bearer";
+    return { token: resolvedAccessToken, mode };
+  }
   const clientId = podioClientId(env);
   const clientSecret = podioClientSecret(env);
   const appId = podioAppId(env);
@@ -817,6 +833,7 @@ export async function resolvePodioAccessToken(env: RuntimeEnv): Promise<{ token?
         token: data.access_token,
         mode: serverRefreshToken ? "refresh" : "browser_refresh",
         refreshTokenRotated: Boolean(data.refresh_token && data.refresh_token !== refreshToken),
+        nextRefreshToken: data.refresh_token || refreshToken,
       };
     }
     return {

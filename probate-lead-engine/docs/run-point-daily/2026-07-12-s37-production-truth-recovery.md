@@ -58,6 +58,15 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Deployed Worker version `822cb6b6-0db2-4b94-91c3-609b927afef2`, rotated the shared internal bearer without exposing it, and repeated the live call. The response was correctly classified as `browserbase_billing_required`, `paidRun: true`, HTTP 402, with the exact folio/address search input preserved.
 - Anti-negligence review: Browserbase configuration is proven valid, but live receipt retrieval cannot be marked complete while the provider refuses to start a session for billing. This is an external account prerequisite rather than an app fallback; the app now reports it explicitly and does not pretend the public search ran.
 
+### Milestone 3B - Durable Podio credential lifecycle
+
+- Found the recurring disconnect mechanism: a diagnostics request could exchange one refresh token four times in parallel, and Podio's rotated refresh token was detected but discarded. That can invalidate the remaining requests and guarantees eventual reconnect churn.
+- Changed Podio operational routes to resolve authentication once per request, persist rotated refresh access back to encrypted team KV, and reuse the request-scoped access token across diagnostics, export, readback, and Outreach.
+- Added validation proving that a rotated refresh token is returned for durable storage and a resolved request token prevents a second token exchange. Fresh worker build and validation passed with 61 normalized facts.
+- Deployed Worker version `ea44b2a9-502d-4796-8b76-6370d02941bc` and ran live Podio user, Leads app, and workspace-member readback. The legacy bearer is expired (`401` on all three checks), no durable refresh token has been stored yet, and the app correctly reports reconnect required without treating the credential's presence as readiness.
+- Opened the Podio API settings page in Chrome for the one-time approved-account reconnect. The browser currently needs the user to sign in before OAuth consent and team-KV persistence can be proven live.
+- Anti-negligence review: the recurring disconnect defect is repaired and regression-tested, but the Podio acceptance gate stays open until the approved account completes one sign-in and the follow-up app/member readback returns success.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint
