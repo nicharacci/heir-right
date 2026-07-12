@@ -112,6 +112,18 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Fresh proof: the complete artifact suite passed. After a full Chrome reload, the summary reported seven Estate files; clearing the default evidence threshold showed six sample estates plus exactly one `Estate of Fresh Public-Source Validation Lead` row at `20611 NW 33rd Pl`.
 - Anti-negligence review: this was a state-model defect disguised as duplicate data. The fix was applied at row construction rather than hiding duplicate DOM rows after rendering.
 
+### Milestone 7 - Autonomous Discovery run and committed browser acceptance
+
+- The browser acceptance pass proved `Run Full Discovery` was only advancing a timed local checklist over existing state. It did not call `/api/discovery/external-source-run`, so the button could animate a packet without first acquiring the configured public-source evidence.
+- Added a shared autonomous source-run step to the main Discovery command. It derives owner, estate, address, folio, county, prior capture, reviewed IDI import, and operator intent from the selected estate, waits for the source orchestrator, persists the returned facts and regenerated dossier, and only then advances the visible packet sections.
+- A failed source request now stops the run and writes the provider message into the active Preview section. A successful run with review blockers continues only until the corresponding deterministic phase gate stops it; the UI no longer treats an HTTP response as completed Discovery.
+- Persisted the regenerated dossier with the estate's source capture and made every downstream `dossierForRow` consumer prefer that source-backed revision. This keeps CRM-imported estates and external estates on the same Preview/export truth path.
+- Blocked all production source runs and packet generation for labeled sample estates. They remain available for table and walkthrough inspection only.
+- Added Playwright as a release dependency and committed browser E2E for one-property row identity, six isolated samples, Queue add/remove, all eight primary sections, source-run request payload, Preview streaming, `Option+Up` / `Option+Down`, console/page errors, four required viewports, and reduced-height scrolling.
+- The first browser run found the row-level Add to queue control accepted pointer events only while hovered, which made it unreliable and inaccessible on touch. The action is now always operable; hover remains visual feedback only.
+- Final browser proof: `pnpm test:e2e` passed both product-loop tests in Chromium. The source request fired exactly once from `20611 NW 33rd Pl`, every primary section opened, Queue returned to an empty disabled-export state after removal, and all required viewport geometry stayed contained.
+- Anti-negligence review: the auth-first overlay correctly blocked the first test when it accidentally launched with production auth and no Google session. The suite now starts an explicit local authenticated server and waits for the actual `#authGate` to clear; production auth remains tested separately through deployed route and initial-markup checks.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint

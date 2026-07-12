@@ -5610,9 +5610,9 @@
     }
 
     #resultsBody .estate-next-stack .next-link {
-      opacity: 0;
-      pointer-events: none;
-      transform: translateX(5px) scale(.96);
+      opacity: 1;
+      pointer-events: auto;
+      transform: none;
       transition: opacity .16s var(--ease), transform .18s var(--ease-out), background .18s var(--ease), border-color .18s var(--ease);
     }
 
@@ -13745,7 +13745,8 @@ function wireBatchSelection(root, rowSelector, scope = "results") {
 }
 
 function dossierForRow(row = selectedRow()) {
-  return row?.dossier ?? state.dossier;
+  const capturedDossier = row ? sourceCaptureForRow(row)?.dossier : null;
+  return capturedDossier ?? row?.dossier ?? state.dossier;
 }
 
 function railNameFor(row = selectedRow()) {
@@ -15945,9 +15946,52 @@ function scheduleNextFullDiscoveryPhase(row = selectedRow(), flowId = state.acti
   docPrepRunTimers.set(key, timer);
 }
 
-function runFullDiscovery(row = selectedRow(), source = null, flowId = state.activeDocPrepFlow) {
+async function runAutonomousDiscoverySources(row = selectedRow()) {
+  if (!row) return { ok: false, message: "Select an estate before running Discovery." };
+  const key = assetDiscoveryKey(row);
+  const capture = {
+    ...(state.sourceCaptures[key] ?? {}),
+    assetKey: key,
+    leadId: row.id,
+    owner: row.owner || row.title,
+    address: row.address,
+    capturedAt: new Date().toISOString(),
+    capturedBy: state.session?.user?.email || "team"
+  };
+  state.sourceCaptures[key] = { ...capture, updatedAt: Date.now() };
+  persistAssetDiscoveryState();
+  try {
+    const result = await postJson("/api/discovery/external-source-run", externalSourceRunPayload(row, capture, key));
+    applyExternalSourceRunResult(row, capture, result);
+    persistAssetDiscoveryState();
+    return { ok: true, result };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The source search could not run.";
+    state.sourceCaptures[key] = {
+      ...(state.sourceCaptures[key] ?? {}),
+      sourceApiRun: {
+        ok: false,
+        mode: "external_source_run",
+        runId: "",
+        generatedAt: new Date().toISOString(),
+        sourceSummaries: [],
+        blockers: [message],
+        message
+      },
+      updatedAt: Date.now()
+    };
+    persistAssetDiscoveryState();
+    return { ok: false, message };
+  }
+}
+
+async function runFullDiscovery(row = selectedRow(), source = null, flowId = state.activeDocPrepFlow) {
   if (!row) return;
   const flow = docPrepFlow(flowId);
+  if (isDemoEstateImport(row)) {
+    nudgeDeniedAction(source, `${flow.shortTitle} blocked`, "Sample estates stay isolated from production source runs and packet export.", { pill: true, source: "docprep-run" });
+    return;
+  }
   state.discoveryOpen = false;
   state.docPrepManualFix = null;
   state.railMode = "dossier";
@@ -15956,6 +16000,30 @@ function runFullDiscovery(row = selectedRow(), source = null, flowId = state.act
   setDocPrepRunState(row, flowId, "running");
   beginDocPrepStream(row, flowId);
   addShellEvent(`${flow.shortTitle} started`, `${docPrepEstateLabel(row)} is running each ${flow.shortTitle} phase in order. Use ${flow.id === "discovery" ? "Stop Discovery" : `Stop ${flow.shortTitle}`} to pause before the next phase completes.`, "review", false);
+  if (flow.id === "discovery") {
+    document.getElementById("topStatus").textContent = `Searching configured public sources for ${docPrepEstateLabel(row)}...`;
+    renderDocPrepRunSurfaces();
+    const sourceRun = await runAutonomousDiscoverySources(row);
+    if (!docPrepMainRunActive(row, flow.id)) return;
+    if (!sourceRun.ok) {
+      setDocPrepRunState(row, flow.id, "");
+      const phase = currentDiscoveryPhase(flow.id, row) || docPrepPhases(flow.id)[0];
+      setDocPrepStreamPhase(row, flow.id, phase, "blocked", sourceRun.message);
+      document.getElementById("topStatus").textContent = `Discovery source search blocked: ${sourceRun.message}`;
+      addShellEvent("Discovery source search blocked", sourceRun.message, "blocked", true);
+      renderDocPrepRunSurfaces();
+      return;
+    }
+    const blockerCount = Array.isArray(sourceRun.result?.blockers) ? sourceRun.result.blockers.length : 0;
+    addShellEvent(
+      "Discovery sources checked",
+      blockerCount
+        ? `${blockerCount} source review item${blockerCount === 1 ? "" : "s"} remain visible in the packet workflow.`
+        : "Configured public sources returned evidence for the Discovery review.",
+      blockerCount ? "blocked" : "ready",
+      true
+    );
+  }
   const firstIndex = docPrepPhases(flowId).findIndex((phase) => !docPrepPhaseMarkedComplete(row, flowId, phase.id));
   scheduleNextFullDiscoveryPhase(row, flowId, firstIndex < 0 ? 0 : firstIndex);
   setRailOpen(true, source);
@@ -17506,6 +17574,7 @@ function applyExternalSourceRunResult(row, capture, result) {
     ...capture,
     updatedAt: Date.now(),
     sourceFacts,
+    ...(result.dossier && typeof result.dossier === "object" ? { dossier: result.dossier } : {}),
     taxCollectorReceiptRun,
     sourceApiRun: {
       ok: Boolean(result.ok),

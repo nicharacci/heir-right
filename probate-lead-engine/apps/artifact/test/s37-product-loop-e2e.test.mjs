@@ -36,6 +36,14 @@ const latestRunRows = source.slice(
 assert.match(latestRunRows, /id: "estate"/);
 assert.doesNotMatch(latestRunRows, /id: "lead-report"|id: "property-title"|id: "outreach-prep"/, "Internal artifacts must remain inside one estate workflow instead of rendering as duplicate estate rows.");
 
+const fullDiscoveryRun = source.slice(
+  source.indexOf("async function runAutonomousDiscoverySources"),
+  source.indexOf("function toggleFullDiscoveryRun"),
+);
+assert.match(fullDiscoveryRun, /postJson\("\/api\/discovery\/external-source-run", externalSourceRunPayload\(row, capture, key\)\)/, "Run Full Discovery must invoke the source orchestrator from the selected estate facts.");
+assert.match(fullDiscoveryRun, /await runAutonomousDiscoverySources\(row\)/, "Packet streaming must wait for the source run result.");
+assert.match(fullDiscoveryRun, /Sample estates stay isolated from production source runs and packet export/, "Sample estates must not invoke production source runs.");
+
 const closingRoute = fs.readFileSync(path.resolve(here, "../../worker/src/cloudflare.ts"), "utf8");
 assert.match(closingRoute, /approved legal template files and designated fill-field map are not installed/);
 
@@ -47,6 +55,8 @@ console.log(JSON.stringify({
     "queued_estate_can_be_removed",
     "fresh_estate_reruns_are_deduplicated",
     "latest_run_renders_one_estate_row",
+    "full_discovery_invokes_source_orchestrator",
+    "sample_estates_cannot_run_sources",
     "single_and_batch_download_actions",
     "single_pdf_api_contract",
     "closing_requires_immutable_legal_templates",
