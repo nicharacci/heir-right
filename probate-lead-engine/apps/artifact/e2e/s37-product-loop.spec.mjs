@@ -152,3 +152,77 @@ test("Full Discovery invokes source orchestration before streaming packet sectio
 
   expect(browserFailures, browserFailures.join("\n")).toEqual([]);
 });
+
+test("supporting documents stay incomplete until backend artifact readback passes", async ({ page }) => {
+  const browserFailures = watchBrowserFailures(page);
+  const artifactId = "supporting-1780000000000-0123456789abcdef";
+  const contentHash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  const pdfBytes = Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF\n");
+
+  await page.route("**/api/documents/attachments**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === "POST") {
+      const body = request.postDataJSON();
+      expect(body.dataBase64).toBeTruthy();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          attachment: {
+            id: artifactId,
+            estateId: body.estateId,
+            documentId: body.documentId,
+            fileName: body.fileName,
+            contentType: "application/pdf",
+            size: pdfBytes.byteLength,
+            contentHash,
+            createdAt: new Date().toISOString(),
+            uploadedBy: "operator@heirright.com",
+            artifactUrl: `/api/documents/attachments?attachmentId=${artifactId}`,
+            readbackStatus: "verified"
+          }
+        })
+      });
+      return;
+    }
+    if (url.searchParams.get("attachmentId") === artifactId) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/pdf",
+        headers: {
+          "x-heirright-artifact-id": artifactId,
+          "x-heirright-content-hash": contentHash
+        },
+        body: pdfBytes
+      });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, attachments: [] }) });
+  });
+
+  await openWorkspace(page);
+  await page.locator('[data-shell-nav="dossiers"]').click();
+  await page.locator('[data-dossier-row="estate"]').click();
+  const documentRow = page.locator("[data-document-row]").first();
+  await expect(documentRow).toBeVisible();
+  await documentRow.locator("[data-ui-menu-button]").click();
+  await documentRow.locator('[data-ui-menu-action="replace"]').click();
+  await expect(page.locator("[data-document-modal-layer]")).toBeVisible();
+
+  await page.locator("[data-save-document-file]").click();
+  await expect(page.locator("#topStatus")).toContainText("Choose a supporting document");
+  await expect(documentRow).not.toHaveClass(/is-linked/);
+
+  await page.locator("#documentFileInput").setInputFiles({
+    name: "tax-receipt.pdf",
+    mimeType: "application/pdf",
+    buffer: pdfBytes
+  });
+  await page.locator("[data-save-document-file]").click();
+  await expect(page.locator("[data-document-modal-layer]")).toHaveCount(0);
+  await expect(documentRow).toHaveClass(/is-linked/);
+  await expect(page.locator("#topStatus")).toContainText("passed backend storage and artifact readback");
+  expect(browserFailures, browserFailures.join("\n")).toEqual([]);
+});

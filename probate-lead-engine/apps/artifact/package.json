@@ -5,7 +5,7 @@
   "scripts": {
     "build": "node build.js",
     "dev": "node server.js",
-    "test": "node build.js && (cd ../worker && pnpm build) && node test/source-run-contract.test.mjs && node test/source-readiness-contract.test.mjs && node test/s31-readiness-contract.test.mjs && node test/s31-access-domains-contract.test.mjs && node test/s33-production-source-cleanup.test.mjs && node test/s35-production-route-guards.test.mjs && node test/s37-route-auth.test.mjs && node test/s37-pdf-content.test.mjs && node test/s37-tax-receipt-e2e.test.mjs && node test/s37-discovery-persistence.test.mjs && node test/s37-product-loop-e2e.test.mjs"
+    "test": "node build.js && (cd ../worker && pnpm build) && node test/source-run-contract.test.mjs && node test/source-readiness-contract.test.mjs && node test/s31-readiness-contract.test.mjs && node test/s31-access-domains-contract.test.mjs && node test/s33-production-source-cleanup.test.mjs && node test/s35-production-route-guards.test.mjs && node test/s37-route-auth.test.mjs && node test/s37-pdf-content.test.mjs && node test/s37-document-artifacts.test.mjs && node test/s37-workspace-state.test.mjs && node test/s37-tax-receipt-e2e.test.mjs && node test/s37-discovery-persistence.test.mjs && node test/s37-product-loop-e2e.test.mjs"
   },
   "devDependencies": {
     "pdf-lib": "^1.17.1"

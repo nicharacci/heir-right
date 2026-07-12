@@ -2101,6 +2101,18 @@ function handleRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/api/documents/attachments") {
+    const attachmentHandler = require("./api/documents/attachments.js");
+    attachmentHandler(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/workspace/state") {
+    const workspaceStateHandler = require("./api/workspace/state.js");
+    workspaceStateHandler(req, res);
+    return;
+  }
+
   if (url.pathname === "/api/outreach/activepieces") {
     activepiecesHandler(req, res);
     return;

@@ -11843,16 +11843,25 @@ function localStateEndpointEnabled() {
   }
 }
 
-function persistServerState(key, value) {
-  if (!localStateEndpointEnabled() || !serverBackedStateKeys.has(key)) return;
+async function persistServerState(key, value) {
+  if (!serverBackedStateKeys.has(key)) return true;
   try {
-    fetch(`/local-state/${encodeURIComponent(key)}`, {
+    const text = String(value ?? "");
+    const local = localStateEndpointEnabled();
+    const response = await fetch(local ? `/local-state/${encodeURIComponent(key)}` : "/api/workspace/state", {
       method: "POST",
-      headers: { "content-type": "text/plain;charset=utf-8" },
-      body: String(value ?? ""),
-      keepalive: String(value ?? "").length < 60000
-    }).catch(() => {});
-  } catch {}
+      headers: { "content-type": local ? "text/plain;charset=utf-8" : "application/json" },
+      body: local ? text : JSON.stringify({ key, value: text }),
+      keepalive: text.length < 60000
+    });
+    const result = await response.json().catch(() => ({}));
+    const verified = response.ok && (local || result.readbackStatus === "verified");
+    if (!verified) addShellEvent("Workspace save blocked", result.message || "A team workspace update did not pass storage readback.", "blocked", true);
+    return verified;
+  } catch {
+    addShellEvent("Workspace save blocked", "The team workspace could not be reached. Your change remains in this browser until retry succeeds.", "blocked", true);
+    return false;
+  }
 }
 
 function storageGetItem(key) {
@@ -11882,7 +11891,7 @@ function storageGetItem(key) {
   return null;
 }
 
-function storageSetItem(key, value) {
+function storageSetItem(key, value, options = {}) {
   const text = String(value ?? "");
   try {
     const store = window.localStorage;
@@ -11904,7 +11913,7 @@ function storageSetItem(key, value) {
     record[key] = text;
     setStorageNameRecord(record);
   } catch {}
-  persistServerState(key, text);
+  return options.sync === false ? Promise.resolve(true) : persistServerState(key, text);
 }
 
 function privateStorageGetItem(key) {
@@ -12047,8 +12056,13 @@ function persistDealStatusLabels() {
 function persistCrmImports(reason = "") {
   state.crmImports = state.crmImports.map(normalizeCrmImport);
   state.demoEstateLeadsActive = state.crmImports.some(isDemoEstateImport);
-  storageSetItem(crmImportStateKey, JSON.stringify(state.crmImports));
-  if (reason) addShellEvent(reason, "The imported estate is saved locally in the HRight workspace. Live CRM writes and readback remain gated.", "review", false);
+  const save = storageSetItem(crmImportStateKey, JSON.stringify(state.crmImports));
+  if (reason) {
+    addShellEvent(reason, "Saving the estate update to the shared HeirRight workspace. Live CRM writes and readback remain gated.", "review", false);
+    save.then((verified) => {
+      if (verified) addShellEvent("Workspace estate saved", "The estate update passed shared workspace readback and is available to the HeirRight team.", "ready", false);
+    });
+  }
 }
 
 function loadAssetDiscoveryState() {
@@ -12244,18 +12258,18 @@ function applyServerBackedStateValue(key, value) {
 
 async function hydrateServerBackedState() {
   let changed = false;
-  if (localStateEndpointEnabled()) {
-    for (const key of serverBackedStateKeys) {
-      try {
-        const response = await fetch(`/local-state/${encodeURIComponent(key)}`, { cache: "no-store" });
-        if (!response.ok) continue;
-        const payload = await response.json();
-        if (typeof payload.value === "string" && payload.value !== storageGetItem(key)) {
-          storageSetItem(key, payload.value);
-          changed = applyServerBackedStateValue(key, payload.value) || changed;
-        }
-      } catch {}
-    }
+  const local = localStateEndpointEnabled();
+  for (const key of serverBackedStateKeys) {
+    try {
+      const path = local ? `/local-state/${encodeURIComponent(key)}` : `/api/workspace/state?key=${encodeURIComponent(key)}`;
+      const response = await fetch(path, { cache: "no-store" });
+      if (!response.ok) continue;
+      const payload = await response.json();
+      if (typeof payload.value === "string" && payload.value !== storageGetItem(key)) {
+        storageSetItem(key, payload.value, { sync: false });
+        changed = applyServerBackedStateValue(key, payload.value) || changed;
+      }
+    } catch {}
   }
   document.documentElement.dataset.crmImportCount = String(state.crmImports.length);
   document.documentElement.dataset.serverHydrated = changed ? "true" : "false";
@@ -13385,7 +13399,6 @@ function crmImportCounts() {
 
 function rebuildRowsFromCurrentSources() {
   state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
-  ensureCompletedDocPrepProofFile();
   pruneBatchSets();
   seedDemoEstatePreviewState();
 }
@@ -13412,7 +13425,7 @@ function updateImportedEstateLifecycle(id, action, { confirmDelete = true } = {}
   if (index < 0) return false;
   const current = normalizeCrmImport(state.crmImports[index]);
   const label = current.estateName || "Imported estate";
-  if (action === "delete" && confirmDelete && !window.confirm(`Delete ${label} from this local workspace?`)) return false;
+  if (action === "delete" && confirmDelete && !window.confirm(`Delete ${label} from the shared HeirRight workspace?`)) return false;
   const next = { ...current };
   if (action === "archive") {
     next.archivedAt = isoNow();
@@ -13434,7 +13447,7 @@ function updateImportedEstateLifecycle(id, action, { confirmDelete = true } = {}
   applyFilters();
   updateFooterLeadContext(selectedRow());
   document.getElementById("topStatus").textContent = action === "delete"
-    ? `${label} was deleted from the local estate list.`
+    ? `${label} was removed from the shared estate list.`
     : action === "restore"
     ? `${label} was restored to active estates.`
     : `${label} was moved to Archive.`;
@@ -15550,12 +15563,12 @@ function docPrepStreamPhaseLines(row = selectedRow(), dossier = dossierForRow(ro
         || sourceProofDetailLine(capture, "clerk_of_courts", ["vital_indicators", "obituary_vital_review", "deceased_indicator"], "Obituary/vital proof")
     ].filter(Boolean),
     "idi-asset-search": [
-      `IDI mode: ${idi?.mode || "Needs controlled run or approved import"}`,
-      `Paid run: ${idi?.paidRun ? "Yes - controlled paid proof" : "No - approved import or not run"}`,
-      `API key source: ${idi?.apiKeySource || (idi ? "shared/default not reported" : "Needs team default or user key")}`,
-      `Lock key: ${idi?.lockKey || assetDiscoveryKey(row)}`,
-      `Contacts parsed: ${Array.isArray(idi?.candidates) ? idi.candidates.length : 0}`,
-      `Readback: ${idi?.readbackStatus || idi?.sourceEvidence?.readbackStatus || "Not completed"}`,
+      `IDI search: ${idi?.mode === "live_idi_core" ? "Completed through approved team access" : idi ? "Approved report imported" : "Needs approved access or report import"}`,
+      `Paid search: ${idi?.paidRun ? "Completed with approval" : "Not run"}`,
+      `Access: ${idi?.apiKeySource === "user_override" ? "Personal approved key" : idi ? "Team account" : "Needs approved access"}`,
+      `Duplicate paid-search protection: ${idi?.lockKey ? "On" : "Waiting for the first approved search"}`,
+      `Contacts found: ${Array.isArray(idi?.candidates) ? idi.candidates.length : 0}`,
+      `Evidence saved: ${idi?.readbackStatus === "verified" || idi?.sourceEvidence?.readbackStatus === "verified" ? "Yes" : "Not yet"}`,
       sourceProofDetailLine(capture, "idi", ["idi_paid_run_approval", "idi_report_import", "idi_contact_review"], "IDI source gate")
     ].filter(Boolean),
     "contact-review": [
@@ -15843,31 +15856,44 @@ function docPrepPhaseBlocker(row = selectedRow(), flowId = state.activeDocPrepFl
 }
 
 function linkGeneratedDocPrepPackets(row = selectedRow(), flowId = state.activeDocPrepFlow) {
-  if (!row) return 0;
+  const packet = packetArtifactForRow(row, flowId);
+  if (!row || !packet?.verification?.verified || packet?.verification?.readbackStatus !== "verified") return 0;
   const flow = docPrepFlow(flowId);
   const flowState = docPrepFlowState(row, flow.id);
   let linked = 0;
   docsForFlow(row, dossierForRow(row), flow.id).forEach((doc) => {
     const storageKey = documentStorageKey(row, doc.id);
-    if (state.documentFiles[storageKey]) return;
+    const existing = documentFileRecord(doc.id, row);
+    if (existing?.artifactId === packet.artifact?.artifactId) return;
     state.documentFiles[storageKey] = {
       id: doc.id,
-      name: `${doc.title} - ${docPrepOwnerLabel(row)} - ${flow.shortTitle}.pdf`,
-      size: Math.max(1024, String(doc.body || "").length),
+      name: `${flow.title} - ${docPrepOwnerLabel(row)}.pdf`,
+      size: packet.verification.byteLength,
       type: "application/pdf",
-      source: "s29-generated-docprep-packet",
-      version: 1,
+      source: "verified_packet_artifact",
+      artifactId: packet.artifact.artifactId,
+      artifactUrl: packet.artifactUrl,
+      contentHash: packet.artifact.contentHash,
+      readbackStatus: "verified",
+      sectionTitle: doc.title,
+      version: existing ? Number(existing.version || 1) + 1 : 1,
       linkedAt: Date.now(),
-      linkedBy: state.session?.user?.email || "team"
+      linkedBy: state.session?.user?.email || "team",
+      expiresAt: packet.artifact.expiresAt
     };
     linked += 1;
   });
   flowState.generatedPackets = [
     {
       flowId: flow.id,
-      generatedAt: isoNow(),
+      generatedAt: packet.verification.verifiedAt,
+      artifactId: packet.artifact.artifactId,
+      artifactUrl: packet.artifactUrl,
+      contentHash: packet.artifact.contentHash,
+      readbackStatus: "verified",
       artifact: "single_pdf",
-      documents: docsForFlow(row, dossierForRow(row), flow.id).length
+      documents: docsForFlow(row, dossierForRow(row), flow.id).length,
+      sections: packet.sections
     },
     ...(flowState.generatedPackets || [])
   ].slice(0, 25);
@@ -15912,19 +15938,33 @@ function stopFullDiscoveryRun(row = selectedRow(), flowId = "discovery", { silen
   renderDocPrepRunSurfaces();
 }
 
-function finishFullDiscoveryRun(row = selectedRow(), flowId = "discovery") {
+async function finishFullDiscoveryRun(row = selectedRow(), flowId = "discovery", finalPhase = null) {
   if (!row) return;
   const flow = docPrepFlow(flowId);
   const key = docPrepRunKey(row, flowId);
   docPrepRunTimers.delete(key);
-  setDocPrepRunState(row, flowId, "");
+  document.getElementById("topStatus").textContent = `Building and verifying the ${flow.shortTitle} PDF for ${docPrepEstateLabel(row)}...`;
+  const packet = await generatePacketPreview(row, null, { flowId, render: false });
+  if (!packet?.verification?.verified || !docPrepMainRunActive(row, flowId)) {
+    setDocPrepRunState(row, flowId, "");
+    if (finalPhase) setDocPrepStreamPhase(row, flowId, finalPhase, "blocked", "The packet did not pass artifact and storage readback verification.");
+    document.getElementById("topStatus").textContent = `${flow.shortTitle} packet verification blocked. Review the packet blocker and retry.`;
+    addShellEvent(`${flow.shortTitle} packet blocked`, "The generated PDF did not pass artifact and storage readback verification, so no document was marked complete.", "blocked", true);
+    renderDocPrepRunSurfaces();
+    return;
+  }
+  if (finalPhase) {
+    markDocPrepPhaseComplete(row, flowId, finalPhase.id);
+    setDocPrepStreamPhase(row, flowId, finalPhase, "complete");
+  }
   const linkedCount = linkGeneratedDocPrepPackets(row, flowId);
+  setDocPrepRunState(row, flowId, "");
   completeDocPrepStream(row, flowId, linkedCount);
   const finalIndex = Math.max(0, docPrepPhases(flowId).length - 1);
   setDocPrepPhaseIndex(row, flowId, finalIndex, { persist: false });
   persistDiscoveryState();
   document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} ${flow.shortTitle} run complete.`;
-  addShellEvent(`${flow.shortTitle} complete`, `${docPrepEstateLabel(row)} completed the ${flow.shortTitle} run. ${linkedCount} generated packet section${linkedCount === 1 ? "" : "s"} were linked for review.`, "ready", false);
+  addShellEvent(`${flow.shortTitle} complete`, `${docPrepEstateLabel(row)} completed the ${flow.shortTitle} run. One verified PDF contains ${linkedCount} reviewed packet section${linkedCount === 1 ? "" : "s"}.`, "ready", false);
   renderDocPrepRunSurfaces();
 }
 
@@ -15952,6 +15992,10 @@ function scheduleNextFullDiscoveryPhase(row = selectedRow(), flowId = state.acti
       document.getElementById("topStatus").textContent = blocker;
       addShellEvent(`${phase.label} needs review`, blocker, "blocked", true);
       renderDocPrepRunSurfaces();
+      return;
+    }
+    if (phaseIndex === phases.length - 1) {
+      finishFullDiscoveryRun(row, flowId, phase);
       return;
     }
     markDocPrepPhaseComplete(row, flowId, phase.id);
@@ -16015,7 +16059,10 @@ async function hydratePersistedDiscoveryFile(row = selectedRow()) {
     const current = state.sourceCaptures[key] ?? {};
     const currentAt = Date.parse(current.sourceApiRun?.generatedAt || "") || 0;
     const storedAt = Date.parse(record.generatedAt || "") || 0;
-    if (currentAt > storedAt) return current;
+    if (currentAt > storedAt) {
+      await hydrateSupportingDocuments(row);
+      return current;
+    }
     state.sourceCaptures[key] = {
       ...current,
       ...(record.capture && typeof record.capture === "object" ? record.capture : {}),
@@ -16034,6 +16081,35 @@ async function hydratePersistedDiscoveryFile(row = selectedRow()) {
       },
       updatedAt: Date.now()
     };
+    const packetReference = Array.isArray(record.packetArtifacts)
+      ? record.packetArtifacts.find((item) => item?.flow === state.activeDocPrepFlow && item?.readbackStatus === "verified")
+      : null;
+    if (packetReference?.artifactId && packetReference?.artifactUrl) {
+      const hydratedPacket = {
+        ok: true,
+        flow: packetReference.flow,
+        estateId: key,
+        estateIds: [key],
+        contentType: packetReference.contentType,
+        artifactUrl: packetReference.artifactUrl,
+        sections: packetReference.sections || [],
+        packetPersistence: [{ estateId: key, stored: true, readbackStatus: "verified" }],
+        artifact: {
+          kind: "single_pdf",
+          artifactId: packetReference.artifactId,
+          contentType: packetReference.contentType,
+          contentHash: packetReference.contentHash,
+          expiresAt: packetReference.expiresAt,
+          url: packetReference.artifactUrl,
+          sections: packetReference.sections || []
+        }
+      };
+      try {
+        state.packetArtifacts[`${packetReference.flow}:${row.id}`] = await verifyPacketArtifact(hydratedPacket, key);
+        linkGeneratedDocPrepPackets(row, packetReference.flow);
+      } catch {}
+    }
+    await hydrateSupportingDocuments(row);
     persistAssetDiscoveryState();
     if (state.activeView === "dossiers" && selectedRow()?.id === row.id) {
       renderDossiersView();
@@ -16156,7 +16232,10 @@ function documentStorageKey(row = selectedRow(), docId = "") {
 }
 
 function documentFileRecord(docId, row = selectedRow()) {
-  return state.documentFiles[documentStorageKey(row, docId)] ?? null;
+  const record = state.documentFiles[documentStorageKey(row, docId)] ?? null;
+  if (!record || record.readbackStatus !== "verified" || !record.artifactId || !record.artifactUrl || !record.contentHash) return null;
+  if (record.expiresAt && Date.parse(record.expiresAt) <= Date.now()) return null;
+  return record;
 }
 
 function documentFileLabel(record) {
@@ -16174,13 +16253,13 @@ function humanFileSize(size) {
 
 function selectedDocumentFileCount(row = selectedRow()) {
   const prefix = `${assetDiscoveryKey(row)}:`;
-  return Object.keys(state.documentFiles).filter((key) => key.startsWith(prefix)).length;
+  return Object.entries(state.documentFiles).filter(([key, record]) => key.startsWith(prefix) && record?.readbackStatus === "verified" && record?.artifactId && record?.artifactUrl && record?.contentHash).length;
 }
 
 function selectedDocumentStorageSize(row = selectedRow()) {
   const prefix = `${assetDiscoveryKey(row)}:`;
   return Object.entries(state.documentFiles)
-    .filter(([key]) => key.startsWith(prefix))
+    .filter(([key, record]) => key.startsWith(prefix) && record?.readbackStatus === "verified" && record?.artifactId && record?.artifactUrl && record?.contentHash)
     .reduce((sum, [, record]) => sum + (Number(record?.size) || 0), 0);
 }
 
@@ -16252,112 +16331,6 @@ function dashboardActiveProcessEstateLabel(fallbackRow = selectedRow()) {
     .sort((a, b) => b.at - a.at);
   const row = ranked[0]?.row || fallbackRow;
   return row ? `Last active: ${docPrepEstateLabel(row)}` : "Load a lead packet to start";
-}
-
-function completedDocPrepProofRow() {
-  const latestRunId = state.freshBatch?.latestRun?.runId;
-  const freshRows = state.rows.filter((row) => row.sourceKind === "fresh-batch" && hasSpecificOwnerName(row.owner));
-  return freshRows.find((row) => latestRunId && row.data?.runId === latestRunId) || freshRows[0] || null;
-}
-
-function defaultIdiCoreImportForRow(row) {
-  const key = assetDiscoveryKey(row);
-  const owner = docPrepOwnerLabel(row);
-  return {
-    importedAt: "2026-07-01T20:21:23.000Z",
-    importedBy: "HeirRight import",
-    source: "approved_import",
-    attachment: {
-      label: "IDI Core asset report",
-      fileName: `IDI Core - ${owner}.pdf`,
-      sourceUrl: "Approved IDI Core report import"
-    },
-    importedText: `IDI Core asset report imported for ${owner}. Contacts remain review-gated inside HeirRight Leads until approval.`,
-    candidates: [
-      {
-        id: `${key}:idi:owner`,
-        name: owner,
-        relationship: "owner / estate",
-        group: "primary",
-        phones: [],
-        emails: [],
-        currentAddress: row?.address || "",
-        addressHistory: row?.address ? [row.address] : [],
-        ownerLastNameMatch: true,
-        confidence: 92,
-        reviewStatus: "imported",
-        reviewFlags: ["CONTACT_REVIEW_REQUIRED"]
-      }
-    ],
-    reviewFlags: ["IDI_CORE_REPORT_IMPORTED", "CONTACTS_REVIEW_GATED"]
-  };
-}
-
-function defaultGeneratedDocumentRecord(doc, row, flowId) {
-  return {
-    id: doc.id,
-    name: `${doc.title} - ${docPrepOwnerLabel(row)} - ${docPrepFlow(flowId).shortTitle}.pdf`,
-    size: 0,
-    type: doc.type || "generated",
-    source: "s28-product-loop-proof",
-    version: 1,
-    linkedAt: Date.parse("2026-07-01T20:21:23.000Z"),
-    linkedBy: "S28 product loop"
-  };
-}
-
-function defaultClosingExportRecordForRow(row) {
-  const googleDocUrl = "https://docs.google.com/open?id=1Y6CMgv1FejgdbesTYKzZYbP0jzi1nIiU6TeSRCXhxUg";
-  const googleDocId = "1Y6CMgv1FejgdbesTYKzZYbP0jzi1nIiU6TeSRCXhxUg";
-  return {
-    rowId: row.id,
-    updatedAt: "2026-07-01T20:45:06.000Z",
-    result: {
-      ok: true,
-      status: "exported",
-      blockers: [],
-      message: "Closing Prep packet exported to Google Workspace with readback evidence.",
-      export: {
-        ok: true,
-        routes: [
-          {
-            route: "google",
-            ok: true,
-            readbackOk: true,
-            mode: "google-workspace-bridge",
-            url: googleDocUrl,
-            externalId: googleDocId,
-            blockers: [],
-            message: "Google Workspace bridge created the Doc and appended/read back the Sheet row."
-          }
-        ]
-      }
-    }
-  };
-}
-
-function ensureCompletedDocPrepProofFile() {
-  if (storageGetItem("heirright:allow-legacy-s28-proof-seed") !== "true") return;
-  const row = completedDocPrepProofRow();
-  if (!row) return;
-  const key = assetDiscoveryKey(row);
-  if (!state.dealStatuses[key]) state.dealStatuses[key] = "hot";
-  if (!state.idiImports[key]) state.idiImports[key] = defaultIdiCoreImportForRow(row);
-  if (!state.closingExportState?.[key]) state.closingExportState[key] = defaultClosingExportRecordForRow(row);
-  ["discovery", "closing-docs"].forEach((flowId) => {
-    const flowState = docPrepFlowState(row, flowId);
-    const phaseIds = docPrepPhases(flowId).map((phase) => phase.id);
-    flowState.startedAt ||= "2026-07-01T20:11:05.000Z";
-    flowState.updatedAt ||= "2026-07-01T20:21:23.000Z";
-    flowState.completed = Array.from(new Set([...(flowState.completed || []), ...phaseIds]));
-    flowState.phaseIndex = Math.max(0, phaseIds.length - 1);
-    docsForFlow(row, dossierForRow(row), flowId).forEach((doc) => {
-      const storageKey = documentStorageKey(row, doc.id);
-      if (!state.documentFiles[storageKey]) {
-        state.documentFiles[storageKey] = defaultGeneratedDocumentRecord(doc, row, flowId);
-      }
-    });
-  });
 }
 
 function processSummaries(row = selectedRow(), dossier = dossierForRow(row)) {
@@ -16535,6 +16508,8 @@ function documentRequirementStatus(doc, row = selectedRow()) {
 function documentRequirementHtml(doc, row = selectedRow()) {
   const file = documentRequirementStatus(doc, row);
   const workflow = dossierDocWorkflowState(doc);
+  const packet = packetArtifactForRow(row);
+  const verifiedPacketReady = Boolean(packet?.verification?.verified && packet?.verification?.readbackStatus === "verified");
   const automation = documentAutomationState(doc.id, row);
   const running = automation === "processing";
   const actionLabel = running ? "Stop" : "Run";
@@ -16555,7 +16530,7 @@ function documentRequirementHtml(doc, row = selectedRow()) {
               <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Document actions for ${escapeHtml(doc.title)}">${nucleoIcon("sliders", 16)}</button>
           <span class="headless-menu t-dropdown" data-origin="top-right" role="menu" hidden>
             <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("eye", 15)}<span>Preview</span></button>
-            <button type="button" role="menuitem" data-ui-menu-action="link-generated" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("batch-tray", 15)}<span>Link generated packet</span></button>
+            ${verifiedPacketReady ? `<button type="button" role="menuitem" data-ui-menu-action="link-generated" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("batch-tray", 15)}<span>Use verified packet</span></button>` : ""}
             <button type="button" role="menuitem" data-ui-menu-action="replace" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("packet-clock", 15)}<span>Save new version</span></button>
             <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("flag", 15)}<span>Stage for export</span></button>
           </span>
@@ -16597,6 +16572,8 @@ function renderDocumentActionModal() {
   const row = selectedRow();
   const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === modal.docId) ?? selectedDossierDocument(row);
   const record = documentFileRecord(doc?.id, row);
+  const packet = packetArtifactForRow(row);
+  const verifiedPacketReady = Boolean(packet?.verification?.verified && packet?.verification?.readbackStatus === "verified");
   mount.innerHTML = `
     <section class="document-modal-layer" role="presentation" data-document-modal-layer>
       <div class="document-modal" role="dialog" aria-modal="true" aria-labelledby="documentModalTitle">
@@ -16611,8 +16588,8 @@ function renderDocumentActionModal() {
         <div class="document-modal-body">
           <div class="file-control-box">
             <strong>${record ? "Current file" : "Choose Supporting Document"}</strong>
-            <span class="copy">${escapeHtml(record ? documentFileLabel(record) : "Select a PDF, image, scan, or office file from this Mac. The app records the file name and review status for this packet.")}</span>
-            <input id="documentFileInput" type="file" aria-label="Choose file for ${escapeHtml(doc?.title ?? "document")}">
+            <span class="copy">${escapeHtml(record ? documentFileLabel(record) : "Select a PDF, image, or office file. HeirRight stores the actual file and verifies backend readback before this section can be marked complete.")}</span>
+            <input id="documentFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" aria-label="Choose file for ${escapeHtml(doc?.title ?? "document")}">
           </div>
           <div class="fact-grid">
             <div class="fact"><label>Process</label><span>${escapeHtml(row?.leadName || row?.title || "Lead file")}</span></div>
@@ -16622,8 +16599,8 @@ function renderDocumentActionModal() {
           </div>
         </div>
         <div class="document-modal-foot">
-          <button class="btn" type="button" data-link-generated-document="${escapeHtml(doc?.id ?? "")}">Link Generated Packet</button>
-          <button class="btn primary solvys-liquid-glass" type="button" data-save-document-file="${escapeHtml(doc?.id ?? "")}">${record ? "Save New Version" : "Save File"}</button>
+          ${verifiedPacketReady ? `<button class="btn" type="button" data-link-generated-document="${escapeHtml(doc?.id ?? "")}">Use Verified Packet</button>` : ""}
+          <button class="btn primary solvys-liquid-glass" type="button" data-save-document-file="${escapeHtml(doc?.id ?? "")}">${record ? "Save New Version" : "Attach File"}</button>
         </div>
       </div>
     </section>
@@ -16632,16 +16609,127 @@ function renderDocumentActionModal() {
   requestAnimationFrame(() => mount.querySelector("#documentFileInput")?.focus());
 }
 
-function saveDocumentFile(docId, file = null, source = "file") {
+function fileContentType(file) {
+  if (file?.type) return file.type;
+  const extension = String(file?.name || "").split(".").pop()?.toLowerCase();
+  return {
+    pdf: "application/pdf",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  }[extension] || "application/octet-stream";
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "").split(",").pop() || ""), { once: true });
+    reader.addEventListener("error", () => reject(reader.error || new Error("The selected file could not be read.")), { once: true });
+    reader.readAsDataURL(file);
+  });
+}
+
+async function verifyStoredAttachment(attachment) {
+  if (!attachment?.artifactId && !attachment?.id) throw new Error("The supporting document did not return an artifact ID.");
+  const artifactId = attachment.artifactId || attachment.id;
+  const response = await fetch(attachment.artifactUrl, { cache: "no-store" });
+  const bytes = await response.arrayBuffer();
+  const returnedId = response.headers.get("x-heirright-artifact-id");
+  const returnedHash = response.headers.get("x-heirright-content-hash");
+  if (!response.ok || bytes.byteLength !== Number(attachment.size) || returnedId !== artifactId || returnedHash !== attachment.contentHash) {
+    throw new Error("The supporting document did not pass artifact readback verification.");
+  }
+  return { ...attachment, artifactId, readbackStatus: "verified" };
+}
+
+async function hydrateSupportingDocuments(row = selectedRow()) {
+  if (!row || isDemoEstateImport(row)) return [];
+  try {
+    const response = await fetch(`/api/documents/attachments?estateId=${encodeURIComponent(assetDiscoveryKey(row))}`, { cache: "no-store" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result?.ok || !Array.isArray(result.attachments)) return [];
+    const latestByDocument = new Map();
+    result.attachments.forEach((attachment) => {
+      if (!attachment?.documentId || latestByDocument.has(attachment.documentId)) return;
+      latestByDocument.set(attachment.documentId, attachment);
+    });
+    latestByDocument.forEach((attachment, docId) => {
+      state.documentFiles[documentStorageKey(row, docId)] = {
+        id: docId,
+        name: attachment.fileName,
+        size: attachment.size,
+        type: attachment.contentType,
+        source: "supporting_document",
+        artifactId: attachment.id,
+        artifactUrl: attachment.artifactUrl,
+        contentHash: attachment.contentHash,
+        readbackStatus: attachment.readbackStatus,
+        version: 1,
+        linkedAt: Date.parse(attachment.createdAt) || Date.now(),
+        linkedBy: attachment.uploadedBy || "team"
+      };
+    });
+    persistDocumentFiles();
+    return [...latestByDocument.values()];
+  } catch {
+    return [];
+  }
+}
+
+async function saveDocumentFile(docId, file = null, source = "file") {
   const row = selectedRow();
   const existing = documentFileRecord(docId, row);
   const doc = dossierDocuments(row, dossierForRow(row)).find((item) => item.id === docId) ?? selectedDossierDocument(row);
+  if (source === "verified-packet") {
+    const linked = linkGeneratedDocPrepPackets(row, state.activeDocPrepFlow);
+    if (!linked && !documentFileRecord(docId, row)) {
+      document.getElementById("topStatus").textContent = "Generate and verify the packet before linking it.";
+      return;
+    }
+    addShellEvent("Verified packet linked", `${docPrepFlow().title} is linked to ${row?.leadName || row?.title || "the current lead"} with artifact readback.`, "ready", false);
+    renderCurrentLoopView();
+    renderRail();
+    closeDocumentActionModal();
+    return;
+  }
+  if (!file) {
+    document.getElementById("topStatus").textContent = "Choose a supporting document before attaching it.";
+    return;
+  }
+  if (file.size > 3_000_000) {
+    document.getElementById("topStatus").textContent = "Supporting documents must be 3 MB or smaller.";
+    return;
+  }
+  document.getElementById("topStatus").textContent = `Storing and verifying ${file.name}...`;
+  let attachment;
+  try {
+    const result = await postJson("/api/documents/attachments", {
+      estateId: assetDiscoveryKey(row),
+      documentId: docId,
+      fileName: file.name,
+      contentType: fileContentType(file),
+      dataBase64: await fileToBase64(file)
+    });
+    attachment = await verifyStoredAttachment(result?.attachment);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The supporting document could not be stored.";
+    document.getElementById("topStatus").textContent = `Attachment blocked: ${message}`;
+    addShellEvent("Supporting document blocked", message, "blocked", true);
+    return;
+  }
   const record = {
     id: docId,
-    name: file?.name || existing?.name || `${doc?.title || "Dossier document"} - generated packet`,
-    size: file?.size || existing?.size || 0,
-    type: file?.type || existing?.type || doc?.type || "generated",
-    source,
+    name: attachment.fileName,
+    size: attachment.size,
+    type: attachment.contentType,
+    source: "supporting_document",
+    artifactId: attachment.artifactId,
+    artifactUrl: attachment.artifactUrl,
+    contentHash: attachment.contentHash,
+    readbackStatus: "verified",
     version: existing ? Number(existing.version || 1) + 1 : 1,
     linkedAt: Date.now(),
     linkedBy: state.session?.user?.email || "team"
@@ -16649,7 +16737,8 @@ function saveDocumentFile(docId, file = null, source = "file") {
   state.documentFiles[documentStorageKey(row, docId)] = record;
   setDocumentAutomationState(docId, "complete", row);
   persistDocumentFiles();
-  addShellEvent("Document linked", `${doc?.title || "Dossier document"} is linked to ${row?.leadName || row?.title || "the current lead"}.`, "ready", false);
+  document.getElementById("topStatus").textContent = `${doc?.title || "Supporting document"} passed backend storage and artifact readback.`;
+  addShellEvent("Supporting document attached", `${doc?.title || "Dossier document"} passed backend storage and artifact readback for ${row?.leadName || row?.title || "the current lead"}.`, "ready", false);
   renderCurrentLoopView();
   renderRail();
   closeDocumentActionModal();
@@ -16697,14 +16786,26 @@ function startDocumentAutomation(docId, action = "add") {
   setDocumentAutomationState(doc.id, "processing", row);
   renderCurrentLoopView();
   renderRail();
-  const key = documentAutomationKey(doc.id, row);
-  const timer = window.setTimeout(() => {
-    documentAutomationTimers.delete(key);
-    if (documentAutomationState(doc.id, row) !== "processing") return;
-    saveDocumentFile(doc.id, null, "generated");
-    addShellEvent("Automated document step complete", `${doc.title} was linked from the generated packet for the selected estate.`, "ready", false);
-  }, 760);
-  documentAutomationTimers.set(key, timer);
+  Promise.resolve(packetArtifactForRow(row)?.verification?.verified
+    ? packetArtifactForRow(row)
+    : generatePacketPreview(row, null, { flowId: state.activeDocPrepFlow, render: false }))
+    .then((packet) => {
+      if (documentAutomationState(doc.id, row) !== "processing") return;
+      if (!packet?.verification?.verified) throw new Error("The packet did not pass artifact and storage readback verification.");
+      linkGeneratedDocPrepPackets(row, state.activeDocPrepFlow);
+      setDocumentAutomationState(doc.id, "complete", row);
+      addShellEvent("Verified packet linked", `${doc.title} is backed by the verified packet artifact for the selected estate.`, "ready", false);
+      renderCurrentLoopView();
+      renderRail();
+    })
+    .catch((error) => {
+      setDocumentAutomationState(doc.id, "", row);
+      const message = error instanceof Error ? error.message : "The packet could not be verified.";
+      document.getElementById("topStatus").textContent = `Document step blocked: ${message}`;
+      addShellEvent("Document step blocked", message, "blocked", true);
+      renderCurrentLoopView();
+      renderRail();
+    });
 }
 
 function wireDocumentActionModal(mount) {
@@ -16713,11 +16814,15 @@ function wireDocumentActionModal(mount) {
     if (event.target === event.currentTarget) closeDocumentActionModal();
   });
   mount.querySelector("[data-link-generated-document]")?.addEventListener("click", (event) => {
-    saveDocumentFile(event.currentTarget.dataset.linkGeneratedDocument, null, "generated");
+    saveDocumentFile(event.currentTarget.dataset.linkGeneratedDocument, null, "verified-packet");
   });
-  mount.querySelector("[data-save-document-file]")?.addEventListener("click", (event) => {
+  mount.querySelector("[data-save-document-file]")?.addEventListener("click", async (event) => {
     const file = mount.querySelector("#documentFileInput")?.files?.[0] ?? null;
-    saveDocumentFile(event.currentTarget.dataset.saveDocumentFile, file, file ? "file" : "generated");
+    const button = event.currentTarget;
+    const docId = button.dataset.saveDocumentFile;
+    button.disabled = true;
+    await saveDocumentFile(docId, file, "file");
+    if (button.isConnected) button.disabled = false;
   });
 }
 
@@ -16752,7 +16857,7 @@ function renderCrmImportModal() {
           <div>
             <p class="eyebrow">${isBatch ? "CRM batch import" : "CRM estate import"}</p>
             <h2 id="crmImportTitle" class="rail-title">${isBatch ? "Batch import estates" : "Import estate into DocPrep"}</h2>
-            <p class="copy">${isBatch ? "Paste CRM rows from Podio, Google Sheets, or CSV. Imported estates stay local until approved CRM readback is available." : "Create a local HRight estate from Podio, Google Sheets, or a pasted CRM row. This does not create a live CRM write."}</p>
+            <p class="copy">${isBatch ? "Paste CRM rows from Podio, Google Sheets, or CSV. Imported estates are saved for the HeirRight team without writing back to the source CRM." : "Add an estate to the shared HeirRight workspace from Podio, Google Sheets, or a pasted CRM row. This does not create a live CRM write."}</p>
           </div>
           <button class="btn icon-only" type="button" data-close-crm-import aria-label="Close CRM import">${nucleoIcon("check-circle", 16)}</button>
         </div>
@@ -16903,7 +17008,7 @@ function submitBatchCrmImport(formData) {
   applyFilters();
   updateFooterLeadContext(selectedRow());
   document.getElementById("topStatus").textContent = `${imports.length} estates imported from ${crmProviderLabel(imports[0]?.provider)}. Begin Estate Discovery before Closing Prep.`;
-  addShellEvent("CRM batch imported", `${imports.length} estates are now available in Estates and DocPrep. No live CRM write was attempted.`, "ready", false);
+  addShellEvent("CRM batch imported", `${imports.length} estates are available in Estates and DocPrep while shared workspace readback completes. No live CRM write was attempted.`, "review", false);
 }
 
 function submitCrmImport(formData) {
@@ -16941,7 +17046,7 @@ function submitCrmImport(formData) {
   applyFilters();
   updateFooterLeadContext(selectedRow());
   document.getElementById("topStatus").textContent = `${imported.estateName} imported from ${crmProviderLabel(imported.provider)}. Begin Estate Discovery or switch to Closing Prep in Document Prep.`;
-  addShellEvent("Estate imported from CRM", `${imported.estateName} is now available in Estates and DocPrep. No live CRM write was attempted.`, "ready", false);
+  addShellEvent("Estate imported from CRM", `${imported.estateName} is available in Estates and DocPrep while shared workspace readback completes. No live CRM write was attempted.`, "review", false);
 }
 
 function closeHeadlessMenu(wrap, immediate = false) {
@@ -17456,7 +17561,7 @@ function idiImportPanelHtml(row = selectedRow()) {
         <ul class="mini-list">
           <li><strong>Status</strong><span>${escapeHtml(stored.mode === "live_idi_core" ? "Live IDI Core run completed" : stored.duplicateGuard === "admin_override_recorded" ? "Imported with admin override" : "Imported once")}</span></li>
           <li><strong>Paid run</strong><span>${escapeHtml(stored.paidRun ? "Yes - controlled proof" : "No - report import only")}</span></li>
-          <li><strong>Lock key</strong><span>${escapeHtml(stored.lockKey ?? assetDiscoveryKey(row))}</span></li>
+          <li><strong>Duplicate protection</strong><span>${escapeHtml(stored.lockKey ? "On for this estate" : "Waiting for first approved search")}</span></li>
           <li><strong>Contacts found</strong><span>${escapeHtml(stored.candidates?.length ?? 0)} candidates, ${escapeHtml(acceptedContactCandidates(row).length)} accepted</span></li>
         </ul>
       ` : ""}
@@ -17708,7 +17813,7 @@ function idiCoreCredentialStatus(connection = connectionByName("IDI Core")) {
   return {
     tone: "blocked",
     label: "Key not ready",
-    copy: "Leave blank for the team default. A vendor endpoint is still required before live API runs can execute."
+    copy: "Leave blank for the team default. The vendor connection is still required before live searches can run."
   };
 }
 
@@ -21042,7 +21147,7 @@ function renderAccessSettingsPanel() {
           </div>
           <ul class="settings-control-list">
             <li data-state="${idi?.api?.sharedDefaultConfigured ? "ready" : "review"}">Shared team key: ${idi?.api?.sharedDefaultConfigured ? "available" : "not confirmed here"}.</li>
-            <li data-state="${idi?.api?.endpointConfigured ? "ready" : "blocked"}">IDI Core endpoint: ${idi?.api?.endpointConfigured ? "configured" : "needed before API live runs"}.</li>
+            <li data-state="${idi?.api?.endpointConfigured ? "ready" : "blocked"}">IDI Core connection: ${idi?.api?.endpointConfigured ? "configured" : "needed before live searches"}.</li>
             <li data-state="review">Paid runs remain controlled and duplicate-guarded before Discovery can use the result.</li>
           </ul>
         </article>
@@ -23230,7 +23335,45 @@ function packetArtifactForRow(row = selectedRow(), flowId = state.activeDocPrepF
   return state.packetArtifacts?.[`${flowId}:${row.id}`] || null;
 }
 
-async function generatePacketPreview(row = selectedRow(), source = null) {
+async function verifyPacketArtifact(result, estateId = "", expectedEstateIds = []) {
+  const artifactId = result?.artifact?.artifactId;
+  const artifactUrl = result?.artifactUrl;
+  const contentHash = result?.artifact?.contentHash;
+  const requiredEstateIds = Array.from(new Set([estateId, ...expectedEstateIds].filter(Boolean)));
+  if (!result?.ok || result?.contentType !== "application/pdf" || !artifactId || !artifactUrl || !contentHash) {
+    throw new Error("Packet generation did not return a complete PDF artifact record.");
+  }
+  if (!artifactUrl.includes(encodeURIComponent(artifactId))) {
+    throw new Error("Packet artifact identity did not match its download route.");
+  }
+  const persistence = Array.isArray(result.packetPersistence) ? result.packetPersistence : [];
+  if (requiredEstateIds.some((id) => !persistence.some((item) => item?.estateId === id && item?.readbackStatus === "verified"))) {
+    throw new Error("The packet did not pass shared Discovery File readback for every selected estate.");
+  }
+  const response = await fetch(artifactUrl, { cache: "no-store" });
+  const bytes = await response.arrayBuffer();
+  const returnedId = response.headers.get("x-heirright-artifact-id");
+  const returnedHash = response.headers.get("x-heirright-content-hash");
+  if (!response.ok || response.headers.get("content-type") !== "application/pdf") {
+    throw new Error("The stored packet could not be opened as a PDF.");
+  }
+  if (returnedId !== artifactId || returnedHash !== contentHash || bytes.byteLength < 10_000) {
+    throw new Error("The stored packet did not pass artifact identity, hash, and content readback.");
+  }
+  return {
+    ...result,
+    verification: {
+      verified: true,
+      readbackStatus: "verified",
+      artifactId,
+      contentHash,
+      byteLength: bytes.byteLength,
+      verifiedAt: new Date().toISOString()
+    }
+  };
+}
+
+async function generatePacketPreview(row = selectedRow(), source = null, options = {}) {
   const dossier = dossierForRow(row);
   if (!row || !dossier) return;
   if (isDemoEstateImport(row)) {
@@ -23240,24 +23383,29 @@ async function generatePacketPreview(row = selectedRow(), source = null) {
   source?.setAttribute?.("aria-busy", "true");
   if (source) source.disabled = true;
   try {
-    const result = await postJson("/api/exports", {
+    const flowId = options.flowId || state.activeDocPrepFlow;
+    const estateId = assetDiscoveryKey(row);
+    const generated = await postJson("/api/exports", {
       routes: [],
       dryRun: true,
-      flow: state.activeDocPrepFlow,
-      estateId: row.id,
+      flow: flowId,
+      estateId,
       dossier,
       operatorIntent: "generate_packet"
     });
-    if (!result?.ok || !result?.artifactUrl) throw new Error((result?.blockers || []).join(" ") || "Packet generation is blocked.");
-    state.packetArtifacts[`${state.activeDocPrepFlow}:${row.id}`] = result;
+    if (!generated?.ok || !generated?.artifactUrl) throw new Error((generated?.blockers || []).join(" ") || "Packet generation is blocked.");
+    const result = await verifyPacketArtifact(generated, estateId);
+    state.packetArtifacts[`${flowId}:${row.id}`] = result;
     state.exportResult = result;
     addShellEvent("Packet preview ready", `${docPrepEstateLabel(row)} was rendered as one source-backed PDF.`, "ready", false);
-    renderRail();
+    if (options.render !== false) renderRail();
+    return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     state.exportResult = { ok: false, blockers: [message], routes: [] };
     document.getElementById("topStatus").textContent = `Packet preview blocked: ${message}`;
-    renderRail();
+    if (options.render !== false) renderRail();
+    return null;
   } finally {
     source?.removeAttribute?.("aria-busy");
     if (source) source.disabled = false;
@@ -23477,7 +23625,6 @@ function renderLoadedState(data, dossier) {
   state.data = data;
   state.dossier = dossier;
   state.rows = buildRows(data, dossier);
-  ensureCompletedDocPrepProofFile();
   pruneBatchSets();
   seedDemoEstatePreviewState();
   state.selectedId = state.selectedId ?? state.rows[0]?.id ?? null;
@@ -24105,14 +24252,17 @@ async function chooseExportRoute(route, source = null, rowsOverride = null) {
         dryRun: meta.dryRun === false ? false : true,
         controlledTest: isControlledTest,
         batch: isBatch,
-        estateIds: batchRows.map((row) => row.id),
+        estateIds: batchRows.map((row) => assetDiscoveryKey(row)),
         dossiers: packetDossiers,
         flow: state.activeDocPrepFlow,
         expectedArtifact: "single_pdf",
         operatorIntent: "generate_packet",
       }),
     });
-    const result = await response.json();
+    let result = await response.json();
+    if (!isControlledTest && result?.ok && result?.artifactUrl) {
+      result = await verifyPacketArtifact(result, "", batchRows.map((row) => assetDiscoveryKey(row)));
+    }
     state.exportResult = result;
     if (result?.ok && result?.artifactUrl) {
       batchRows.forEach((row) => {

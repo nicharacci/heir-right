@@ -7,6 +7,8 @@ const adminAccess = require("../api/admin/access.js");
 const connectionStatus = require("../api/connections/status.js");
 const exportsHandler = require("../api/exports.js");
 const reportPdf = require("../api/reports/pdf.js");
+const documentAttachments = require("../api/documents/attachments.js");
+const workspaceState = require("../api/workspace/state.js");
 const sourceRun = require("../api/discovery/external-source-run.js");
 const discoveryFile = require("../api/discovery/file.js");
 const taxReceiptRun = require("../api/discovery/tax-collector/receipt-run.js");
@@ -14,6 +16,8 @@ const podioDiagnostics = require("../api/podio/diagnostics.js");
 const podioOAuthStart = require("../api/podio/oauth/start.js");
 const productionPodioDiagnostics = require("../../../api/podio/diagnostics.js");
 const productionDiscoveryFile = require("../../../api/discovery/file.js");
+const productionDocumentAttachments = require("../../../api/documents/attachments.js");
+const productionWorkspaceState = require("../../../api/workspace/state.js");
 const { createSessionToken } = require("../api/auth/_shared.js");
 
 function call(handler, { method = "GET", body, headers = {}, url = "/" } = {}) {
@@ -47,6 +51,8 @@ for (const [name, handler, request] of [
   ["connection status", connectionStatus, { method: "GET", url: "/api/connections/status" }],
   ["exports", exportsHandler, { method: "POST", body: {}, url: "/api/exports" }],
   ["report PDF", reportPdf, { method: "GET", url: "/api/reports/pdf" }],
+  ["supporting documents", documentAttachments, { method: "GET", url: "/api/documents/attachments?estateId=estate-test" }],
+  ["workspace state", workspaceState, { method: "GET", url: "/api/workspace/state?key=heirright%3Acrm-imported-estates" }],
   ["source run", sourceRun, { method: "POST", body: {}, url: "/api/discovery/external-source-run" }],
   ["Discovery File", discoveryFile, { method: "GET", url: "/api/discovery/file?estateId=estate-test" }],
   ["tax receipt", taxReceiptRun, { method: "POST", body: {}, url: "/api/discovery/tax-collector/receipt-run" }],
@@ -54,6 +60,8 @@ for (const [name, handler, request] of [
   ["Podio OAuth start", podioOAuthStart, { method: "GET", url: "/api/podio/oauth/start" }],
   ["production Podio diagnostics wrapper", productionPodioDiagnostics, { method: "GET", url: "/api/podio/diagnostics" }],
   ["production Discovery File wrapper", productionDiscoveryFile, { method: "GET", url: "/api/discovery/file?estateId=estate-test" }],
+  ["production supporting documents wrapper", productionDocumentAttachments, { method: "GET", url: "/api/documents/attachments?estateId=estate-test" }],
+  ["production workspace state wrapper", productionWorkspaceState, { method: "GET", url: "/api/workspace/state?key=heirright%3Acrm-imported-estates" }],
 ]) {
   const blocked = await call(handler, request);
   assert.equal(blocked.statusCode, 401, `${name} must reject anonymous requests before work begins`);
@@ -93,6 +101,8 @@ const protectedHandlers = [
   "api/discovery/file.js",
   "api/discovery/source-capture.js",
   "api/discovery/tax-collector/receipt-run.js",
+  "api/documents/attachments.js",
+  "api/workspace/state.js",
   "api/exports.js",
   "api/leads/fresh-batch.js",
   "api/outreach/activepieces.js",

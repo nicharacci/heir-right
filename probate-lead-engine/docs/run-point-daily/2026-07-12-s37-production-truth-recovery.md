@@ -153,6 +153,18 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Deleted all temporary token and environment files after proof. `surface.heirright.com` remains assigned in Vercel but has no public A or CNAME response, so TLS/browser proof on that hostname remains blocked by DNS ownership outside the repository.
 - Anti-negligence review: two locally green seams failed in production, function packaging and the root auth dispatcher. Neither was accepted as a provider issue; each was repaired at the deployed boundary and retested through the actual public function URL.
 
+### Milestone 11 - Verified packet linkage, supporting evidence, and shared team state
+
+- The final hostile UI review found two fake-completion paths: a timed document action could create a generated-file record without a PDF, and a selected Mac filename was treated as linked even though no file bytes left the browser. Removed the legacy S28 proof seed, fake Google export record, timer completion, and unverified document records.
+- Generated Discovery sections now become complete only after `/api/exports` returns an immutable artifact, the PDF is fetched back, its artifact ID and SHA-256 hash match response headers, its MIME type is PDF, its body is non-trivial, and every selected estate has verified shared Discovery File readback. Batch and single export use the same verifier.
+- Packet artifact references are written back into each estate's shared Discovery File. Reloading Doc Prep reopens and verifies the newest team packet instead of trusting one browser's prior state; expired packet references no longer count as linked documents.
+- Added protected supporting-document storage for PDF, JPG, PNG, WEBP, DOC, and DOCX files up to 3 MB. The Worker verifies file signatures, stores the actual bytes, verifies storage readback, returns metadata without file data, and serves the file only through an authenticated artifact route with ID/hash headers.
+- Added a browser proof that a document stays incomplete when Attach File is clicked without a file, then becomes linked only after the selected PDF passes backend artifact readback. The complete Chromium suite passed all three E2E tests with no console or page errors.
+- Replaced production-only local browser state with an authenticated Cloudflare Durable Object for the approved CRM, Doc Prep, review, Closing, and Outreach state keys. Writes are serialized, revisioned, read back before success, and hydrated without creating a write loop. CRM copy now says when shared workspace readback is running and only announces team availability after verification.
+- Documented all 154 runtime environment names referenced by the apps and packages, including provider aliases, test controls, Worker bindings, and migration-only compatibility variables. No values or credentials were added.
+- Fresh proof: Worker and artifact builds passed; the full artifact suite passed packet integrity, source workflow, auth inventory, attachment byte readback, Durable Object reload, 13-page single PDF, and 25-page batch PDF assertions; `pnpm test:e2e` passed 3/3.
+- Anti-negligence review: file names, animation completion, local storage, and HTTP success are no longer accepted as document or team-state proof. Each user-visible completion now depends on backend storage readback.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint

@@ -53,6 +53,8 @@ module.exports = async function handler(request, response) {
     if (disposition) response.setHeader("Content-Disposition", disposition);
     const contentHash = upstream.headers.get("x-heirright-content-hash");
     if (contentHash) response.setHeader("X-HeirRight-Content-Hash", contentHash);
+    const artifactIdHeader = upstream.headers.get("x-heirright-artifact-id");
+    if (artifactIdHeader) response.setHeader("X-HeirRight-Artifact-Id", artifactIdHeader);
     response.end(body);
   } catch (error) {
     sendJson(response, 502, {

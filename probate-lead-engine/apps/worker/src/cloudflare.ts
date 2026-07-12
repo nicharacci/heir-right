@@ -51,6 +51,10 @@ interface CloudflareEnv {
     get(key: string): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number; metadata?: unknown }): Promise<void>;
   };
+  WORKSPACE_STATE?: {
+    idFromName(name: string): unknown;
+    get(id: unknown): { fetch(request: Request): Promise<Response> };
+  };
   AUTH_REQUIRED?: string;
   AUTH_SESSION_SECRET?: string;
   AUTH_SESSION_COOKIE?: string;
@@ -162,6 +166,8 @@ function routeList(): string[] {
     "/api/outreach/sync",
     "/api/exports",
     "/api/reports/pdf",
+    "/api/documents/attachments",
+    "/api/workspace/state",
     "/api/podio/diagnostics",
     "/api/podio/oauth/start",
     "/api/podio/oauth/callback",
@@ -863,13 +869,242 @@ interface StoredPacketArtifact {
   model: PacketModel;
 }
 
+interface StoredSupportingDocument {
+  id: string;
+  estateId: string;
+  documentId: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+  contentHash: string;
+  createdAt: string;
+  uploadedBy: string;
+  dataBase64: string;
+}
+
 function packetArtifactKey(artifactId: string): string {
   return `packet:${artifactId}`;
+}
+
+function supportingDocumentKey(attachmentId: string): string {
+  return `supporting-document:${attachmentId}`;
+}
+
+async function supportingDocumentIndexKey(estateId: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(estateId));
+  const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `supporting-document-index:${hash}`;
 }
 
 async function sha256Hex(value: string): Promise<string> {
   const bytes = await sha256Bytes(value);
   return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha256ByteHex(value: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", byteArrayBuffer(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function supportingDocumentMetadata(record: StoredSupportingDocument): Omit<StoredSupportingDocument, "dataBase64"> & { artifactUrl: string; readbackStatus: "verified" } {
+  const { dataBase64: _dataBase64, ...metadata } = record;
+  return {
+    ...metadata,
+    artifactUrl: `/api/documents/attachments?attachmentId=${encodeURIComponent(record.id)}`,
+    readbackStatus: "verified",
+  };
+}
+
+function supportingDocumentSignatureMatches(contentType: string, bytes: Uint8Array): boolean {
+  const startsWith = (...signature: number[]) => signature.every((byte, index) => bytes[index] === byte);
+  if (contentType === "application/pdf") return startsWith(0x25, 0x50, 0x44, 0x46, 0x2d);
+  if (contentType === "image/jpeg") return startsWith(0xff, 0xd8, 0xff);
+  if (contentType === "image/png") return startsWith(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+  if (contentType === "image/webp") {
+    return startsWith(0x52, 0x49, 0x46, 0x46)
+      && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
+  }
+  if (contentType === "application/msword") return startsWith(0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1);
+  if (contentType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return startsWith(0x50, 0x4b, 0x03, 0x04);
+  return false;
+}
+
+async function supportingDocumentResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  if (!env.PACKET_ARTIFACTS) {
+    return json({ ok: false, error: "supporting_document_store_unavailable", message: "Supporting document storage is unavailable." }, { status: 503 });
+  }
+
+  if (request.method === "POST") {
+    const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+    const estateId = stringValue(body.estateId);
+    const documentId = stringValue(body.documentId);
+    const fileName = stringValue(body.fileName).replace(/[\r\n"\\/]/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
+    const contentType = stringValue(body.contentType).toLowerCase();
+    const dataBase64 = stringValue(body.dataBase64).replace(/^data:[^;]+;base64,/i, "");
+    const uploadedBy = stringValue(body.uploadedBy) || "approved HeirRight user";
+    const allowedTypes = new Set([
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]);
+    if (!estateId || !documentId || !fileName || !dataBase64) {
+      return json({ ok: false, error: "supporting_document_required", message: "Choose a supporting document before saving." }, { status: 400 });
+    }
+    if (!allowedTypes.has(contentType)) {
+      return json({ ok: false, error: "unsupported_supporting_document", message: "Use a PDF, JPG, PNG, WEBP, DOC, or DOCX supporting document." }, { status: 415 });
+    }
+    let bytes: Uint8Array;
+    try {
+      bytes = base64UrlToBytes(dataBase64);
+    } catch {
+      return json({ ok: false, error: "invalid_supporting_document", message: "The selected supporting document could not be read." }, { status: 400 });
+    }
+    if (!bytes.byteLength || bytes.byteLength > 3_000_000) {
+      return json({ ok: false, error: "supporting_document_too_large", message: "Supporting documents must be 3 MB or smaller." }, { status: 413 });
+    }
+    if (!supportingDocumentSignatureMatches(contentType, bytes)) {
+      return json({ ok: false, error: "supporting_document_type_mismatch", message: "The file contents do not match the selected document type." }, { status: 415 });
+    }
+    const contentHash = await sha256ByteHex(bytes);
+    const id = `supporting-${Date.now()}-${contentHash.slice(0, 16)}`;
+    const record: StoredSupportingDocument = {
+      id,
+      estateId,
+      documentId,
+      fileName,
+      contentType,
+      size: bytes.byteLength,
+      contentHash,
+      createdAt: nowIso(),
+      uploadedBy,
+      dataBase64,
+    };
+    await env.PACKET_ARTIFACTS.put(supportingDocumentKey(id), JSON.stringify(record), {
+      metadata: { kind: "supporting_document", estateId, documentId, contentHash },
+    });
+    const readback = await env.PACKET_ARTIFACTS.get(supportingDocumentKey(id));
+    if (!readback) {
+      return json({ ok: false, error: "supporting_document_readback_failed", message: "The supporting document did not pass storage readback. Try again." }, { status: 503 });
+    }
+    const indexKey = await supportingDocumentIndexKey(estateId);
+    const existingIndex = await env.PACKET_ARTIFACTS.get(indexKey);
+    const attachmentIds = Array.isArray(existingIndex ? JSON.parse(existingIndex) : [])
+      ? JSON.parse(existingIndex || "[]").map(String)
+      : [];
+    await env.PACKET_ARTIFACTS.put(indexKey, JSON.stringify([id, ...attachmentIds.filter((item: string) => item !== id)].slice(0, 200)), {
+      metadata: { kind: "supporting_document_index", estateId },
+    });
+    return json({ ok: true, attachment: supportingDocumentMetadata(record) }, { headers: { "cache-control": "no-store" } });
+  }
+
+  if (request.method === "GET") {
+    const attachmentId = stringValue(url.searchParams.get("attachmentId"));
+    if (attachmentId) {
+      if (!/^supporting-[0-9]+-[a-f0-9]{16}$/.test(attachmentId)) {
+        return json({ ok: false, error: "invalid_supporting_document_id", message: "Choose a valid supporting document." }, { status: 400 });
+      }
+      const stored = await env.PACKET_ARTIFACTS.get(supportingDocumentKey(attachmentId));
+      if (!stored) return json({ ok: false, error: "supporting_document_not_found", message: "This supporting document is unavailable." }, { status: 404 });
+      const record = JSON.parse(stored) as StoredSupportingDocument;
+      const bytes = base64UrlToBytes(record.dataBase64);
+      if (await sha256ByteHex(bytes) !== record.contentHash) {
+        return json({ ok: false, error: "supporting_document_integrity_failed", message: "Supporting document integrity validation failed." }, { status: 409 });
+      }
+      return new Response(byteArrayBuffer(bytes), {
+        headers: {
+          "content-type": record.contentType,
+          "content-disposition": `inline; filename="${record.fileName.replace(/"/g, "")}"`,
+          "cache-control": "private, no-store",
+          "x-heirright-artifact-id": record.id,
+          "x-heirright-content-hash": record.contentHash,
+        },
+      });
+    }
+    const estateId = stringValue(url.searchParams.get("estateId"));
+    if (!estateId) return json({ ok: false, error: "estate_id_required", message: "Choose an estate before loading supporting documents." }, { status: 400 });
+    const storedIndex = await env.PACKET_ARTIFACTS.get(await supportingDocumentIndexKey(estateId));
+    const attachmentIds = Array.isArray(storedIndex ? JSON.parse(storedIndex) : []) ? JSON.parse(storedIndex || "[]").map(String) : [];
+    const records = await Promise.all(attachmentIds.map((id: string) => env.PACKET_ARTIFACTS?.get(supportingDocumentKey(id))));
+    const attachments = records
+      .filter((record): record is string => Boolean(record))
+      .map((record) => supportingDocumentMetadata(JSON.parse(record) as StoredSupportingDocument));
+    return json({ ok: true, estateId, attachments }, { headers: { "cache-control": "no-store" } });
+  }
+
+  return methodNotAllowed("GET, POST");
+}
+
+const sharedWorkspaceStateKeys = new Set([
+  "heirright:crm-imported-estates",
+  "heirright:docprep-estate-state",
+  "heirright:deal-status-state",
+  "heirright:deal-status-labels",
+  "heirright:discovery-workflow-state",
+  "heirright:source-capture-state",
+  "heirright:idi-asset-imports",
+  "heirright:contact-review-state",
+  "heirright:document-files-state",
+  "heirright:closing-field-values",
+  "heirright:closing-export-state",
+  "heirright:outreach-workspace",
+]);
+
+type WorkspaceStateStorage = {
+  get<T = unknown>(key: string): Promise<T | undefined>;
+  put(key: string, value: unknown): Promise<void>;
+};
+
+export class WorkspaceState {
+  private storage: WorkspaceStateStorage;
+
+  constructor(state: { storage: WorkspaceStateStorage }) {
+    this.storage = state.storage;
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const body = request.method === "POST"
+      ? await request.json().catch(() => ({})) as Record<string, unknown>
+      : {};
+    const key = stringValue(url.searchParams.get("key") || body.key);
+    if (!sharedWorkspaceStateKeys.has(key)) {
+      return json({ ok: false, error: "workspace_state_key_not_allowed", message: "This workspace setting cannot be shared." }, { status: 400 });
+    }
+    if (request.method === "GET") {
+      const record = await this.storage.get<Record<string, unknown>>(`state:${key}`);
+      return json({ ok: true, key, value: record?.value ?? null, revision: record?.revision ?? 0, updatedAt: record?.updatedAt ?? null }, { headers: { "cache-control": "no-store" } });
+    }
+    if (request.method === "POST") {
+      const value = typeof body.value === "string" ? body.value : "";
+      if (new TextEncoder().encode(value).byteLength > 750_000) {
+        return json({ ok: false, error: "workspace_state_too_large", message: "This workspace update is too large to save." }, { status: 413 });
+      }
+      try { JSON.parse(value); }
+      catch { return json({ ok: false, error: "workspace_state_invalid", message: "This workspace update is not valid structured data." }, { status: 400 }); }
+      const previous = await this.storage.get<Record<string, unknown>>(`state:${key}`);
+      const revision = Number(previous?.revision || 0) + 1;
+      const updatedAt = nowIso();
+      await this.storage.put(`state:${key}`, { value, revision, updatedAt });
+      const readback = await this.storage.get<Record<string, unknown>>(`state:${key}`);
+      if (readback?.revision !== revision || readback?.value !== value) {
+        return json({ ok: false, error: "workspace_state_readback_failed", message: "The workspace update did not pass storage readback." }, { status: 503 });
+      }
+      return json({ ok: true, key, revision, updatedAt, readbackStatus: "verified" }, { headers: { "cache-control": "no-store" } });
+    }
+    return methodNotAllowed("GET, POST");
+  }
+}
+
+async function workspaceStateResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  if (!env.WORKSPACE_STATE) {
+    return json({ ok: false, error: "workspace_state_unavailable", message: "Shared workspace storage is unavailable." }, { status: 503 });
+  }
+  const id = env.WORKSPACE_STATE.idFromName("heirright-team-workspace");
+  const stub = env.WORKSPACE_STATE.get(id);
+  return stub.fetch(new Request(`https://workspace-state.internal${url.pathname}${url.search}`, request));
 }
 
 async function storePacketArtifact(model: PacketModel, env: CloudflareEnv): Promise<StoredPacketArtifact> {
@@ -885,6 +1120,48 @@ async function storePacketArtifact(model: PacketModel, env: CloudflareEnv): Prom
     metadata: { flow: model.flow, estateIds: model.estateIds, contentHash },
   });
   return artifact;
+}
+
+async function persistPacketArtifactReferences(
+  env: CloudflareEnv,
+  estateIds: string[],
+  artifact: StoredPacketArtifact,
+): Promise<Array<{ estateId: string; stored: boolean; readbackStatus: string }>> {
+  if (!env.PACKET_ARTIFACTS) return estateIds.map((estateId) => ({ estateId, stored: false, readbackStatus: "storage_unavailable" }));
+  return Promise.all(estateIds.map(async (estateId) => {
+    const key = await discoveryFileKey(estateId);
+    const stored = await env.PACKET_ARTIFACTS?.get(key);
+    if (!stored) return { estateId, stored: false, readbackStatus: "discovery_file_not_found" };
+    const record = JSON.parse(stored) as Record<string, unknown>;
+    const references = Array.isArray(record.packetArtifacts) ? record.packetArtifacts as Array<Record<string, unknown>> : [];
+    const reference = {
+      artifactId: artifact.id,
+      artifactUrl: `/api/reports/pdf?artifactId=${encodeURIComponent(artifact.id)}`,
+      flow: artifact.model.flow,
+      contentType: "application/pdf",
+      contentHash: artifact.contentHash,
+      sections: artifact.model.sections,
+      createdAt: artifact.createdAt,
+      expiresAt: artifact.expiresAt,
+      readbackStatus: "verified",
+    };
+    const updated = {
+      ...record,
+      packetArtifacts: [reference, ...references.filter((item) => item.artifactId !== artifact.id)].slice(0, 25),
+    };
+    await env.PACKET_ARTIFACTS?.put(key, JSON.stringify(updated), {
+      metadata: { kind: "discovery_file", estateId, revision: stringValue(record.revision) },
+    });
+    const readback = await env.PACKET_ARTIFACTS?.get(key);
+    const verified = readback
+      ? (JSON.parse(readback) as Record<string, unknown>).packetArtifacts as Array<Record<string, unknown>> | undefined
+      : undefined;
+    return {
+      estateId,
+      stored: true,
+      readbackStatus: verified?.some((item) => item.artifactId === artifact.id) ? "verified" : "failed",
+    };
+  }));
 }
 
 async function packetArtifactResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
@@ -992,26 +1269,33 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
     const message = error instanceof Error ? error.message : "packet_artifact_store_not_configured";
     return json({ ok: false, status: "blocked", flow, error: message, blockers: ["Durable packet storage is not configured."] }, { status: 503 });
   }
+  const requestedEstateIds = Array.from(new Set([
+    ...(Array.isArray(body?.estateIds) ? body.estateIds.map(stringValue) : []),
+    stringValue(body?.estateId),
+  ].filter(Boolean)));
+  const responseEstateIds = requestedEstateIds.length ? requestedEstateIds : model.estateIds;
+  const packetPersistence = await persistPacketArtifactReferences(env, responseEstateIds, artifact);
   return json({
     ok: true,
     status: "packet_ready",
     flow,
-    estateId: model.estateIds.length === 1 ? model.estateIds[0] : undefined,
-    estateIds: model.estateIds,
+    estateId: responseEstateIds.length === 1 ? responseEstateIds[0] : undefined,
+    estateIds: responseEstateIds,
     sections: model.sections,
     contentType: "application/pdf",
     artifactUrl: `/api/reports/pdf?artifactId=${encodeURIComponent(artifact.id)}`,
     blockers: [],
     routes: result.routes,
     readback: result.routes,
+    packetPersistence,
     delivery: result,
     artifact: {
       kind: "single_pdf",
       contentType: "application/pdf",
       flow,
       artifactId: artifact.id,
-      estateId: model.estateIds.length === 1 ? model.estateIds[0] : undefined,
-      estateIds: model.estateIds,
+      estateId: responseEstateIds.length === 1 ? responseEstateIds[0] : undefined,
+      estateIds: responseEstateIds,
       url: `/api/reports/pdf?artifactId=${encodeURIComponent(artifact.id)}`,
       sections: model.sections,
       contentHash: artifact.contentHash,
@@ -2671,6 +2955,18 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return packetArtifactResponse(request, url, env);
+    }
+
+    if (url.pathname === "/api/documents/attachments") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return supportingDocumentResponse(request, url, env);
+    }
+
+    if (url.pathname === "/api/workspace/state") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return workspaceStateResponse(request, url, env);
     }
 
     if (url.pathname === "/api/podio/diagnostics") {

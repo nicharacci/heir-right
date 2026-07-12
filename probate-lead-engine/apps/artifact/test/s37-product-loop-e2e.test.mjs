@@ -18,6 +18,13 @@ for (const html of [source, dist]) {
   assert.match(html, /Download PDF/);
   assert.match(html, /Download latest PDF/);
   assert.doesNotMatch(html, /demoRows\.slice\(0, 2\)\.forEach\(\(row\) => state\.queueIds\.add\(row\.id\)\)/);
+  assert.match(html, /async function verifyPacketArtifact/);
+  assert.match(html, /The stored packet did not pass artifact identity, hash, and content readback/);
+  assert.match(html, /\/api\/documents\/attachments/);
+  assert.match(html, /\/api\/workspace\/state/);
+  assert.match(html, /storageSetItem\(key, payload\.value, \{ sync: false \}\)/);
+  assert.doesNotMatch(html, /saveDocumentFile\(doc\.id, null, "generated"\)/);
+  assert.doesNotMatch(html, /source:\s*"s28-product-loop-proof"|source:\s*"s29-generated-docprep-packet"/);
 }
 
 const queueExportHandler = source.slice(
@@ -64,5 +71,9 @@ console.log(JSON.stringify({
     "single_and_batch_download_actions",
     "single_pdf_api_contract",
     "closing_requires_immutable_legal_templates",
+    "generated_documents_require_verified_artifact_readback",
+    "supporting_documents_use_backend_storage",
+    "legacy_fake_document_seeds_removed",
+    "production_workspace_state_is_team_shared",
   ],
 }, null, 2));

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { PDFDocument } from "pdf-lib";
 import workerModule from "../../worker/dist/cloudflare.js";
 
@@ -36,7 +37,7 @@ reviewedDossier.completedLeadReport.contactPlaceholders = [{
   reviewFlags: [],
 }];
 
-async function generate(dossiers, flow = "discovery") {
+async function generate(dossiers, flow = "discovery", estateId = "") {
   const response = await worker.fetch(new Request("https://worker.test/api/exports", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -45,6 +46,7 @@ async function generate(dossiers, flow = "discovery") {
       dryRun: true,
       flow,
       dossiers,
+      ...(estateId ? { estateId } : {}),
       operatorIntent: "generate_packet",
     }),
   }), env);
@@ -55,15 +57,23 @@ const genericContactAttempt = await generate([sourceRun.dossier]);
 assert.equal(genericContactAttempt.response.status, 422);
 assert.match(genericContactAttempt.body.blockers.join(" "), /generic family\/contact/i);
 
-const single = await generate([reviewedDossier]);
+const persistedEstateId = "estate:annie-hawkins:reviewed";
+const discoveryFileKey = `discovery-file:${createHash("sha256").update(persistedEstateId).digest("hex")}`;
+await kv.put(discoveryFileKey, JSON.stringify({ estateId: persistedEstateId, revision: "reviewed-source-revision", packetArtifacts: [] }));
+const single = await generate([reviewedDossier], "discovery", persistedEstateId);
 assert.equal(single.response.status, 200);
 assert.equal(single.body.ok, true);
 assert.equal(single.body.contentType, "application/pdf");
+assert.equal(single.body.estateId, persistedEstateId);
+assert.equal(single.body.packetPersistence[0].readbackStatus, "verified");
 assert.match(single.body.artifactUrl, /^\/api\/reports\/pdf\?artifactId=packet-/);
 assert.equal(single.body.estateIds.length, 1);
 assert.ok(single.body.sections.length >= 10);
 
 const artifactId = single.body.artifact.artifactId;
+const persistedDiscoveryFile = JSON.parse(await kv.get(discoveryFileKey));
+assert.equal(persistedDiscoveryFile.packetArtifacts[0].artifactId, artifactId);
+assert.equal(persistedDiscoveryFile.packetArtifacts[0].readbackStatus, "verified");
 const stored = JSON.parse(await kv.get(`packet:${artifactId}`));
 const storedText = JSON.stringify(stored.model);
 for (const heading of [
@@ -138,6 +148,7 @@ console.log(JSON.stringify({
     "query_string_cover_sheet_removed",
     "closing_blocks_without_immutable_templates",
     "artifact_integrity_hash",
+    "shared_discovery_file_packet_reference",
   ],
   singlePages: singlePdf.getPageCount(),
   batchPages: batchPdf.getPageCount(),
