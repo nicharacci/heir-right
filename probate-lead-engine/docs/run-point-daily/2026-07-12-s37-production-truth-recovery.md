@@ -99,6 +99,9 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Moved Podio diagnostics, OAuth start, and OAuth callback behind the shared signed-session/internal-bearer guard in both the production server and direct handlers. Added the exact Vercel wrapper to the route test, rather than relying on a neighboring handler with different dispatch order.
 - Fresh focused proof: the route-auth test passed anonymous rejection, internal bearer access, approved signed-session access, auth-first markup, and the expanded protected-handler inventory. The artifact rebuilt successfully afterward.
 - Anti-negligence review: this miss existed despite an earlier green route-inventory test because that test did not invoke the production wrapper. Future security proof now exercises the deployed dispatch seam itself.
+- Redeployed as `heirright-landing-demo-gsszav9og-solvys.vercel.app`, repointed the stale `heirright-leads.vercel.app` alias, and confirmed Podio diagnostics/start/callback all return `401` anonymously on both live entry points.
+- The first complete uncached suite exposed an older S35 assertion coupled to Podio's superseded HTML login sentence. Updated it to assert the shared `auth_required` security contract, then reran the complete suite with `set -e`.
+- Final clean pass at this milestone: three uncached builds passed, all five test tasks passed, Worker validation produced 61 facts, Discovery packet assertions opened 13-page single and 25-page batch PDFs, lint completed, `pnpm audit --prod` found no known vulnerabilities, and the token-pattern scan returned no findings.
 
 ## Open Gates
 

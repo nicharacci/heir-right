@@ -133,7 +133,7 @@ const unauthenticatedPodioStart = await new Promise((resolve) => {
   });
 });
 assert.equal(unauthenticatedPodioStart.statusCode, 401, "Podio OAuth start must require a signed-in app user.");
-assert.match(unauthenticatedPodioStart.text, /Sign in before connecting Podio/);
+assert.equal(JSON.parse(unauthenticatedPodioStart.text).error, "auth_required", "Podio OAuth start must use the shared API auth contract.");
 
 const deniedPage = deniedAccessPage({
   headers: {
