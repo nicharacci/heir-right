@@ -1,3 +1,5 @@
+const { requireApiAuth } = require("../_shared");
+
 function pdfEscape(value) {
   return String(value || "")
     .replace(/\\/g, "\\\\")
@@ -78,6 +80,7 @@ function buildPdf(lines) {
 }
 
 module.exports = function handler(request, response) {
+  if (requireApiAuth(request, response)) return;
   try {
     const host = request.headers.host || "localhost";
     const query = new URL(request.url || "/api/reports/pdf", `https://${host}`).searchParams;

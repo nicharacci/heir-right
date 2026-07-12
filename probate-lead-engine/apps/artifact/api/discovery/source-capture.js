@@ -1,4 +1,4 @@
-const { discoverTaxCollectorReceipt, extractTaxCollectorDetails, methodGuard, proxyWorkerJson, readJsonBody, receiptId, sendJson, sendProxied } = require("../_shared");
+const { discoverTaxCollectorReceipt, extractTaxCollectorDetails, methodGuard, proxyWorkerJson, readJsonBody, receiptId, requireApiAuth, sendJson, sendProxied } = require("../_shared");
 
 function localSourceFactsFromCapture(body) {
   const facts = [];
@@ -174,6 +174,7 @@ function localSourceFactsFromCapture(body) {
 }
 
 async function handler(request, response) {
+  if (requireApiAuth(request, response)) return;
   if (methodGuard(request, response)) return;
 
   try {

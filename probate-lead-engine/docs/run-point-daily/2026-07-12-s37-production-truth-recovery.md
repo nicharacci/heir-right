@@ -28,9 +28,17 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Confirmed the working tree contained only the new S37 brief before execution began.
 - Self-review: the work must repair the shared renderer and shared route boundary first; patching individual buttons or handlers would leave sibling paths unsafe and inconsistent.
 
+### Milestone 1 - Shared route boundary and auth-first paint
+
+- Added one shared API authorization guard for signed HeirRight sessions and the internal bearer path, then applied it to every operational Vercel handler that can read or mutate estate, integration, export, outreach, or support data.
+- Changed the initial document state to render a blocking access-check card before application JavaScript runs, which removes the pre-session workspace flash.
+- Added `s37-route-auth.test.mjs` to prove anonymous rejection, signed-session access, internal-service access, initial auth gating, and the complete protected-handler inventory.
+- Fresh proof: `pnpm turbo run build --force` and `pnpm turbo run test --force` both passed with remote caching disabled. The worker validation produced 61 normalized facts and all pre-existing S31-S35 contracts remained green.
+- Anti-negligence review: auth endpoints and intentionally public helpers remain outside the operational inventory; all stateful or sensitive handlers are covered. The local server's intentionally public health metadata remains unchanged.
+
 ## Open Gates
 
-- [ ] Shared Vercel route auth and auth-first paint
+- [x] Shared Vercel route auth and auth-first paint
 - [ ] Real Discovery/Closing single and batch PDFs
 - [ ] Estate-fact-driven Tax Collector receipt capture with live provider proof
 - [ ] Durable Podio session/readback proof

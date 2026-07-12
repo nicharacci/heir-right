@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 
+process.env.AUTH_REQUIRED = "false";
+
 const require = createRequire(import.meta.url);
 const externalSourceRun = require("../api/discovery/external-source-run.js");
 const { discoverTaxCollectorReceipt } = require("../api/_shared.js");

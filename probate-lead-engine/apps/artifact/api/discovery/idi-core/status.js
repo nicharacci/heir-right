@@ -1,6 +1,8 @@
 const { buildIdiCoreStatus } = require("../../connections/status");
+const { requireApiAuth } = require("../../_shared");
 
 module.exports = async function handler(request, response) {
+  if (requireApiAuth(request, response)) return;
   if (request.method !== "GET") {
     response.setHeader("Allow", "GET");
     response.statusCode = 405;

@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 
+process.env.AUTH_REQUIRED = "false";
+
 const require = createRequire(import.meta.url);
 const adminAccess = require("../api/admin/access.js");
 const accessConfig = require("../api/admin/access-config.js");

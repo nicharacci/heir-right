@@ -1,4 +1,4 @@
-const { readJsonBody, receiptId, sendJson } = require("../_shared");
+const { readJsonBody, receiptId, requireApiAuth, sendJson } = require("../_shared");
 const { accessConfig, applyAccessChange, normalizedAccessValue, validAccessValue } = require("./access-config");
 
 function linearConfig() {
@@ -54,6 +54,7 @@ async function createAccessTicket(config, payload) {
 }
 
 module.exports = async function handler(request, response) {
+  if (requireApiAuth(request, response)) return;
   if (request.method === "GET" || request.method === "HEAD") {
     sendJson(response, 200, { ok: true, ...accessConfig(process.env) });
     return;

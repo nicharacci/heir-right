@@ -524,7 +524,9 @@ function buildConnectionStatuses(env = process.env, options = {}) {
   ];
 }
 
-function handler(_request, response) {
+function handler(request, response) {
+  const { requireApiAuth } = require("../_shared");
+  if (requireApiAuth(request, response)) return;
   response.setHeader("Cache-Control", "no-store");
   response.setHeader("Content-Type", "application/json; charset=utf-8");
   response.statusCode = 200;

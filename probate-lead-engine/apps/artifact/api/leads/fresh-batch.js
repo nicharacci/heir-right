@@ -1,6 +1,7 @@
-const { methodGuard, proxyWorkerJson, readJsonBody, sendJson, sendProxied } = require("../_shared");
+const { methodGuard, proxyWorkerJson, readJsonBody, requireApiAuth, sendJson, sendProxied } = require("../_shared");
 
 module.exports = async function handler(request, response) {
+  if (requireApiAuth(request, response)) return;
   if (methodGuard(request, response)) return;
 
   try {

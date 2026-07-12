@@ -5,6 +5,6 @@
   "scripts": {
     "build": "node build.js",
     "dev": "node server.js",
-    "test": "node build.js && (cd ../worker && pnpm build) && node test/source-run-contract.test.mjs && node test/source-readiness-contract.test.mjs && node test/s31-readiness-contract.test.mjs && node test/s31-access-domains-contract.test.mjs && node test/s33-production-source-cleanup.test.mjs && node test/s35-production-route-guards.test.mjs"
+    "test": "node build.js && (cd ../worker && pnpm build) && node test/source-run-contract.test.mjs && node test/source-readiness-contract.test.mjs && node test/s31-readiness-contract.test.mjs && node test/s31-access-domains-contract.test.mjs && node test/s33-production-source-cleanup.test.mjs && node test/s35-production-route-guards.test.mjs && node test/s37-route-auth.test.mjs"
   }
 }

@@ -1,3 +1,5 @@
+const { requireApiAuth } = require("./_shared");
+
 function readBody(request) {
   return new Promise((resolve, reject) => {
     let body = "";
@@ -89,6 +91,7 @@ function blockedResponse(body) {
 }
 
 module.exports = async function handler(request, response) {
+  if (requireApiAuth(request, response)) return;
   response.setHeader("Cache-Control", "no-store");
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");

@@ -1,4 +1,4 @@
-const { methodGuard, readJsonBody, receiptId, sendJson } = require("../_shared");
+const { methodGuard, readJsonBody, receiptId, requireApiAuth, sendJson } = require("../_shared");
 
 function fallback(message, extra = {}) {
   return {
@@ -15,6 +15,7 @@ function fallback(message, extra = {}) {
 }
 
 module.exports = async function handler(request, response) {
+  if (requireApiAuth(request, response)) return;
   if (methodGuard(request, response)) return;
   try {
     const body = await readJsonBody(request);

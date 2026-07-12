@@ -10549,7 +10549,7 @@
     }
   </style>
 </head>
-<body data-surface-system="fluid-functionalism" data-surface-level="1">
+<body data-surface-system="fluid-functionalism" data-surface-level="1" data-auth-gated="true">
 <main id="workspace" class="workspace is-collapsed">
   <aside id="primarySidebar" class="sidebar" aria-label="Primary navigation">
     <div class="sidebar-top">
@@ -11126,7 +11126,15 @@
 <div id="outreachNotificationMount" class="outreach-toast-mount" aria-live="polite"></div>
 <div id="walkthroughMount" aria-live="polite"></div>
 <div id="accountMenu" class="account-menu" role="menu" aria-label="Account menu" data-open="false"></div>
-<div id="authGate" class="auth-gate" role="presentation" aria-live="polite"></div>
+<div id="authGate" class="auth-gate" role="presentation" aria-live="polite">
+  <section class="auth-card" role="dialog" aria-modal="true" aria-label="Checking access">
+    <div>
+      <p class="eyebrow">Team access</p>
+      <h2>Checking HeirRight access</h2>
+    </div>
+    <p>Confirming your approved business account before the workspace opens.</p>
+  </section>
+</div>
 
 <script>
 const state = {

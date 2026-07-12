@@ -1,4 +1,4 @@
-const { methodGuard, readJsonBody, receiptId, sendJson } = require("../_shared");
+const { methodGuard, readJsonBody, receiptId, requireApiAuth, sendJson } = require("../_shared");
 
 function env(name, fallback = "") {
   return process.env[name] || fallback;
@@ -189,6 +189,7 @@ async function createLinearIssueWithInput(config, input) {
 }
 
 module.exports = async function handler(request, response) {
+  if (requireApiAuth(request, response)) return;
   if (methodGuard(request, response)) return;
   try {
     const payload = await readJsonBody(request);

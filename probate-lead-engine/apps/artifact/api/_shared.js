@@ -34,6 +34,27 @@ function sendJson(response, statusCode, payload) {
   response.end(JSON.stringify(payload, null, 2));
 }
 
+function internalBearerAllowed(request) {
+  const expected = String(process.env.HEIRRIGHT_API_TOKEN || "");
+  if (!expected) return false;
+  const supplied = String(request?.headers?.authorization || "").replace(/^Bearer\s+/i, "");
+  if (!supplied || supplied.length !== expected.length) return false;
+  const { timingSafeEqual } = require("node:crypto");
+  return timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+}
+
+function requireApiAuth(request, response) {
+  const { authRequired, readSession } = require("./auth/_shared");
+  if (!authRequired() || readSession(request) || internalBearerAllowed(request)) return false;
+  sendJson(response, 401, {
+    ok: false,
+    error: "auth_required",
+    message: "Sign in with an approved HeirRight Google account.",
+    loginUrl: "/auth/login",
+  });
+  return true;
+}
+
 function methodGuard(request, response) {
   if (request.method === "POST") return false;
   response.setHeader("Allow", "POST");
@@ -306,6 +327,7 @@ module.exports = {
   methodGuard,
   proxyWorkerHttp,
   proxyWorkerJson,
+  requireApiAuth,
   readJsonBody,
   receiptId,
   sendJson,

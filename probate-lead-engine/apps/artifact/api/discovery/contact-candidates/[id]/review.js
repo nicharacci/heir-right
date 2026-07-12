@@ -1,4 +1,4 @@
-const { methodGuard, proxyWorkerJson, readJsonBody, sendJson, sendProxied } = require("../../../_shared");
+const { methodGuard, proxyWorkerJson, readJsonBody, requireApiAuth, sendJson, sendProxied } = require("../../../_shared");
 
 function candidateIdFromRequest(request) {
   if (request.query?.id) return Array.isArray(request.query.id) ? request.query.id[0] : request.query.id;
@@ -8,6 +8,7 @@ function candidateIdFromRequest(request) {
 }
 
 module.exports = async function handler(request, response) {
+  if (requireApiAuth(request, response)) return;
   if (methodGuard(request, response)) return;
 
   const candidateId = candidateIdFromRequest(request);

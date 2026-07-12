@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
+process.env.AUTH_REQUIRED = "false";
+
 const require = createRequire(import.meta.url);
 const taxReceiptRun = require("../api/discovery/tax-collector/receipt-run.js");
 const externalSourceRun = require("../api/discovery/external-source-run.js");

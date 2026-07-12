@@ -1,4 +1,4 @@
-const { idiLockKey, methodGuard, proxyWorkerJson, readJsonBody, sendJson, sendProxied } = require("../../_shared");
+const { idiLockKey, methodGuard, proxyWorkerJson, readJsonBody, requireApiAuth, sendJson, sendProxied } = require("../../_shared");
 const { buildIdiCoreStatus } = require("../../connections/status");
 
 const localIdiRuns = new Map();
@@ -131,6 +131,7 @@ async function runLiveIdiCore(body = {}, lockKey = "") {
 }
 
 module.exports = async function handler(request, response) {
+  if (requireApiAuth(request, response)) return;
   if (methodGuard(request, response)) return;
 
   try {
