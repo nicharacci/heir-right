@@ -1242,7 +1242,7 @@ function taxCollectorRunFromAcquisition(
     mode: acquisition.mode,
     flow: "tax_collector_receipt",
     estateId: seedIdentity(seed),
-    paidRun: false,
+    paidRun: acquisition.paidRun,
     searchInput: {
       estateId: seedIdentity(seed),
       county: seed.county || "miami-dade",

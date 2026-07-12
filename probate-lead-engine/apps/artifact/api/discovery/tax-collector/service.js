@@ -215,7 +215,7 @@ function normalizeAcquisitionResult(result = {}, body = {}, input = taxCollector
     mode: result.mode || (result.ok ? "listing_page_bottom_right" : "blocked"),
     flow: "tax_collector_receipt",
     estateId: searchInput.estateId,
-    paidRun: false,
+    paidRun: Boolean(result.paidRun),
     searchInput,
     matchedListing,
     receipt,

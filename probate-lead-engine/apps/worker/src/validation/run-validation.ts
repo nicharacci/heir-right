@@ -115,6 +115,22 @@ async function main(): Promise<void> {
       headers: { "content-type": "application/json" },
     }),
   });
+  const taxCollectorBillingProof = await acquireTaxCollectorReceipt({
+    parcelId: "3031030000010",
+    propertyAddress: "2325 NW 88th St, Miami, FL",
+  }, {
+    env: {
+      BROWSERBASE_API_KEY: "validation-key",
+      TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID: "tax-function",
+    },
+    fetchImpl: async () => new Response(JSON.stringify({
+      error: "payment_required",
+      message: "Add credits before invoking a function.",
+    }), {
+      status: 402,
+      headers: { "content-type": "application/json" },
+    }),
+  });
   const vitalOriginalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify({
     id: "inv-vital-validation",
@@ -160,6 +176,8 @@ async function main(): Promise<void> {
   if (taxCollectorBlockedProof.mode !== "browser_workflow_required") failures.push("Tax Collector Cloudflare/browser blocker mode missing.");
   if (!taxCollectorBlockedProof.reviewFlags.includes("TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED")) failures.push("Tax Collector browser workflow review flag missing.");
   if (!taxCollectorBrowserbaseProof.ok || taxCollectorBrowserbaseProof.discovery?.receiptUrl !== "https://miamidade.county-taxes.test/receipts/2025-browserbase.pdf") failures.push("Tax Collector Browserbase function receipt proof failed.");
+  if (!taxCollectorBrowserbaseProof.paidRun) failures.push("Successful Browserbase Tax Collector proof was not marked as a paid run.");
+  if (taxCollectorBillingProof.mode !== "browserbase_billing_required" || !taxCollectorBillingProof.paidRun) failures.push("Browserbase billing failure was not classified as a paid provider run.");
   if (!vitalBrowserbaseFacts.some((item) => item.factType === "date_of_death" && item.value === "2024-01-02")) failures.push("Vital/obituary Browserbase function proof failed.");
   if (!result.dossier.property.address.value) failures.push("Dossier address missing.");
   if (!result.dossier.audit.sourceRefs.length) failures.push("Dossier sourceRefs missing.");

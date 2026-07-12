@@ -49,6 +49,15 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Rotated the shared Worker/Vercel bearer token and auth session secret as write-only provider secrets, then set the production Worker URL, Surface origin, OAuth redirect, allowed domains, and auth-required flag without committing values.
 - Anti-negligence review: Closing remains deliberately blocked because the repository and local machine contain the fourteen form names but none of the client legal template files or designated field map. The app no longer claims a Closing PDF exists when those immutable inputs are absent.
 
+### Milestone 3A - Tax Collector Browserbase production contract
+
+- Ran the production Worker with a real Miami-Dade folio/address/owner payload and the configured Browserbase API key plus deployed Tax Collector function ID. The provider accepted authentication and function lookup, then returned HTTP 402 before creating a browser session.
+- Corrected the run contract so every Browserbase invocation is marked `paidRun: true`, including provider failures. Added distinct modes for billing required, concurrency/rate limit, timeout, and function failure instead of collapsing every provider response into a generic browser blocker.
+- Enabled the Browserbase managed proxy for the county-tax workflow. Captcha solving, session recording, session logs, and PDF viewer support remain enabled in the function invocation settings.
+- Added worker validation for the successful receipt-link result and the billing-required result. Fresh build and validation passed with 61 normalized facts.
+- Deployed Worker version `822cb6b6-0db2-4b94-91c3-609b927afef2`, rotated the shared internal bearer without exposing it, and repeated the live call. The response was correctly classified as `browserbase_billing_required`, `paidRun: true`, HTTP 402, with the exact folio/address search input preserved.
+- Anti-negligence review: Browserbase configuration is proven valid, but live receipt retrieval cannot be marked complete while the provider refuses to start a session for billing. This is an external account prerequisite rather than an app fallback; the app now reports it explicitly and does not pretend the public search ran.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint

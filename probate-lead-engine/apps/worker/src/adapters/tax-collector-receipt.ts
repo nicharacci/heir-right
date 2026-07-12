@@ -67,7 +67,12 @@ export interface TaxCollectorReceiptAcquisitionResult {
     | "listing_page_no_receipt"
     | "listing_page_blocked"
     | "browser_workflow_required"
+    | "browserbase_billing_required"
+    | "browserbase_rate_limited"
+    | "browserbase_timed_out"
+    | "browserbase_function_failed"
     | "not_configured";
+  paidRun: boolean;
   listingUrl: string;
   searchUrl: string;
   status?: number;
@@ -301,7 +306,16 @@ function browserbaseInvocationSummary(invocation: JsonRecord): string {
   }).slice(0, 500);
 }
 
-function browserbaseResultMode(result: JsonRecord): TaxCollectorReceiptAcquisitionResult["mode"] {
+function browserbaseResultMode(
+  result: JsonRecord,
+  status?: number,
+  invocation: JsonRecord = {},
+): TaxCollectorReceiptAcquisitionResult["mode"] {
+  if (status === 402) return "browserbase_billing_required";
+  if (status === 429) return "browserbase_rate_limited";
+  const invocationStatus = browserbaseInvocationStatus(invocation);
+  if (invocationStatus === "TIMED_OUT" || isPendingBrowserbaseInvocation(invocation)) return "browserbase_timed_out";
+  if (invocationStatus === "FAILED" || invocationStatus === "ERROR") return "browserbase_function_failed";
   const mode = stringValue(result.mode);
   if (mode === "listing_page_no_receipt") return "listing_page_no_receipt";
   if (mode === "browser_navigation_blocked" || mode === "listing_page_blocked") return "listing_page_blocked";
@@ -430,6 +444,7 @@ export async function acquireTaxCollectorReceipt(
   if (suppliedDiscovery) {
     return {
       ok: true,
+      paidRun: false,
       mode: suppliedDiscovery.mode,
       listingUrl: suppliedDiscovery.listingUrl,
       searchUrl,
@@ -472,6 +487,7 @@ export async function acquireTaxCollectorReceipt(
       if (response.ok && workflowDiscovery) {
         return {
           ok: true,
+          paidRun: true,
           mode: workflowDiscovery.mode,
           listingUrl: workflowDiscovery.listingUrl || workflowListingUrl,
           searchUrl,
@@ -483,7 +499,8 @@ export async function acquireTaxCollectorReceipt(
       }
       return {
         ok: false,
-        mode: browserbaseResultMode(data),
+        mode: browserbaseResultMode(data, response.status),
+        paidRun: true,
         listingUrl: workflowListingUrl,
         searchUrl,
         status: response.status,
@@ -498,6 +515,7 @@ export async function acquireTaxCollectorReceipt(
       return {
         ok: false,
         mode: "browser_workflow_required",
+        paidRun: true,
         listingUrl: "",
         searchUrl,
         blocker: error instanceof Error ? error.message : String(error),
@@ -542,6 +560,7 @@ export async function acquireTaxCollectorReceipt(
       if (response.ok && workflowDiscovery) {
         return {
           ok: true,
+          paidRun: true,
           mode: workflowDiscovery.mode,
           listingUrl: workflowDiscovery.listingUrl || workflowListingUrl,
           searchUrl,
@@ -554,7 +573,8 @@ export async function acquireTaxCollectorReceipt(
       }
       return {
         ok: false,
-        mode: browserbaseResultMode(result),
+        mode: browserbaseResultMode(result, response.status, completedInvocation),
+        paidRun: true,
         listingUrl: workflowListingUrl,
         searchUrl,
         status: response.status,
@@ -563,7 +583,11 @@ export async function acquireTaxCollectorReceipt(
           || stringValue(result.message)
           || stringValue(result.error)
           || browserbaseInvocationSummary(completedInvocation),
-        blocker: stringValue(result.message)
+        blocker: response.status === 402
+          ? "Browserbase billing is required before the Tax Collector browser function can start."
+          : response.status === 429
+            ? "Browserbase concurrency or rate limits are currently preventing the Tax Collector browser function from starting."
+            : stringValue(result.message)
           || stringValue(result.error)
           || (response.ok
             ? (isPendingBrowserbaseInvocation(completedInvocation)
@@ -576,6 +600,7 @@ export async function acquireTaxCollectorReceipt(
       return {
         ok: false,
         mode: "browser_workflow_required",
+        paidRun: true,
         listingUrl: "",
         searchUrl,
         blocker: error instanceof Error ? error.message : String(error),
@@ -590,6 +615,7 @@ export async function acquireTaxCollectorReceipt(
     return {
       ok: false,
       mode: "not_configured",
+      paidRun: false,
       listingUrl: "",
       searchUrl,
       blocker: "Tax Collector listing-page automation needs a direct listing URL or a configured listing URL template before a script can fetch the receipt link.",
@@ -611,6 +637,7 @@ export async function acquireTaxCollectorReceipt(
       return {
         ok: false,
         mode: "browser_workflow_required",
+        paidRun: false,
         listingUrl,
         searchUrl,
         status: response.status,
@@ -624,6 +651,7 @@ export async function acquireTaxCollectorReceipt(
       return {
         ok: false,
         mode: "listing_page_blocked",
+        paidRun: false,
         listingUrl,
         searchUrl,
         status: response.status,
@@ -639,6 +667,7 @@ export async function acquireTaxCollectorReceipt(
       return {
         ok: false,
         mode: "listing_page_no_receipt",
+        paidRun: false,
         listingUrl,
         searchUrl,
         status: response.status,
@@ -651,6 +680,7 @@ export async function acquireTaxCollectorReceipt(
 
     return {
       ok: true,
+      paidRun: false,
       mode: discovery.mode,
       listingUrl: discovery.listingUrl,
       searchUrl,
@@ -664,6 +694,7 @@ export async function acquireTaxCollectorReceipt(
     return {
       ok: false,
       mode: "listing_page_blocked",
+      paidRun: false,
       listingUrl,
       searchUrl,
       blocker: error instanceof Error ? error.message : String(error),
