@@ -4755,6 +4755,22 @@
       white-space: nowrap;
     }
 
+    .queue-item {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+    }
+
+    .queue-item-main,
+    .queue-item-actions {
+      min-width: 0;
+    }
+
+    .queue-item-actions {
+      display: flex !important;
+      align-items: center;
+      gap: 6px;
+    }
+
     .dossier-shell {
       display: grid;
       grid-template-columns: minmax(420px, .95fr) minmax(360px, 1.05fr);
@@ -7501,6 +7517,15 @@
       align-items: end;
       justify-content: space-between;
       gap: 12px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .pdf-packet-actions {
+      display: flex;
+      align-items: end;
+      justify-content: flex-end;
+      gap: 8px;
       min-width: 0;
       flex-wrap: wrap;
     }
@@ -13321,9 +13346,6 @@ function seedDemoEstatePreviewState() {
     if (!state.dealStatuses[key]) state.dealStatuses[key] = status;
   });
   if (!state.selectedId || !rowById(state.selectedId)) state.selectedId = demoRows[0].id;
-  if (!state.queueIds.size && !state.selectedIds.size) {
-    demoRows.slice(0, 2).forEach((row) => state.queueIds.add(row.id));
-  }
 }
 
 function crmImportCounts() {
@@ -20259,10 +20281,10 @@ function renderQueueView() {
   target.innerHTML = `
     <div class="queue-layout">
       <section class="loop-panel queue-panel">
-        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch Queue export prep</h2></div><button class="btn primary solvys-liquid-glass" type="button" data-queue-stage ${items.length ? "" : "disabled"}>Stage batch</button></div>
+        <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch Queue export</h2></div><button class="btn primary solvys-liquid-glass" type="button" data-queue-export ${items.length ? "" : "disabled"}>${nucleoIcon("batch-tray", 15)}<span>Export combined PDF</span></button></div>
         <p class="copy">Use this queue after Discovery review to stage documents, CRM fields, and spreadsheet rows as one batch. Exports produce one combined PDF per selected flow; nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
         <ul class="queue-list">
-          ${items.map((item, index) => `<li class="queue-item"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Estate Search and select leads before staging a batch.</span></li>`}
+          ${items.map((item, index) => `<li class="queue-item"><span class="queue-item-main"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span></span><span class="queue-item-actions"><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span><button class="icon-button" type="button" data-queue-remove="${escapeHtml(item.id)}" aria-label="Remove ${escapeHtml(item.title)} from Queue" title="Remove from Queue">${nucleoIcon("trash", 15)}</button></span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Estate Search and select leads before exporting a combined PDF.</span></li>`}
         </ul>
       </section>
       <aside class="queue-side" aria-label="Queue review">
@@ -20271,33 +20293,32 @@ function renderQueueView() {
           <ul class="mini-list">
             ${readiness.map((item) => `<li><strong>${linearStatusIconHtml(item.state === "complete" ? "complete" : item.mandatory ? "blocked" : "pending", item.state)} ${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></li>`).join("")}
           </ul>
+          ${state.exportResult?.ok && state.exportResult?.artifactUrl ? `<a class="btn primary solvys-liquid-glass" href="${escapeHtml(state.exportResult.artifactUrl)}" download>${nucleoIcon("batch-tray", 15)}<span>Download latest PDF</span></a>` : ""}
         </section>
       </aside>
     </div>
   `;
-  target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
+  target.querySelector("[data-queue-export]")?.addEventListener("click", (event) => {
     const actionRows = queuedRows().length ? queuedRows() : checkedRows();
     if (!actionRows.length) {
       nudgeDeniedAction(
-        target.querySelector("[data-queue-stage]"),
-        "Batch stage blocked",
-        "Select or queue an estate before staging a batch export package.",
-        { source: "queue-stage" }
+        event.currentTarget,
+        "Batch export blocked",
+        "Select or queue an estate before generating a combined PDF.",
+        { source: "queue-export" }
       );
       return;
     }
     actionRows.forEach((row) => state.queueIds.add(row.id));
-    const count = actionRows.length;
-    state.railPreview = {
-      title: `${count} lead${count === 1 ? "" : "s"} staged for batch export`,
-      markdown: "Dossier packets, Podio fields and tasks, Google Docs body, and Google Sheets row are staged for team review. No live write was attempted.",
-      updatedAt: Date.now()
-    };
-    document.getElementById("statusExport").textContent = `export: [${count} BATCH PREPARED]`;
-    document.getElementById("topStatus").textContent = `${count} lead${count === 1 ? "" : "s"} staged for batch export review. Live writes remain locked.`;
-    addShellEvent("Doc Prep batch prepared", `${count} dossier packet${count === 1 ? " is" : "s are"} ready for team review. Live Podio, Google Docs, Google Sheets, email, and SMS actions remain locked until approval and readback proof.`, "review", true);
-    renderShellPanels();
-    renderQueueView();
+    chooseExportRoute("pdf", event.currentTarget, actionRows);
+  });
+  target.querySelectorAll("[data-queue-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.queueIds.delete(button.dataset.queueRemove);
+      document.getElementById("topStatus").textContent = "Estate removed from Queue.";
+      renderQueueView();
+      syncBatchExportControls();
+    });
   });
 }
 
@@ -23174,11 +23195,14 @@ function railDocsHtml(row, dossier) {
           <p class="eyebrow">Preview</p>
           <h2 class="rail-title">${escapeHtml(row?.leadName || row?.title || "Lead report")}</h2>
         </div>
-        <label class="pdf-date-select">Date added
-          <select data-report-date-added aria-label="Select Date Added property">
-            ${options.map((date) => `<option value="${escapeHtml(date)}" ${date === dateAdded ? "selected" : ""}>${escapeHtml(new Date(`${date}T12:00:00`).toLocaleDateString())}</option>`).join("")}
-          </select>
-        </label>
+        <div class="pdf-packet-actions">
+          <label class="pdf-date-select">Date added
+            <select data-report-date-added aria-label="Select Date Added property">
+              ${options.map((date) => `<option value="${escapeHtml(date)}" ${date === dateAdded ? "selected" : ""}>${escapeHtml(new Date(`${date}T12:00:00`).toLocaleDateString())}</option>`).join("")}
+            </select>
+          </label>
+          ${packetArtifact?.artifactUrl ? `<a class="btn primary solvys-liquid-glass" href="${escapeHtml(packetArtifact.artifactUrl)}" download>${nucleoIcon("batch-tray", 15)}<span>Download PDF</span></a>` : ""}
+        </div>
       </div>
       ${packetArtifact?.artifactUrl ? `
         <iframe class="pdf-packet-frame" title="Preview PDF" src="${escapeHtml(packetArtifact.artifactUrl)}"></iframe>
@@ -23596,6 +23620,12 @@ async function postFreshLeadBatch(payload) {
 
 function exportRouteMeta(route) {
   const routes = {
+    pdf: {
+      label: "combined PDF",
+      status: "export: [PDF]",
+      title: "Generate combined PDF",
+      copy: "Generate one reviewed PDF containing every queued estate for the selected Doc Prep flow."
+    },
     google: {
       label: "Google Workspace",
       status: "export: [GOOGLE]",
@@ -23926,6 +23956,7 @@ function syncAllEnhancedSelects() {
 }
 
 function routesForExport(route) {
+  if (route === "pdf") return [];
   if (route === "podio-test") return ["podio"];
   if (route === "both") return ["google", "podio"];
   return [route];
@@ -23935,7 +23966,7 @@ function deliveredPodioTest(result) {
   return Boolean(result?.ok && (result.routes ?? []).some((route) => route.route === "podio" && route.mode === "live" && route.readbackOk));
 }
 
-async function chooseExportRoute(route, source = null) {
+async function chooseExportRoute(route, source = null, rowsOverride = null) {
   setExportMenuOpen(false);
   if (route === "queue") {
     state.exportRoute = "queue";
@@ -23952,7 +23983,7 @@ async function chooseExportRoute(route, source = null) {
   state.exportRoute = route;
   state.exportResult = null;
   const isControlledTest = Boolean(meta.controlledTest);
-  const batchRows = rowsForBatchAction();
+  const batchRows = Array.isArray(rowsOverride) && rowsOverride.length ? rowsOverride : rowsForBatchAction();
   if (!isControlledTest && batchRows.some((row) => isDemoEstateImport(row))) {
     nudgeDeniedAction(source, "Export blocked", "Sample estates stay isolated from production exports. Select an imported or fetched estate.", { pill: true, source: "packet-export" });
     return;
@@ -23962,8 +23993,8 @@ async function chooseExportRoute(route, source = null) {
     nudgeDeniedAction(source, "Export blocked", "Every selected estate needs a loaded Discovery dossier before one combined PDF can be generated.", { pill: true, source: "packet-export" });
     return;
   }
-  const checkedCount = checkedRows().length;
-  const isBatch = checkedCount > 0 && !isControlledTest;
+  const checkedCount = batchRows.length;
+  const isBatch = checkedCount > 1 && !isControlledTest;
   const batchCopy = isBatch
     ? ` Preparing a ${checkedCount}-lead Doc Prep batch now. No live CRM card, Google Doc, Google Sheet row, email, or SMS will be created from this review surface.`
     : " Preparing a review-only Doc Prep package now. No live CRM card will be created from this review surface.";

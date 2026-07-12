@@ -61,12 +61,23 @@ function valueText(value: unknown): string {
   return String(value).trim() || "Not confirmed";
 }
 
+function reviewLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function reviewText(flags: string[] = []): string {
+  return flags.length ? ` | review: ${flags.map(reviewLabel).join(", ")}` : "";
+}
+
 function claimLine(label: string, claim: DossierClaim<unknown>): PacketLine {
   const value = valueText(claim.value);
   const confidence = Math.round((claim.confidence || 0) * 100);
   return {
     label,
-    value: `${value} | confidence ${confidence}%${claim.reviewFlags.length ? ` | review: ${claim.reviewFlags.join(", ")}` : ""}`,
+    value: `${value} | confidence ${confidence}%${reviewText(claim.reviewFlags)}`,
     tone: claim.value === null || claim.reviewFlags.length ? "warning" : "normal",
   };
 }
@@ -109,7 +120,7 @@ function contactLines(contact: ContactPlaceholderEntry, index: number): PacketLi
     { label: "Current address", value: contact.likelyCurrentAddress || "Not confirmed", tone: contact.likelyCurrentAddress ? "normal" : "warning" },
     { label: "Phones", value: contact.phones.length ? contact.phones.join(", ") : "None confirmed", tone: contact.phones.length ? "normal" : "warning" },
     { label: "Emails", value: contact.emails.length ? contact.emails.join(", ") : "None confirmed", tone: contact.emails.length ? "normal" : "warning" },
-    { label: "Review", value: `${contact.note}${contact.reviewFlags.length ? ` | ${contact.reviewFlags.join(", ")}` : ""}`, tone: contact.reviewFlags.length ? "warning" : "muted" },
+    { label: "Review", value: `${contact.note}${reviewText(contact.reviewFlags)}`, tone: contact.reviewFlags.length ? "warning" : "muted" },
   ];
 }
 
@@ -264,7 +275,7 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
       lines: [
         ...(report?.researchChecklist.map((item) => ({
           label: item.label,
-          value: `${item.status}: ${item.note}${item.reviewFlags.length ? ` | ${item.reviewFlags.join(", ")}` : ""}`,
+          value: `${reviewLabel(item.status)}: ${item.note}${reviewText(item.reviewFlags)}`,
           tone: item.status === "complete" || item.status === "not_applicable" ? "normal" as const : "warning" as const,
         })) ?? []),
         ...(sourceLinks.map((link) => ({ label: link.label, value: link.url || "Source reference recorded without a public URL", tone: link.url ? "normal" as const : "muted" as const }))),

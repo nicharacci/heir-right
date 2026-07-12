@@ -78,12 +78,24 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Fresh artifact build and full artifact test passed, including the existing preview-fit contract, route guards, source readiness, settings/access, and 13/25-page PDF content assertions.
 - Anti-negligence review: the last hidden overflow came from the completion strip above Preview, not Preview itself. It was removed and remeasured rather than accepted because the page happened to clip it.
 
+### Milestone 5 - Truthful single and Batch Queue PDF controls
+
+- Added an explicit Download PDF action beside the exact PDF shown in Preview and a Download latest PDF action after Queue generation. The user no longer has to infer that the embedded PDF frame is also the export artifact.
+- Replaced Queue's misleading Stage batch action with Export combined PDF. It now sends every deliberately queued estate to the shared `/api/exports` packet renderer with `expectedArtifact: single_pdf` and no external CRM or Workspace route.
+- Removed automatic sample-estate queue seeding. Sample rows remain available for table inspection, but they no longer mutate production Queue state or guarantee a blocked first export.
+- Added per-estate Queue removal with a named icon control, so an accidental selection can be corrected without deleting, archiving, or clearing unrelated estate state.
+- Changed machine review flags in generated Discovery packet content to readable title-case labels while retaining the deterministic source model.
+- Added `s37-tax-receipt-e2e.test.mjs` to drive folio, address, and owner facts through the Browserbase function payload, managed proxy, listing-page receipt extraction, paid-run provenance, and billing classification.
+- Added `s37-product-loop-e2e.test.mjs` to lock the clean Queue state, combined-PDF trigger, row removal, download actions, single-PDF API contract, and immutable Closing-template blocker.
+- Browser proof: after a full reload, Queue showed no queued estates, the export action was disabled, and the screen instructed the user to select an estate. Fresh build and the complete artifact suite passed after the change.
+- Anti-negligence review: the original Queue copy promised an export while its button only changed local state, and demo rows were silently inserted. Both behaviors were removed instead of being explained away in Help content.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint
 - [ ] Real Discovery/Closing single and batch PDFs
 - [ ] Estate-fact-driven Tax Collector receipt capture with live provider proof
 - [ ] Durable Podio session/readback proof
-- [ ] Responsive Document Prep and keyboard/browser E2E
+- [x] Responsive Document Prep and keyboard/browser E2E
 - [ ] Production domain/OAuth deployment proof
 - [ ] Final Solvys and HeirRight hostile review
