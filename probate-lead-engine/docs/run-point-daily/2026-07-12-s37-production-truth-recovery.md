@@ -207,6 +207,18 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Fresh proof: the 171-button control inventory passed and the full Playwright suite passed 4/4 in 13.3 seconds with no console/page errors or operator-language violations.
 - Anti-negligence review: example packets are evidence of the manual process, not safe fill-only templates. The product now states the exact missing legal input instead of implying no client documents exist or fabricating a Closing artifact from filled examples.
 
+### Milestone 16 - Fresh release gates, exact deployment, and final hostile audit
+
+- Deleted prior package outputs, then ran `pnpm turbo run build --force` and `pnpm turbo run test --force`. All three packages rebuilt uncached and all five test tasks passed, including the 61-fact worker validation, route guards, source orchestration, state conflicts, artifact storage, PDF integrity, and complete 171-control inventory.
+- Ran `pnpm test:e2e`; Chromium passed 4/4 operator flows in 11.1 seconds with no page or console errors. `pnpm lint` passed and `pnpm audit --prod` reported no known vulnerabilities. Secret scans returned zero matches in current source and the complete S37 commit range.
+- Generated and opened fresh Discovery artifacts. The single export is 13 pages; the batch export is one 25-page PDF with two complete estate sections and a clean page-13/page-14 estate boundary. The evidence register and blocker pages are readable and contained.
+- Deployed Worker version `e4c36382-0289-4c3f-8eaf-0a5238c68746` and Vercel deployment `dpl_2HjpQNyg1k8LK4fRkuptb8rDvuyh` from commit `fdc1933`, both without build cache. Repointed `heirright-leads.vercel.app` to the exact deployment; Vercel also assigned `surface.heirright.com`, but public DNS still does not resolve.
+- Production security and durability passed: four anonymous operational routes returned `401`; same-value shared state returned verified readback; a stale update returned `409` without changing current data; a controlled supporting PDF passed exact-byte and hash readback, delete, and post-delete `404`.
+- Production packet proof passed with a reviewed dossier: the route returned an 11-section, 30,261-byte PDF with matching artifact ID/content-hash headers and verified packet-reference persistence. The retained unreviewed production fixture returned `422` for eight generic contact rows, proving the placeholder guard remains active.
+- The estate-fact Tax Collector route reached the configured Browserbase function and classified the provider response as `browserbase_billing_required`; it did not claim a receipt. Podio reports durable bearer mode but an expired live access token. Google session status remains `configured:false`.
+- Completed the dedicated `/solvys-audit` and `/solvys-heir-audit` record in `2026-07-12-s37-final-audit.md`. There are zero app-owned failing gates, but the sprint remains blocked on client/provider production inputs and cannot be called 100% or complete.
+- Anti-negligence review: the final pass opened the actual PDF pages, attempted an unreviewed production export, exercised a stale state write, checked live provider classifications, and kept external/client failures visible. HTTP success, route existence, and local tests were not accepted as substitutes for those checks.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint
@@ -215,4 +227,4 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - [ ] Durable Podio session/readback proof
 - [x] Responsive Document Prep and keyboard/browser E2E
 - [ ] Production domain/OAuth deployment proof
-- [ ] Final Solvys and HeirRight hostile review
+- [x] Final Solvys and HeirRight hostile review
