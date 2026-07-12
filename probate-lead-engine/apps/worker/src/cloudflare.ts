@@ -5,6 +5,8 @@ import { buildControlledPodioTestSeed } from "./export/controlled-test-lead";
 import { connectionStatuses, exportCompletedReport, podioReadbackBlockerMessage, resolvePodioAccessToken } from "./export/export-package";
 import { TEXAS_EQUITY_PROS_LEADS_APP_ID, TEXAS_EQUITY_PROS_LEADS_SPACE_ID } from "./export/podio-config";
 import { buildIdiAssetSearchFacts } from "./enrichment/idi-asset-search";
+import { buildDiscoveryPacketModel, validatePacketModel, type PacketModel } from "./documents/packet-model";
+import { renderPacketPdf } from "./documents/packet-pdf";
 import { runDryPipeline } from "./index";
 import { fact, intakeSubject, nowIso, seedIdentity, slug } from "./lib";
 import { runFreshLeadBatch } from "./live/source-batch";
@@ -42,6 +44,10 @@ interface CloudflareEnv {
     get(key: string): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number; metadata?: unknown }): Promise<void>;
     delete(key: string): Promise<void>;
+  };
+  PACKET_ARTIFACTS?: {
+    get(key: string): Promise<string | null>;
+    put(key: string, value: string, options?: { expirationTtl?: number; metadata?: unknown }): Promise<void>;
   };
   AUTH_REQUIRED?: string;
   AUTH_SESSION_SECRET?: string;
@@ -153,6 +159,7 @@ function routeList(): string[] {
     "/api/closing-docs/export-google",
     "/api/outreach/sync",
     "/api/exports",
+    "/api/reports/pdf",
     "/api/podio/diagnostics",
     "/api/podio/oauth/start",
     "/api/podio/oauth/callback",
@@ -833,6 +840,67 @@ function exportSectionsForFlow(flow: "controlled-test" | "discovery" | "closing-
   return ["Discovery dossier", "Completed lead report", "Source notes", "Closing Prep review", "CRM handoff"];
 }
 
+interface StoredPacketArtifact {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  contentHash: string;
+  model: PacketModel;
+}
+
+function packetArtifactKey(artifactId: string): string {
+  return `packet:${artifactId}`;
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = await sha256Bytes(value);
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function storePacketArtifact(model: PacketModel, env: CloudflareEnv): Promise<StoredPacketArtifact> {
+  if (!env.PACKET_ARTIFACTS) throw new Error("packet_artifact_store_not_configured");
+  const serializedModel = JSON.stringify(model);
+  const contentHash = await sha256Hex(serializedModel);
+  const id = `packet-${Date.now()}-${contentHash.slice(0, 16)}`;
+  const createdAt = nowIso();
+  const expiresAt = new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString();
+  const artifact: StoredPacketArtifact = { id, createdAt, expiresAt, contentHash, model };
+  await env.PACKET_ARTIFACTS.put(packetArtifactKey(id), JSON.stringify(artifact), {
+    expirationTtl: 7 * 24 * 60 * 60,
+    metadata: { flow: model.flow, estateIds: model.estateIds, contentHash },
+  });
+  return artifact;
+}
+
+async function packetArtifactResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "GET") return methodNotAllowed("GET");
+  if (!env.PACKET_ARTIFACTS) {
+    return json({ ok: false, error: "packet_artifact_store_not_configured", message: "Packet storage is not configured." }, { status: 503 });
+  }
+  const artifactId = stringValue(url.searchParams.get("artifactId"));
+  if (!/^packet-[0-9]+-[a-f0-9]{16}$/.test(artifactId)) {
+    return json({ ok: false, error: "invalid_artifact_id", message: "A valid packet artifact ID is required." }, { status: 400 });
+  }
+  const stored = await env.PACKET_ARTIFACTS.get(packetArtifactKey(artifactId));
+  if (!stored) return json({ ok: false, error: "artifact_not_found", message: "This packet is unavailable or has expired." }, { status: 404 });
+  const artifact = JSON.parse(stored) as StoredPacketArtifact;
+  const currentHash = await sha256Hex(JSON.stringify(artifact.model));
+  if (currentHash !== artifact.contentHash) {
+    return json({ ok: false, error: "artifact_integrity_failed", message: "Packet integrity validation failed." }, { status: 409 });
+  }
+  const pdf = await renderPacketPdf(artifact.model);
+  const filename = `${artifact.model.flow === "closing-docs" ? "closing-prep" : "discovery-prep"}-${artifact.id}.pdf`;
+  return new Response(byteArrayBuffer(pdf), {
+    headers: {
+      "content-type": "application/pdf",
+      "content-disposition": `inline; filename="${filename}"`,
+      "cache-control": "private, no-store",
+      "x-heirright-artifact-id": artifact.id,
+      "x-heirright-content-hash": artifact.contentHash,
+    },
+  });
+}
+
 async function exportResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
   if (request.method !== "POST") return methodNotAllowed();
   const dryRun = url.searchParams.get("dry-run") !== "false";
@@ -840,32 +908,99 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
   const routes = routesParam
     ? routesParam.split(",").map((route) => route.trim()).filter((route): route is "google" | "podio" => route === "google" || route === "podio")
     : ["google", "podio"] as Array<"google" | "podio">;
-  const body = await request.json().catch(() => undefined) as { seed?: IntakeSeed; routes?: Array<"google" | "podio">; dryRun?: boolean; controlledTest?: boolean; flow?: string; docPrepFlow?: string; batch?: boolean; estateId?: string; leadId?: string } | undefined;
-  const seed = body?.controlledTest
-    ? buildControlledPodioTestSeed(env as Record<string, string | undefined>)
-    : body?.seed ?? seedFromUrl(url, env);
-  const pipeline = await runDryPipeline(seed, {
-    env: env as Record<string, string | undefined>,
-  });
+  const body = await request.json().catch(() => undefined) as {
+    seed?: IntakeSeed;
+    seeds?: IntakeSeed[];
+    dossier?: RawDossier;
+    dossiers?: RawDossier[];
+    routes?: Array<"google" | "podio">;
+    dryRun?: boolean;
+    controlledTest?: boolean;
+    flow?: string;
+    docPrepFlow?: string;
+    batch?: boolean;
+    estateId?: string;
+    estateIds?: string[];
+    leadId?: string;
+    operatorIntent?: string;
+  } | undefined;
+  if (!body?.controlledTest && body?.operatorIntent !== "generate_packet") {
+    return json({ ok: false, error: "operator_intent_required", message: "Confirm packet generation before exporting." }, { status: 400 });
+  }
+  const seeds = body?.controlledTest
+    ? [buildControlledPodioTestSeed(env as Record<string, string | undefined>)]
+    : Array.isArray(body?.seeds) && body.seeds.length
+      ? body.seeds
+      : [body?.seed ?? seedFromUrl(url, env)];
+  const suppliedDossiers = Array.isArray(body?.dossiers) && body.dossiers.length
+    ? body.dossiers
+    : body?.dossier ? [body.dossier] : [];
+  const pipelines = suppliedDossiers.length
+    ? []
+    : await Promise.all(seeds.map((seed) => runDryPipeline(seed, { env: env as Record<string, string | undefined> })));
+  const dossiers = suppliedDossiers.length ? suppliedDossiers : pipelines.map((pipeline) => pipeline.dossier);
+  const primaryDossier = dossiers[0];
+  if (!primaryDossier) return json({ ok: false, error: "missing_dossier", message: "Packet export needs at least one estate dossier." }, { status: 400 });
   const result = await exportCompletedReport({
     routes: body?.routes ?? routes,
-    dossier: pipeline.dossier,
+    dossier: primaryDossier,
     dryRun: body?.dryRun ?? dryRun,
     controlledTest: body?.controlledTest,
   }, env as Record<string, string | undefined>);
   const flow = normalizedExportFlow(body);
-  const title = flow === "closing-docs"
-    ? `HeirRight Closing Prep Packet - ${pipeline.dossier.summary.displayName}`
-    : `HeirRight Discovery Prep Packet - ${pipeline.dossier.summary.displayName}`;
+  if (flow === "closing-docs") {
+    return json({
+      ok: false,
+      status: "blocked",
+      flow,
+      blockers: ["The approved legal template files and designated fill-field map are not installed. Closing export is blocked to preserve template language."],
+      delivery: result,
+    }, { status: 422, headers: { "cache-control": "no-store" } });
+  }
+  const model = buildDiscoveryPacketModel(dossiers);
+  const packetBlockers = validatePacketModel(model);
+  if (packetBlockers.length) {
+    return json({
+      ok: false,
+      status: "blocked",
+      flow,
+      estateIds: model.estateIds,
+      sections: model.sections,
+      blockers: packetBlockers,
+      delivery: result,
+    }, { status: 422, headers: { "cache-control": "no-store" } });
+  }
+  let artifact: StoredPacketArtifact;
+  try {
+    artifact = await storePacketArtifact(model, env);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "packet_artifact_store_not_configured";
+    return json({ ok: false, status: "blocked", flow, error: message, blockers: ["Durable packet storage is not configured."] }, { status: 503 });
+  }
   return json({
-    ...result,
+    ok: true,
+    status: "packet_ready",
+    flow,
+    estateId: model.estateIds.length === 1 ? model.estateIds[0] : undefined,
+    estateIds: model.estateIds,
+    sections: model.sections,
+    contentType: "application/pdf",
+    artifactUrl: `/api/reports/pdf?artifactId=${encodeURIComponent(artifact.id)}`,
+    blockers: [],
+    routes: result.routes,
+    readback: result.routes,
+    delivery: result,
     artifact: {
       kind: "single_pdf",
       contentType: "application/pdf",
       flow,
-      estateId: body?.estateId || body?.leadId || pipeline.dossier.id,
-      url: `/api/reports/pdf?title=${encodeURIComponent(title)}&status=${encodeURIComponent(result.ok ? "Export review packet" : "Export blocked")}`,
-      sections: exportSectionsForFlow(flow),
+      artifactId: artifact.id,
+      estateId: model.estateIds.length === 1 ? model.estateIds[0] : undefined,
+      estateIds: model.estateIds,
+      url: `/api/reports/pdf?artifactId=${encodeURIComponent(artifact.id)}`,
+      sections: model.sections,
+      contentHash: artifact.contentHash,
+      expiresAt: artifact.expiresAt,
     },
   }, { headers: { "cache-control": "no-store" } });
 }
@@ -2449,6 +2584,12 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return exportResponse(request, url, await podioRuntimeEnv(request, env));
+    }
+
+    if (url.pathname === "/api/reports/pdf") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return packetArtifactResponse(request, url, env);
     }
 
     if (url.pathname === "/api/podio/diagnostics") {

@@ -5,7 +5,7 @@ function readBody(request) {
     let body = "";
     request.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 1_000_000) {
+      if (body.length > 5_000_000) {
         reject(new Error("Request body is too large."));
         request.destroy();
       }
@@ -79,12 +79,12 @@ function blockedResponse(body) {
       status: "blocked",
       message: "Production artifact app stopped before write because export credentials and worker API routing are not configured.",
     },
-    artifact: {
+    artifact: null,
+    expectedArtifact: {
       kind: "single_pdf",
       contentType: "application/pdf",
       flow,
       estateId,
-      url: `/api/reports/pdf?title=${encodeURIComponent(exportTitleForFlow(flow))}&status=Batch%20export%20blocked`,
       sections: exportSectionsForFlow(flow),
     },
   };

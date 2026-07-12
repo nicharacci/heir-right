@@ -30,3 +30,7 @@ MIAMI_DADE_CLERK_API_BASE = "https://www2.miamidadeclerk.gov/Developers/api"
 [[kv_namespaces]]
 binding = "PODIO_TOKEN_STORE"
 id = "d21d2926fe3e4e12ae17bc89e0907a93"
+
+[[kv_namespaces]]
+binding = "PACKET_ARTIFACTS"
+id = "23c96c2fed534d8b86e36139f44230f7"

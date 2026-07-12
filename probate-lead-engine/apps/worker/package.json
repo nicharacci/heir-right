@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@ple/types": "workspace:*",
+    "pdf-lib": "^1.17.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "streamdown": "^2.5.0"

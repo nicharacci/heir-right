@@ -7526,6 +7526,26 @@
       box-sizing: border-box;
     }
 
+    .pdf-packet-empty {
+      min-height: 0;
+      height: 100%;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: 14px;
+      padding: 28px;
+      text-align: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-inset);
+      box-sizing: border-box;
+    }
+
+    .pdf-packet-empty .copy {
+      max-width: 36ch;
+      margin: 0;
+    }
+
     .app:has(.export-menu[data-open="true"]) .pdf-packet-frame,
     .app:has(.export-menu[data-open="true"]) .pdf-reader {
       pointer-events: none;
@@ -11148,6 +11168,7 @@ const state = {
   connections: [],
   idiCoreUserApiKey: "",
   exportResult: null,
+  packetArtifacts: {},
   rows: [],
   filteredRows: [],
   demoEstateLeadsActive: false,
@@ -19208,6 +19229,9 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
     state.reportDateAdded = event.target.value;
     renderRail();
   });
+  content.querySelector("[data-generate-packet-preview]")?.addEventListener("click", (event) => {
+    generatePacketPreview(row, event.currentTarget);
+  });
   setRailOpen(state.railOpen);
 }
 
@@ -23054,21 +23078,50 @@ function reportPacketDateOptions(row, dossier) {
   return unique;
 }
 
-function reportPacketPdfUrl(row, dossier, dateAdded) {
-  const params = new URLSearchParams({
-    dateAdded,
-    property: dossier?.property?.address?.value ?? row?.address ?? "Property needs review",
-    owner: dossier?.summary?.estateName ?? dossier?.property?.ownerName?.value ?? row?.owner ?? row?.title ?? "Estate needs review",
-    source: row?.sourceProvider ? crmProviderLabel(row.sourceProvider) : "HeirRight lead packet",
-    missing: String(dossier?.completedLeadReport?.missingData?.length ?? row?.missing?.length ?? 0)
-  });
-  return `/api/reports/pdf?${params.toString()}`;
+function packetArtifactForRow(row = selectedRow(), flowId = state.activeDocPrepFlow) {
+  if (!row) return null;
+  return state.packetArtifacts?.[`${flowId}:${row.id}`] || null;
+}
+
+async function generatePacketPreview(row = selectedRow(), source = null) {
+  const dossier = dossierForRow(row);
+  if (!row || !dossier) return;
+  if (isDemoEstateImport(row)) {
+    nudgeDeniedAction(source, "Preview blocked", "Sample estates stay isolated from production packet export.", { pill: true, source: "document-preview" });
+    return;
+  }
+  source?.setAttribute?.("aria-busy", "true");
+  if (source) source.disabled = true;
+  try {
+    const result = await postJson("/api/exports", {
+      routes: [],
+      dryRun: true,
+      flow: state.activeDocPrepFlow,
+      estateId: row.id,
+      dossier,
+      operatorIntent: "generate_packet"
+    });
+    if (!result?.ok || !result?.artifactUrl) throw new Error((result?.blockers || []).join(" ") || "Packet generation is blocked.");
+    state.packetArtifacts[`${state.activeDocPrepFlow}:${row.id}`] = result;
+    state.exportResult = result;
+    addShellEvent("Packet preview ready", `${docPrepEstateLabel(row)} was rendered as one source-backed PDF.`, "ready", false);
+    renderRail();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    state.exportResult = { ok: false, blockers: [message], routes: [] };
+    document.getElementById("topStatus").textContent = `Packet preview blocked: ${message}`;
+    renderRail();
+  } finally {
+    source?.removeAttribute?.("aria-busy");
+    if (source) source.disabled = false;
+  }
 }
 
 function railDocsHtml(row, dossier) {
   const options = reportPacketDateOptions(row, dossier);
   const dateAdded = state.reportDateAdded;
   const report = dossier.completedLeadReport;
+  const packetArtifact = packetArtifactForRow(row);
   const readiness = docPrepReadinessItems(row, dossier);
   const exportResults = state.exportResult?.routes ?? [];
   const exportBlockers = exportBlockerItems();
@@ -23085,7 +23138,14 @@ function railDocsHtml(row, dossier) {
           </select>
         </label>
       </div>
-      <iframe class="pdf-packet-frame" title="Preview PDF" src="${escapeHtml(reportPacketPdfUrl(row, dossier, dateAdded))}"></iframe>
+      ${packetArtifact?.artifactUrl ? `
+        <iframe class="pdf-packet-frame" title="Preview PDF" src="${escapeHtml(packetArtifact.artifactUrl)}"></iframe>
+      ` : `
+        <div class="pdf-packet-empty">
+          <p class="copy">Generate the current source-backed packet to preview the exact PDF that will download.</p>
+          <button class="btn primary solvys-liquid-glass" type="button" data-generate-packet-preview>Generate Preview</button>
+        </div>
+      `}
     </section>
     <section class="glass-card rail-card">
       <h3>Notes and blockers</h3>
@@ -23851,6 +23911,15 @@ async function chooseExportRoute(route, source = null) {
   state.exportResult = null;
   const isControlledTest = Boolean(meta.controlledTest);
   const batchRows = rowsForBatchAction();
+  if (!isControlledTest && batchRows.some((row) => isDemoEstateImport(row))) {
+    nudgeDeniedAction(source, "Export blocked", "Sample estates stay isolated from production exports. Select an imported or fetched estate.", { pill: true, source: "packet-export" });
+    return;
+  }
+  const packetDossiers = batchRows.map((row) => dossierForRow(row)).filter(Boolean);
+  if (!isControlledTest && packetDossiers.length !== batchRows.length) {
+    nudgeDeniedAction(source, "Export blocked", "Every selected estate needs a loaded Discovery dossier before one combined PDF can be generated.", { pill: true, source: "packet-export" });
+    return;
+  }
   const checkedCount = checkedRows().length;
   const isBatch = checkedCount > 0 && !isControlledTest;
   const batchCopy = isBatch
@@ -23879,13 +23948,20 @@ async function chooseExportRoute(route, source = null) {
         dryRun: meta.dryRun === false ? false : true,
         controlledTest: isControlledTest,
         batch: isBatch,
-        leadIds: batchRows.map((row) => row.id),
+        estateIds: batchRows.map((row) => row.id),
+        dossiers: packetDossiers,
         flow: state.activeDocPrepFlow,
         expectedArtifact: "single_pdf",
+        operatorIntent: "generate_packet",
       }),
     });
     const result = await response.json();
     state.exportResult = result;
+    if (result?.ok && result?.artifactUrl) {
+      batchRows.forEach((row) => {
+        state.packetArtifacts[`${state.activeDocPrepFlow}:${row.id}`] = result;
+      });
+    }
     const blockers = (result.blockers ?? []).filter((blocker) => !/skipped in dry-run mode/i.test(blocker));
     const testDelivered = isControlledTest && deliveredPodioTest(result);
     if (testDelivered) {
