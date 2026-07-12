@@ -26,6 +26,15 @@ const queueExportHandler = source.slice(
 );
 assert.match(queueExportHandler, /queuedRows\(\)\.length \? queuedRows\(\) : checkedRows\(\)/);
 assert.match(queueExportHandler, /state\.queueIds\.delete/);
+assert.match(source, /const seenEstates = new Set\(\)/, "Fresh provider reruns must be deduplicated before the Estates table and Queue render.");
+assert.match(source, /`parcel:\$\{parcel\}`[\s\S]*`address:\$\{address\}`/, "Estate dedupe must prefer folio and fall back to property address.");
+
+const latestRunRows = source.slice(
+  source.indexOf("function buildRows(data, dossier)"),
+  source.indexOf("function selectedRow()"),
+);
+assert.match(latestRunRows, /id: "estate"/);
+assert.doesNotMatch(latestRunRows, /id: "lead-report"|id: "property-title"|id: "outreach-prep"/, "Internal artifacts must remain inside one estate workflow instead of rendering as duplicate estate rows.");
 
 const closingRoute = fs.readFileSync(path.resolve(here, "../../worker/src/cloudflare.ts"), "utf8");
 assert.match(closingRoute, /approved legal template files and designated fill-field map are not installed/);
@@ -36,6 +45,8 @@ console.log(JSON.stringify({
     "queue_requires_deliberate_user_selection",
     "queue_generates_combined_pdf",
     "queued_estate_can_be_removed",
+    "fresh_estate_reruns_are_deduplicated",
+    "latest_run_renders_one_estate_row",
     "single_and_batch_download_actions",
     "single_pdf_api_contract",
     "closing_requires_immutable_legal_templates",

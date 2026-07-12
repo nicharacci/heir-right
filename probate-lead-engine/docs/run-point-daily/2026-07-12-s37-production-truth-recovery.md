@@ -103,6 +103,15 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - The first complete uncached suite exposed an older S35 assertion coupled to Podio's superseded HTML login sentence. Updated it to assert the shared `auth_required` security contract, then reran the complete suite with `set -e`.
 - Final clean pass at this milestone: three uncached builds passed, all five test tasks passed, Worker validation produced 61 facts, Discovery packet assertions opened 13-page single and 25-page batch PDFs, lint completed, `pnpm audit --prod` found no known vulnerabilities, and the token-pattern scan returned no findings.
 
+### Milestone 6B - One estate row per property
+
+- The browser walkthrough exposed the same current property three times in Estates. The upstream payload was not duplicated; `buildRows` incorrectly promoted the lead report, property/title review, and Outreach prep artifacts into peer estate rows with the same address and estate name.
+- Removed those internal artifacts from the Estate collection. They remain available inside the selected estate's Doc Prep and related workflow surfaces, while Estates now preserves its one-row-per-property contract.
+- Hardened fresh-provider deduplication to prefer folio and otherwise use normalized property address, so reruns with a changed owner label cannot create a second estate for the same property.
+- Added regression assertions for both data paths: provider reruns are deduplicated and a latest-run packet creates only the `estate` row, never the three internal artifact IDs.
+- Fresh proof: the complete artifact suite passed. After a full Chrome reload, the summary reported seven Estate files; clearing the default evidence threshold showed six sample estates plus exactly one `Estate of Fresh Public-Source Validation Lead` row at `20611 NW 33rd Pl`.
+- Anti-negligence review: this was a state-model defect disguised as duplicate data. The fix was applied at row construction rather than hiding duplicate DOM rows after rendering.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint

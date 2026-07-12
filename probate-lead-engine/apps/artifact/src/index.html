@@ -13023,7 +13023,20 @@ function freshBatchRowFromRun(run, index) {
 
 function buildFreshBatchRows(batch) {
   const leadRuns = Array.isArray(batch?.leadRuns) ? batch.leadRuns : [];
-  return leadRuns.map((run, index) => freshBatchRowFromRun(run, index)).map((row) => ({ ...row, tone: rowTone(row) }));
+  const seenEstates = new Set();
+  return leadRuns
+    .map((run, index) => freshBatchRowFromRun(run, index))
+    .filter((row) => {
+      const parcel = normalizeLookupText(row.parcel || "");
+      const address = normalizeLookupText(row.address || "");
+      const identity = parcel && !/needs review/i.test(row.parcel || "")
+        ? `parcel:${parcel}`
+        : `address:${address}`;
+      if (seenEstates.has(identity)) return false;
+      seenEstates.add(identity);
+      return true;
+    })
+    .map((row) => ({ ...row, tone: rowTone(row) }));
 }
 
 function crmProviderLabel(provider = "podio") {
@@ -13452,65 +13465,6 @@ function buildRows(data, dossier) {
       missing,
       search: `${estate} ${owner} ${leadName} ${address} ${caseNumber} ${county} ${parcel} ${decision.label} ${qualification?.label ?? ""} ${(qualification?.reasonCodes ?? []).join(" ")} ${missing.map((item) => item.label).join(" ")}`,
       leadType: "probate"
-    },
-    {
-      id: "lead-report",
-      kind: "File",
-      title: "Completed lead report",
-      file: "Internal report",
-      leadName,
-      address,
-      county,
-      parcel,
-      owner,
-      score: Math.max(30, baseScore - 8),
-      evidence: Math.min(facts, 8),
-      evidenceTotal: 9,
-      status: dossier.completedLeadReport?.reviewGate?.externalUseBlocked ? "blocked" : "review",
-      next: contactGate?.next ?? "Fill missing report sections",
-      classification: contactGate?.classification,
-      missing,
-      search: `completed lead report internal draft offer math ${leadName} ${address} ${missing.map((item) => item.label).join(" ")}`,
-      leadType: "probate"
-    },
-    {
-      id: "property-title",
-      kind: "File",
-      title: "Property and title review",
-      file: "County records",
-      leadName,
-      address,
-      county,
-      parcel,
-      owner,
-      score: Math.max(30, baseScore - (dossier.deedHistory?.reviewTasks?.length ?? 0) * 5),
-      evidence: Math.min((data.facts ?? []).filter((fact) => ["property_appraiser", "official_records", "tax_collector"].includes(fact.source)).length, 9),
-      evidenceTotal: 9,
-      status: (dossier.deedHistory?.reviewTasks?.length ?? 0) || (dossier.taxHistory?.reviewTasks?.length ?? 0) ? "review" : "ready",
-      next: (dossier.taxHistory?.reviewTasks?.length ?? 0) ? "Add tax history" : "Check title records",
-      missing: missing.filter((item) => ["tax", "probate"].includes(item.type)),
-      search: `property title deed tax address folio ${leadName} ${address} ${parcel}`,
-      leadType: "title"
-    },
-    {
-      id: "outreach-prep",
-      kind: "File",
-      title: "Outreach prep",
-      file: "Manual follow-up",
-      leadName,
-      address,
-      county,
-      parcel,
-      owner,
-      score: Math.max(24, baseScore - 22),
-      evidence: Math.min(dossier.outreach?.assets?.length ?? 0, 9),
-      evidenceTotal: 9,
-      status: "blocked",
-      next: contactGate?.next ?? "Add phone numbers",
-      classification: contactGate?.classification,
-      missing: missing.filter((item) => ["phones", "podio", "heirs"].includes(item.type)),
-      search: `outreach phones calls texts emails podio manual follow up ${leadName} ${address}`,
-      leadType: "outreach"
     }
   ];
   return [...rows.map((row) => ({ ...row, tone: rowTone(row) })), ...crmImportRows()];
