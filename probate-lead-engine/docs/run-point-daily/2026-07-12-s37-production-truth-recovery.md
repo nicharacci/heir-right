@@ -67,6 +67,17 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Opened the Podio API settings page in Chrome for the one-time approved-account reconnect. The browser currently needs the user to sign in before OAuth consent and team-KV persistence can be proven live.
 - Anti-negligence review: the recurring disconnect defect is repaired and regression-tested, but the Podio acceptance gate stays open until the approved account completes one sign-in and the follow-up app/member readback returns success.
 
+### Milestone 4 - Responsive Doc Prep Preview
+
+- Ran Estate Discovery in the real local app and measured the open Preview rail at `390x844`, `768x1024`, `1280x720`, and `1440x900`. The first mobile pass proved the 375px content track contained a 452px rail, which cut off Preview status, section controls, and document text.
+- Constrained the rail, title card, Preview card, section control, and document layers to a zero-minimum grid track. The section-chip row remains intentionally horizontally scrollable, while the rail and page themselves have no horizontal overflow.
+- Collapsed the Preview header, checklist title row, and completion strip to mobile-safe rows. The Preview card now encloses its header, controls, streamed document window, scrollbar, and shortcut copy without bleeding beyond its container.
+- Final geometry at `390x844`: document `clientWidth=375 / scrollWidth=375`; rail `374 / 374`; rail content `374 / 374`; title card `348 / 348`; Preview card `348 / 348`. Tablet and both desktop sizes also stayed within their viewport widths.
+- Verified reduced-height behavior at `1110x627`: the page scroll height was `1930` against a `627` viewport and the rail content had its own `323 / 5251` scroll region, so content remains reachable instead of being cut off.
+- Exercised the actual keyboard handler in Chrome: `Option+Down` moved from Tax Receipt to Deed, and `Option+Up` returned to Tax Receipt. A final mobile screenshot visually confirmed full-width text and status containment.
+- Fresh artifact build and full artifact test passed, including the existing preview-fit contract, route guards, source readiness, settings/access, and 13/25-page PDF content assertions.
+- Anti-negligence review: the last hidden overflow came from the completion strip above Preview, not Preview itself. It was removed and remeasured rather than accepted because the page happened to clip it.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint

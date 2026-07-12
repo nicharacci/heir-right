@@ -10469,7 +10469,10 @@
       .results { min-height: 520px; }
       .research-rail {
         position: static;
+        grid-column: 1;
+        justify-self: stretch;
         width: 100% !important;
+        max-width: 100% !important;
         margin-right: 0 !important;
         transform: none !important;
         min-height: 620px;
@@ -10479,8 +10482,47 @@
       .research-rail[data-open="true"] { display: flex; opacity: 1; }
       .rail-resizer { display: none; }
       .rail-scroll {
+        width: 100%;
         height: auto;
         max-height: none;
+        overflow-x: hidden;
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .research-rail,
+      .rail-chrome,
+      .rail-scroll,
+      .rail-card,
+      .rail-title-card,
+      .docprep-artifact-stream,
+      .artifact-stream-document,
+      .artifact-stream-section,
+      .docprep-section-control {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      .artifact-stream-head {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .rail-title-row {
+        flex-wrap: wrap;
+      }
+      .discovery-strip {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .docprep-run-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+      .artifact-stream-head > .pill {
+        justify-self: start;
+      }
+      .artifact-stream-section h4 {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .artifact-stream-section h4 .pill {
+        flex: 0 0 auto;
       }
       table { min-width: 680px; }
       .summary-metrics {
