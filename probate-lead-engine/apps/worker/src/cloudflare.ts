@@ -1767,6 +1767,48 @@ function sourceRunProofLedger(sourceSummaries: Array<Record<string, unknown>>, s
   };
 }
 
+async function discoveryFileKey(estateId: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(estateId));
+  const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `discovery-file:${hash}`;
+}
+
+async function persistDiscoveryFile(env: CloudflareEnv, record: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const estateId = stringValue(record.estateId);
+  const revision = stringValue(record.revision);
+  if (!env.PACKET_ARTIFACTS || !estateId || !revision) {
+    return { stored: false, readbackStatus: "storage_unavailable" };
+  }
+  const key = await discoveryFileKey(estateId);
+  await env.PACKET_ARTIFACTS.put(key, JSON.stringify(record), {
+    metadata: { kind: "discovery_file", estateId, revision },
+  });
+  const stored = await env.PACKET_ARTIFACTS.get(key);
+  const readback = stored ? JSON.parse(stored) as Record<string, unknown> : null;
+  return {
+    stored: true,
+    readbackStatus: readback && stringValue(readback.revision) === revision ? "verified" : "failed",
+    revision,
+  };
+}
+
+async function discoveryFileResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "GET") return methodNotAllowed();
+  const estateId = stringValue(url.searchParams.get("estateId"));
+  if (!estateId) {
+    return json({ ok: false, error: "estate_id_required", message: "Choose an estate before loading its Discovery File." }, { status: 400 });
+  }
+  if (!env.PACKET_ARTIFACTS) {
+    return json({ ok: false, error: "discovery_store_unavailable", message: "Discovery File storage is not configured." }, { status: 503 });
+  }
+  const stored = await env.PACKET_ARTIFACTS.get(await discoveryFileKey(estateId));
+  if (!stored) {
+    return json({ ok: true, exists: false, estateId, message: "No persisted Discovery File exists for this estate yet." }, { headers: { "cache-control": "no-store" } });
+  }
+  const record = JSON.parse(stored) as Record<string, unknown>;
+  return json({ ok: true, exists: true, ...record, readbackStatus: "verified" }, { headers: { "cache-control": "no-store" } });
+}
+
 async function externalSourceRunResponse(request: Request, url: URL, env: CloudflareEnv): Promise<Response> {
   if (request.method !== "POST") return methodNotAllowed();
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
@@ -1823,12 +1865,30 @@ async function externalSourceRunResponse(request: Request, url: URL, env: Cloudf
       ? ["One or more Discovery sources are blocked; keep the packet in review."]
       : []),
   ]));
+  const estateId = stringValue(body.assetKey) || seedIdentity(seed);
+  const generatedAt = nowIso();
+  const discoveryFile = {
+    version: 1,
+    flow: "discovery",
+    estateId,
+    revision: pipeline.runId,
+    generatedAt,
+    seed,
+    capture,
+    sourceSummaries,
+    sourceRunProof,
+    sourceFacts,
+    taxCollectorReceiptRun,
+    dossier: pipeline.dossier,
+    blockers,
+  };
+  const persistence = await persistDiscoveryFile(env, discoveryFile);
   return json({
     ok: blockers.length === 0,
     mode: "external_source_run",
     runId: pipeline.runId,
-    estateId: stringValue(body.assetKey) || seedIdentity(seed),
-    generatedAt: nowIso(),
+    estateId,
+    generatedAt,
     seed,
     sourceSummaries,
     sourceRunProof,
@@ -1836,6 +1896,7 @@ async function externalSourceRunResponse(request: Request, url: URL, env: Cloudf
     taxCollectorReceiptRun,
     dossier: pipeline.dossier,
     blockers,
+    persistence,
     message: blockers.length
       ? "Discovery source checks ran and returned review blockers. The app did not assume missing public or paid-source facts."
       : "Discovery source checks returned structured source facts for review.",
@@ -2567,6 +2628,12 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return externalSourceRunResponse(request, url, env);
+    }
+
+    if (url.pathname === "/api/discovery/file") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return discoveryFileResponse(request, url, env);
     }
 
     if (url.pathname === "/api/discovery/tax-collector/receipt-run") {

@@ -94,9 +94,27 @@ test("Full Discovery invokes source orchestration before streaming packet sectio
       const rail = document.querySelector("#researchRail");
       const preview = document.querySelector("[data-docprep-stream]");
       const documentPanel = document.querySelector("[data-docprep-stream-document]");
+      const workspace = document.querySelector(".workspace");
+      const app = document.querySelector(".app");
+      const content = document.querySelector(".content");
+      const workbench = document.querySelector(".workbench");
+      const dossiersView = document.querySelector("#dossiersView");
       const box = (element) => {
         const rect = element?.getBoundingClientRect();
         return rect ? { left: rect.left, right: rect.right, width: rect.width } : null;
+      };
+      const styles = (element) => {
+        if (!element) return null;
+        const computed = getComputedStyle(element);
+        return {
+          width: computed.width,
+          maxWidth: computed.maxWidth,
+          paddingRight: computed.paddingRight,
+          transform: computed.transform,
+          transition: computed.transition,
+          gridColumn: computed.gridColumn,
+          justifySelf: computed.justifySelf
+        };
       };
       return {
         viewportWidth: window.innerWidth,
@@ -107,6 +125,17 @@ test("Full Discovery invokes source orchestration before streaming packet sectio
         rail: box(rail),
         preview: box(preview),
         documentPanel: box(documentPanel),
+        owners: {
+          workspace: box(workspace),
+          app: box(app),
+          content: box(content),
+          workbench: box(workbench),
+          dossiersView: box(dossiersView)
+        },
+        styles: {
+          rail: styles(rail),
+          dossiersView: styles(dossiersView)
+        },
         railClientWidth: rail?.clientWidth || 0,
         railScrollWidth: rail?.scrollWidth || 0
       };

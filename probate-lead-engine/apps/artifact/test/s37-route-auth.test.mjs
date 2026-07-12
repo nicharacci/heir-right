@@ -8,6 +8,7 @@ const connectionStatus = require("../api/connections/status.js");
 const exportsHandler = require("../api/exports.js");
 const reportPdf = require("../api/reports/pdf.js");
 const sourceRun = require("../api/discovery/external-source-run.js");
+const discoveryFile = require("../api/discovery/file.js");
 const taxReceiptRun = require("../api/discovery/tax-collector/receipt-run.js");
 const podioDiagnostics = require("../api/podio/diagnostics.js");
 const podioOAuthStart = require("../api/podio/oauth/start.js");
@@ -46,6 +47,7 @@ for (const [name, handler, request] of [
   ["exports", exportsHandler, { method: "POST", body: {}, url: "/api/exports" }],
   ["report PDF", reportPdf, { method: "GET", url: "/api/reports/pdf" }],
   ["source run", sourceRun, { method: "POST", body: {}, url: "/api/discovery/external-source-run" }],
+  ["Discovery File", discoveryFile, { method: "GET", url: "/api/discovery/file?estateId=estate-test" }],
   ["tax receipt", taxReceiptRun, { method: "POST", body: {}, url: "/api/discovery/tax-collector/receipt-run" }],
   ["Podio diagnostics", podioDiagnostics, { method: "GET", url: "/api/podio/diagnostics" }],
   ["Podio OAuth start", podioOAuthStart, { method: "GET", url: "/api/podio/oauth/start" }],
@@ -79,6 +81,7 @@ const protectedHandlers = [
   "api/admin/access.js",
   "api/connections/status.js",
   "api/discovery/external-source-run.js",
+  "api/discovery/file.js",
   "api/discovery/source-capture.js",
   "api/discovery/tax-collector/receipt-run.js",
   "api/exports.js",

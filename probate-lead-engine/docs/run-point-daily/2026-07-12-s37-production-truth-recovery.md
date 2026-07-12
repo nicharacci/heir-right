@@ -124,6 +124,16 @@ S37 remains open until every app-owned acceptance gate is proven through fresh t
 - Final browser proof: `pnpm test:e2e` passed both product-loop tests in Chromium. The source request fired exactly once from `20611 NW 33rd Pl`, every primary section opened, Queue returned to an empty disabled-export state after removal, and all required viewport geometry stayed contained.
 - Anti-negligence review: the auth-first overlay correctly blocked the first test when it accidentally launched with production auth and no Google session. The suite now starts an explicit local authenticated server and waits for the actual `#authGate` to clear; production auth remains tested separately through deployed route and initial-markup checks.
 
+### Milestone 8 - Shared Discovery File persistence and transition-safe Preview containment
+
+- Added a protected estate-scoped Discovery File read route and persisted every completed external-source run to the existing packet-artifact KV namespace. Each record carries the seed, raw capture, source summaries, source facts, Tax Collector result, regenerated dossier, blockers, revision, and generated time.
+- Made storage readback part of the user-visible run contract. Doc Prep stops before streaming when the shared Discovery File does not return the same revision, and opening an estate hydrates the newest verified team record instead of relying on one browser's local storage.
+- Added focused persistence tests for write/readback, source-fact and dossier survival, truthful missing-file behavior, protected route coverage, and frontend hydration. The full artifact suite passed after the change.
+- Reproduced the user's 390px Preview bleed in committed Playwright, then traced it through the live ownership chain. Desktop padding and rail transforms were still animating after the viewport crossed into mobile, while narrow desktop rail widths allowed Preview children to retain a larger intrinsic width.
+- Changed the mobile workbench to a zero-minimum grid track, removed geometry transitions at the mobile breakpoint, and made the Preview hierarchy obey the rail width at every breakpoint and intermediate resize state. The source document, section transitions, and keyboard cycling remain animated and functional.
+- Hardened `pnpm test:e2e` with an automatic artifact build so the browser cannot prove a stale `dist/index.html`. The final Chromium run passed both product-loop tests across `390x844`, `768x1024`, `1110x627`, `1280x720`, and `1440x900`, including vertical scrolling, Queue add/remove, all primary navigation, the real source-run request, Preview streaming, and `Option+Up` / `Option+Down`.
+- Anti-negligence review: the first responsive fix appeared ineffective because the E2E server was serving an old build. That release-process flaw was repaired before accepting the geometry result; the final proof now rebuilds and asserts owner, rail, Preview, and document bounds directly.
+
 ## Open Gates
 
 - [x] Shared Vercel route auth and auth-first paint

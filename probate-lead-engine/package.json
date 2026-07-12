@@ -7,6 +7,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "pretest:e2e": "pnpm --filter @ple/artifact build",
     "test:e2e": "playwright test"
   },
   "devDependencies": {

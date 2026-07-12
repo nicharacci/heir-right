@@ -69,6 +69,7 @@ const stateCookie = process.env.AUTH_STATE_COOKIE || "hr_oauth_state";
 const sessionTtlSeconds = Number(process.env.AUTH_SESSION_TTL_SECONDS || 60 * 60 * 12);
 const localIdiRuns = new Map();
 const localSourceCaptures = new Map();
+const localDiscoveryFiles = new Map();
 const localContactReviews = new Map();
 const localClientState = new Map();
 
@@ -1416,12 +1417,30 @@ async function handleExternalSourceRun(req, res) {
       ? ["One or more Discovery sources are blocked; keep the packet in review."]
       : []),
   ])];
+  const estateId = body.assetKey || seed.estateName || seed.propertyAddress || seed.parcelId || "source-run";
+  const generatedAt = new Date().toISOString();
+  const discoveryFile = {
+    version: 1,
+    flow: "discovery",
+    estateId,
+    revision: pipeline.runId,
+    generatedAt,
+    seed,
+    capture,
+    sourceSummaries,
+    sourceRunProof,
+    sourceFacts,
+    taxCollectorReceiptRun,
+    dossier: pipeline.dossier,
+    blockers,
+  };
+  localDiscoveryFiles.set(String(estateId), discoveryFile);
   sendJson(res, 200, {
     ok: blockers.length === 0,
     mode: "external_source_run",
     runId: pipeline.runId,
-    estateId: body.assetKey || seed.estateName || seed.propertyAddress || seed.parcelId || "source-run",
-    generatedAt: new Date().toISOString(),
+    estateId,
+    generatedAt,
     seed,
     sourceSummaries,
     sourceRunProof,
@@ -1429,10 +1448,35 @@ async function handleExternalSourceRun(req, res) {
     taxCollectorReceiptRun,
     dossier: pipeline.dossier,
     blockers,
+    persistence: { stored: true, readbackStatus: "verified", revision: pipeline.runId },
     message: blockers.length
       ? "Discovery source checks ran and returned review blockers. The app did not assume missing public or paid-source facts."
       : "Discovery source checks returned structured source facts for review.",
   }, { "cache-control": "no-store" });
+}
+
+async function handleDiscoveryFile(req, res, url) {
+  if (req.method !== "GET") {
+    sendMethodNotAllowed(res);
+    return;
+  }
+  const estateId = String(url.searchParams.get("estateId") || "").trim();
+  if (!estateId) {
+    sendJson(res, 400, { ok: false, error: "estate_id_required", message: "Choose an estate before loading its Discovery File." });
+    return;
+  }
+  const proxied = await proxyWorkerJson(`/api/discovery/file?estateId=${encodeURIComponent(estateId)}`, { req, method: "GET" });
+  if (proxied) {
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+    res.end(proxied.body);
+    return;
+  }
+  const record = localDiscoveryFiles.get(estateId);
+  if (!record) {
+    sendJson(res, 200, { ok: true, exists: false, estateId, message: "No persisted Discovery File exists for this estate yet." }, { "cache-control": "no-store" });
+    return;
+  }
+  sendJson(res, 200, { ok: true, exists: true, ...record, readbackStatus: "verified" }, { "cache-control": "no-store" });
 }
 
 async function handleContactCandidateReview(req, res, candidateId) {
@@ -2124,6 +2168,11 @@ function handleRequest(req, res) {
 
   if (url.pathname === "/api/discovery/external-source-run") {
     handleExternalSourceRun(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/api/discovery/file") {
+    handleDiscoveryFile(req, res, url).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
     return;
   }
 

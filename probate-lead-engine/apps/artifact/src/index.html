@@ -7175,6 +7175,31 @@
       transition: width .42s var(--ease-out), margin-right .42s var(--ease-out), transform .42s var(--ease-out), opacity .28s var(--ease), visibility 0s linear 0s;
     }
 
+    .research-rail,
+    .rail-chrome,
+    .rail-scroll,
+    .rail-card,
+    .rail-title-card,
+    .docprep-artifact-stream,
+    .artifact-stream-document,
+    .artifact-stream-section,
+    .docprep-section-control {
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .rail-chrome,
+    .rail-scroll,
+    .rail-card,
+    .rail-title-card,
+    .docprep-artifact-stream,
+    .artifact-stream-document,
+    .artifact-stream-section,
+    .docprep-section-control {
+      width: 100%;
+    }
+
     .research-rail[data-open="false"] {
       pointer-events: none;
       opacity: 0;
@@ -10449,7 +10474,10 @@
         flex: 0 0 56px;
       }
       .app[data-active-view="dossiers"] #dossiersView {
+        width: 100%;
+        max-width: 100%;
         padding-right: 12px;
+        transition: none;
       }
       .dossier-shell {
         height: auto;
@@ -10471,8 +10499,8 @@
         width: auto;
         max-width: none;
       }
-      .content { grid-template-columns: 1fr; overflow: visible; border-radius: 0; }
-      .content.is-filter-collapsed { grid-template-columns: 1fr; }
+      .content { grid-template-columns: minmax(0, 1fr); overflow: visible; border-radius: 0; }
+      .content.is-filter-collapsed { grid-template-columns: minmax(0, 1fr); }
       .filters { max-height: none; }
       .content.is-filter-collapsed .filters {
         opacity: 1;
@@ -10496,10 +10524,11 @@
         position: static;
         grid-column: 1;
         justify-self: stretch;
-        width: 100% !important;
+        width: auto !important;
         max-width: 100% !important;
         margin-right: 0 !important;
         transform: none !important;
+        transition: none !important;
         min-height: 620px;
         bottom: auto;
       }
@@ -10512,19 +10541,6 @@
         max-height: none;
         overflow-x: hidden;
         grid-template-columns: minmax(0, 1fr);
-      }
-      .research-rail,
-      .rail-chrome,
-      .rail-scroll,
-      .rail-card,
-      .rail-title-card,
-      .docprep-artifact-stream,
-      .artifact-stream-document,
-      .artifact-stream-section,
-      .docprep-section-control {
-        min-width: 0;
-        max-width: 100%;
-        box-sizing: border-box;
       }
       .artifact-stream-head {
         grid-template-columns: minmax(0, 1fr);
@@ -15964,6 +15980,9 @@ async function runAutonomousDiscoverySources(row = selectedRow()) {
     const result = await postJson("/api/discovery/external-source-run", externalSourceRunPayload(row, capture, key));
     applyExternalSourceRunResult(row, capture, result);
     persistAssetDiscoveryState();
+    if (result.persistence?.readbackStatus !== "verified") {
+      return { ok: false, message: "Source evidence returned, but the shared Discovery File did not pass storage readback. Retry before continuing." };
+    }
     return { ok: true, result };
   } catch (error) {
     const message = error instanceof Error ? error.message : "The source search could not run.";
@@ -15982,6 +16001,47 @@ async function runAutonomousDiscoverySources(row = selectedRow()) {
     };
     persistAssetDiscoveryState();
     return { ok: false, message };
+  }
+}
+
+async function hydratePersistedDiscoveryFile(row = selectedRow()) {
+  if (!row || isDemoEstateImport(row)) return null;
+  const key = assetDiscoveryKey(row);
+  try {
+    const response = await fetch(`/api/discovery/file?estateId=${encodeURIComponent(key)}`, { cache: "no-store" });
+    if (response.status === 404) return null;
+    const record = await response.json().catch(() => ({}));
+    if (!response.ok || !record?.ok || record.readbackStatus !== "verified" || !record.dossier) return null;
+    const current = state.sourceCaptures[key] ?? {};
+    const currentAt = Date.parse(current.sourceApiRun?.generatedAt || "") || 0;
+    const storedAt = Date.parse(record.generatedAt || "") || 0;
+    if (currentAt > storedAt) return current;
+    state.sourceCaptures[key] = {
+      ...current,
+      ...(record.capture && typeof record.capture === "object" ? record.capture : {}),
+      sourceFacts: Array.isArray(record.sourceFacts) ? record.sourceFacts : [],
+      dossier: record.dossier,
+      taxCollectorReceiptRun: record.taxCollectorReceiptRun || null,
+      sourceApiRun: {
+        ok: !Array.isArray(record.blockers) || record.blockers.length === 0,
+        mode: "external_source_run",
+        runId: record.revision || record.runId || "",
+        generatedAt: record.generatedAt || new Date().toISOString(),
+        sourceSummaries: Array.isArray(record.sourceSummaries) ? record.sourceSummaries : [],
+        sourceRunProof: record.sourceRunProof && typeof record.sourceRunProof === "object" ? record.sourceRunProof : null,
+        blockers: Array.isArray(record.blockers) ? record.blockers : [],
+        message: "Shared Discovery File loaded with verified storage readback."
+      },
+      updatedAt: Date.now()
+    };
+    persistAssetDiscoveryState();
+    if (state.activeView === "dossiers" && selectedRow()?.id === row.id) {
+      renderDossiersView();
+      renderRail();
+    }
+    return state.sourceCaptures[key];
+  } catch {
+    return null;
   }
 }
 
@@ -18792,6 +18852,7 @@ function openDocPrepRow(rowId, flowId = state.activeDocPrepFlow) {
   renderDossiersView();
   renderRail();
   updateFooterLeadContext(row);
+  hydratePersistedDiscoveryFile(row);
 }
 
 function docPrepFlowLineHtml(row, flowId) {
