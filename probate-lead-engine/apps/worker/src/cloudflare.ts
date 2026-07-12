@@ -5,6 +5,7 @@ import { buildControlledPodioTestSeed } from "./export/controlled-test-lead";
 import { connectionStatuses, exportCompletedReport, podioReadbackBlockerMessage, resolvePodioAccessToken } from "./export/export-package";
 import { TEXAS_EQUITY_PROS_LEADS_APP_ID, TEXAS_EQUITY_PROS_LEADS_SPACE_ID } from "./export/podio-config";
 import { buildIdiAssetSearchFacts } from "./enrichment/idi-asset-search";
+import { buildClosingPacketModel, type ClosingFieldInput, type ClosingPacketOptions } from "./documents/closing-packet-model";
 import { buildDiscoveryPacketModel, validatePacketModel, type PacketModel } from "./documents/packet-model";
 import { renderPacketPdf } from "./documents/packet-pdf";
 import { runDryPipeline } from "./index";
@@ -1271,6 +1272,11 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
     estateIds?: string[];
     leadId?: string;
     operatorIntent?: string;
+    selectedClosingTemplateIds?: string[];
+    selectedClosingTemplateIdsByEstate?: Record<string, string[]>;
+    closingFieldValues?: Record<string, ClosingFieldInput>;
+    closingFieldValuesByEstate?: Record<string, Record<string, ClosingFieldInput>>;
+    closingPacketOptions?: ClosingPacketOptions;
   } | undefined;
   if (!body?.controlledTest && body?.operatorIntent !== "generate_packet") {
     return json({ ok: false, error: "operator_intent_required", message: "Confirm packet generation before exporting." }, { status: 400 });
@@ -1289,23 +1295,20 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
   const dossiers = suppliedDossiers.length ? suppliedDossiers : pipelines.map((pipeline) => pipeline.dossier);
   const primaryDossier = dossiers[0];
   if (!primaryDossier) return json({ ok: false, error: "missing_dossier", message: "Packet export needs at least one estate dossier." }, { status: 400 });
-  const result = await exportCompletedReport({
-    routes: body?.routes ?? routes,
-    dossier: primaryDossier,
-    dryRun: body?.dryRun ?? dryRun,
-    controlledTest: body?.controlledTest,
-  }, env as Record<string, string | undefined>);
   const flow = normalizedExportFlow(body);
-  if (flow === "closing-docs") {
-    return json({
-      ok: false,
-      status: "blocked",
-      flow,
-      blockers: ["The approved legal template files and designated fill-field map are not installed. Closing export is blocked to preserve template language."],
-      delivery: result,
-    }, { status: 422, headers: { "cache-control": "no-store" } });
-  }
-  const model = buildDiscoveryPacketModel(dossiers);
+  const closingPacketOptions: ClosingPacketOptions = body?.closingPacketOptions ?? {
+    default: {
+      selectedTemplateIds: body?.selectedClosingTemplateIds,
+      fields: body?.closingFieldValues,
+    },
+    byEstate: Object.fromEntries(dossiers.map((dossier) => [dossier.id, {
+      selectedTemplateIds: body?.selectedClosingTemplateIdsByEstate?.[dossier.id] ?? body?.selectedClosingTemplateIds,
+      fields: body?.closingFieldValuesByEstate?.[dossier.id] ?? body?.closingFieldValues,
+    }])),
+  };
+  const model = flow === "closing-docs"
+    ? buildClosingPacketModel(dossiers, closingPacketOptions)
+    : buildDiscoveryPacketModel(dossiers);
   const packetBlockers = validatePacketModel(model);
   if (packetBlockers.length) {
     return json({
@@ -1315,8 +1318,28 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
       estateIds: model.estateIds,
       sections: model.sections,
       blockers: packetBlockers,
-      delivery: result,
     }, { status: 422, headers: { "cache-control": "no-store" } });
+  }
+  if (flow === "closing-docs") {
+    try {
+      await renderPacketPdf(model);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "closing_packet_render_failed";
+      const overflowField = message.startsWith("closing_field_overflow:")
+        ? message.split(":")[1]?.replace(/_/g, " ")
+        : "";
+      return json({
+        ok: false,
+        status: "blocked",
+        flow,
+        estateIds: model.estateIds,
+        sections: model.sections,
+        error: message,
+        blockers: [overflowField
+          ? `${overflowField} does not fit its approved template blank. Shorten or correct the value before export.`
+          : "The immutable Closing template failed its integrity or layout check. Export was not stored or delivered."],
+      }, { status: 422, headers: { "cache-control": "no-store" } });
+    }
   }
   let artifact: StoredPacketArtifact;
   try {
@@ -1331,6 +1354,12 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
   ].filter(Boolean)));
   const responseEstateIds = requestedEstateIds.length ? requestedEstateIds : model.estateIds;
   const packetPersistence = await persistPacketArtifactReferences(env, responseEstateIds, artifact);
+  const result = await exportCompletedReport({
+    routes: body?.routes ?? routes,
+    dossier: primaryDossier,
+    dryRun: body?.dryRun ?? dryRun,
+    controlledTest: body?.controlledTest,
+  }, env as Record<string, string | undefined>);
   return json({
     ok: true,
     status: "packet_ready",

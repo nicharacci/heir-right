@@ -26,6 +26,10 @@ export interface PacketEstate {
   displayName: string;
   propertyAddress: string;
   sections: PacketSection[];
+  closing?: {
+    templateIds: string[];
+    fields: Record<string, string>;
+  };
 }
 
 export interface PacketModel {
@@ -37,6 +41,11 @@ export interface PacketModel {
   estates: PacketEstate[];
   sections: Array<{ id: string; title: string; estateId: string }>;
   blockers: string[];
+  closingTemplate?: {
+    templateId: string;
+    templateHash: string;
+    version: number;
+  };
 }
 
 const GENERIC_IDENTITIES = new Set([

@@ -102,24 +102,13 @@
     ],
     "beneficiary": [
       {
-        "fontSize": 9.57,
-        "page": 24,
-        "rect": [
-          518.91,
-          130.21,
-          44.67,
-          15.29
-        ],
-        "sourcePage": 40
-      },
-      {
-        "fontSize": 9.57,
+        "fontSize": 10,
         "page": 24,
         "rect": [
           34.5,
-          144.0,
-          109.34,
-          15.29
+          130.21,
+          529.07,
+          29.09
         ],
         "sourcePage": 40
       },
@@ -284,24 +273,13 @@
         "sourcePage": 11
       },
       {
-        "fontSize": 8.77,
-        "page": 8,
-        "rect": [
-          519.47,
-          192.78,
-          44.05,
-          14.18
-        ],
-        "sourcePage": 17
-      },
-      {
-        "fontSize": 8.77,
+        "fontSize": 10,
         "page": 8,
         "rect": [
           34.5,
-          205.43,
-          155.38,
-          14.18
+          192.78,
+          529.02,
+          26.83
         ],
         "sourcePage": 17
       },
@@ -317,24 +295,13 @@
         "sourcePage": 17
       },
       {
-        "fontSize": 8.77,
-        "page": 8,
-        "rect": [
-          519.47,
-          192.78,
-          44.05,
-          14.18
-        ],
-        "sourcePage": 17
-      },
-      {
-        "fontSize": 8.77,
+        "fontSize": 10,
         "page": 8,
         "rect": [
           34.5,
-          205.43,
-          34.46,
-          14.18
+          192.78,
+          529.02,
+          26.83
         ],
         "sourcePage": 17
       },
@@ -695,24 +662,13 @@
     ],
     "deposit_holder": [
       {
-        "fontSize": 8.77,
-        "page": 33,
-        "rect": [
-          361.33,
-          466.08,
-          194.86,
-          14.18
-        ],
-        "sourcePage": 51
-      },
-      {
-        "fontSize": 8.77,
+        "fontSize": 10,
         "page": 33,
         "rect": [
           39.0,
-          480.14,
-          177.65,
-          14.18
+          466.08,
+          517.19,
+          28.24
         ],
         "sourcePage": 51
       }
@@ -931,46 +887,24 @@
         "sourcePage": 8
       },
       {
-        "fontSize": 8.77,
+        "fontSize": 10,
         "page": 4,
         "rect": [
           34.5,
           405.65,
           517.09,
-          14.18
+          28.73
         ],
         "sourcePage": 11
       },
       {
-        "fontSize": 8.77,
-        "page": 4,
-        "rect": [
-          34.5,
-          420.19,
-          215.08,
-          14.18
-        ],
-        "sourcePage": 11
-      },
-      {
-        "fontSize": 9.57,
+        "fontSize": 10,
         "page": 31,
         "rect": [
           70.5,
           140.5,
           456.53,
-          15.29
-        ],
-        "sourcePage": 47
-      },
-      {
-        "fontSize": 9.57,
-        "page": 31,
-        "rect": [
-          70.5,
-          156.37,
-          353.65,
-          15.29
+          31.16
         ],
         "sourcePage": 47
       },
@@ -1330,24 +1264,13 @@
         "sourcePage": 45
       },
       {
-        "fontSize": 9.57,
-        "page": 30,
-        "rect": [
-          488.71,
-          181.9,
-          38.67,
-          15.29
-        ],
-        "sourcePage": 46
-      },
-      {
-        "fontSize": 9.57,
+        "fontSize": 10,
         "page": 30,
         "rect": [
           70.5,
-          195.7,
-          54.97,
-          15.29
+          181.9,
+          456.87,
+          29.09
         ],
         "sourcePage": 46
       }
@@ -1622,17 +1545,6 @@
           14.18
         ],
         "sourcePage": 11
-      },
-      {
-        "fontSize": 8.77,
-        "page": 4,
-        "rect": [
-          34.5,
-          235.26,
-          37.2,
-          14.18
-        ],
-        "sourcePage": 11
       }
     ],
     "seller_phone": [
@@ -1650,24 +1562,13 @@
     ],
     "settlor_entity": [
       {
-        "fontSize": 9.57,
-        "page": 24,
-        "rect": [
-          518.91,
-          130.21,
-          44.67,
-          15.29
-        ],
-        "sourcePage": 40
-      },
-      {
-        "fontSize": 9.57,
+        "fontSize": 10,
         "page": 24,
         "rect": [
           34.5,
-          144.0,
-          109.34,
-          15.29
+          130.21,
+          529.07,
+          29.09
         ],
         "sourcePage": 40
       },
@@ -1928,24 +1829,13 @@
         "sourcePage": 45
       },
       {
-        "fontSize": 9.57,
-        "page": 30,
-        "rect": [
-          470.44,
-          195.7,
-          56.99,
-          15.29
-        ],
-        "sourcePage": 46
-      },
-      {
-        "fontSize": 9.57,
+        "fontSize": 10,
         "page": 30,
         "rect": [
           70.5,
-          209.5,
-          25.67,
-          15.29
+          195.7,
+          456.94,
+          29.09
         ],
         "sourcePage": 46
       }
@@ -2238,7 +2128,7 @@
     }
   ],
   "pageCount": 36,
-  "templateHash": "2f3876e973d62ca1c04cec5b55b9cde741c01e03990271c5a505a47991591458",
+  "templateHash": "80cb9a4df7d5dcf882231e9863117fb818dd41c3290342888bad3a0b6bfae5b1",
   "templateId": "heirright-closing-templates-v1",
   "version": 1
 }
