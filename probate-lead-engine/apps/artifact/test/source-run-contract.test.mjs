@@ -84,6 +84,37 @@ try {
     "rendered source links must reject executable URL schemes before entering href"
   );
   assert.match(legacyAppSource, /result\.readbackStatus !== "verified" \|\| result\.persistence\?\.readbackStatus !== "verified"/, "manual source capture must require canonical readback before updating local state");
+  const reviewedNoneFacts = sourceCapture.localSourceFactsFromCapture({
+    assetKey: "source-capture-reviewed-none",
+    ownerName: "Estate of Contract Proof",
+    propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+    taxReceipt: {
+      listingUrl: "https://miamidade.county-taxes.test/listing/reviewed-none",
+      receiptLink: "https://miamidade.county-taxes.test/receipt/reviewed-none.pdf",
+      unpaidYears: "None found in reviewed source",
+    },
+  });
+  const reviewedNoneFact = reviewedNoneFacts.find((fact) => fact.factType === "unpaid_tax_years");
+  assert.deepEqual(
+    reviewedNoneFact?.value,
+    [],
+    "free-text reviewed-none input must persist as a verified empty unpaid-years list",
+  );
+  for (const ambiguousUnpaidYears of ["unknown", "not checked", "see receipt", "202"]) {
+    const ambiguousFacts = sourceCapture.localSourceFactsFromCapture({
+      assetKey: `source-capture-ambiguous-${ambiguousUnpaidYears.replace(/\W+/g, "-")}`,
+      taxReceipt: {
+        listingUrl: "https://miamidade.county-taxes.test/listing/ambiguous",
+        receiptLink: "https://miamidade.county-taxes.test/receipt/ambiguous.pdf",
+        unpaidYears: ambiguousUnpaidYears,
+      },
+    });
+    assert.equal(
+      ambiguousFacts.some((fact) => fact.factType === "unpaid_tax_years"),
+      false,
+      `ambiguous unpaid-year text must remain missing: ${ambiguousUnpaidYears}`,
+    );
+  }
   const autonomousSourceRun = legacyAppSource.match(/async function runAutonomousDiscoverySources[\s\S]*?\n}\n\nasync function hydratePersistedDiscoveryFile/)?.[0] || "";
   assert.ok(autonomousSourceRun.indexOf("result.persistence?.readbackStatus") < autonomousSourceRun.indexOf("applyExternalSourceRunResult"), "automated Discovery must verify persistence before applying source evidence");
   const manualSourceRun = legacyAppSource.match(/content\.querySelector\("\[data-run-source-search\]"\)[\s\S]*?content\.querySelector\("\[data-import-idi\]"\)/)?.[0] || "";
@@ -248,6 +279,42 @@ try {
     result.json.message,
     /source APIs/i,
     "Source-run response must not imply every Discovery source is an API."
+  );
+
+  const reviewedNonePayload = structuredClone(baseSourceRunPayload);
+  reviewedNonePayload.assetKey = "source-run-reviewed-none-proof";
+  reviewedNonePayload.capture.taxReceipt = {
+    ...reviewedNonePayload.capture.taxReceipt,
+    listingHtml: "",
+    amountDue: "$0.00",
+    unpaidYears: "None found in reviewed source",
+  };
+  const reviewedNoneResult = await callHandler(externalSourceRun, reviewedNonePayload);
+  assert.equal(reviewedNoneResult.statusCode, 200, "reviewed-none tax input must not crash the source run");
+  assert.equal(reviewedNoneResult.json.mode, "external_source_run");
+  assert.equal(reviewedNoneResult.json.persistence?.readbackStatus, "verified");
+  const reviewedNoneWorkerFact = (reviewedNoneResult.json.sourceFacts || [])
+    .find((fact) => fact.factType === "unpaid_tax_years" && Array.isArray(fact.value));
+  assert.deepEqual(
+    reviewedNoneWorkerFact?.value,
+    [],
+    "Worker source facts must persist reviewed-none tax input as a typed empty list",
+  );
+
+  const ambiguousYearsPayload = structuredClone(baseSourceRunPayload);
+  ambiguousYearsPayload.assetKey = "source-run-ambiguous-years-proof";
+  ambiguousYearsPayload.capture.taxReceipt = {
+    ...ambiguousYearsPayload.capture.taxReceipt,
+    listingHtml: "",
+    unpaidYears: "not checked",
+  };
+  const ambiguousYearsResult = await callHandler(externalSourceRun, ambiguousYearsPayload);
+  assert.equal(ambiguousYearsResult.statusCode, 200);
+  assert.equal(ambiguousYearsResult.json.persistence?.readbackStatus, "verified");
+  assert.equal(
+    ambiguousYearsResult.json.dossier?.taxHistory?.unpaidYears?.value,
+    null,
+    "ambiguous unpaid-year text must remain review-required in the canonical dossier",
   );
 
   const requiredSources = [

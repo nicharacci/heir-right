@@ -1314,7 +1314,7 @@ function sourceFactsFromCapture(runId: string, seed: IntakeSeed, capture: Record
     reviewFlags?: ReviewFlag[],
   ) => {
     if (value === undefined || value === null || value === "") return;
-    if (Array.isArray(value) && !value.length) return;
+    if (Array.isArray(value) && !value.length && factType !== "unpaid_tax_years") return;
     if (typeof value === "object" && !Array.isArray(value) && !Object.keys(value).length) return;
     out.push(fact({
       runId,
@@ -1341,6 +1341,13 @@ function sourceFactsFromCapture(runId: string, seed: IntakeSeed, capture: Record
   const compactObject = (input: Record<string, unknown>) => {
     const output = Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined && value !== null && value !== ""));
     return Object.keys(output).length ? output : undefined;
+  };
+  const explicitlyNoUnpaidYears = (value: unknown): boolean => {
+    const normalized = stringValue(value)
+      .toLowerCase()
+      .replace(/[.!]+$/g, "")
+      .replace(/\s+/g, " ");
+    return /^(?:none|none found|no unpaid(?: tax)? years?(?: found)?|no delinquent(?: tax)? years?(?: found)?)(?: (?:in|on) (?:the )?(?:reviewed source|source|reviewed receipt|receipt))?$/.test(normalized);
   };
   const sourceAttachment = (label: string, sourceUrl?: string, fileName?: string, fileKind: SourceAttachmentRef["fileKind"] = "link"): SourceAttachmentRef | undefined => {
     if (!sourceUrl && !fileName) return undefined;
@@ -1404,7 +1411,15 @@ function sourceFactsFromCapture(runId: string, seed: IntakeSeed, capture: Record
   addFact("tax_collector", "tax_receipt_link", receiptUrl, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
   addFact("tax_collector", "tax_receipt_attachment", receiptAttachment, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
   addFact("tax_collector", "tax_amount_due", taxDetails.amountDue || taxReceipt.amountDue, listingUrl || receiptUrl);
-  addFact("tax_collector", "unpaid_tax_years", taxDetails.unpaidYears || taxReceipt.unpaidYears, listingUrl || receiptUrl);
+  // The operator field is intentionally free text (for example, "2024, 2025"
+  // or "None found"). Downstream dossier renderers require a number array, so
+  // normalize an explicit reviewed-none value to [] so the fact collector records
+  // a verified empty result instead of leaking a scalar into typed dossier output.
+  // Ambiguous prose stays missing and review-required rather than becoming a false
+  // negative in the completed packet.
+  const capturedUnpaidYears = taxDetails.unpaidYears
+    ?? (explicitlyNoUnpaidYears(taxReceipt.unpaidYears) ? [] : undefined);
+  addFact("tax_collector", "unpaid_tax_years", capturedUnpaidYears, listingUrl || receiptUrl);
   addFact("tax_collector", "tax_reassessment_signal", taxReceipt.reassessment || taxDetails.reassessment, listingUrl || receiptUrl);
   const deedSourceUrl = stringValue(deed.documentUrl) || stringValue(deed.sourceUrl) || stringValue(deed.fileName);
   const orBookPage = compactObject({

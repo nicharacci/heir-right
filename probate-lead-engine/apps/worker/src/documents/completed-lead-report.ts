@@ -475,7 +475,9 @@ function buildSummaries(dossier: RawDossier) {
     ].join("\n"),
     taxSummary: [
       `Status: ${claimText(dossier.taxHistory.sourceStatus.value)}`,
-      `Unpaid years: ${dossier.taxHistory.unpaidYears.value?.join(", ") ?? "Needs review"}`,
+      `Unpaid years: ${Array.isArray(dossier.taxHistory.unpaidYears.value) && dossier.taxHistory.unpaidYears.value.length === 0
+        ? "None found"
+        : claimText(dossier.taxHistory.unpaidYears.value)}`,
       `Amount due: ${dossier.taxHistory.amountDue.value ? formatMoney({ ...dossier.taxHistory.amountDue, label: "Taxes due", currency: "USD" } as OfferProfitField) : "Needs review"}`,
       `Reassessment: ${claimText(dossier.taxHistory.reassessment.value)}`,
       `Receipt status: ${claimText(dossier.taxHistory.receiptStatus.value)}`,

@@ -567,7 +567,7 @@ function localSourceFactsFromCapture(body = {}) {
   const facts = [];
   const addFact = (source, factType, value, sourceUrl, attachment, reviewFlags) => {
     if (value === undefined || value === null || value === "") return;
-    if (Array.isArray(value) && !value.length) return;
+    if (Array.isArray(value) && !value.length && factType !== "unpaid_tax_years") return;
     if (typeof value === "object" && !Array.isArray(value) && !Object.keys(value).length) return;
     facts.push({
       id: `${body.runId || "local-source-capture"}:${source}:${factType}:${facts.length + 1}`,
@@ -595,6 +595,13 @@ function localSourceFactsFromCapture(body = {}) {
     return Object.keys(output).length ? output : undefined;
   };
   const stringValue = (value) => typeof value === "string" ? value.trim() : "";
+  const explicitlyNoUnpaidYears = (value) => {
+    const normalized = stringValue(value)
+      .toLowerCase()
+      .replace(/[.!]+$/g, "")
+      .replace(/\s+/g, " ");
+    return /^(?:none|none found|no unpaid(?: tax)? years?(?: found)?|no delinquent(?: tax)? years?(?: found)?)(?: (?:in|on) (?:the )?(?:reviewed source|source|reviewed receipt|receipt))?$/.test(normalized);
+  };
   const sourceAttachment = (label, sourceUrl, fileName, fileKind = "link") => {
     if (!sourceUrl && !fileName) return undefined;
     return {
@@ -657,7 +664,9 @@ function localSourceFactsFromCapture(body = {}) {
   addFact("tax_collector", "tax_receipt_link", receiptUrl, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
   addFact("tax_collector", "tax_receipt_attachment", receiptAttachment, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
   addFact("tax_collector", "tax_amount_due", taxDetails.amountDue || taxReceipt.amountDue, listingUrl || receiptUrl);
-  addFact("tax_collector", "unpaid_tax_years", taxDetails.unpaidYears || taxReceipt.unpaidYears, listingUrl || receiptUrl);
+  const capturedUnpaidYears = taxDetails.unpaidYears
+    ?? (explicitlyNoUnpaidYears(taxReceipt.unpaidYears) ? [] : undefined);
+  addFact("tax_collector", "unpaid_tax_years", capturedUnpaidYears, listingUrl || receiptUrl);
   addFact("tax_collector", "tax_reassessment_signal", taxReceipt.reassessment || taxDetails.reassessment, listingUrl || receiptUrl);
   const deedSourceUrl = deed.documentUrl || deed.sourceUrl || deed.fileName;
   const orBookPage = compactObject({
