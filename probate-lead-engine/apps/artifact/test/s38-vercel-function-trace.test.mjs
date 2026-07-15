@@ -45,6 +45,11 @@ assert.equal(
   "the extraction function must contain the pdfjs runtime module",
 );
 assert.equal(
+  matches("/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs").length,
+  1,
+  "the extraction function must contain the pdfjs fake-worker module required in Node",
+);
+assert.equal(
   matches("/node_modules/@napi-rs/canvas/geometry.js").length,
   1,
   "the extraction function must contain the pure-JavaScript DOMMatrix required by PDF.js",
@@ -80,6 +85,7 @@ console.log(JSON.stringify({
     "pdfjs_package_resolution_traced",
     "pdfjs_dommatrix_package_resolution_traced",
     "pdfjs_runtime_module_traced",
+    "pdfjs_worker_module_traced",
     "pdfjs_dommatrix_runtime_traced",
     "pdfjs_standard_fonts_traced",
     "production_trace_has_no_source_maps",

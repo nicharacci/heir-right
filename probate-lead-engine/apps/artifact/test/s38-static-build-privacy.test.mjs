@@ -88,6 +88,7 @@ assert.equal(artifactPackage.scripts["build:production"], "node build.js --produ
 assert.match(idiExtractionRoute, /require\.resolve\("pdfjs-dist\/standard_fonts\/LiberationSans-Regular\.ttf"\)/, "the serverless PDF extractor must resolve a traced runtime asset instead of an omitted package manifest");
 assert.doesNotMatch(idiExtractionRoute, /require\.resolve\("pdfjs-dist\/package\.json"\)/, "the serverless PDF extractor must not depend on a package manifest that Vercel can omit from the function trace");
 assert.match(idiExtractionRoute, /require\("@napi-rs\/canvas\/geometry"\)/, "the serverless PDF extractor must trace the pure-JavaScript DOMMatrix required by PDF.js");
+assert.match(idiExtractionRoute, /require\.resolve\("pdfjs-dist\/legacy\/build\/pdf\.worker\.mjs"\)/, "the serverless PDF extractor must trace the fake-worker module required by PDF.js in Node");
 assert.equal(artifactPackage.dependencies?.["@napi-rs/canvas"], "0.1.100", "the PDF.js DOMMatrix runtime must be a direct pinned production dependency");
 assert.equal(artifactVercel.functions?.["api/**/*.js"]?.maxDuration, 60, "the artifact-root fallback must preserve the API execution budget");
 assert.equal(rootVercel.functions?.["api/**/*.js"]?.excludeFiles, "apps/artifact/dist/**/*.map", "the canonical Vercel functions must exclude browser source maps from serverless traces");

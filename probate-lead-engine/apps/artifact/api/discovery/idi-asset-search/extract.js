@@ -3,6 +3,7 @@ const { effectiveSession } = require("../../auth/_shared");
 const mammoth = require("mammoth");
 const { parse: parseCsv } = require("csv-parse/sync");
 const { dirname, sep } = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const MAX_EXTRACTED_CHARACTERS = 250_000;
 const MAX_LOCATOR_CHARACTERS = 20_000;
@@ -13,6 +14,7 @@ const MAX_DOCX_ENTRIES = 256;
 const MAX_DOCX_UNCOMPRESSED_BYTES = 16_000_000;
 const MAX_DOCX_COMPRESSION_RATIO = 100;
 const PDFJS_STANDARD_FONT_DATA_URL = `${dirname(require.resolve("pdfjs-dist/standard_fonts/LiberationSans-Regular.ttf"))}${sep}`;
+const PDFJS_WORKER_MODULE_URL = pathToFileURL(require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")).href;
 
 function workerApiBase() {
   return String(process.env.HEIRRIGHT_WORKER_URL || process.env.WORKER_API_URL || process.env.WORKER_BASE_URL || "").replace(/\/+$/, "");
@@ -165,6 +167,7 @@ async function extractPdf(bytes) {
   const { DOMMatrix } = require("@napi-rs/canvas/geometry");
   globalThis.DOMMatrix ??= DOMMatrix;
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_MODULE_URL;
   const task = pdfjs.getDocument({
     data: new Uint8Array(bytes),
     disableWorker: true,
