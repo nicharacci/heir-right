@@ -225,7 +225,7 @@ test("Settings keeps review-only Browserbase workflows blocked from ready claims
         name: "Browserbase Usage",
         ok: true,
         mode: "review",
-        message: "Browserbase credentials and functions are configured.",
+        message: "Browserbase is configured for single-estate source capture. Paid batch source runs require approval.",
         usagePolicy: {
           apiConfigured: true,
           projectConfigured: true,
@@ -271,6 +271,15 @@ test("Settings keeps review-only Browserbase workflows blocked from ready claims
   await expect(readiness).toContainText("HTTP 402");
   await expect(readiness).not.toContainText("Single-estate capture ready");
 
+  await page.locator('[data-settings-tab="integrations"]').click();
+  const integrationCard = page.locator(".integration-card").filter({ hasText: "Browserbase Usage" });
+  const connectionRow = page.locator(".settings-connection-row").filter({ hasText: "Browserbase Usage" });
+  await expect(integrationCard).toContainText("Blocked");
+  await expect(integrationCard).toContainText("HTTP 402");
+  await expect(integrationCard).not.toContainText("configured for single-estate source capture");
+  await expect(connectionRow).toContainText("Blocked");
+  await expect(connectionRow).toContainText("HTTP 402");
+
   await page.locator('[data-settings-tab="sources"]').click();
   for (const title of ["Tax Collector Source", "Vital/Obituary Workflow", "Browserbase source usage"]) {
     const card = page.locator(".source-control-card").filter({ hasText: title });
@@ -278,6 +287,136 @@ test("Settings keeps review-only Browserbase workflows blocked from ready claims
     await expect(card.locator('li[data-state="ready"]')).toHaveCount(0);
   }
   await expect(page.locator(".source-control-card").filter({ hasText: "Browserbase source usage" })).toContainText("Billing blocked");
+  expect(browserFailures, browserFailures.join("\n")).toEqual([]);
+});
+
+test("Settings distinguishes missing Browserbase setup from a billing incident", async ({ page }) => {
+  const browserFailures = watchBrowserFailures(page);
+  await page.route("**/api/connections/status", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify([
+      {
+        name: "Tax Collector Source",
+        ok: false,
+        mode: "blocked",
+        configuredMode: "none",
+        message: "Tax Collector direct listing capture is available when an operator supplies the listing page, but public GovHub search needs Browserbase or controlled Chrome workflow before it can be automated.",
+        sourceAutomation: {
+          scriptDirectListingConfigured: false,
+          scriptLiveProbeEnabled: false,
+          browserWorkflowConfigured: false,
+          browserbaseFunctionConfigured: false,
+        },
+      },
+      {
+        name: "Vital/Obituary Workflow",
+        ok: false,
+        mode: "blocked",
+        configuredMode: "none",
+        message: "Vital, obituary, marriage-license, death-certificate, Findagrave/Legacy, and deceased-indicator review needs a configured browser/API workflow before Discovery can fill those facts automatically.",
+        sourceAutomation: {
+          workflowConfigured: false,
+          browserbaseFunctionConfigured: false,
+        },
+      },
+      {
+        name: "Browserbase Usage",
+        ok: false,
+        mode: "blocked",
+        configuredMode: "none",
+        message: "Browserbase is not connected. Tax Collector and vital-source browser workflows stay blocked until source capture is configured.",
+        usagePolicy: {
+          apiConfigured: false,
+          projectConfigured: false,
+          taxCollectorFunctionConfigured: false,
+          vitalObituaryFunctionConfigured: false,
+          proxyEnabled: false,
+          batchApprovalRequired: true,
+          batchApprovedByEnv: false,
+          maxBatchSessions: 10,
+          maxConcurrency: 2,
+        },
+      },
+    ]),
+  }));
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openWorkspace(page, "/?view=settings");
+
+  const readiness = page.locator(".settings-readiness-tile").filter({ hasText: "Browserbase" });
+  await expect(readiness).toContainText("Browser capture blocked");
+  await expect(readiness).toContainText("not connected");
+  await expect(readiness).not.toContainText("HTTP 402");
+
+  await page.locator('[data-settings-tab="integrations"]').click();
+  const integrationCard = page.locator(".integration-card").filter({ hasText: "Browserbase Usage" });
+  const connectionRow = page.locator(".settings-connection-row").filter({ hasText: "Browserbase Usage" });
+  await expect(integrationCard).toContainText("Setup required");
+  await expect(integrationCard).not.toContainText("HTTP 402");
+  await expect(connectionRow).toContainText("Setup required");
+  await expect(connectionRow).not.toContainText("HTTP 402");
+
+  await page.locator('[data-settings-tab="sources"]').click();
+  const sourceCard = page.locator(".source-control-card").filter({ hasText: "Browserbase source usage" });
+  await expect(sourceCard).toContainText("Setup required");
+  await expect(sourceCard).toContainText("needs to be configured");
+  await expect(sourceCard).not.toContainText("Billing blocked");
+  await expect(sourceCard).not.toContainText("HTTP 402");
+  const taxCard = page.locator(".source-control-card").filter({ hasText: "Tax Collector Source" });
+  const vitalCard = page.locator(".source-control-card").filter({ hasText: "Vital/Obituary Workflow" });
+  await expect(taxCard).toContainText("still needs to be configured");
+  await expect(taxCard).not.toContainText("handles GovHub/public-search blockers");
+  await expect(vitalCard).toContainText("still needs to be configured");
+  await expect(vitalCard).not.toContainText("have a saved workflow");
+  expect(browserFailures, browserFailures.join("\n")).toEqual([]);
+});
+
+test("Settings accepts a future live Browserbase status without retaining the current 402 incident", async ({ page }) => {
+  const browserFailures = watchBrowserFailures(page);
+  await page.route("**/api/connections/status", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify([
+      {
+        name: "Browserbase Usage",
+        ok: true,
+        mode: "live",
+        message: "Browserbase live source capture was verified successfully.",
+        usagePolicy: {
+          apiConfigured: true,
+          projectConfigured: true,
+          taxCollectorFunctionConfigured: true,
+          vitalObituaryFunctionConfigured: true,
+          proxyEnabled: true,
+          batchApprovalRequired: true,
+          batchApprovedByEnv: false,
+          maxBatchSessions: 10,
+          maxConcurrency: 2,
+        },
+      },
+    ]),
+  }));
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openWorkspace(page, "/?view=settings");
+
+  const readiness = page.locator(".settings-readiness-tile").filter({ hasText: "Browserbase" });
+  await expect(readiness).toContainText("Single-estate capture ready");
+  await expect(readiness).toContainText("verified successfully");
+  await expect(readiness).not.toContainText("HTTP 402");
+
+  await page.locator('[data-settings-tab="integrations"]').click();
+  const integrationCard = page.locator(".integration-card").filter({ hasText: "Browserbase Usage" });
+  const connectionRow = page.locator(".settings-connection-row").filter({ hasText: "Browserbase Usage" });
+  await expect(integrationCard).toContainText("Live");
+  await expect(integrationCard).toContainText("verified successfully");
+  await expect(connectionRow).toContainText("Live");
+  await expect(connectionRow).not.toContainText("HTTP 402");
+
+  await page.locator('[data-settings-tab="sources"]').click();
+  const sourceCard = page.locator(".source-control-card").filter({ hasText: "Browserbase source usage" });
+  await expect(sourceCard.locator(".pill")).toContainText("Live");
+  await expect(sourceCard.locator('li[data-state="ready"]')).toHaveCount(2);
+  await expect(sourceCard).not.toContainText("HTTP 402");
   expect(browserFailures, browserFailures.join("\n")).toEqual([]);
 });
 

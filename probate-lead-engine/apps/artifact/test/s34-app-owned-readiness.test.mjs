@@ -118,6 +118,18 @@ assert.equal(browserbaseMissing.ok, false);
 assert.equal(browserbaseMissing.mode, "blocked");
 assert.match(browserbaseMissing.message, /not connected/i);
 
+const browserbaseProjectOnly = byName(buildConnectionStatuses({
+  BROWSERBASE_PROJECT_ID: "project-without-api-key",
+}), "Browserbase Usage");
+assert.equal(browserbaseProjectOnly.ok, false);
+assert.equal(browserbaseProjectOnly.mode, "blocked");
+
+const browserbaseApiOnly = byName(buildConnectionStatuses({
+  BROWSERBASE_API_KEY: "api-key-without-project-or-functions",
+}), "Browserbase Usage");
+assert.equal(browserbaseApiOnly.ok, false);
+assert.equal(browserbaseApiOnly.mode, "blocked");
+
 const browserbaseConfigured = byName(buildConnectionStatuses({
   BROWSERBASE_API_KEY: "bb-test",
   TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID: "tax-function",
@@ -145,6 +157,10 @@ assert.ok(bundle.includes("Billing blocked"), "Settings must surface Browserbase
 assert.ok(bundle.includes('connectionReadyState("Browserbase Usage") === "ready"'), "Settings must use live readiness instead of inferring Browserbase availability from saved credentials alone.");
 assert.ok(bundle.includes("Recent disposable sessions return HTTP 402"), "Settings must report the current Browserbase billing failure without masking it as ready.");
 assert.ok(!bundle.includes('browserbase?.ok ? "Single-estate capture ready"'), "Settings must not label review-only Browserbase configuration as ready.");
+assert.ok(bundle.includes('name === "Browserbase Usage" && connection?.ok && connection?.mode !== "live"'), "The current Browserbase billing incident must apply only to configured, non-live status rows.");
+assert.ok(bundle.includes('browserbaseSetupRequired = kind === "browserbase" && !connection?.ok'), "Integrations must distinguish missing Browserbase setup from the current billing incident.");
+assert.ok(bundle.includes('statusLabel: browserbaseReady ? "Live" : browserbaseConfigured ? "Blocked" : "Setup required"'), "Sources must expose distinct live, billing-blocked, and setup-required Browserbase states.");
+assert.ok(bundle.includes('if (!configured) return missingCopy'), "Missing source workflows must not inherit ready or billing-incident copy.");
 assert.ok(bundle.includes("browserWorkflowState(tax, tax?.sourceAutomation?.browserWorkflowConfigured)"), "Tax Collector must not label a review-only Browserbase function ready.");
 assert.ok(bundle.includes("browserWorkflowState(vital, vital?.sourceAutomation?.workflowConfigured)"), "Vital sources must not label a review-only Browserbase function ready.");
 assert.doesNotMatch(bundle, /Embed Builder|activepieces\.com\/docs|cdn\.activepieces\.com\/sdk|<iframe[^>]+activepieces/i);

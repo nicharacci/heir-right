@@ -11218,11 +11218,14 @@ function integrationOnboardingCardHtml(kind) {
   const connected = isGoogle
     ? Boolean(workspaceConnected && workspace?.destinationId)
     : Boolean(connection?.ok && connection?.mode === "live");
+  const browserbaseSetupRequired = kind === "browserbase" && !connection?.ok;
+  const browserbaseBlocked = kind === "browserbase" && Boolean(connection?.ok) && connectionTone(connection) === "blocked";
   const sessionReady = Boolean(state.session?.auth?.configured);
   const actionLabel = connected ? "Connected" : meta.action;
   const statusLabel = isGoogle
     ? connected ? "Ready" : workspaceConnected ? "Choose folder" : "Setup required"
-    : connected ? "Live" : connection?.mode ? displayStatus(connection.mode) : "Setup required";
+    : connected ? "Live" : browserbaseSetupRequired ? "Setup required" : browserbaseBlocked ? "Blocked" : connection?.mode ? displayStatus(connection.mode) : "Setup required";
+  const statusTone = connected ? "ready" : browserbaseBlocked ? "blocked" : "review";
   const steps = meta.steps.map((step, index) => index === 0 && connected ? `${meta.title} setup present` : step);
   const idiPortalUrl = connection?.portal?.searchUrl || "https://idicore.com/search/PropertySearch";
   const idiCredential = isIdi ? idiCoreCredentialStatus(connection) : null;
@@ -11258,7 +11261,7 @@ function integrationOnboardingCardHtml(kind) {
           <p class="eyebrow">Integration</p>
           <h3>${escapeHtml(meta.title)}</h3>
         </div>
-        <span class="pill ${connected ? "ready" : "review"}">${escapeHtml(statusLabel)}</span>
+        <span class="pill ${statusTone}">${escapeHtml(statusLabel)}</span>
       </div>
       <p class="copy">${escapeHtml(isGoogle && workspaceConnected
         ? workspace.destinationName ? `Drive folder selected: ${workspace.destinationName}. An operator can explicitly send an approved Discovery PDF here from Completion.` : "Google Workspace is connected. Choose a Drive folder for optional approved-packet handoff."
@@ -11317,13 +11320,15 @@ function integrationStatusRowsHtml() {
     const connection = connectionByName(name);
     const connected = Boolean(connection?.ok && connection?.mode === "live");
     const tone = connectionTone(connection);
+    const setupRequired = name === "Browserbase Usage" && !connection?.ok;
+    const displayTone = setupRequired ? "review" : tone;
     return {
       title: connectionDisplayName(name),
       connectionName: name,
       connected,
-      status: displayStatus(connection?.mode || "blocked"),
-      tone,
-      state: connected ? "complete" : tone === "review" ? "review" : "blocked"
+      status: setupRequired ? "Setup required" : tone === "blocked" ? "Blocked" : displayStatus(connection?.mode || "blocked"),
+      tone: displayTone,
+      state: connected ? "complete" : displayTone === "review" ? "review" : "blocked"
     };
   });
   return `
@@ -11378,9 +11383,7 @@ function settingsReadinessBandHtml() {
   const idi = connectionByName("IDI Core");
   const browserbase = connectionByName("Browserbase Usage");
   const browserbaseReady = connectionReadyState("Browserbase Usage") === "ready";
-  const browserbaseStatusCopy = browserbase?.ok
-    ? "Saved Browserbase configuration remains review-only. Recent disposable sessions return HTTP 402, so live browser capture is blocked until billing is restored and a successful session is verified."
-    : operatorConnectionMessage(browserbase, "Browserbase Usage");
+  const browserbaseStatusCopy = operatorConnectionMessage(browserbase, "Browserbase Usage");
   const idiCredential = idiCoreCredentialStatus(idi);
   const outreachReady = ["Podio", "Resend", "SMS Gateway"].some((name) => connectionReadyState(name) === "ready");
   const sourceReviewCount = ["Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "IDI Core", "Browserbase Usage"].filter((name) => connectionReadyState(name) !== "blocked").length;
@@ -11505,15 +11508,17 @@ function renderIntegrationSettingsPanel() {
   `;
 }
 
-function sourceControlCardHtml({ name, title, badge, copy, checks }) {
+function sourceControlCardHtml({ name, title, badge, copy, checks, statusLabel: requestedStatusLabel = "", statusTone: requestedStatusTone = "" }) {
   const connection = connectionByName(name);
   const tone = connectionTone(connection);
   const state = tone === "blocked" ? "blocked" : connection?.mode === "live" ? "ready" : "review";
+  const statusLabel = requestedStatusLabel || (tone === "blocked" ? "Blocked" : displayStatus(connection?.mode || "blocked"));
+  const statusTone = requestedStatusTone || (tone === "blocked" ? "blocked" : tone === "ready" ? "ready" : "review");
   return `
     <article class="source-control-card" data-state="${escapeHtml(state)}">
       <div class="settings-section-head">
         <div><p class="eyebrow">${escapeHtml(badge)}</p><strong>${escapeHtml(title)}</strong></div>
-        <span class="pill ${tone === "blocked" ? "blocked" : tone === "ready" ? "ready" : "review"}">${escapeHtml(displayStatus(connection?.mode || "blocked"))}</span>
+        <span class="pill ${escapeHtml(statusTone)}">${escapeHtml(statusLabel)}</span>
       </div>
       <span>${escapeHtml(copy || operatorConnectionMessage(connection, name))}</span>
       <ul class="source-control-list">
@@ -11530,15 +11535,21 @@ function renderSourceSettingsPanel() {
   const idi = connectionByName("IDI Core");
   const browserbase = connectionByName("Browserbase Usage");
   const browserbaseReady = connectionReadyState("Browserbase Usage") === "ready";
-  const browserbaseBillingCopy = "Saved function configuration remains review-only. Recent disposable sessions return HTTP 402, so live browser capture is blocked until billing is restored and a successful session is verified.";
+  const browserbaseConfigured = Boolean(browserbase?.ok);
+  const browserbaseBillingCopy = operatorConnectionMessage(browserbase, "Browserbase Usage");
   const browserbaseFunctionState = (configured) => configured ? (browserbaseReady ? "ready" : "review") : "blocked";
+  const browserbaseFunctionCopy = (configured, readyCopy, missingCopy) => {
+    if (!configured) return missingCopy;
+    return browserbaseReady ? readyCopy : browserbaseBillingCopy;
+  };
   const browserWorkflowState = (connection, configured) => {
     if (!configured) return "blocked";
     return connection?.sourceAutomation?.browserbaseFunctionConfigured && !browserbaseReady ? "review" : "ready";
   };
-  const browserWorkflowCopy = (connection, readyCopy) => (
-    connection?.sourceAutomation?.browserbaseFunctionConfigured && !browserbaseReady ? browserbaseBillingCopy : readyCopy
-  );
+  const browserWorkflowCopy = (connection, configured, readyCopy, missingCopy) => {
+    if (!configured) return missingCopy;
+    return connection?.sourceAutomation?.browserbaseFunctionConfigured && !browserbaseReady ? browserbaseBillingCopy : readyCopy;
+  };
   return `
     ${settingsSectionShell("Source and enrichment controls", "Discovery", "Manual proof stays visible", `
       <div class="source-receipt-callout">
@@ -11553,7 +11564,7 @@ function renderSourceSettingsPanel() {
           copy: operatorConnectionMessage(tax, "Tax Collector Source"),
           checks: [
             { state: tax?.sourceAutomation?.scriptDirectListingConfigured ? "ready" : "review", copy: "Direct listing/template script path checked." },
-            { state: browserWorkflowState(tax, tax?.sourceAutomation?.browserWorkflowConfigured), copy: browserWorkflowCopy(tax, "Browser workflow handles GovHub/public-search blockers.") },
+            { state: browserWorkflowState(tax, tax?.sourceAutomation?.browserWorkflowConfigured), copy: browserWorkflowCopy(tax, tax?.sourceAutomation?.browserWorkflowConfigured, "Browser workflow handles GovHub/public-search blockers.", "GovHub/public-search browser workflow still needs to be configured.") },
             { state: "review", copy: "Bottom-right receipt link, payer, paid date, and unpaid years must be preserved before Discovery completion." },
           ]
         })}
@@ -11573,19 +11584,21 @@ function renderSourceSettingsPanel() {
           badge: vital?.configuredMode === "browser_workflow" ? "Browser workflow" : "Workflow needed",
           copy: operatorConnectionMessage(vital, "Vital/Obituary Workflow"),
           checks: [
-            { state: browserWorkflowState(vital, vital?.sourceAutomation?.workflowConfigured), copy: browserWorkflowCopy(vital, "Findagrave, Legacy, marriage, death, DOB/DOD, and deceased indicators have a saved workflow.") },
+            { state: browserWorkflowState(vital, vital?.sourceAutomation?.workflowConfigured), copy: browserWorkflowCopy(vital, vital?.sourceAutomation?.workflowConfigured, "Findagrave, Legacy, marriage, death, DOB/DOD, and deceased indicators have a saved workflow.", "Vital, obituary, marriage, and deceased-indicator browser workflow still needs to be configured.") },
             { state: "review", copy: "Returned family-tree facts stay review-gated before Closing Prep." },
           ]
         })}
         ${sourceControlCardHtml({
           name: "Browserbase Usage",
           title: "Browserbase source usage",
-          badge: browserbaseReady ? (browserbase?.usagePolicy?.batchApprovalRequired ? "Batch approval" : "Batch review") : "Billing blocked",
-          copy: browserbase?.ok ? browserbaseBillingCopy : operatorConnectionMessage(browserbase, "Browserbase Usage"),
+          badge: browserbaseReady ? (browserbase?.usagePolicy?.batchApprovalRequired ? "Batch approval" : "Batch review") : browserbaseConfigured ? "Billing blocked" : "Setup required",
+          copy: browserbaseBillingCopy,
+          statusLabel: browserbaseReady ? "Live" : browserbaseConfigured ? "Blocked" : "Setup required",
+          statusTone: browserbaseReady ? "ready" : browserbaseConfigured ? "blocked" : "review",
           checks: [
-            { state: browserbaseFunctionState(browserbase?.usagePolicy?.taxCollectorFunctionConfigured), copy: browserbaseReady ? "Tax Collector browser function is ready for estate-fact receipt capture." : browserbaseBillingCopy },
-            { state: browserbaseFunctionState(browserbase?.usagePolicy?.vitalObituaryFunctionConfigured), copy: browserbaseReady ? "Vital and obituary browser capture has a saved function or remains review-only." : browserbaseBillingCopy },
-            { state: browserbaseReady ? (browserbase?.usagePolicy?.batchApprovalRequired ? "review" : "ready") : "blocked", copy: `${browserbaseReady ? "Paid batch capture cap" : "Configured batch cap after billing recovery"}: ${browserbase?.usagePolicy?.maxBatchSessions || 10} estates, ${browserbase?.usagePolicy?.maxConcurrency || 2} at a time.` },
+            { state: browserbaseFunctionState(browserbase?.usagePolicy?.taxCollectorFunctionConfigured), copy: browserbaseFunctionCopy(browserbase?.usagePolicy?.taxCollectorFunctionConfigured, "Tax Collector browser function is ready for estate-fact receipt capture.", "Tax Collector browser function still needs to be configured.") },
+            { state: browserbaseFunctionState(browserbase?.usagePolicy?.vitalObituaryFunctionConfigured), copy: browserbaseFunctionCopy(browserbase?.usagePolicy?.vitalObituaryFunctionConfigured, "Vital and obituary browser capture has a saved function.", "Vital and obituary browser function still needs to be configured.") },
+            { state: browserbaseReady ? (browserbase?.usagePolicy?.batchApprovalRequired ? "review" : "ready") : "blocked", copy: browserbaseConfigured ? `${browserbaseReady ? "Paid batch capture cap" : "Configured batch cap after billing recovery"}: ${browserbase?.usagePolicy?.maxBatchSessions || 10} estates, ${browserbase?.usagePolicy?.maxConcurrency || 2} at a time.` : "Connect Browserbase before configuring a paid batch capture cap." },
           ]
         })}
         ${sourceControlCardHtml({
@@ -13971,6 +13984,7 @@ function setConnectionChip(id, tone, label, visibleState = null) {
 function connectionTone(status) {
   if (!status) return "neutral";
   if (status.ok && status.mode === "live") return "ready";
+  if (status.name === "Browserbase Usage" && status.ok) return "blocked";
   if (status.ok) return "review";
   return "blocked";
 }
@@ -13981,6 +13995,9 @@ function connectionByName(name) {
 
 function operatorConnectionMessage(connection, name) {
   const raw = connection?.message ?? "";
+  if (name === "Browserbase Usage" && connection?.ok && connection?.mode !== "live") {
+    return "Saved Browserbase configuration remains review-only. Recent disposable sessions return HTTP 402, so live browser capture is blocked until billing is restored and a successful session is verified.";
+  }
   const hasSetupDetail = /[A-Z0-9]+_[A-Z0-9_]+|credential|missing|token|field map|config is missing|setup is incomplete|not configured/i.test(raw);
   if (!raw || hasSetupDetail) {
     if (name === "Podio") return "Podio is not connected yet. Keep CRM review prep-only until access, one approved sample card, and confirmation are complete.";
