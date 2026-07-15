@@ -2,7 +2,7 @@ const { requireApiAdmin, requireApiAuth, readJsonBody, sendJson } = require("../
 const { effectiveSession } = require("../../auth/_shared");
 const mammoth = require("mammoth");
 const { parse: parseCsv } = require("csv-parse/sync");
-const { dirname, join, sep } = require("node:path");
+const { dirname, sep } = require("node:path");
 
 const MAX_EXTRACTED_CHARACTERS = 250_000;
 const MAX_LOCATOR_CHARACTERS = 20_000;
@@ -12,7 +12,7 @@ const MAX_PDF_PAGES = 200;
 const MAX_DOCX_ENTRIES = 256;
 const MAX_DOCX_UNCOMPRESSED_BYTES = 16_000_000;
 const MAX_DOCX_COMPRESSION_RATIO = 100;
-const PDFJS_STANDARD_FONT_DATA_URL = `${join(dirname(require.resolve("pdfjs-dist/package.json")), "standard_fonts")}${sep}`;
+const PDFJS_STANDARD_FONT_DATA_URL = `${dirname(require.resolve("pdfjs-dist/standard_fonts/LiberationSans-Regular.ttf"))}${sep}`;
 
 function workerApiBase() {
   return String(process.env.HEIRRIGHT_WORKER_URL || process.env.WORKER_API_URL || process.env.WORKER_BASE_URL || "").replace(/\/+$/, "");
@@ -162,6 +162,8 @@ function preflightDocxArchive(bytes) {
 }
 
 async function extractPdf(bytes) {
+  const { DOMMatrix } = require("@napi-rs/canvas/geometry");
+  globalThis.DOMMatrix ??= DOMMatrix;
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const task = pdfjs.getDocument({
     data: new Uint8Array(bytes),
