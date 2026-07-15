@@ -1,0 +1,126 @@
+:root {
+  color-scheme: dark;
+
+  /* Graphite stays HeirRight's base; iOS blue owns interaction in both themes. */
+  --hr-canvas: #17181b;
+  --hr-chrome: #1c1d21;
+  --hr-surface: #22242a;
+  --hr-surface-raised: #292c33;
+  --hr-surface-selected: #273244;
+  --hr-text: #f5faff;
+  --hr-text-muted: #b5bfcc;
+  --hr-text-subtle: #8793a3;
+  --hr-accent: #0a84ff;
+  --hr-accent-strong: #64b5ff;
+  --hr-accent-ink: #ffffff;
+  --hr-focus: #64b5ff;
+  --hr-ruler: rgb(100 181 255 / 17%);
+  --hr-control-boundary: #5d6f85;
+  --hr-action-surface: #191d24;
+  --hr-action-surface-hover: #202a37;
+  --hr-action-surface-active: #17263a;
+  --hr-action-ink: #f5faff;
+  --hr-action-border: rgb(10 132 255 / 42%);
+  --hr-action-border-strong: rgb(100 181 255 / 64%);
+  --hr-action-highlight: rgb(255 255 255 / 10%);
+  --hr-icon-glow: rgb(10 132 255 / 58%);
+  --hr-shadow: rgb(0 0 0 / 32%);
+  --hr-success: #7fd29a;
+  --hr-warning: #e3bd65;
+  --hr-danger: #f08b82;
+  --hr-info: #9bbfd8;
+
+  --hr-font-sans: "Inter", "Avenir Next", "Segoe UI", sans-serif;
+  --hr-font-mono: "SFMono-Regular", "Cascadia Mono", "Roboto Mono", monospace;
+  --hr-type-xs: 0.75rem;
+  --hr-type-sm: 0.8125rem;
+  --hr-type-md: 0.9375rem;
+  --hr-type-lg: 1.125rem;
+  --hr-type-xl: clamp(1.35rem, 1.1rem + 0.7vw, 1.8rem);
+  --hr-leading-tight: 1.2;
+  --hr-leading-copy: 1.5;
+
+  --hr-space-1: 0.25rem;
+  --hr-space-2: 0.5rem;
+  --hr-space-3: 0.75rem;
+  --hr-space-4: 1rem;
+  --hr-space-5: 1.25rem;
+  --hr-space-6: 1.5rem;
+  --hr-space-8: 2rem;
+  --hr-space-10: 2.5rem;
+
+  --hr-radius-control: 0.75rem;
+  --hr-radius-panel: 1rem;
+  --hr-radius-main: 1.5rem;
+  --hr-focus-width: 2px;
+  --hr-control-min: 2.75rem;
+
+  --hr-motion-feedback: 120ms;
+  --hr-motion-state: 200ms;
+  --hr-motion-rail: 320ms;
+  --hr-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --hr-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Web Awesome consumes the same semantic roles as the app. */
+  --wa-color-surface-raised: var(--hr-surface-raised);
+  --wa-color-surface-default: var(--hr-surface);
+  --wa-color-surface-lowered: var(--hr-chrome);
+  --wa-color-surface-border: var(--hr-control-boundary);
+  --wa-color-text-normal: var(--hr-text);
+  --wa-color-text-quiet: var(--hr-text-muted);
+  --wa-color-focus: var(--hr-focus);
+  --wa-color-brand-fill-quiet: color-mix(in srgb, var(--hr-accent) 12%, transparent);
+  --wa-color-brand-fill-normal: color-mix(in srgb, var(--hr-accent) 20%, transparent);
+  --wa-color-brand-fill-loud: var(--hr-accent);
+  --wa-color-brand-border-quiet: color-mix(in srgb, var(--hr-accent) 24%, transparent);
+  --wa-color-brand-border-normal: color-mix(in srgb, var(--hr-accent) 42%, transparent);
+  --wa-color-brand-border-loud: var(--hr-accent-strong);
+  --wa-color-brand-on-quiet: var(--hr-accent-strong);
+  --wa-color-brand-on-normal: var(--hr-accent-strong);
+  --wa-color-brand-on-loud: var(--hr-accent-ink);
+  --wa-font-family-body: var(--hr-font-sans);
+  --wa-font-family-heading: var(--hr-font-sans);
+  --wa-font-family-code: var(--hr-font-mono);
+  --wa-transition-fast: var(--hr-motion-feedback);
+  --wa-transition-normal: var(--hr-motion-state);
+  --wa-transition-slow: var(--hr-motion-rail);
+}
+
+:root[data-theme="cream"] {
+  color-scheme: light;
+  --hr-canvas: #eee8db;
+  --hr-chrome: #e7dfd0;
+  --hr-surface: #faf6ec;
+  --hr-surface-raised: #fffdf6;
+  --hr-surface-selected: color-mix(in srgb, var(--hr-accent) 12%, var(--hr-surface));
+  --hr-text: #292720;
+  --hr-text-muted: #625d51;
+  --hr-text-subtle: #696254;
+  --hr-accent: #007aff;
+  --hr-accent-strong: #005ecb;
+  --hr-accent-ink: #ffffff;
+  --hr-focus: #007aff;
+  --hr-ruler: rgb(41 39 32 / 18%);
+  --hr-control-boundary: #817868;
+  --hr-action-surface: #162132;
+  --hr-action-surface-hover: #1c2d45;
+  --hr-action-surface-active: #102746;
+  --hr-action-ink: #ffffff;
+  --hr-action-border: rgb(0 122 255 / 55%);
+  --hr-action-border-strong: rgb(0 94 203 / 72%);
+  --hr-action-highlight: rgb(255 255 255 / 12%);
+  --hr-icon-glow: rgb(0 122 255 / 52%);
+  --hr-shadow: rgb(50 43 31 / 16%);
+  --hr-success: #2f7147;
+  --hr-warning: #805d13;
+  --hr-danger: #9b3e36;
+  --hr-info: #315e7a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --hr-motion-feedback: 1ms;
+    --hr-motion-state: 1ms;
+    --hr-motion-rail: 1ms;
+  }
+}

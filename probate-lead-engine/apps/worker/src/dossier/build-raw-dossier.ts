@@ -283,7 +283,7 @@ export function buildRawDossier(runId: string, facts: SourceFact[]): RawDossier 
         code: "DEED_LAST_SALE",
         title: "Confirm last sale date",
         source: "official_records",
-        reason: "A sale inside 5 years is a stop condition unless a human operator overrides it.",
+        reason: "A sale inside 5 years is a stop condition. Correct the source record if the captured date is wrong.",
         nextAction: "Capture the last sale date or mark it unknown with the source checked.",
         claim: lastSaleDate,
         fallbackFlags: ["MISSING_RECENT_SALE_FACT", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED"],

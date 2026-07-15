@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
+import { readArtifactSource } from "./helpers/artifact-source.mjs";
 
 const require = createRequire(import.meta.url);
 const taxReceiptRun = require("../api/discovery/tax-collector/receipt-run.js");
@@ -80,6 +81,16 @@ assert.equal(browserOnlyPodio.auth.reconnectRequired, false);
 assert.equal(browserOnlyPodio.auth.userScopedRefresh, true);
 assert.match(browserOnlyPodio.message, /Your Podio handoff access/i);
 
+const defaultPolicyPodio = byName(buildConnectionStatuses({
+  ...podioBase,
+  PODIO_APP_TOKEN: "durable-app-token",
+}), "Podio");
+assert.equal(defaultPolicyPodio.ok, false);
+assert.equal(defaultPolicyPodio.mode, "review");
+assert.equal(defaultPolicyPodio.auth.perUserRequired, true);
+assert.equal(defaultPolicyPodio.auth.durableRequired, false);
+assert.equal(defaultPolicyPodio.auth.reconnectRequired, true);
+
 const durablePodio = byName(buildConnectionStatuses({
   ...podioBase,
   PODIO_APP_TOKEN: "durable-app-token",
@@ -90,6 +101,17 @@ assert.equal(durablePodio.mode, "review");
 assert.equal(durablePodio.auth.mode, "app_auth");
 assert.equal(durablePodio.auth.durableTeamAuth, true);
 assert.equal(durablePodio.auth.reconnectRequired, true);
+
+const explicitSharedPodio = byName(buildConnectionStatuses({
+  ...podioBase,
+  PODIO_APP_TOKEN: "durable-app-token",
+  PODIO_PER_USER_AUTH_REQUIRED: "false",
+  PODIO_DURABLE_AUTH_REQUIRED: "true",
+}), "Podio");
+assert.equal(explicitSharedPodio.ok, true);
+assert.equal(explicitSharedPodio.auth.perUserRequired, false);
+assert.equal(explicitSharedPodio.auth.durableRequired, true);
+assert.equal(explicitSharedPodio.auth.reconnectRequired, false);
 
 const browserbaseMissing = byName(buildConnectionStatuses({}), "Browserbase Usage");
 assert.equal(browserbaseMissing.ok, false);
@@ -112,7 +134,7 @@ assert.equal(browserbaseConfigured.usagePolicy.maxBatchSessions, 12);
 assert.equal(browserbaseConfigured.usagePolicy.maxConcurrency, 3);
 assert.match(browserbaseConfigured.message, /Paid batch source runs are capped at 12 estates/i);
 
-const bundle = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
+const bundle = readArtifactSource();
 const workerSource = readFileSync(new URL("../../worker/src/cloudflare.ts", import.meta.url), "utf8");
 const wranglerConfig = readFileSync(new URL("../../worker/wrangler.toml", import.meta.url), "utf8");
 assert.ok(bundle.includes('integrationOnboardingCardHtml("browserbase")'), "Settings must expose Browserbase usage onboarding.");
@@ -135,6 +157,7 @@ const envKeys = [
   "BROWSERBASE_API_KEY",
   "BROWSERBASE_API_BASE",
   "TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID",
+  "TAX_COLLECTOR_ALLOWED_ORIGINS",
   "BROWSERBASE_BATCH_APPROVAL_REQUIRED",
   "BROWSERBASE_BATCH_RUN_APPROVED",
   "BROWSERBASE_BATCH_MAX_SESSIONS",
@@ -150,6 +173,7 @@ try {
   process.env.BROWSERBASE_API_KEY = "bb-s34-secret";
   process.env.BROWSERBASE_API_BASE = "https://browserbase-s34.test";
   process.env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID = "tax-s34-function";
+  process.env.TAX_COLLECTOR_ALLOWED_ORIGINS = "https://miamidade.county-taxes.test";
   process.env.BROWSERBASE_BATCH_APPROVAL_REQUIRED = "true";
   process.env.BROWSERBASE_BATCH_MAX_SESSIONS = "3";
 

@@ -14,6 +14,7 @@ import { generateThirtyDayMilestoneEvidence, renderThirtyDayClientReviewScriptMa
 import { renderQualificationReviewMarkdown } from "../qualification/qualification-review";
 import { buildReadbackEvidencePacket, renderReadbackEvidenceMarkdown } from "../readback/readback-evidence";
 import { persistOutput } from "../storage/write-output";
+import { isEntityOwnerName } from "../workflow/entity-owner";
 
 function fixtureFact(input: {
   runId: string;
@@ -72,6 +73,7 @@ async function main(): Promise<void> {
   const taxReceiptProof = await acquireTaxCollectorReceipt({
     listingUrl: "https://miamidade.county-taxes.test/property/3421080072710",
   }, {
+    env: { TAX_COLLECTOR_ALLOWED_ORIGINS: "https://miamidade.county-taxes.test" },
     fetchImpl: async () => new Response(`
       <main>
         <a href="/payments/history">Payment history</a>
@@ -88,6 +90,7 @@ async function main(): Promise<void> {
   const taxCollectorBlockedProof = await acquireTaxCollectorReceipt({
     listingUrl: "https://miamidade.county-taxes.test/public",
   }, {
+    env: { TAX_COLLECTOR_ALLOWED_ORIGINS: "https://miamidade.county-taxes.test" },
     fetchImpl: async () => new Response("<title>Just a moment...</title><script>window._cf_chl_opt={}</script>", {
       status: 403,
       headers: { "cf-mitigated": "challenge", "content-type": "text/html" },
@@ -101,6 +104,7 @@ async function main(): Promise<void> {
     env: {
       BROWSERBASE_API_KEY: "validation-key",
       TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID: "tax-function",
+      TAX_COLLECTOR_ALLOWED_ORIGINS: "https://miamidade.county-taxes.test",
     },
     fetchImpl: async () => new Response(JSON.stringify({
       id: "inv-tax-validation",
@@ -122,6 +126,7 @@ async function main(): Promise<void> {
     env: {
       BROWSERBASE_API_KEY: "validation-key",
       TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID: "tax-function",
+      TAX_COLLECTOR_ALLOWED_ORIGINS: "https://miamidade.county-taxes.test",
     },
     fetchImpl: async () => new Response(JSON.stringify({
       error: "payment_required",
@@ -194,6 +199,12 @@ async function main(): Promise<void> {
   for (const output of Object.values(result.outputFiles)) persistOutput(output);
 
   const failures: string[] = [];
+  for (const ownerName of ["Sample Property LLC", "Sample Property Inc.", "Sample Estate Holdings"]) {
+    if (!isEntityOwnerName(ownerName)) failures.push(`S5 entity-owner vocabulary missed ${ownerName}.`);
+  }
+  for (const ownerName of ["The Rivera Family Trust", "Estate of Avery Rivera"]) {
+    if (isEntityOwnerName(ownerName)) failures.push(`S5 entity-owner vocabulary incorrectly stopped probate owner ${ownerName}.`);
+  }
   if (!result.facts.length) failures.push("No source facts generated.");
   if (!taxReceiptProof.ok) failures.push("Tax Collector fixture acquisition did not capture receipt link.");
   if (taxReceiptProof.discovery?.receiptUrl !== "https://miamidade.county-taxes.test/receipts/2025-paid.pdf") failures.push("Tax Collector bottom-right receipt URL resolution failed.");
@@ -746,6 +757,36 @@ async function main(): Promise<void> {
   const companyRule = companyDossier.workflow.rules.find((rule) => rule.code === "OWNER_TYPE");
   if (companyRule?.status !== "stop") failures.push("S5 company-owner rule did not stop the lead.");
   if (companyDossier.operatorQueue.state !== "disqualified") failures.push("S5 company-owner fixture did not enter disqualified queue.");
+
+  const holdingsDossier = buildS5FixtureDossier({
+    runId: "validation-s5-holdings-owner",
+    ownerName: "Sample Estate Holdings",
+    ownerType: "individual_review",
+  });
+  const holdingsRule = holdingsDossier.workflow.rules.find((rule) => rule.code === "OWNER_TYPE");
+  if (holdingsRule?.status !== "stop") failures.push("S5 Holdings owner-name rule did not stop the lead.");
+  if (holdingsDossier.operatorQueue.state !== "disqualified") failures.push("S5 Holdings owner-name fixture did not enter disqualified queue.");
+
+  for (const punctuatedEntityOwner of ["Sample Property Co.", "Sample Property L.L.C."]) {
+    const punctuatedEntityDossier = buildS5FixtureDossier({
+      runId: `validation-s5-${punctuatedEntityOwner.includes("L.L.C") ? "llc" : "co"}-owner`,
+      ownerName: punctuatedEntityOwner,
+      ownerType: "individual_review",
+    });
+    const punctuatedEntityRule = punctuatedEntityDossier.workflow.rules.find((rule) => rule.code === "OWNER_TYPE");
+    if (punctuatedEntityRule?.status !== "stop") failures.push(`S5 punctuated entity owner ${punctuatedEntityOwner} did not stop the lead.`);
+    if (punctuatedEntityDossier.operatorQueue.state !== "disqualified") failures.push(`S5 punctuated entity owner ${punctuatedEntityOwner} did not enter the disqualified queue.`);
+  }
+
+  const trustDossier = buildS5FixtureDossier({
+    runId: "validation-s5-trust-owner",
+    ownerName: "The Rivera Family Trust",
+    ownerType: "trust_estate_review",
+  });
+  const trustRule = trustDossier.workflow.rules.find((rule) => rule.code === "OWNER_TYPE");
+  if (trustRule?.status !== "continue") failures.push("S5 trust-owner review was incorrectly stopped as a company lead.");
+  if (trustRule?.reasonCodes.includes("COMPANY_OWNER")) failures.push("S5 trust-owner review received the company stop reason.");
+  if (trustDossier.operatorQueue.state === "disqualified") failures.push("S5 trust-owner fixture incorrectly entered the disqualified queue.");
 
   const recentSaleDossier = buildS5FixtureDossier({
     runId: "validation-s5-recent-sale",

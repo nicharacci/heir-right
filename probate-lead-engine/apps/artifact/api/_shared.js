@@ -44,13 +44,37 @@ function internalBearerAllowed(request) {
 }
 
 function requireApiAuth(request, response) {
-  const { authRequired, readSession } = require("./auth/_shared");
-  if (!authRequired() || readSession(request) || internalBearerAllowed(request)) return false;
+  const { authRequired, effectiveSession } = require("./auth/_shared");
+  if (!authRequired() || effectiveSession(request) || internalBearerAllowed(request)) return false;
   sendJson(response, 401, {
     ok: false,
     error: "auth_required",
     message: "Sign in with an approved HeirRight Google account.",
     loginUrl: "/auth/login",
+  });
+  return true;
+}
+
+function requireApiAdmin(request, response) {
+  const { authRequired, effectiveSession } = require("./auth/_shared");
+  const { adminEmails } = require("./admin/access-config");
+  if (!authRequired() || internalBearerAllowed(request)) return false;
+  const session = effectiveSession(request);
+  if (!session) {
+    sendJson(response, 401, {
+      ok: false,
+      error: "auth_required",
+      message: "Sign in with an approved HeirRight Google account.",
+      loginUrl: "/auth/login",
+    });
+    return true;
+  }
+  const email = String(session.email || "").trim().toLowerCase();
+  if (session.mode === "google" && email && adminEmails(process.env).includes(email)) return false;
+  sendJson(response, 403, {
+    ok: false,
+    error: "admin_required",
+    message: "A configured HeirRight administrator must approve this change.",
   });
   return true;
 }
@@ -327,6 +351,7 @@ module.exports = {
   methodGuard,
   proxyWorkerHttp,
   proxyWorkerJson,
+  requireApiAdmin,
   requireApiAuth,
   readJsonBody,
   receiptId,

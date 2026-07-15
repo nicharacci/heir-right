@@ -8,6 +8,7 @@ export interface IdiAssetImportInput {
   mode?: string;
   paidRun?: boolean;
   paidRunApproved?: boolean;
+  paidRunVerification?: string;
   approvalRecord?: unknown;
   readbackStatus?: string;
   apiKeySource?: string;
@@ -203,6 +204,10 @@ export function buildIdiAssetSearchFacts(runId: string, seed: IntakeSeed, input:
   const primaryCandidates = candidates.filter((candidate) => candidate.group === "primary");
   const alternativeCandidates = candidates.filter((candidate) => candidate.group === "alternative");
   const acceptedCandidateCount = candidates.filter((candidate) => candidate.reviewStatus === "accepted" || candidate.reviewStatus === "promoted").length;
+  const approvalRecord = input.approvalRecord && typeof input.approvalRecord === "object"
+    ? input.approvalRecord as Record<string, unknown>
+    : null;
+  const paidRunApproved = input.paidRunApproved === true && approvalRecord?.readbackStatus === "verified";
 
   return [
     fact({
@@ -224,8 +229,9 @@ export function buildIdiAssetSearchFacts(runId: string, seed: IntakeSeed, input:
         acceptedContactCount: acceptedCandidateCount,
         mode: input.mode || "operator_import",
         paidRun: Boolean(input.paidRun),
-        paidRunApproved: Boolean(input.paidRunApproved || input.paidRun === true || input.approvalRecord),
-        approvalRecord: input.approvalRecord || undefined,
+        paidRunApproved,
+        paidRunVerification: input.paidRunVerification,
+        approvalRecord: paidRunApproved ? approvalRecord : undefined,
         readbackStatus: input.readbackStatus,
         apiKeySource: input.apiKeySource,
       },

@@ -1,12 +1,13 @@
 import type { IntakeSeed, SourceFact } from "@ple/types";
 import { fact, fetchStatus, intakeSubject, nowIso, seedIdentity, slug } from "../lib";
+import { isEntityOwnerName, isTrustOrEstateOwnerName } from "../workflow/entity-owner";
 
 const PROPERTY_SEARCH_URL = "https://www.miamidade.gov/Apps/PA/PropertySearch/#/";
-const ENTITY_OWNER_PATTERN = /\b(LLC|L\.L\.C\.|INC|CORP|CORPORATION|COMPANY|CO\.|LTD|LP|LLP|BANK|TRUST|ASSOCIATION|FOUNDATION)\b/i;
 
-function ownerTypeFromSeed(ownerName?: string): "company" | "individual_review" | null {
+function ownerTypeFromSeed(ownerName?: string): "company" | "trust_estate_review" | "individual_review" | null {
   if (!ownerName) return null;
-  return ENTITY_OWNER_PATTERN.test(ownerName) ? "company" : "individual_review";
+  if (isEntityOwnerName(ownerName)) return "company";
+  return isTrustOrEstateOwnerName(ownerName) ? "trust_estate_review" : "individual_review";
 }
 
 export async function fetchPropertyFacts(runId: string, seed: IntakeSeed): Promise<SourceFact[]> {

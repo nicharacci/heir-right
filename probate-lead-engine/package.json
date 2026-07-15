@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "build:production": "pnpm --filter @ple/types build && pnpm --filter @ple/worker build && pnpm --filter @ple/artifact build:production",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "pretest:e2e": "pnpm --filter @ple/artifact build",
@@ -23,9 +24,5 @@
     "overrides": {
       "dompurify": "3.4.11"
     }
-  },
-  "dependencies": {
-    "@floating-ui/dom": "^1.7.6",
-    "@headlessui/react": "^2.2.10"
   }
 }

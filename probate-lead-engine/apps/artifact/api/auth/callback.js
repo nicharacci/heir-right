@@ -8,8 +8,10 @@ const {
   parseCookies,
   sendHtml,
   sessionCookie,
+  storeGoogleWorkspaceConnection,
   stateCookie,
   cookie,
+  workspaceIntentCookie,
 } = require("./_shared");
 
 module.exports = async function handler(request, response) {
@@ -28,7 +30,7 @@ module.exports = async function handler(request, response) {
   }
 
   try {
-    const profile = await exchangeGoogleCode(request, code);
+    const { profile, token } = await exchangeGoogleCode(request, code);
     if (!profile.email || !emailAllowed(profile.email)) {
       sendHtml(response, 403, deniedAccessPage(request, profile.email), {
         "set-cookie": [
@@ -38,12 +40,15 @@ module.exports = async function handler(request, response) {
       });
       return;
     }
+    const connectWorkspace = parseCookies(request)[workspaceIntentCookie] === "google-workspace";
+    if (connectWorkspace) await storeGoogleWorkspaceConnection(request, profile, token);
     response.statusCode = 302;
     response.setHeader("set-cookie", [
       cookie(sessionCookie, createSessionToken(profile), request),
       clearCookie(stateCookie, request),
+      clearCookie(workspaceIntentCookie, request),
     ]);
-    response.setHeader("location", "/");
+    response.setHeader("location", connectWorkspace ? "/?googleWorkspace=connected" : "/");
     response.end();
   } catch (error) {
     sendHtml(response, 502, loginPage(request, error.message || "Google sign-in failed."));

@@ -295,7 +295,7 @@ function buildResearchChecklist(dossier: RawDossier, includeDealSection: boolean
   return checklist;
 }
 
-function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholderEntry[] {
+export function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholderEntry[] {
   const enriched = dossier.audit.facts
     .filter((item) => item.factType === "enriched_contact_profile" && item.value && typeof item.value === "object")
     .map((item) => item.value as Record<string, unknown>);
@@ -334,6 +334,38 @@ function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholderEntry[
     });
   }
 
+  const reviewedIdiContacts = dossier.audit.facts
+    .filter((item) => (
+      (item.factType === "primary_contact_profile" || item.factType === "alternative_contact_profile")
+      && item.value
+      && typeof item.value === "object"
+      && ["accepted", "promoted"].includes(String((item.value as Record<string, unknown>).reviewStatus || ""))
+      && !item.reviewFlags.includes("CONTACT_REVIEW_REQUIRED")
+    ))
+    .map((item) => item.value as Record<string, unknown>);
+
+  if (reviewedIdiContacts.length) {
+    return reviewedIdiContacts.map((profile) => {
+      const currentAddress = displayAddress(claimText(profile.currentAddress, ""));
+      const historicalAddresses = Array.isArray(profile.addressHistory)
+        ? profile.addressHistory.map((value) => displayAddress(claimText(value, ""))).filter(Boolean)
+        : [];
+      const addresses = Array.from(new Set([currentAddress, ...historicalAddresses].filter(Boolean)));
+      const reviewStatus = claimText(profile.reviewStatus, "accepted").toLowerCase();
+      return {
+        role: claimText(profile.relationship, "relative"),
+        name: claimText(profile.name, undefined as unknown as string),
+        likelyCurrentAddress: currentAddress || undefined,
+        phones: Array.isArray(profile.phones) ? profile.phones.map((item) => claimText(item, "")).filter(Boolean) : [],
+        emails: Array.isArray(profile.emails) ? profile.emails.map((item) => claimText(item, "")).filter(Boolean) : [],
+        addresses,
+        addressHistory: historicalAddresses.map((address) => ({ address })),
+        note: `${reviewStatus === "promoted" ? "Promoted" : "Accepted"} from the reviewed IDI report. Relationship remains a research lead until heirship is confirmed.`,
+        reviewFlags: [],
+      };
+    });
+  }
+
   const nodes = dossier.familyTree.hypothesis.value?.nodes ?? [];
   if (!nodes.length) {
     return [{
@@ -357,22 +389,36 @@ function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholderEntry[
   }));
 }
 
+function safeSourceLinkUrl(value: unknown): string | undefined {
+  const candidate = String(value || "").trim();
+  if (!candidate) return undefined;
+  if (candidate.startsWith("/") && !candidate.startsWith("//")) return candidate;
+  try {
+    const parsed = new URL(candidate);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? candidate : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function buildSourceLinks(dossier: RawDossier): Array<{ label: string; url?: string; source: SourceKey }> {
   const links = new Map<string, { label: string; url?: string; source: SourceKey }>();
   for (const fact of dossier.audit.facts) {
-    if (!fact.sourceUrl) continue;
-    const key = `${fact.source}:${fact.sourceUrl}`;
+    const sourceUrl = safeSourceLinkUrl(fact.sourceUrl);
+    if (!sourceUrl) continue;
+    const key = `${fact.source}:${sourceUrl}`;
     if (!links.has(key)) {
       links.set(key, {
         label: `${fact.source} search`,
-        url: fact.sourceUrl,
+        url: sourceUrl,
         source: fact.source,
       });
     }
   }
   for (const link of dossier.probateDocket.officialRecordCrossLinks.value ?? []) {
-    if (!link.url) continue;
-    links.set(link.url, { label: link.label, url: link.url, source: "official_records" });
+    const sourceUrl = safeSourceLinkUrl(link.url);
+    if (!sourceUrl) continue;
+    links.set(sourceUrl, { label: link.label, url: sourceUrl, source: "official_records" });
   }
   return Array.from(links.values());
 }

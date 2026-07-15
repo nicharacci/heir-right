@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { readArtifactSource } from "./helpers/artifact-source.mjs";
 
-const bundle = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
+const bundle = readArtifactSource();
 const server = readFileSync(new URL("../server.js", import.meta.url), "utf8");
 
 for (const tab of ["Access", "Integrations", "Sources", "Outreach", "Audit", "Preferences"]) {
@@ -22,7 +23,7 @@ for (const copy of [
 assert.ok(bundle.includes("auth-gate"), "Auth gate overlay markup/styles must remain present.");
 assert.ok(bundle.includes('body[data-auth-gated="true"] .workspace'), "Auth gate must blur the app shell.");
 assert.ok(bundle.includes("data-settings-account-menu"), "Settings must expose the account menu control.");
-assert.ok(server.includes('prompt: "select_account"'), "Google login must force account selection.");
+assert.ok(server.includes('prompt: connectWorkspace ? "select_account consent" : "select_account"'), "Google login must force account selection, including Workspace consent.");
 assert.ok(bundle.includes("positionTableFiltersPopover"), "Estate list filters must calculate viewport-safe popover placement.");
 assert.ok(bundle.includes("--table-filters-popover-max-height"), "Estate list filters must cap height from the visible viewport.");
 assert.ok(bundle.includes("overscroll-behavior: contain"), "Estate list filters must scroll internally instead of bleeding past the viewport.");

@@ -1,4 +1,4 @@
-const { discoverTaxCollectorReceipt, extractTaxCollectorDetails, methodGuard, proxyWorkerJson, readJsonBody, receiptId, requireApiAuth, sendJson, sendProxied } = require("../_shared");
+const { discoverTaxCollectorReceipt, extractTaxCollectorDetails, methodGuard, proxyWorkerJson, readJsonBody, requireApiAuth, sendJson, sendProxied } = require("../_shared");
 
 function localSourceFactsFromCapture(body) {
   const facts = [];
@@ -134,7 +134,11 @@ function localSourceFactsFromCapture(body) {
   addFact("official_records", "foreclosure_signal", deed.foreclosureSignal, deedSourceUrl);
   addFact("official_records", "adverse_possession_signal", deed.adversePossessionSignal, deedSourceUrl);
   addFact("official_records", "title_signal", deed.titleSignal || deed.note, deedSourceUrl);
-  addFact("property_appraiser", "mailing_address_signal", propertyAppraiser.mailingAddressSignal || propertyAppraiser.mailingAddress, propertyAppraiser.sourceUrl);
+  const propertySourceUrl = stringValue(propertyAppraiser.sourceUrl);
+  addFact("property_appraiser", "property_owner", propertyAppraiser.owner || propertyAppraiser.ownerName, propertySourceUrl);
+  addFact("property_appraiser", "property_address", propertyAppraiser.address || propertyAppraiser.propertyAddress, propertySourceUrl);
+  addFact("property_appraiser", "property_folio", propertyAppraiser.folio || propertyAppraiser.parcelId, propertySourceUrl);
+  addFact("property_appraiser", "mailing_address_signal", propertyAppraiser.mailingAddressSignal || propertyAppraiser.mailingAddress, propertySourceUrl);
   const probateSourceUrl = probate.docketUrl || probate.sourceUrl || probate.searchUrl;
   const civilFamilyDocket = compactObject({
     court: probate.court,
@@ -184,17 +188,10 @@ async function handler(request, response) {
       sendProxied(response, proxied);
       return;
     }
-
-    const sourceFacts = localSourceFactsFromCapture(body);
-    sendJson(response, 200, {
-      ok: true,
-      mode: "source_review",
-      id: body.assetKey || body.id || receiptId("source-capture"),
-      capturedAt: new Date().toISOString(),
-      artifact: body,
-      sourceFacts,
-      reviewFlags: [...new Set(sourceFacts.flatMap((fact) => fact.reviewFlags || []))],
-      message: "Source capture was accepted by the production artifact app. Tax Collector receipt evidence was parsed when a listing page or receipt link was supplied. No external write was attempted.",
+    sendJson(response, 503, {
+      ok: false,
+      error: "source_capture_store_unavailable",
+      message: "The canonical Discovery File store is unavailable, so the source capture was not saved.",
     });
   } catch (error) {
     sendJson(response, 400, {

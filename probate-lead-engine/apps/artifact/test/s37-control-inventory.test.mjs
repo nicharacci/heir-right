@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
+import { readArtifactSource } from "./helpers/artifact-source.mjs";
 
-const html = fs.readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
+const html = readArtifactSource();
 const openings = [...html.matchAll(/<button\b[^>]*>/gi)].map((match) => match[0]);
 const sourceWithoutButtonOpenings = html.replace(/<button\b[^>]*>/gi, "");
 const companionAttributes = new Set([

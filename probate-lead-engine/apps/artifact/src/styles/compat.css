@@ -1,0 +1,238 @@
+/*
+ * Temporary semantic bridge for the extracted legacy interface. New feature
+ * styles consume --hr-* directly; these aliases keep the remaining interface
+ * on the same light/dark contract until each legacy surface is replaced.
+ */
+:root[data-theme],
+body[data-theme] {
+  --page: var(--hr-canvas);
+  --page-2: var(--hr-chrome);
+  --surface-flat: var(--hr-canvas);
+  --surface-lift: var(--hr-surface);
+  --surface-row: color-mix(in srgb, var(--hr-text) 5%, transparent);
+  --surface-row-strong: color-mix(in srgb, var(--hr-text) 9%, transparent);
+  --surface-1: var(--hr-canvas);
+  --surface-2: var(--hr-chrome);
+  --surface-3: var(--hr-surface);
+  --surface-4: var(--hr-surface-raised);
+  --surface-5: var(--hr-surface-selected);
+  --surface-6: color-mix(in srgb, var(--hr-surface-selected) 88%, var(--hr-text) 12%);
+  --surface-7: color-mix(in srgb, var(--hr-surface-selected) 82%, var(--hr-text) 18%);
+  --surface-8: color-mix(in srgb, var(--hr-surface-selected) 76%, var(--hr-text) 24%);
+  --surface-highlight-base: color-mix(in srgb, var(--hr-text) 2%, transparent);
+  --surface-highlight-mid: color-mix(in srgb, var(--hr-text) 4%, transparent);
+  --surface-highlight-high: color-mix(in srgb, var(--hr-text) 6%, transparent);
+  --surface-ring-base: var(--hr-ruler);
+  --surface-ring-mid: color-mix(in srgb, var(--hr-text) 20%, transparent);
+  --surface-ring-high: color-mix(in srgb, var(--hr-text) 28%, transparent);
+  --surface-drop: var(--hr-shadow);
+  --shadow-1: 0 1px 2px var(--hr-shadow);
+  --shadow-2: 0 2px 5px var(--hr-shadow);
+  --shadow-3: 0 4px 12px var(--hr-shadow);
+  --shadow-4: 0 8px 20px var(--hr-shadow);
+  --shadow-5: 0 12px 28px var(--hr-shadow);
+  --shadow-6: 0 18px 40px var(--hr-shadow);
+  --shadow-7: 0 24px 56px var(--hr-shadow);
+  --shadow-8: 0 32px 72px var(--hr-shadow);
+  --glass: var(--hr-surface);
+  --glass-strong: var(--hr-surface-raised);
+  --glass-soft: var(--hr-chrome);
+  --line: var(--hr-ruler);
+  --line-strong: var(--hr-control-boundary);
+  --divider-line: var(--hr-ruler);
+  --divider-line-vertical: var(--hr-ruler);
+  --text: var(--hr-text);
+  --muted: var(--hr-text-muted);
+  --soft: var(--hr-text-subtle);
+  --disabled: color-mix(in srgb, var(--hr-text-subtle) 64%, var(--hr-canvas));
+  --accent: var(--hr-accent);
+  --accent-soft: color-mix(in srgb, var(--hr-accent) 14%, transparent);
+  --focus-ring: var(--hr-focus);
+  --ios-fill: color-mix(in srgb, var(--hr-text) 7%, transparent);
+  --ios-fill-strong: color-mix(in srgb, var(--hr-text) 12%, transparent);
+  --shell-surface: var(--hr-canvas);
+  --shell-surface-glass: var(--hr-chrome);
+  --shell-surface-soft: var(--hr-chrome);
+  --green: var(--hr-success);
+  --green-soft: color-mix(in srgb, var(--hr-success) 14%, transparent);
+  --amber: var(--hr-warning);
+  --amber-soft: color-mix(in srgb, var(--hr-warning) 14%, transparent);
+  --red: var(--hr-danger);
+  --red-soft: color-mix(in srgb, var(--hr-danger) 14%, transparent);
+  --mono: var(--hr-font-mono);
+  --solvys-lg-tint-source: var(--hr-surface);
+  --solvys-lg-rim-source: var(--hr-ruler);
+  --solvys-lg-text-source: var(--hr-text);
+  --solvys-lg-neutral: var(--hr-text-subtle);
+  --solvys-lg-dark-plate: var(--hr-chrome);
+  --solvys-lg-tint: var(--hr-surface);
+  --solvys-lg-rim: var(--hr-ruler);
+  --solvys-lg-bg: var(--hr-surface);
+  --solvys-lg-border: var(--hr-ruler);
+  --solvys-lg-control-bg: var(--hr-surface);
+  --solvys-lg-control-hover-bg: var(--hr-surface-selected);
+  --solvys-lg-backdrop-filter: none;
+  --solvys-lg-shadow: none;
+}
+
+html[data-theme],
+body[data-theme],
+body[data-theme] .workspace,
+body[data-theme] .app,
+body[data-theme] .content,
+body[data-theme] .workbench,
+body[data-theme] .loop-view,
+body[data-theme] #dossiersView,
+body[data-theme][data-surface-system="fluid-functionalism"],
+body[data-theme][data-surface-system="fluid-functionalism"] .workspace,
+body[data-theme][data-surface-system="fluid-functionalism"] .app,
+body[data-theme][data-surface-system="fluid-functionalism"] .content,
+body[data-theme][data-surface-system="fluid-functionalism"] .workbench,
+body[data-theme][data-surface-system="fluid-functionalism"] .loop-view {
+  background: var(--hr-canvas);
+  background-color: var(--hr-canvas);
+}
+
+body[data-theme] .sidebar-top,
+body[data-theme] .nav-list,
+body[data-theme] .sidebar-footer {
+  background: var(--hr-chrome);
+  background-color: var(--hr-chrome);
+}
+
+body[data-theme] .loop-panel,
+body[data-theme] .dossier-list-panel,
+body[data-theme] .dossier-reader-panel,
+body[data-theme] .glass-card,
+body[data-theme] .setting-card,
+body[data-theme] .runtime-card,
+body[data-theme] .admin-metric,
+body[data-theme] .preference-card,
+body[data-theme] .agent-drawer,
+body[data-theme] .history-rail,
+body[data-theme] .search-popup,
+body[data-theme] .table-filters-popover,
+body[data-theme] .export-popover,
+body[data-theme] .shell-info-popover,
+body[data-theme] .select-menu,
+body[data-theme] .rail-context,
+body[data-theme] .rail-segment,
+body[data-theme] .fact-grid,
+body[data-theme] .doc-frame,
+body[data-theme] .activity-event,
+body[data-theme] .connection-card,
+body[data-theme] .document-prep-shell,
+body[data-theme] .attention-card,
+body[data-theme] .library-summary,
+body[data-theme] .process-folder-card {
+  color: var(--hr-text);
+  background: var(--hr-surface);
+  background-color: var(--hr-surface);
+  border-color: var(--hr-ruler);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body[data-theme] .dossier-doc,
+body[data-theme] .dossier-doc.is-selected {
+  color: var(--hr-text);
+  background: var(--hr-surface);
+  background-color: var(--hr-surface);
+  border-color: var(--hr-ruler);
+}
+
+body[data-theme] .dossier-doc:hover,
+body[data-theme] .dossier-doc:focus-visible,
+body[data-theme] .dossier-doc.is-selected {
+  background: var(--hr-surface-selected);
+  background-color: var(--hr-surface-selected);
+  border-color: color-mix(in srgb, var(--hr-accent) 44%, transparent);
+}
+
+body[data-theme] .suggestion-chip,
+body[data-theme] .next-link,
+body[data-theme] .chip.solvys-liquid-glass,
+body[data-theme] .loop-tab[aria-pressed="true"] {
+  color: var(--hr-text);
+  background: var(--hr-surface-raised);
+  border-color: var(--hr-ruler);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body[data-theme] .btn.primary,
+body[data-theme] .source-pull-button,
+body[data-theme] .command-form .btn.primary {
+  --solvys-lg-bg: var(--hr-accent);
+  --solvys-lg-border: var(--hr-accent);
+  --solvys-lg-shadow: none;
+  color: var(--hr-accent-ink);
+  background: var(--hr-accent);
+  border-color: var(--hr-accent);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body[data-theme] .btn.primary:hover,
+body[data-theme] .btn.primary:focus-visible,
+body[data-theme] .source-pull-button:hover,
+body[data-theme] .source-pull-button:focus-visible,
+body[data-theme] .command-form .btn.primary:hover,
+body[data-theme] .command-form .btn.primary:focus-visible {
+  color: var(--hr-accent-ink);
+  background: var(--hr-accent-strong);
+  border-color: var(--hr-accent-strong);
+  box-shadow: none;
+}
+
+body[data-theme] .quick-actions,
+body[data-theme] .composer-actions,
+body[data-theme] .connection-statuses,
+body[data-theme] .search-control,
+body[data-theme] .theme-strip,
+body[data-theme] .account-chip,
+body[data-theme] .brand-mark,
+body[data-theme] .avatar,
+body[data-theme] .field select,
+body[data-theme] .field input:not([type="checkbox"]),
+body[data-theme] .setting-card select,
+body[data-theme] .setting-card input[type="text"],
+body[data-theme] .discovery-notes {
+  color: var(--hr-text);
+  background: var(--hr-surface);
+  background-color: var(--hr-surface);
+  border-color: var(--hr-control-boundary);
+  box-shadow: none;
+}
+
+body[data-theme] .btn:not(.primary):not(.quick):not(.icon-only):hover,
+body[data-theme] .btn.icon-only:not(.primary):hover,
+body[data-theme] .btn.icon-only:not(.primary):focus-visible,
+body[data-theme] .icon-button:hover,
+body[data-theme] .icon-button:focus-visible,
+body[data-theme] .quick-actions .btn.quick:hover,
+body[data-theme] .composer-actions .btn.quick:hover,
+body[data-theme] .export-option:hover,
+body[data-theme] .export-option:focus-visible,
+body[data-theme] .select-option:hover,
+body[data-theme] .select-option[aria-selected="true"],
+body[data-theme] tbody tr:hover td {
+  color: var(--hr-text);
+  background: var(--hr-surface-selected);
+}
+
+body[data-theme] tbody tr.is-selected td,
+body[data-theme] tbody tr.is-current td,
+body[data-theme] tbody tr.is-batch-selected td,
+body[data-theme] .dossier-table tr.is-selected,
+body[data-theme] .dossier-table tr.is-current,
+body[data-theme] .dossier-table tr.is-batch-selected {
+  background: color-mix(in srgb, var(--hr-accent) 12%, var(--hr-surface));
+}
+
+body[data-theme] :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: var(--hr-focus);
+}

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
+import { readArtifactSource } from "./helpers/artifact-source.mjs";
 
 const require = createRequire(import.meta.url);
 const { buildConnectionStatuses, buildIdiCoreStatus } = require("../api/connections/status.js");
@@ -132,7 +133,7 @@ for (const row of [configuredTax, configuredClerk, configuredVital, configuredId
   assertNoRawEnvCopy(row);
 }
 
-const bundle = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
+const bundle = readArtifactSource();
 assert.ok(bundle.includes('integrationOnboardingCardHtml("tax")'), "Settings must expose a Tax Collector source card.");
 assert.ok(bundle.includes('integrationOnboardingCardHtml("clerk")'), "Settings must expose a Clerk Records source card.");
 assert.ok(bundle.includes('integrationOnboardingCardHtml("vital")'), "Settings must expose a Vital Sources card.");

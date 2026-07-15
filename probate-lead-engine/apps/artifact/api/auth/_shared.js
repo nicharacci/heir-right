@@ -1,8 +1,10 @@
 const { randomBytes, createHmac } = require("node:crypto");
-const { accessConfig } = require("../admin/access-config");
+const { isIP } = require("node:net");
+const { accessConfig, adminEmails } = require("../admin/access-config");
 
 const sessionCookie = process.env.AUTH_SESSION_COOKIE || "hr_session";
 const stateCookie = process.env.AUTH_STATE_COOKIE || "hr_oauth_state";
+const workspaceIntentCookie = process.env.GOOGLE_WORKSPACE_INTENT_COOKIE || "hr_google_workspace_intent";
 const sessionTtlSeconds = Number(process.env.AUTH_SESSION_TTL_SECONDS || 60 * 60 * 12);
 
 function splitList(value, fallback = "") {
@@ -14,6 +16,60 @@ function splitList(value, fallback = "") {
 
 function authRequired() {
   return process.env.AUTH_REQUIRED !== "false";
+}
+
+function normalizeIp(value) {
+  const candidate = String(value || "").trim().replace(/^\[|\]$/g, "").toLowerCase();
+  if (!candidate) return "";
+  if (candidate.startsWith("::ffff:")) {
+    const mappedV4 = candidate.slice("::ffff:".length);
+    if (isIP(mappedV4) === 4) return mappedV4;
+  }
+  return isIP(candidate) ? candidate : "";
+}
+
+function trustedIpAllowlist() {
+  return Array.from(new Set(
+    String(process.env.AUTH_TRUSTED_IPS || "")
+      .split(",")
+      .map(normalizeIp)
+      .filter(Boolean)
+  ));
+}
+
+function trustedIpBypassActive() {
+  if (process.env.AUTH_TRUSTED_IP_BYPASS_ENABLED !== "true") return false;
+  const until = Date.parse(String(process.env.AUTH_TRUSTED_IP_BYPASS_UNTIL || ""));
+  return Number.isFinite(until) && until > Date.now();
+}
+
+function requestIpFromVercel(req) {
+  // Vercel's edge owns this header. We intentionally refuse it outside the
+  // Vercel runtime so a direct Node server cannot be unlocked by a spoofed header.
+  if (process.env.VERCEL !== "1") return "";
+  // Vercel documents x-vercel-forwarded-for as the resilient platform header
+  // when a proxy could overwrite x-forwarded-for; retain the latter for the
+  // normal direct-to-Vercel path.
+  const forwarded = String(req?.headers?.["x-vercel-forwarded-for"] || req?.headers?.["x-forwarded-for"] || "").split(",")[0];
+  return normalizeIp(forwarded);
+}
+
+function trustedIpBypass(req) {
+  if (!authRequired() || !trustedIpBypassActive()) return false;
+  const requestIp = requestIpFromVercel(req);
+  return Boolean(requestIp && trustedIpAllowlist().includes(requestIp));
+}
+
+function trustedIpSession(req) {
+  if (!trustedIpBypass(req)) return null;
+  return {
+    email: "trusted-ip-bypass@heirright.local",
+    name: "Trusted network review",
+    picture: "",
+    domain: "heirright.local",
+    mode: "trusted_ip",
+    exp: Math.floor(Date.now() / 1000) + 60,
+  };
 }
 
 function allowedDomains() {
@@ -32,6 +88,16 @@ function originFor(req) {
 
 function redirectUriFor(req) {
   return process.env.GOOGLE_OAUTH_REDIRECT_URI || `${originFor(req)}/auth/callback`;
+}
+
+function googleWorkspaceRequested(req) {
+  return parseCookies(req)[workspaceIntentCookie] === "google-workspace";
+}
+
+function googleOAuthScopes(includeWorkspace = false) {
+  return includeWorkspace
+    ? "openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/documents.readonly"
+    : "openid email profile";
 }
 
 function oauthConfigured(req) {
@@ -109,6 +175,10 @@ function readSession(req) {
   } catch {
     return null;
   }
+}
+
+function effectiveSession(req) {
+  return readSession(req) || trustedIpSession(req);
 }
 
 function sendJson(res, status, body, headers = {}) {
@@ -209,23 +279,64 @@ function deniedAccessPage(req, email = "") {
 }
 
 function sessionBody(req) {
-  const session = readSession(req);
+  const session = effectiveSession(req);
+  const canAdminister = !authRequired() || Boolean(
+    session?.mode === "google"
+    && adminEmails(process.env).includes(String(session.email || "").trim().toLowerCase())
+  );
   return {
     authenticated: Boolean(session),
+    canAdminister,
     user: session ? {
       email: session.email,
       name: session.name,
       picture: session.picture || null,
       domain: session.domain,
       mode: session.mode,
+      canAdminister,
     } : null,
     auth: {
       required: authRequired(),
       configured: oauthConfigured(req),
       allowedDomains: allowedDomains(),
       allowedEmails: allowedEmails(),
+      temporaryTrustedIpBypass: session?.mode === "trusted_ip",
     },
   };
+}
+
+function workerApiBase() {
+  return String(process.env.HEIRRIGHT_WORKER_URL || process.env.WORKER_API_URL || process.env.WORKER_BASE_URL || "").replace(/\/+$/, "");
+}
+
+async function storeGoogleWorkspaceConnection(req, profile, token) {
+  const base = workerApiBase();
+  if (!base || !process.env.HEIRRIGHT_API_TOKEN) {
+    throw new Error("Google Workspace storage is not configured yet.");
+  }
+  const accessToken = String(token?.access_token || "");
+  if (!accessToken) throw new Error("Google Workspace did not return a usable Drive session.");
+  const expiresIn = Math.max(60, Number(token?.expires_in) || 3600);
+  const response = await fetch(`${base}/api/google-workspace/connection`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${process.env.HEIRRIGHT_API_TOKEN}`,
+      "content-type": "application/json",
+      "x-heirright-public-origin": originFor(req),
+    },
+    body: JSON.stringify({
+      email: String(profile?.email || "").toLowerCase(),
+      accessToken,
+      refreshToken: String(token?.refresh_token || ""),
+      expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+      scopes: String(token?.scope || googleOAuthScopes(true)).split(/\s+/).filter(Boolean),
+    }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result?.ok !== true || result?.readbackStatus !== "verified") {
+    throw new Error(result?.message || "Google Workspace connection did not pass secure storage readback.");
+  }
+  return result;
 }
 
 async function exchangeGoogleCode(req, code) {
@@ -246,7 +357,7 @@ async function exchangeGoogleCode(req, code) {
     headers: { authorization: `Bearer ${token.access_token}` },
   });
   if (!profileResponse.ok) throw new Error(`Google profile lookup failed: ${profileResponse.status}`);
-  return profileResponse.json();
+  return { profile: await profileResponse.json(), token };
 }
 
 module.exports = {
@@ -255,7 +366,10 @@ module.exports = {
   cookie,
   createSessionToken,
   emailAllowed,
+  effectiveSession,
   exchangeGoogleCode,
+  googleOAuthScopes,
+  googleWorkspaceRequested,
   deniedAccessPage,
   loginPage,
   oauthConfigured,
@@ -267,5 +381,10 @@ module.exports = {
   sendJson,
   sessionBody,
   sessionCookie,
+  storeGoogleWorkspaceConnection,
   stateCookie,
+  trustedIpBypass,
+  trustedIpBypassActive,
+  trustedIpSession,
+  workspaceIntentCookie,
 };

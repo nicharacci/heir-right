@@ -15,6 +15,7 @@ import { nowIso, slug } from "../lib";
 import { renderQualificationReviewMarkdown } from "../qualification/qualification-review";
 import { jsonOutput, textOutput } from "../storage/output-manifest";
 import { persistOutput } from "../storage/write-output";
+import { isEntityOwnerName } from "../workflow/entity-owner";
 
 type FetchImpl = typeof fetch;
 type RuntimeEnv = Record<string, string | undefined>;
@@ -31,7 +32,6 @@ const DEFAULT_OWNER_QUERY = "EST OF";
 const DEFAULT_LIMIT = 3;
 const MAX_LIMIT = 10;
 const HEIRRIGHT_EXAMPLE_FOLIOS = new Set(["3421080072710"]);
-const ENTITY_OWNER_PATTERN = /\b(LLC|L\.L\.C\.|INC|CORP|CORPORATION|COMPANY|CO\.|LTD|LP|LLP|BANK|TRUST|ASSOCIATION|ASSOC|FOUNDATION|ENTERPRISES|HOLDINGS|INVESTMENTS|REALTY|PROPERTIES|CHURCH|IGLESIA|MINISTRIES|CONDO|COOPERATIVE)\b/i;
 
 interface SourceCandidate {
   rawId: string;
@@ -156,7 +156,7 @@ function ownerDisplayName(ownerNames: string[]): string | undefined {
 }
 
 function isCompanyOwner(ownerNames: string[]): boolean {
-  return ENTITY_OWNER_PATTERN.test(ownerNames.join(" "));
+  return ownerNames.some(isEntityOwnerName);
 }
 
 function folioFromRecord(record: JsonRecord): string {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { Readable } from "node:stream";
 import { existsSync, readFileSync } from "node:fs";
+import { readArtifactSource } from "./helpers/artifact-source.mjs";
 
 process.env.AUTH_REQUIRED = "false";
 
@@ -78,7 +79,7 @@ const missingIntent = await callServer("POST", "/api/discovery/external-source-r
 assert.equal(missingIntent.statusCode, 400);
 assert.equal(missingIntent.json.error, "source_run_intent_required");
 
-const sourceHtml = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
+const sourceHtml = readArtifactSource();
 assert.ok(sourceHtml.includes('operatorIntent: "run_external_source_search"'), "Doc Prep source-search button must send explicit operator intent.");
 
 const workerSource = readFileSync(new URL("../../worker/src/cloudflare.ts", import.meta.url), "utf8");

@@ -4,7 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { PDFDocument } from "pdf-lib";
-import workerModule from "../../worker/dist/cloudflare.js";
+import workerModule, { WorkspaceState } from "../../worker/dist/cloudflare.js";
+import { buildContactPlaceholders } from "../../worker/dist/documents/completed-lead-report.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const worker = workerModule.default || workerModule;
@@ -15,29 +16,67 @@ const closingFieldMap = JSON.parse(fs.readFileSync(path.join(appRoot, "apps/work
 
 class MemoryKv {
   values = new Map();
+  options = new Map();
   async get(key) { return this.values.get(key) || null; }
-  async put(key, value) { this.values.set(key, value); }
+  async put(key, value, options = {}) {
+    this.values.set(key, value);
+    this.options.set(key, options);
+  }
+  async delete(key) { this.values.delete(key); }
+}
+
+class MemoryDurableStorage {
+  values = new Map();
+  async get(key) { return this.values.get(key); }
+  async put(key, value) { this.values.set(key, structuredClone(value)); }
+  async transaction(closure) { return closure(this); }
 }
 
 const kv = new MemoryKv();
+const workspace = new WorkspaceState({ storage: new MemoryDurableStorage() });
 const env = {
   AUTH_REQUIRED: "false",
   PACKET_ARTIFACTS: kv,
+  WORKSPACE_STATE: {
+    idFromName: (name) => name,
+    get: () => ({ fetch: (request) => workspace.fetch(request) }),
+  },
 };
 
 const reviewedDossier = structuredClone(sourceRun.dossier);
-reviewedDossier.completedLeadReport.contactPlaceholders = [{
-  role: "child",
-  name: "Sandra Hawkins",
-  age: 58,
-  likelyCurrentAddress: "Miami, FL",
-  phones: ["305-555-0101"],
-  emails: ["sandra.hawkins@example.com"],
-  addresses: ["Miami, FL"],
-  addressHistory: [],
-  note: "Reviewed contact fixture for deterministic packet validation.",
+reviewedDossier.audit.facts.push({
+  runId: reviewedDossier.runId,
+  source: "idi",
+  rawId: `${reviewedDossier.runId}:idi:reviewed-contact`,
+  fetchedAt: reviewedDossier.generatedAt,
+  county: "miami-dade",
+  subject: { estateName: reviewedDossier.summary.estateName, propertyAddress: reviewedDossier.property.address.value },
+  factType: "alternative_contact_profile",
+  value: {
+    id: `${reviewedDossier.runId}:idi:reviewed-contact`,
+    name: "Sandra Hawkins",
+    relationship: "child",
+    group: "alternative",
+    phones: ["305-555-0101"],
+    emails: ["sandra.hawkins@example.com"],
+    currentAddress: "Miami, FL",
+    addressHistory: ["Miami, FL"],
+    ownerLastNameMatch: true,
+    confidence: 0.86,
+    sourceRefs: [],
+    reviewStatus: "accepted",
+    reviewFlags: [],
+  },
+  confidence: 0.86,
+  sourceUrl: "https://source.example.test/reviewed-idi-report",
   reviewFlags: [],
-}];
+});
+reviewedDossier.completedLeadReport.contactPlaceholders = buildContactPlaceholders(reviewedDossier);
+assert.deepEqual(
+  reviewedDossier.completedLeadReport.contactPlaceholders.map((contact) => ({ name: contact.name, role: contact.role, reviewFlags: contact.reviewFlags })),
+  [{ name: "Sandra Hawkins", role: "child", reviewFlags: [] }],
+  "an accepted IDI contact must replace generic family rows in the generated Discovery packet",
+);
 
 async function generate(dossiers, flow = "discovery", estateId = "", payload = {}) {
   const response = await worker.fetch(new Request("https://worker.test/api/exports", {
@@ -46,9 +85,11 @@ async function generate(dossiers, flow = "discovery", estateId = "", payload = {
     body: JSON.stringify({
       routes: [],
       dryRun: true,
+      controlledTest: !estateId,
       flow,
       dossiers,
       ...(estateId ? { estateId } : {}),
+      ...(estateId ? { packetRevision: 1 } : {}),
       operatorIntent: "generate_packet",
       ...payload,
     }),
@@ -74,9 +115,17 @@ assert.equal(single.body.estateIds.length, 1);
 assert.ok(single.body.sections.length >= 10);
 
 const artifactId = single.body.artifact.artifactId;
-const persistedDiscoveryFile = JSON.parse(await kv.get(discoveryFileKey));
+const persistedDiscoveryResponse = await worker.fetch(new Request(`https://worker.test/api/discovery/file?estateId=${encodeURIComponent(persistedEstateId)}`), env);
+const persistedDiscoveryFile = await persistedDiscoveryResponse.json();
 assert.equal(persistedDiscoveryFile.packetArtifacts[0].artifactId, artifactId);
 assert.equal(persistedDiscoveryFile.packetArtifacts[0].readbackStatus, "verified");
+const persistedDiscoveryRevisionKey = [...kv.values.keys()].find((key) => key.startsWith(`${discoveryFileKey}:revision:`));
+assert.ok(persistedDiscoveryRevisionKey, "packet references must be staged as an immutable Discovery File revision");
+assert.equal(
+  kv.options.get(persistedDiscoveryRevisionKey)?.expirationTtl,
+  30 * 24 * 60 * 60,
+  "packet-reference rewrites must retain the bounded Discovery-file privacy TTL"
+);
 const stored = JSON.parse(await kv.get(`packet:${artifactId}`));
 const storedText = JSON.stringify(stored.model);
 for (const heading of [
@@ -257,6 +306,7 @@ console.log(JSON.stringify({
     "closing_contents_paginate_for_large_batch",
     "artifact_integrity_hash",
     "shared_discovery_file_packet_reference",
+    "packet_reference_rewrite_preserves_discovery_file_ttl",
   ],
   singlePages: singlePdf.getPageCount(),
   batchPages: batchPdf.getPageCount(),

@@ -17,7 +17,7 @@ function buildGovernanceCatalog(): SourceGovernanceCatalog {
         automationAllowed: true,
         entryUrl: "https://www.miamidade.gov/Apps/PA/PropertySearch/#/",
         stages: [
-          { code: "owner_type", title: "Confirm owner type", operatorAction: "Confirm the property is under an individual name; move on or override if it is a company.", requiredEvidence: ["owner name", "property address", "folio"], blocksUntilCaptured: true },
+          { code: "owner_type", title: "Confirm owner type", operatorAction: "Confirm the property is under an individual name; move on if it is a company.", requiredEvidence: ["owner name", "property address", "folio"], blocksUntilCaptured: true },
           { code: "mailing_address", title: "Check mailing address", operatorAction: "Record mailing address matches, mismatches, or missing source evidence from the parcel record.", requiredEvidence: ["property appraiser source URL", "mailing address note"], blocksUntilCaptured: true },
         ],
         reviewFlags: [...publicFlags],
@@ -47,7 +47,7 @@ function buildGovernanceCatalog(): SourceGovernanceCatalog {
         stages: [
           { code: "latest_deed", title: "Find latest recorded deed", operatorAction: "Search Official Records by owner, address, folio, or OR book/page and save the latest deed source.", requiredEvidence: ["Official Records URL", "deed document link", "OR book/page or instrument"], blocksUntilCaptured: true },
           { code: "title_friction", title: "Check title friction", operatorAction: "Record mortgage, lien, Lis Pendens, foreclosure, adverse possession, and ownership activity signals.", requiredEvidence: ["title signal note", "source URL"], blocksUntilCaptured: true },
-          { code: "recent_sale_stop", title: "Check recent sale", operatorAction: "Record last sale date; move on unless operator override exists when sale is inside five years.", requiredEvidence: ["last sale date or unavailable note"], blocksUntilCaptured: true },
+          { code: "recent_sale_stop", title: "Check recent sale", operatorAction: "Record the last sale date and move on when the sale is inside five years.", requiredEvidence: ["last sale date or unavailable note"], blocksUntilCaptured: true },
         ],
         reviewFlags: [...publicFlags],
       },

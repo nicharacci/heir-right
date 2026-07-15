@@ -1,5 +1,12 @@
-const { readJsonBody, receiptId, requireApiAuth, sendJson } = require("../_shared");
-const { accessConfig, applyAccessChange, normalizedAccessValue, validAccessValue } = require("./access-config");
+const { readJsonBody, receiptId, requireApiAdmin, requireApiAuth, sendJson } = require("../_shared");
+const {
+  accessConfig,
+  accessDomain,
+  accessValueType,
+  applyAccessChange,
+  normalizedAccessValue,
+  validAccessValue,
+} = require("./access-config");
 
 function linearConfig() {
   return {
@@ -53,6 +60,38 @@ async function createAccessTicket(config, payload) {
   return data.issueCreate.issue;
 }
 
+async function routeAccessRequest(payload) {
+  const webhookUrl = process.env.HEIRRIGHT_ACCESS_WEBHOOK_URL;
+  if (webhookUrl) {
+    try {
+      const forwarded = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!forwarded.ok) throw new Error(`Access webhook failed with ${forwarded.status}`);
+      return { status: "webhook_queued" };
+    } catch (error) {
+      return { status: "routing_failed", message: error.message || "Access webhook failed." };
+    }
+  }
+
+  const config = linearConfig();
+  if (config.apiKey && config.teamId) {
+    try {
+      const issue = await createAccessTicket(config, payload);
+      return { status: "linear_ticket_created", issue };
+    } catch (error) {
+      return { status: "routing_failed", message: error.message || "Linear access ticket failed." };
+    }
+  }
+
+  return {
+    status: "not_configured",
+    message: "Configure the access webhook or Linear routing before requesting a production sign-in change.",
+  };
+}
+
 module.exports = async function handler(request, response) {
   if (requireApiAuth(request, response)) return;
   if (request.method === "GET" || request.method === "HEAD") {
@@ -64,6 +103,7 @@ module.exports = async function handler(request, response) {
     sendJson(response, 405, { ok: false, error: "method_not_allowed" });
     return;
   }
+  if (requireApiAdmin(request, response)) return;
   try {
     const body = await readJsonBody(request);
     const action = body.action === "remove" ? "remove" : "add";
@@ -72,48 +112,65 @@ module.exports = async function handler(request, response) {
       sendJson(response, 400, { ok: false, error: "invalid_access_value", message: "Enter a valid company email or domain." });
       return;
     }
-    const applied = applyAccessChange(action, value, process.env);
+    const type = accessValueType(value);
     const payload = {
       action,
       value,
-      domain: applied.domain,
-      allowedDomains: applied.allowedDomains,
+      type,
+      domain: accessDomain(value),
       actor: body.actor || "office user",
       requestedAt: body.requestedAt || new Date().toISOString(),
       requestId: receiptId("access"),
     };
-    let routing = { status: "not_configured", message: "Access list updated in HeirRight. Configure support routing for external approval tracking." };
-    const webhookUrl = process.env.HEIRRIGHT_ACCESS_WEBHOOK_URL;
-    if (webhookUrl) {
-      try {
-        const forwarded = await fetch(webhookUrl, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!forwarded.ok) throw new Error(`Access webhook failed with ${forwarded.status}`);
-        routing = { status: "webhook_queued" };
-      } catch (error) {
-        routing = { status: "routing_failed", message: error.message || "Access webhook failed." };
-      }
-    } else {
-      const config = linearConfig();
-      if (config.apiKey && config.teamId) {
-        try {
-          const issue = await createAccessTicket(config, payload);
-          routing = { status: "linear_ticket_created", issue };
-        } catch (error) {
-          routing = { status: "routing_failed", message: error.message || "Linear access ticket failed." };
-        }
-      }
+
+    // A local file is deterministic for the developer server, but it is not a
+    // durable production database on Vercel. Only the explicit local auth-off
+    // mode mutates it. Production requests are routed for an environment-backed
+    // allowlist change and report that access remains unchanged until deployed.
+    if (process.env.AUTH_REQUIRED === "false") {
+      const applied = applyAccessChange(action, value, process.env);
+      const routing = await routeAccessRequest({ ...payload, ...applied });
+      sendJson(response, 200, {
+        ok: true,
+        applied: true,
+        persistence: "local_file",
+        status: action === "remove" ? "access_removed" : "access_added",
+        routing,
+        allowedDomains: applied.allowedDomains,
+        allowedEmails: applied.allowedEmails,
+        payload: { ...payload, ...applied },
+        message: `${type === "email" ? "Email" : "Domain"} access was updated in the local development sign-in gate.`,
+      });
+      return;
     }
-    sendJson(response, 200, {
+
+    const routing = await routeAccessRequest(payload);
+    const current = accessConfig(process.env);
+    if (routing.status === "not_configured" || routing.status === "routing_failed") {
+      sendJson(response, routing.status === "routing_failed" ? 502 : 503, {
+        ok: false,
+        applied: false,
+        status: "access_change_not_recorded",
+        error: routing.status === "routing_failed" ? "access_request_routing_failed" : "access_request_routing_not_configured",
+        routing,
+        allowedDomains: current.allowedDomains,
+        allowedEmails: current.allowedEmails,
+        payload,
+        message: routing.message,
+      });
+      return;
+    }
+
+    sendJson(response, 202, {
       ok: true,
-      status: action === "remove" ? "access_removed" : "access_added",
+      applied: false,
+      approvalRequired: true,
+      status: "access_change_requested",
       routing,
-      allowedDomains: applied.allowedDomains,
-      allowedEmails: accessConfig(process.env).allowedEmails,
+      allowedDomains: current.allowedDomains,
+      allowedEmails: current.allowedEmails,
       payload,
+      message: "The approval request was recorded. Production sign-in access has not changed; update the environment allowlist and redeploy after approval.",
     });
   } catch (error) {
     sendJson(response, error.code === "invalid_access_value" ? 400 : 500, {
