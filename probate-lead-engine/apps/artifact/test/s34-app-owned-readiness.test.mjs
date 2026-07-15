@@ -141,6 +141,12 @@ assert.ok(bundle.includes('integrationOnboardingCardHtml("browserbase")'), "Sett
 assert.ok(bundle.includes('"Browserbase Usage"'), "Connection rows must include Browserbase Usage.");
 assert.ok(bundle.includes("Browserbase source usage"), "Source settings must show Browserbase usage controls.");
 assert.ok(bundle.includes("Paid batch capture cap"), "Source settings must explain the Browserbase batch cap.");
+assert.ok(bundle.includes("Billing blocked"), "Settings must surface Browserbase billing as blocked until a disposable session is verified.");
+assert.ok(bundle.includes('connectionReadyState("Browserbase Usage") === "ready"'), "Settings must use live readiness instead of inferring Browserbase availability from saved credentials alone.");
+assert.ok(bundle.includes("Recent disposable sessions return HTTP 402"), "Settings must report the current Browserbase billing failure without masking it as ready.");
+assert.ok(!bundle.includes('browserbase?.ok ? "Single-estate capture ready"'), "Settings must not label review-only Browserbase configuration as ready.");
+assert.ok(bundle.includes("browserWorkflowState(tax, tax?.sourceAutomation?.browserWorkflowConfigured)"), "Tax Collector must not label a review-only Browserbase function ready.");
+assert.ok(bundle.includes("browserWorkflowState(vital, vital?.sourceAutomation?.workflowConfigured)"), "Vital sources must not label a review-only Browserbase function ready.");
 assert.doesNotMatch(bundle, /Embed Builder|activepieces\.com\/docs|cdn\.activepieces\.com\/sdk|<iframe[^>]+activepieces/i);
 assert.ok(workerSource.includes("PODIO_TOKEN_STORE"), "Worker must bind durable Podio token storage.");
 assert.ok(workerSource.includes("storePodioRefreshToken"), "Podio OAuth callback must persist each user's refresh token.");

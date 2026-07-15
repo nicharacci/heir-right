@@ -215,6 +215,72 @@ test("Dashboard starts the operator in one persistent shell and Case Journey", a
   expect(browserFailures, browserFailures.join("\n")).toEqual([]);
 });
 
+test("Settings keeps review-only Browserbase workflows blocked from ready claims", async ({ page }) => {
+  const browserFailures = watchBrowserFailures(page);
+  await page.route("**/api/connections/status", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify([
+      {
+        name: "Browserbase Usage",
+        ok: true,
+        mode: "review",
+        message: "Browserbase credentials and functions are configured.",
+        usagePolicy: {
+          apiConfigured: true,
+          projectConfigured: true,
+          taxCollectorFunctionConfigured: true,
+          vitalObituaryFunctionConfigured: true,
+          proxyEnabled: true,
+          batchApprovalRequired: true,
+          batchApprovedByEnv: false,
+          maxBatchSessions: 10,
+          maxConcurrency: 2,
+        },
+      },
+      {
+        name: "Tax Collector Source",
+        ok: true,
+        mode: "review",
+        configuredMode: "browser_workflow",
+        message: "Browser function is saved.",
+        sourceAutomation: {
+          scriptDirectListingConfigured: false,
+          browserWorkflowConfigured: true,
+          browserbaseFunctionConfigured: true,
+        },
+      },
+      {
+        name: "Vital/Obituary Workflow",
+        ok: true,
+        mode: "review",
+        configuredMode: "browser_workflow",
+        message: "Browser function is saved.",
+        sourceAutomation: {
+          workflowConfigured: true,
+          browserbaseFunctionConfigured: true,
+        },
+      },
+    ]),
+  }));
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openWorkspace(page, "/?view=settings");
+
+  const readiness = page.locator(".settings-readiness-tile").filter({ hasText: "Browserbase" });
+  await expect(readiness).toContainText("Browser capture blocked");
+  await expect(readiness).toContainText("HTTP 402");
+  await expect(readiness).not.toContainText("Single-estate capture ready");
+
+  await page.locator('[data-settings-tab="sources"]').click();
+  for (const title of ["Tax Collector Source", "Vital/Obituary Workflow", "Browserbase source usage"]) {
+    const card = page.locator(".source-control-card").filter({ hasText: title });
+    await expect(card).toContainText("HTTP 402");
+    await expect(card.locator('li[data-state="ready"]')).toHaveCount(0);
+  }
+  await expect(page.locator(".source-control-card").filter({ hasText: "Browserbase source usage" })).toContainText("Billing blocked");
+  expect(browserFailures, browserFailures.join("\n")).toEqual([]);
+});
+
 test("a document row opens the mobile rail through the direct runtime path and returns focus", async ({ page }) => {
   const browserFailures = watchBrowserFailures(page);
   await page.setViewportSize({ width: 390, height: 844 });
