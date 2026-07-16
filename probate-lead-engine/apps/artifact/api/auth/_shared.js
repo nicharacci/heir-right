@@ -1,6 +1,7 @@
 const { randomBytes, createHmac } = require("node:crypto");
 const { isIP } = require("node:net");
 const { accessConfig, adminEmails } = require("../admin/access-config");
+const { secretMatches } = require("../security/secret-compare");
 
 const sessionCookie = process.env.AUTH_SESSION_COOKIE || "hr_session";
 const stateCookie = process.env.AUTH_STATE_COOKIE || "hr_oauth_state";
@@ -166,7 +167,7 @@ function readSession(req) {
   const token = parseCookies(req)[sessionCookie];
   if (!token || !process.env.AUTH_SESSION_SECRET) return null;
   const [encoded, signature] = token.split(".");
-  if (!encoded || !signature || sign(encoded) !== signature) return null;
+  if (!encoded || !signature || !secretMatches(signature, sign(encoded))) return null;
   try {
     const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
     if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
@@ -208,7 +209,6 @@ function sendHtml(res, status, body, headers = {}) {
 function loginPage(req, message = "Sign in with your HeirRight Google account to review lead packets.") {
   const configured = oauthConfigured(req);
   const domainText = allowedDomains().join(", ") || "heirright.com";
-  const emailText = allowedEmails().join(", ") || "approved admin emails";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -232,7 +232,7 @@ function loginPage(req, message = "Sign in with your HeirRight Google account to
     <h1>HeirRight</h1>
     <p>${escapeHtml(message)}</p>
     ${configured ? `<a href="/auth/login">Continue with Google</a>` : `<p><strong>Google sign-in is not set up yet.</strong></p>`}
-    <p class="meta">Allowed domains: <code>${escapeHtml(domainText)}</code><br>Admin access: <code>${escapeHtml(emailText)}</code></p>
+    <p class="meta">Allowed domains: <code>${escapeHtml(domainText)}</code><br>Exact-user access is managed by a HeirRight administrator.</p>
   </main>
 </body>
 </html>`;
@@ -299,7 +299,7 @@ function sessionBody(req) {
       required: authRequired(),
       configured: oauthConfigured(req),
       allowedDomains: allowedDomains(),
-      allowedEmails: allowedEmails(),
+      allowedEmails: canAdminister ? allowedEmails() : [],
       temporaryTrustedIpBypass: session?.mode === "trusted_ip",
     },
   };
@@ -379,6 +379,7 @@ module.exports = {
   readSession,
   sendHtml,
   sendJson,
+  secretMatches,
   sessionBody,
   sessionCookie,
   storeGoogleWorkspaceConnection,

@@ -52,6 +52,24 @@ test("Dashboard starts the operator in one persistent shell and Case Journey", a
   await expect(page.locator(".case-lifecycle")).toContainText("Title & Tax");
   await expect(page.locator(".case-lifecycle")).toContainText("Probate & Heirs");
 
+  await expect.poll(() => page.locator(".shell-primary-command").evaluate((element) => getComputedStyle(element).marginTop)).toBe("4px");
+  await expect.poll(() => page.locator("#s38OpenRail").evaluate((element) => getComputedStyle(element).marginTop)).toBe("0px");
+  await page.setViewportSize({ width: 1120, height: 900 });
+  await expect.poll(() => page.locator(".shell-primary-command").evaluate((element) => getComputedStyle(element).marginTop)).toBe("0px");
+  await expect.poll(() => page.locator("#s38OpenRail").evaluate((element) => getComputedStyle(element).marginTop)).toBe("0px");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.locator(".shell-primary-command").evaluate((element) => getComputedStyle(element).marginTop)).toBe("0px");
+  await expect.poll(() => page.locator("#s38OpenRail").evaluate((element) => getComputedStyle(element).marginTop)).toBe("0px");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.locator('[data-shell-nav="find-estates"]').click();
+  await expect(page.locator("#crmImportMenu")).toBeVisible();
+  const importRowOffsets = await page.locator("#crmImportMenu").evaluate((menu) => ({
+    label: getComputedStyle(menu.querySelector("#crmImportSingle")).marginTop,
+    arrow: getComputedStyle(menu.querySelector("#crmImportBatchToggle")).marginTop,
+  }));
+  expect(importRowOffsets).toEqual({ label: "4px", arrow: "4px" });
+  await page.locator('[data-shell-nav="dashboard"]').click();
+
   const queueNav = page.locator('[data-shell-nav="queue"]');
   await expect(queueNav).not.toHaveClass(/is-active/);
   await queueNav.hover();
@@ -70,6 +88,26 @@ test("Dashboard starts the operator in one persistent shell and Case Journey", a
     borderTopWidth: "0px",
     boxShadow: "none",
     iconFilter: expect.stringMatching(/^drop-shadow\(/),
+  });
+  await page.locator('[data-shell-nav="drips"]').focus();
+  await page.keyboard.press("Tab");
+  await expect(queueNav).toBeFocused();
+  const queueFocusStyles = await queueNav.evaluate((element) => {
+    const control = getComputedStyle(element);
+    return {
+      backgroundColor: control.backgroundColor,
+      borderTopWidth: control.borderTopWidth,
+      boxShadow: control.boxShadow,
+      outlineStyle: control.outlineStyle,
+      outlineWidth: control.outlineWidth,
+    };
+  });
+  expect(queueFocusStyles).toEqual({
+    backgroundColor: "rgba(0, 0, 0, 0)",
+    borderTopWidth: "0px",
+    boxShadow: "none",
+    outlineStyle: "solid",
+    outlineWidth: "2px",
   });
 
   const search = page.locator("#globalSearch");
@@ -169,6 +207,9 @@ test("Dashboard starts the operator in one persistent shell and Case Journey", a
   await page.locator('[data-shell-nav="dashboard"]').click();
 
   const openRail = page.locator("#s38OpenRail");
+  await expect(openRail).toHaveAttribute("aria-controls", "s38UnifiedRail");
+  await expect(openRail).toHaveAttribute("aria-expanded", "false");
+  await expect(openRail).not.toHaveAttribute("aria-haspopup", /.+/);
   await openRail.click();
   const rail = page.locator("#s38UnifiedRail");
   const layer = page.locator(".shell-unified-rail-layer");
@@ -176,6 +217,7 @@ test("Dashboard starts the operator in one persistent shell and Case Journey", a
   await expect(rail).toHaveAttribute("aria-hidden", "false");
   await expect(rail).not.toHaveAttribute("role", "dialog");
   await expect(rail).not.toHaveAttribute("aria-modal", /.+/);
+  await expect(openRail).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator('[data-unified-rail-tab="overview"]')).toBeFocused();
   await page.keyboard.press("End");
   await expect(page.locator('[data-unified-rail-tab="actions"]')).toHaveAttribute("aria-selected", "true");
@@ -204,6 +246,7 @@ test("Dashboard starts the operator in one persistent shell and Case Journey", a
   await page.keyboard.press("Escape");
   await expect(rail).toHaveAttribute("aria-hidden", "true");
   await expect(openRail).toBeFocused();
+  await expect(openRail).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator("#researchRail")).toHaveAttribute("aria-hidden", "true");
   await expect(page.locator("#historyRail")).toHaveAttribute("aria-hidden", "true");
   await expect(page.locator("#agentDrawer")).toHaveAttribute("aria-hidden", "true");
@@ -424,6 +467,10 @@ test("a document row opens the mobile rail through the direct runtime path and r
   const browserFailures = watchBrowserFailures(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await openWorkspace(page);
+  const mobileRailTrigger = page.locator("#s38OpenRail");
+  await expect(mobileRailTrigger).toHaveAttribute("aria-controls", "s38UnifiedRail");
+  await expect(mobileRailTrigger).toHaveAttribute("aria-expanded", "false");
+  await expect(mobileRailTrigger).toHaveAttribute("aria-haspopup", "dialog");
 
   await page.locator('[data-shell-nav="settings"]').click();
   await page.locator('[data-settings-tab="preferences"]').click();
@@ -431,7 +478,8 @@ test("a document row opens the mobile rail through the direct runtime path and r
   await page.locator('[data-shell-theme="cream"]').click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "cream");
   await page.locator('[data-shell-nav="dashboard"]').click();
-  await page.locator("#s38OpenRail").click();
+  await mobileRailTrigger.click();
+  await expect(mobileRailTrigger).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator('[data-unified-rail-tab="overview"]')).toBeFocused();
   await page.reload();
   await expect(page.locator("#s38UnifiedRail")).toHaveAttribute("role", "dialog");
@@ -439,6 +487,7 @@ test("a document row opens the mobile rail through the direct runtime path and r
   await expect(page.locator('[data-unified-rail-tab="overview"]')).toBeFocused();
   await page.locator(".shell-rail-close").click();
   await expect(page.locator("#s38UnifiedRail")).toHaveAttribute("aria-hidden", "true");
+  await expect(mobileRailTrigger).toHaveAttribute("aria-expanded", "false");
   await page.locator('[data-shell-nav="find-estates"]').click();
   await expect(page.locator("#sidebarToggle")).toHaveAttribute("title", "Go to Dashboard");
   await page.locator("#sidebarToggle").click();
@@ -475,11 +524,13 @@ test("a document row opens the mobile rail through the direct runtime path and r
 
   await page.setViewportSize({ width: 900, height: 844 });
   await expect(rail).not.toHaveAttribute("role", "dialog");
+  await expect(mobileRailTrigger).not.toHaveAttribute("aria-haspopup", /.+/);
   await expect.poll(() => page.locator(".workbench").evaluate((element) => element.inert)).toBe(false);
   await expect.poll(() => page.locator(".topbar").evaluate((element) => element.inert)).toBe(false);
   await expect.poll(() => page.locator("#primarySidebar").evaluate((element) => element.inert)).toBe(false);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(rail).toHaveAttribute("role", "dialog");
+  await expect(mobileRailTrigger).toHaveAttribute("aria-haspopup", "dialog");
   await expect.poll(() => page.locator(".workbench").evaluate((element) => element.inert)).toBe(true);
 
   const close = page.locator(".shell-rail-close");
@@ -489,6 +540,7 @@ test("a document row opens the mobile rail through the direct runtime path and r
   expect(focusWrappedInside).toBe(true);
   await page.keyboard.press("Escape");
   await expect(rail).toHaveAttribute("aria-hidden", "true");
+  await expect(mobileRailTrigger).toHaveAttribute("aria-expanded", "false");
   await expect(rail).not.toHaveAttribute("aria-modal", /.+/);
   await expect(documentRow).toBeFocused();
   await expect(page.locator("body")).not.toHaveClass(/s38-mobile-rail-open/);

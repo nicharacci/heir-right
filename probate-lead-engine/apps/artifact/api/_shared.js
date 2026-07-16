@@ -1,3 +1,5 @@
+const { secretMatches } = require("./security/secret-compare");
+
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
     if (request.body && typeof request.body === "object" && !Buffer.isBuffer(request.body)) {
@@ -38,9 +40,7 @@ function internalBearerAllowed(request) {
   const expected = String(process.env.HEIRRIGHT_API_TOKEN || "");
   if (!expected) return false;
   const supplied = String(request?.headers?.authorization || "").replace(/^Bearer\s+/i, "");
-  if (!supplied || supplied.length !== expected.length) return false;
-  const { timingSafeEqual } = require("node:crypto");
-  return timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+  return secretMatches(supplied, expected);
 }
 
 function requireApiAuth(request, response) {
@@ -55,10 +55,18 @@ function requireApiAuth(request, response) {
   return true;
 }
 
-function requireApiAdmin(request, response) {
+function apiAdminAllowed(request) {
   const { authRequired, effectiveSession } = require("./auth/_shared");
   const { adminEmails } = require("./admin/access-config");
-  if (!authRequired() || internalBearerAllowed(request)) return false;
+  if (!authRequired() || internalBearerAllowed(request)) return true;
+  const session = effectiveSession(request);
+  const email = String(session?.email || "").trim().toLowerCase();
+  return Boolean(session?.mode === "google" && email && adminEmails(process.env).includes(email));
+}
+
+function requireApiAdmin(request, response) {
+  const { effectiveSession } = require("./auth/_shared");
+  if (apiAdminAllowed(request)) return false;
   const session = effectiveSession(request);
   if (!session) {
     sendJson(response, 401, {
@@ -69,8 +77,6 @@ function requireApiAdmin(request, response) {
     });
     return true;
   }
-  const email = String(session.email || "").trim().toLowerCase();
-  if (session.mode === "google" && email && adminEmails(process.env).includes(email)) return false;
   sendJson(response, 403, {
     ok: false,
     error: "admin_required",
@@ -345,6 +351,7 @@ function taxReceiptCandidateScore(candidate = {}) {
 }
 
 module.exports = {
+  apiAdminAllowed,
   discoverTaxCollectorReceipt,
   extractTaxCollectorDetails,
   idiLockKey,

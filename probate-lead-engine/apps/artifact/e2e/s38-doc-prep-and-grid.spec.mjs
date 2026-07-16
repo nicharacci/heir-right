@@ -839,6 +839,25 @@ test("Community grids support filtering, keyboard selection and opening, selecte
   const estatesGrid = estates.locator('[data-community-grid="estates"]');
   await expect(estatesGrid.locator(".ag-root")).toBeVisible();
   await expect(estatesGrid.locator(".ag-paging-panel")).toBeVisible();
+  const headerFilterButton = estatesGrid.locator(".ag-header-cell-filter-button").first();
+  await expect(headerFilterButton).toBeVisible();
+  await expect(headerFilterButton).toHaveAttribute("aria-hidden", "true");
+  await headerFilterButton.hover();
+  const headerFilterHoverStyles = await headerFilterButton.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      backgroundColor: style.backgroundColor,
+      borderTopWidth: style.borderTopWidth,
+      boxShadow: style.boxShadow,
+      iconFilter: getComputedStyle(element.querySelector(".ag-icon")).filter,
+    };
+  });
+  expect(headerFilterHoverStyles).toEqual({
+    backgroundColor: "rgba(0, 0, 0, 0)",
+    borderTopWidth: "0px",
+    boxShadow: "none",
+    iconFilter: expect.stringMatching(/^drop-shadow\(/),
+  });
   const titleHeader = estatesGrid.locator('.ag-header-cell[col-id="title"]');
   await titleHeader.click();
   await expect(titleHeader).toHaveAttribute("aria-sort", "ascending");
@@ -888,7 +907,16 @@ test("Community grids support filtering, keyboard selection and opening, selecte
   await expect(page.locator('[data-feature="doc-prep"]')).toHaveAttribute("data-estate-id", firstEstateId);
   await page.locator('[data-shell-nav="queue"]').click();
   await expect(queuedRow).toBeVisible();
-  await queuedRow.getByRole("button", { name: `Remove ${firstEstateTitle} from Queue` }).click();
+  const removeQueueRow = queuedRow.getByRole("button", { name: `Remove ${firstEstateTitle} from Queue` });
+  await page.keyboard.press("Tab");
+  await removeQueueRow.focus();
+  await expect(removeQueueRow).toBeFocused();
+  const removeQueueFocusStyles = await removeQueueRow.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth };
+  });
+  expect(removeQueueFocusStyles).toEqual({ outlineStyle: "solid", outlineWidth: "2px" });
+  await removeQueueRow.click();
   await expect(queuedRow).toHaveCount(0);
 
   await page.locator('[data-shell-nav="find-estates"]').click();

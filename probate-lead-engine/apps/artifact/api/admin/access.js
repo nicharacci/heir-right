@@ -1,4 +1,4 @@
-const { readJsonBody, receiptId, requireApiAdmin, requireApiAuth, sendJson } = require("../_shared");
+const { apiAdminAllowed, readJsonBody, receiptId, requireApiAdmin, requireApiAuth, sendJson } = require("../_shared");
 const {
   accessConfig,
   accessDomain,
@@ -95,7 +95,12 @@ async function routeAccessRequest(payload) {
 module.exports = async function handler(request, response) {
   if (requireApiAuth(request, response)) return;
   if (request.method === "GET" || request.method === "HEAD") {
-    sendJson(response, 200, { ok: true, ...accessConfig(process.env) });
+    const config = accessConfig(process.env);
+    sendJson(response, 200, {
+      ok: true,
+      ...config,
+      allowedEmails: apiAdminAllowed(request) ? config.allowedEmails : [],
+    });
     return;
   }
   if (request.method !== "POST") {

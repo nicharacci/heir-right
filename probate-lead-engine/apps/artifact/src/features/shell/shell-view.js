@@ -129,7 +129,7 @@ function createShellView() {
       <span data-shell-primary-icon aria-hidden="true">${iconMarkup("discovery", { size: 17 })}</span>
     </button>
     <wa-tooltip for="s38OpenRail" placement="bottom">Open the Case Journey</wa-tooltip>
-    <button id="s38OpenRail" class="shell-icon-command" type="button" data-shell-open-context="overview" aria-label="Open Case Journey" aria-haspopup="dialog" aria-expanded="false">
+    <button id="s38OpenRail" class="shell-icon-command" type="button" data-shell-open-context="overview" aria-label="Open Case Journey" aria-controls="s38UnifiedRail" aria-expanded="false">
       ${iconMarkup("journey", { size: 27 })}
     </button>
   `;

@@ -564,6 +564,7 @@ body[data-theme] #dossiersView.hr-docprep-mount {
 }
 
 .hr-docprep-empty wa-button {
+  --s38-action-host-margin-block-start: var(--hr-space-3);
   margin-block-start: var(--hr-space-3);
   justify-self: center;
 }

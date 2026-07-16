@@ -21,7 +21,8 @@ const productionDocumentAttachments = require("../../../api/documents/attachment
 const productionWorkspaceState = require("../../../api/workspace/state.js");
 const productionAuth = require("../../../api/auth/[...path].js");
 const productionIdiExtract = require("../../../api/discovery/idi-asset-search/extract.js");
-const { createSessionToken, sessionBody } = require("../api/auth/_shared.js");
+const { createSessionToken, loginPage, sessionBody } = require("../api/auth/_shared.js");
+const { secretMatches } = require("../api/security/secret-compare.js");
 
 function call(handler, { method = "GET", body, headers = {}, url = "/" } = {}) {
   return new Promise((resolve, reject) => {
@@ -46,9 +47,27 @@ function call(handler, { method = "GET", body, headers = {}, url = "/" } = {}) {
 
 process.env.AUTH_REQUIRED = "true";
 process.env.AUTH_ALLOWED_DOMAINS = "heirright.com";
+process.env.AUTH_ALLOWED_EMAILS = "operator@heirright.com";
 process.env.AUTH_SESSION_SECRET = "s37-session-secret";
 process.env.HEIRRIGHT_API_TOKEN = "s37-internal-route-token";
 process.env.HEIRRIGHT_ADMIN_EMAILS = "admin@outside.example";
+
+const anonymousSession = sessionBody({ headers: { host: "surface.heirright.com", "x-forwarded-proto": "https" } });
+assert.deepEqual(anonymousSession.auth.allowedEmails, [], "anonymous session metadata must not disclose exact approved or administrator emails");
+assert.doesNotMatch(JSON.stringify(anonymousSession), /operator@heirright\.com|admin@outside\.example/);
+const anonymousLogin = loginPage({ headers: { host: "surface.heirright.com", "x-forwarded-proto": "https" } });
+assert.doesNotMatch(anonymousLogin, /operator@heirright\.com|admin@outside\.example/, "the anonymous login page must not disclose exact privileged addresses");
+const anonymousProductionSession = await call(productionAuth, {
+  method: "GET",
+  url: "/api/auth/session",
+});
+assert.equal(anonymousProductionSession.statusCode, 200);
+assert.deepEqual(JSON.parse(anonymousProductionSession.text).auth.allowedEmails, [], "the production auth router must preserve a private anonymous session shape");
+assert.doesNotMatch(anonymousProductionSession.text, /operator@heirright\.com|admin@outside\.example/);
+assert.equal(secretMatches("same-secret", "same-secret"), true);
+assert.equal(secretMatches("same-secret", "same-secreu"), false);
+assert.equal(secretMatches("same-secret", "same-secret-extra"), false);
+assert.equal(secretMatches("", ""), false);
 
 for (const [name, handler, request] of [
   ["admin access", adminAccess, { method: "GET", url: "/api/admin/access" }],
@@ -79,6 +98,19 @@ const tokenResponse = await call(connectionStatus, {
 });
 assert.equal(tokenResponse.statusCode, 200, "internal bearer must preserve server-to-server access");
 
+for (const nearMiss of [
+  `${process.env.HEIRRIGHT_API_TOKEN.slice(0, -1)}x`,
+  process.env.HEIRRIGHT_API_TOKEN.slice(1),
+  `${process.env.HEIRRIGHT_API_TOKEN}x`,
+]) {
+  const rejectedBearer = await call(connectionStatus, {
+    method: "GET",
+    url: "/api/connections/status",
+    headers: { authorization: `Bearer ${nearMiss}` },
+  });
+  assert.equal(rejectedBearer.statusCode, 401, "same-length, truncated, and extended bearer near-misses must fail closed");
+}
+
 const productionTokenResponse = await call(productionDiscoveryFile, {
   method: "GET",
   url: "/api/discovery/file?estateId=estate-test",
@@ -88,12 +120,19 @@ assert.equal(productionTokenResponse.statusCode, 503, "production wrappers must 
 assert.equal(JSON.parse(productionTokenResponse.text).error, "discovery_file_store_unavailable");
 
 const sessionToken = createSessionToken({ email: "operator@heirright.com", name: "Operator" });
+const [sessionPayload, sessionSignature] = sessionToken.split(".");
+const tamperedSignature = `${sessionSignature.startsWith("a") ? "b" : "a"}${sessionSignature.slice(1)}`;
+assert.equal(sessionBody({ headers: { cookie: `hr_session=${encodeURIComponent(`${sessionPayload}.${tamperedSignature}`)}` } }).authenticated, false, "a same-length tampered session signature must fail closed");
+assert.equal(sessionBody({ headers: { cookie: `hr_session=${encodeURIComponent(`${sessionPayload}.${sessionSignature.slice(1)}`)}` } }).authenticated, false, "a different-length tampered session signature must fail closed");
+assert.equal(sessionBody({ headers: { cookie: `hr_session=${encodeURIComponent(`${sessionPayload}.${sessionSignature}x`)}` } }).authenticated, false, "an extended session signature must fail closed");
 const sessionResponse = await call(adminAccess, {
   method: "GET",
   url: "/api/admin/access",
   headers: { cookie: `hr_session=${encodeURIComponent(sessionToken)}` },
 });
 assert.equal(sessionResponse.statusCode, 200, "approved signed session must access protected APIs");
+assert.deepEqual(JSON.parse(sessionResponse.text).allowedEmails, [], "an ordinary operator must not receive exact approved or administrator emails from the access bootstrap");
+assert.doesNotMatch(sessionResponse.text, /operator@heirright\.com|admin@outside\.example/, "the ordinary access bootstrap must not serialize privileged exact emails");
 
 const ordinaryOperatorMutation = await call(adminAccess, {
   method: "POST",
@@ -113,12 +152,22 @@ const adminBrowserSession = await call(productionAuth, {
 assert.equal(adminBrowserSession.statusCode, 200);
 assert.equal(JSON.parse(adminBrowserSession.text).canAdminister, true, "the production auth router must expose exact Google admin capability to replacement controls");
 assert.equal(JSON.parse(adminBrowserSession.text).user.mode, "google");
+assert.ok(JSON.parse(adminBrowserSession.text).auth.allowedEmails.includes("admin@outside.example"), "the administrator session response may retain the exact-email access list needed by access management");
+const adminAccessResponse = await call(adminAccess, {
+  method: "GET",
+  url: "/api/admin/access",
+  headers: { cookie: `hr_session=${encodeURIComponent(adminSessionToken)}` },
+});
+assert.equal(adminAccessResponse.statusCode, 200);
+assert.ok(JSON.parse(adminAccessResponse.text).allowedEmails.includes("admin@outside.example"), "an exact Google administrator must retain the full access list needed by Admin");
+assert.ok(JSON.parse(adminAccessResponse.text).allowedEmails.includes("operator@heirright.com"));
 const ordinaryBrowserSession = await call(productionAuth, {
   method: "GET",
   url: "/api/auth/session",
   headers: { cookie: `hr_session=${encodeURIComponent(sessionToken)}` },
 });
 assert.equal(JSON.parse(ordinaryBrowserSession.text).canAdminister, false);
+assert.deepEqual(JSON.parse(ordinaryBrowserSession.text).auth.allowedEmails, [], "an ordinary authenticated operator must not receive privileged exact emails");
 const adminMutation = await call(adminAccess, {
   method: "POST",
   body: {},
@@ -148,6 +197,12 @@ const internalMutation = await call(adminAccess, {
   headers: { authorization: `Bearer ${process.env.HEIRRIGHT_API_TOKEN}` },
 });
 assert.equal(internalMutation.statusCode, 400, "the private server bearer must preserve admin automation access");
+const internalAccessResponse = await call(adminAccess, {
+  method: "GET",
+  url: "/api/admin/access",
+  headers: { authorization: `Bearer ${process.env.HEIRRIGHT_API_TOKEN}` },
+});
+assert.ok(JSON.parse(internalAccessResponse.text).allowedEmails.includes("admin@outside.example"), "the private server bearer must retain full access-management readback");
 
 const savedTrustedIpConfig = {
   VERCEL: process.env.VERCEL,
@@ -166,6 +221,8 @@ const trustedIpResponse = await call(adminAccess, {
   headers: { "x-forwarded-for": "203.0.113.25", "x-vercel-forwarded-for": "203.0.113.24, 10.0.0.1" },
 });
 assert.equal(trustedIpResponse.statusCode, 200, "an exact trusted Vercel client IP must access protected APIs, even when a proxy changes the generic forwarding header");
+assert.deepEqual(JSON.parse(trustedIpResponse.text).allowedEmails, [], "temporary exact-IP access must not disclose privileged exact emails");
+assert.doesNotMatch(trustedIpResponse.text, /operator@heirright\.com|admin@outside\.example/);
 assert.equal(sessionBody({ headers: { "x-forwarded-for": "203.0.113.25", "x-vercel-forwarded-for": "203.0.113.24" } }).user.mode, "trusted_ip");
 const trustedIpMutation = await call(adminAccess, {
   method: "POST",
@@ -231,6 +288,21 @@ for (const path of protectedHandlers) {
   assert.match(source, /requireApiAuth\(request, response\)/, `${path} must use the shared route guard`);
 }
 assert.match(readFileSync(new URL("../api/admin/access.js", import.meta.url), "utf8"), /requireApiAdmin\(request, response\)/, "admin access mutations must use the exact-email admin guard");
+const secretCompareSource = readFileSync(new URL("../api/security/secret-compare.js", import.meta.url), "utf8");
+const authSharedSource = readFileSync(new URL("../api/auth/_shared.js", import.meta.url), "utf8");
+const sharedApiSource = readFileSync(new URL("../api/_shared.js", import.meta.url), "utf8");
+const authCallbackSource = readFileSync(new URL("../api/auth/callback.js", import.meta.url), "utf8");
+const serverSource = readFileSync(new URL("../server.js", import.meta.url), "utf8");
+const workerSource = readFileSync(new URL("../../worker/src/cloudflare.ts", import.meta.url), "utf8");
+assert.match(secretCompareSource, /createHash\("sha256"\)[\s\S]*timingSafeEqual\(digest\(actualValue\), digest\(expectedValue\)\)/, "Vercel secrets must compare fixed-size digests through timingSafeEqual");
+assert.match(authSharedSource, /secretMatches\(signature, sign\(encoded\)\)/, "the Vercel session signature must use the shared timing-safe comparator");
+assert.match(sharedApiSource, /secretMatches\(supplied, expected\)/, "the Vercel internal bearer must use the shared timing-safe comparator");
+assert.match(authCallbackSource, /secretMatches\(state, expectedState\)/, "the Vercel OAuth state must use the shared timing-safe comparator");
+assert.match(serverSource, /secretMatches\(signature, sign\(payload\)\)/, "the production auth router must use the shared timing-safe comparator");
+assert.match(serverSource, /secretMatches\(state, expectedState\)/, "the local production router OAuth state must use the shared timing-safe comparator");
+assert.match(workerSource, /createHash\("sha256"\)[\s\S]*timingSafeEqual\(actualDigest, expectedDigest\)/, "Worker bearer and HMAC checks must compare fixed-size digests through timingSafeEqual");
+assert.doesNotMatch(workerSource, /bearer\s*===\s*env\.HEIRRIGHT_API_TOKEN|expected\s*!==\s*signature|cookieSignature\s*!==\s*expectedSignature/, "Worker secrets must not regress to short-circuit string equality");
+assert.doesNotMatch(`${authSharedSource}\n${sharedApiSource}\n${authCallbackSource}\n${serverSource}`, /sign\([^)]*\)\s*!==|bearer\s*===|state\s*!==\s*expectedState/, "Node and Vercel secrets must not regress to short-circuit string equality");
 
 console.log(JSON.stringify({ ok: true, checks: [
   "anonymous_operational_routes_rejected",

@@ -8,6 +8,7 @@
   --s38-command-drawer-width: 30rem;
   --s38-command-row-height: 3.75rem;
   --s38-main-gutter: 0.625rem;
+  --s38-action-row-offset-y: 0.25rem;
   grid-template-columns: var(--s38-left-rail-width) minmax(0, 1fr) !important;
   height: 100dvh;
   min-height: 40rem;
@@ -286,7 +287,7 @@
 }
 
 #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip:focus-visible {
-  outline: 2px solid transparent;
+  outline: var(--hr-focus-width) solid var(--hr-focus);
   outline-offset: 2px;
 }
 
@@ -1564,6 +1565,7 @@ body.s38-rail-resizing {
    segmented theme choices, menu rows, and editorial rows keep their own
    geometry even when their accessible primitive is a button. */
 body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)) {
+  margin-block-start: var(--s38-action-row-offset-y);
   color: var(--hr-action-ink);
   background: var(--hr-action-surface);
   border: 1px solid var(--hr-action-border);
@@ -1613,6 +1615,10 @@ body[data-s38-shell="case-journey"] wa-button::part(base) {
   transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard), opacity var(--hr-motion-feedback) var(--hr-ease-standard);
 }
 
+body[data-s38-shell="case-journey"] wa-button {
+  margin-block-start: var(--s38-action-host-margin-block-start, var(--s38-action-row-offset-y));
+}
+
 body[data-s38-shell="case-journey"] wa-button:is(:hover, :focus-visible)::part(base) {
   color: var(--hr-action-ink);
   background: var(--hr-action-surface-hover);
@@ -1627,6 +1633,7 @@ body[data-s38-shell="case-journey"] wa-button:is([disabled], [loading])::part(ba
 }
 
 body[data-s38-shell="case-journey"] a.btn:not(.icon-only) {
+  margin-block-start: var(--s38-action-row-offset-y);
   color: var(--hr-action-ink);
   background: var(--hr-action-surface);
   border: 1px solid var(--hr-action-border);
@@ -1651,6 +1658,7 @@ body[data-s38-shell="case-journey"] a.btn:not(.icon-only):is(:hover, :focus-visi
 }
 
 #workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split > button {
+  margin-block-start: var(--s38-action-row-offset-y);
   color: inherit;
   background: transparent;
   border: 0;
@@ -1789,7 +1797,7 @@ body[data-s38-shell="case-journey"] .nav-item:not(.is-active):not(:disabled):is(
 }
 
 body[data-s38-shell="case-journey"] .nav-item:not(.is-active):focus-visible {
-  outline: 2px solid transparent !important;
+  outline: var(--hr-focus-width) solid var(--hr-focus) !important;
   outline-offset: 2px;
 }
 
@@ -1827,7 +1835,7 @@ body[data-s38-shell="case-journey"] :is(
   button[data-docprep-section-cycle],
   .command-form button.btn.primary
 ):focus-visible {
-  outline: 2px solid transparent !important;
+  outline: var(--hr-focus-width) solid var(--hr-focus) !important;
   outline-offset: 2px;
 }
 
@@ -1894,6 +1902,7 @@ body[data-s38-shell="case-journey"] :is(
    breakpoint, so it follows the same bare-mark interaction contract. */
 @media (max-width: 1120px) {
   body[data-s38-shell="case-journey"] .shell-primary-command {
+    margin-block-start: 0;
     padding: 0 !important;
     color: var(--hr-accent-strong) !important;
     background: transparent !important;
@@ -1902,7 +1911,7 @@ body[data-s38-shell="case-journey"] :is(
   }
 
   body[data-s38-shell="case-journey"] .shell-primary-command:focus-visible {
-    outline: 2px solid transparent !important;
+    outline: var(--hr-focus-width) solid var(--hr-focus) !important;
     outline-offset: 2px;
   }
 

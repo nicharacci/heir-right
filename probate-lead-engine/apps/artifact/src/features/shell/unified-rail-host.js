@@ -52,6 +52,15 @@ function setRailDisclosureState(target, expanded) {
   return true;
 }
 
+function syncRailTriggerSemantics(state) {
+  const trigger = document.querySelector("#s38OpenRail");
+  if (!trigger) return;
+  trigger.setAttribute("aria-controls", "s38UnifiedRail");
+  trigger.setAttribute("aria-expanded", String(Boolean(state.open)));
+  if (state.mobileSheet) trigger.setAttribute("aria-haspopup", "dialog");
+  else trigger.removeAttribute("aria-haspopup");
+}
+
 function operatorRailError(actionId = "") {
   return RAIL_ACTION_ERRORS[actionId]
     || "That estate action could not finish. Review the current file and try again.";
@@ -387,6 +396,7 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
     }
     if (previous.activeId !== next.activeId || previous.activeTab !== next.activeTab) clearActionError();
     railState = next;
+    syncRailTriggerSemantics(next);
     setRailGeometry(next);
     renderTabs(next);
     syncHeader(next);
@@ -559,6 +569,7 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
   }
 
   function onMobileChange(event) {
+    syncRailTriggerSemantics({ ...railState, mobileSheet: event.matches });
     runtime.rails.setMobileSheet(event.matches);
     if (!event.matches) {
       backgroundInert.restore();
@@ -577,6 +588,7 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
   resizer.addEventListener("keydown", onResizeKeyDown);
   resizer.addEventListener("dblclick", () => runtime.rails.setWidth(392));
   mobileQuery.addEventListener?.("change", onMobileChange);
+  syncRailTriggerSemantics({ ...railState, mobileSheet: mobileQuery.matches });
   runtime.rails.setMobileSheet(mobileQuery.matches);
   const unsubscribe = runtime.rails.subscribe((next) => syncRail(next, railState));
 

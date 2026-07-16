@@ -401,6 +401,11 @@
   box-shadow: none !important;
 }
 
+.hr-community-grid .ag-paging-button:not(.ag-disabled):focus-visible {
+  outline: var(--hr-focus-width) solid var(--hr-focus) !important;
+  outline-offset: 2px;
+}
+
 .hr-community-grid .ag-paging-button:not(.ag-disabled):is(:hover, :focus-visible, :active) .ag-icon {
   filter: drop-shadow(0 0 0.3rem var(--hr-icon-glow));
 }
@@ -433,6 +438,11 @@
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
+}
+
+.hr-community-grid :is(.ag-header-cell-menu-button, .ag-header-cell-filter-button):focus-visible {
+  outline: var(--hr-focus-width) solid var(--hr-focus) !important;
+  outline-offset: 2px;
 }
 
 .hr-community-grid :is(.ag-header-cell-menu-button, .ag-header-cell-filter-button):is(:hover, :focus-visible, :active) .ag-icon {

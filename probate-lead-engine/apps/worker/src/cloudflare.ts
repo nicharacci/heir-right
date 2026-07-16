@@ -1,4 +1,5 @@
 import type { FactType, FreshLeadBatchRequest, FreshLeadSearchMode, IntakeSeed, RawDossier, ReviewFlag, SourceAttachmentRef, SourceFact } from "@ple/types";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { acquireTaxCollectorReceipt, discoverTaxCollectorReceipt, extractTaxCollectorDetails } from "./adapters/tax-collector-receipt";
 import { runDailyProduction } from "./daily/run-daily";
 import { buildControlledPodioTestSeed } from "./export/controlled-test-lead";
@@ -234,6 +235,15 @@ function utf8ToBytes(value: string): Uint8Array {
   return new TextEncoder().encode(value);
 }
 
+function timingSafeStringEqual(actual: string, expected: string): boolean {
+  const actualValue = String(actual || "");
+  const expectedValue = String(expected || "");
+  const actualDigest = createHash("sha256").update(actualValue).digest();
+  const expectedDigest = createHash("sha256").update(expectedValue).digest();
+  const matches = timingSafeEqual(actualDigest, expectedDigest);
+  return Boolean(actualValue && expectedValue && matches);
+}
+
 function bytesToUtf8(value: Uint8Array): string {
   return new TextDecoder().decode(value);
 }
@@ -411,7 +421,7 @@ function emailAllowed(email: string | undefined, env: CloudflareEnv): boolean {
 
 async function hasValidSession(request: Request, env: CloudflareEnv): Promise<boolean> {
   const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  if (env.HEIRRIGHT_API_TOKEN && bearer === env.HEIRRIGHT_API_TOKEN) return true;
+  if (env.HEIRRIGHT_API_TOKEN && timingSafeStringEqual(bearer || "", env.HEIRRIGHT_API_TOKEN)) return true;
   if (!env.AUTH_SESSION_SECRET) return false;
 
   const cookieName = env.AUTH_SESSION_COOKIE || "hr_session";
@@ -421,7 +431,7 @@ async function hasValidSession(request: Request, env: CloudflareEnv): Promise<bo
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return false;
   const expected = await hmacBase64Url(payload, env.AUTH_SESSION_SECRET);
-  if (expected !== signature) return false;
+  if (!timingSafeStringEqual(signature, expected)) return false;
 
   try {
     const body = JSON.parse(atob(base64UrlToBase64(payload))) as { email?: string; exp?: number };
@@ -440,7 +450,7 @@ async function signedSessionEmail(request: Request, env: CloudflareEnv): Promise
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return null;
   const expected = await hmacBase64Url(payload, env.AUTH_SESSION_SECRET);
-  if (expected !== signature) return null;
+  if (!timingSafeStringEqual(signature, expected)) return null;
   try {
     const body = JSON.parse(atob(base64UrlToBase64(payload))) as { email?: string; exp?: number };
     const email = String(body.email || "").trim().toLowerCase();
@@ -1761,7 +1771,7 @@ function storedSupportingDocument(value: string | null | undefined): StoredSuppo
 
 function internalBearerAuthorized(request: Request, env: CloudflareEnv): boolean {
   const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
-  return Boolean(env.HEIRRIGHT_API_TOKEN && bearer === env.HEIRRIGHT_API_TOKEN);
+  return Boolean(env.HEIRRIGHT_API_TOKEN && timingSafeStringEqual(bearer, env.HEIRRIGHT_API_TOKEN));
 }
 
 async function loadStoredSupportingDocument(env: CloudflareEnv, attachmentId: string): Promise<StoredSupportingDocument | null> {
@@ -7096,7 +7106,7 @@ async function podioOAuthCallbackResponse(request: Request, url: URL, env: Cloud
   const stateCookie = parseCookie(request.headers.get("cookie"))[podioStateCookieName(env)];
   const [cookieState, cookieSignature] = String(stateCookie || "").split(".");
   const expectedSignature = cookieState && userEmail ? await hmacBase64Url(`${cookieState}:${userEmail}`, podioCookieSecret(env)) : "";
-  if (!userEmail || !code || !state || !cookieState || state !== cookieState || cookieSignature !== expectedSignature) {
+  if (!userEmail || !code || !state || !cookieState || !timingSafeStringEqual(state, cookieState) || !timingSafeStringEqual(cookieSignature, expectedSignature)) {
     return html(podioSetupHtml(
       "Podio Connect Expired",
       "Start the Podio connection again from Settings so HeirRight can verify the approved CRM account.",

@@ -7,6 +7,7 @@ const {
   loginPage,
   parseCookies,
   sendHtml,
+  secretMatches,
   sessionCookie,
   storeGoogleWorkspaceConnection,
   stateCookie,
@@ -24,7 +25,7 @@ module.exports = async function handler(request, response) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const expectedState = parseCookies(request)[stateCookie];
-  if (!code || !state || !expectedState || state !== expectedState) {
+  if (!code || !state || !expectedState || !secretMatches(state, expectedState)) {
     sendHtml(response, 400, loginPage(request, "The Google sign-in request expired. Start the login again."));
     return;
   }

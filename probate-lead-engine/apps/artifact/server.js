@@ -21,6 +21,7 @@ const {
   withoutTaxCollectorAcquisitionEnv,
 } = require("./api/discovery/tax-collector/service.js");
 const { requireApiAdmin, requireApiAuth } = require("./api/_shared.js");
+const { secretMatches } = require("./api/security/secret-compare.js");
 const {
   googleOAuthScopes,
   storeGoogleWorkspaceConnection,
@@ -204,7 +205,7 @@ function readSession(req) {
   const token = parseCookies(req)[sessionCookie];
   if (!token || !token.includes(".")) return null;
   const [payload, signature] = token.split(".");
-  if (!payload || !signature || sign(payload) !== signature) return null;
+  if (!payload || !signature || !secretMatches(signature, sign(payload))) return null;
 
   try {
     const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
@@ -275,7 +276,6 @@ function escapeHtml(value) {
 function loginPage(req, message = "Sign in with your HeirRight Google account to review lead packets.") {
   const configured = oauthConfigured(req);
   const domainText = allowedDomains().join(", ") || "heirright.com";
-  const emailText = allowedEmails().join(", ") || "approved Solvys admin emails";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -299,7 +299,7 @@ function loginPage(req, message = "Sign in with your HeirRight Google account to
     <h1>HeirRight Beta</h1>
     <p>${escapeHtml(message)}</p>
     ${configured ? `<a href="/auth/login">Continue with Google</a>` : `<p><strong>Google sign-in is not set up yet.</strong></p>`}
-    <p class="meta">Allowed domain: <code>${escapeHtml(domainText)}</code><br>Solvys admin access: <code>${escapeHtml(emailText)}</code></p>
+    <p class="meta">Allowed domain: <code>${escapeHtml(domainText)}</code><br>Exact-user access is managed by a HeirRight administrator.</p>
   </main>
 </body>
 </html>`;
@@ -366,7 +366,7 @@ function sessionBody(req) {
       required: authRequired(),
       configured: oauthConfigured(req),
       allowedDomains: allowedDomains(),
-      allowedEmails: allowedEmails(),
+      allowedEmails: canAdminister ? allowedEmails() : [],
     },
   };
 }
@@ -1866,7 +1866,7 @@ async function handleCallback(req, res, url) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const expectedState = parseCookies(req)[stateCookie];
-  if (!code || !state || !expectedState || state !== expectedState) {
+  if (!code || !state || !expectedState || !secretMatches(state, expectedState)) {
     sendHtml(res, 400, loginPage(req, "The Google sign-in request expired. Start the login again."));
     return;
   }
