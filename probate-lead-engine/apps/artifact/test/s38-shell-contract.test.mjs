@@ -225,7 +225,8 @@ function assertStaticContracts() {
   assert.match(shellCss, /button:not\(:where\([^)]*\.file-drop-icon[^)]*\)\) \{/, "the document status icon must be excluded from the shared graphite button plate");
   assert.match(shellCss, /button\.file-drop-icon,[\s\S]*background:\s*transparent !important;[\s\S]*border:\s*0 !important;[\s\S]*box-shadow:\s*none !important;/, "the document status icon must use the shared borderless icon contract");
   assert.match(shellCss, /button\.file-drop-icon,[\s\S]*\.linear-status-icon[\s\S]*:not\(:disabled\):is\(:hover, :focus-visible, :active\)[\s\S]*filter:\s*drop-shadow\(0 0 0\.3rem var\(--hr-icon-glow\)\)/, "the document status icon must use the tokenized HeirRight blue glow");
-  assert.match(shellCss, /#workspace\[data-s38-shell="case-journey"\] \.nav-item\.is-active \{[\s\S]*background:\s*var\(--hr-action-surface\)[\s\S]*border:\s*1px solid var\(--hr-action-border\)/, "the selected primary navigation item must retain the sole intentional icon-rail pill");
+  assert.match(shellCss, /#workspace\[data-s38-shell="case-journey"\] \.nav-item\.is-active \{[\s\S]*background:\s*var\(--hr-action-surface\)[\s\S]*border:\s*0;[\s\S]*box-shadow:\s*none/, "the selected primary navigation item must retain one borderless bubble without decorative rings");
+  assert.match(shellCss, /\.nav-item\.is-active:focus-visible \{[\s\S]*outline:\s*var\(--hr-focus-width\) solid var\(--hr-focus\)/, "the selected navigation bubble must preserve a keyboard-only focus indicator");
   assert.match(shellCss, /\.nav-icon \{[\s\S]*color:\s*var\(--hr-accent-strong\);/, "unselected sidebar glyphs must already be blue so hover feedback adds only the glow");
   assert.match(shellCss, /\.nav-item:not\(\.is-active\):not\(:disabled\):is\(:hover, :focus-visible, :active\) \{[\s\S]*background:\s*transparent !important[\s\S]*border:\s*0 !important[\s\S]*box-shadow:\s*none !important/, "unselected navigation must never regain a hover, focus, or active plate");
   assert.match(shellCss, /\.nav-item:not\(\.is-active\):focus-visible \{[\s\S]*outline:\s*var\(--hr-focus-width\) solid var\(--hr-focus\) !important;[\s\S]*@media \(forced-colors: active\)[\s\S]*\.nav-item:not\(\.is-active\):focus-visible,[\s\S]*outline-color:\s*ButtonText !important/, "unselected navigation must keep its plate-free glow and a crisp keyboard focus ring");
@@ -250,6 +251,7 @@ function assertStaticContracts() {
   assert.match(gridsCss, /\.ag-paging-button::after \{[\s\S]*display:\s*none !important;[\s\S]*content:\s*none !important;/, "AG Grid must not redraw its default square keyboard-focus plate");
   assert.match(gridsCss, /\.ag-paging-button:not\(\.ag-disabled\):is\(:hover, :focus-visible, :active\) \.ag-icon \{[\s\S]*drop-shadow\(0 0 0\.3rem var\(--hr-icon-glow\)\)/, "AG Grid pagination hover, focus, and active feedback must use the shared blue glyph glow");
   assert.match(gridsCss, /\.ag-paging-button:not\(\.ag-disabled\):focus-visible \{[\s\S]*outline:\s*var\(--hr-focus-width\) solid var\(--hr-focus\) !important/, "AG Grid pagination must retain an explicit normal-mode keyboard ring");
+  assert.match(gridsCss, /@media \(max-width: 620px\)[\s\S]*\.hr-estates-grid-view \{[\s\S]*padding-block-end:\s*calc\(var\(--s38-command-row-height\) \+ var\(--hr-space-4\)\)[\s\S]*\.ag-paging-panel \{[\s\S]*transform:\s*none;/, "mobile Estates must reserve a scroll tail above the always-visible command chip without translating the pager");
   assert.match(gridsCss, /@media \(forced-colors: active\)[\s\S]*:is\([\s\S]*\.ag-paging-button:not\(\.ag-disabled\),[\s\S]*\.ag-header-cell-menu-button,[\s\S]*\.ag-header-cell-filter-button[\s\S]*\):focus-visible \{[\s\S]*outline:\s*2px solid ButtonText !important/, "AG Grid icon controls must recover an explicit keyboard outline in forced-colors mode");
   assert.match(gridsCss, /\.ag-header-cell-menu-button, \.ag-header-cell-filter-button\)[\s\S]*background:\s*transparent !important;[\s\S]*border:\s*0 !important;[\s\S]*box-shadow:\s*none !important;/, "AG Grid header icon buttons must not draw Quartz square hover plates");
   assert.match(gridsCss, /\.ag-header-cell-menu-button, \.ag-header-cell-filter-button\):is\(:hover, :focus-visible, :active\) \.ag-icon \{[\s\S]*drop-shadow\(0 0 0\.3rem var\(--hr-icon-glow\)\)/, "AG Grid header icon feedback must use the shared blue glyph glow");
@@ -681,6 +683,7 @@ async function assertExecutableContracts() {
   assert.match(markup, /Estate lifecycle/);
   assert.match(markup, /Intake[\s\S]*Property[\s\S]*Title &amp; Tax[\s\S]*Probate &amp; Heirs[\s\S]*Discovery[\s\S]*Packet Review[\s\S]*Handoff/);
   assert.match(markup, /<button class="dashboard-estate-row"/);
+  assert.match(markup, />82<\/strong><span>score<\/span>/, "Dashboard estate ranking values must be labeled as scores, not priority ordinals");
   assert.match(markup, /Recorded Deed|Verified documents/);
   assert.doesNotMatch(markup, /\b(?:JSON|payload|adapter|schema|endpoint|CLI|TypeScript|environment variable)\b/i);
   const journeyTab = runtime.caseJourneyRailDefinition().tabs.find((tab) => tab.id === "journey");

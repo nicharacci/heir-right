@@ -490,6 +490,24 @@ try {
         value: "Synthetic review fixture",
         sourceUrl: "javascript:alert('source-link-contract')",
         reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
+      }, {
+        source: "skip_trace",
+        factType: "enriched_contact_profile",
+        value: {
+          name: "Synthetic Contact",
+          addressHistory: [{
+            address: "10000 Test Record Way, Miami, FL 00000",
+            sourceUrl: "javascript:alert('contact-history-contract')",
+          }],
+        },
+        sourceUrl: "https://source.example.test/contact/synthetic",
+        reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
+      }, {
+        source: "clerk_of_courts",
+        factType: "obituary_link",
+        value: "javascript:alert('obituary-link-contract')",
+        sourceUrl: "https://source.example.test/obituary/synthetic",
+        reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
       }],
     },
   });
@@ -499,10 +517,20 @@ try {
     false,
     "executable source URL schemes must never enter the completed report link model"
   );
+  const executableLinkFormats = executableLinkResult.json.dossier.completedLeadReport.formats;
+  assert.ok(String(executableLinkFormats.html || "").length > 0, "completed report HTML security assertion requires a rendered document");
+  assert.ok(String(executableLinkFormats.familyTreeHtml || "").length > 0, "family-tree HTML security assertion requires a rendered document");
+  assert.match(String(executableLinkFormats.html), /Synthetic Contact/, "completed report HTML must contain the malicious-link fixture's safe contact content");
+  assert.match(String(executableLinkFormats.familyTreeHtml), /10000 Test Record Way/, "family-tree HTML must contain the malicious-link fixture's safe address content");
   assert.doesNotMatch(
-    String(executableLinkResult.json.dossier.completedLeadReport.renderedHtml || executableLinkResult.json.dossier.completedLeadReport.renderedMarkdown || ""),
+    String(executableLinkFormats.html),
     /javascript:alert/i,
-    "executable source URL schemes must never enter rendered report links"
+    "executable source URL schemes must never enter completed report HTML"
+  );
+  assert.doesNotMatch(
+    String(executableLinkFormats.familyTreeHtml),
+    /javascript:alert/i,
+    "nested contact-history and obituary URLs must never enter family-tree report links"
   );
 
   const previousClerkAuthKey = process.env.MIAMI_DADE_CLERK_AUTH_KEY;

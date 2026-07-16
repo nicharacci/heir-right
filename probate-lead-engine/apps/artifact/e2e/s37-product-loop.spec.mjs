@@ -479,7 +479,9 @@ test("IDI report upload verifies a report artifact, extracts it, and starts one 
   expect(uploadBox).not.toBeNull();
   expect(mainRunBox).not.toBeNull();
   expect(Math.abs(uploadBox.y - mainRunBox.y)).toBeLessThan(5);
-  expect(uploadBox.x).toBeGreaterThan(mainRunBox.x);
+  expect(uploadBox.x).toBeLessThan(mainRunBox.x);
+  await expect(uploadControl).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(uploadControl).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
 
   await workspace.locator("[data-idi-file-input]").setInputFiles({
     name: "idi-browser-proof.pdf",

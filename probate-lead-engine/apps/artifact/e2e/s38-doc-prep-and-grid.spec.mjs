@@ -476,7 +476,9 @@ test("Document Prep keeps the estate visible, rejects unsupported reports inline
   expect(runBox).not.toBeNull();
   expect(uploadBox).not.toBeNull();
   expect(Math.abs(runBox.y - uploadBox.y)).toBeLessThan(5);
-  expect(uploadBox.x).toBeGreaterThan(runBox.x);
+  expect(uploadBox.x).toBeLessThan(runBox.x);
+  await expect(upload).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(upload).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
   await expect(workspace.locator("[data-docprep-estate-select]")).toHaveValue(await workspace.getAttribute("data-estate-id"));
 
   const input = workspace.locator("[data-idi-file-input]");
@@ -839,6 +841,22 @@ test("Community grids support filtering, keyboard selection and opening, selecte
   const estatesGrid = estates.locator('[data-community-grid="estates"]');
   await expect(estatesGrid.locator(".ag-root")).toBeVisible();
   await expect(estatesGrid.locator(".ag-paging-panel")).toBeVisible();
+  const pagerBox = await estatesGrid.locator(".ag-paging-panel-content").boundingBox();
+  const composerBox = await page.locator(".shell-composer").boundingBox();
+  expect(pagerBox).not.toBeNull();
+  expect(composerBox).not.toBeNull();
+  expect(pagerBox.y + pagerBox.height).toBeLessThanOrEqual(composerBox.y - 4);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator(".workbench").evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+  const mobilePagerBox = await estatesGrid.locator(".ag-paging-panel-content").boundingBox();
+  const mobileComposerBox = await page.locator(".shell-composer").boundingBox();
+  expect(mobilePagerBox).not.toBeNull();
+  expect(mobileComposerBox).not.toBeNull();
+  expect(mobilePagerBox.y + mobilePagerBox.height).toBeLessThanOrEqual(mobileComposerBox.y - 4);
+  await expect(estatesGrid.locator(".ag-paging-panel")).toHaveCSS("transform", "none");
+  await page.setViewportSize({ width: 1280, height: 720 });
+
   const headerFilterButton = estatesGrid.locator(".ag-header-cell-filter-button").first();
   await expect(headerFilterButton).toBeVisible();
   await expect(headerFilterButton).toHaveAttribute("aria-hidden", "true");

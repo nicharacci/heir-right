@@ -358,7 +358,7 @@
 .hr-community-grid[data-community-grid="estates"] .ag-paging-panel {
   justify-content: center;
   border-top: 0;
-  transform: translateY(calc(-1 * var(--hr-space-2)));
+  transform: translateY(calc(-1 * var(--hr-space-8)));
 }
 
 .hr-community-grid[data-community-grid="estates"] .ag-paging-panel-content {
@@ -618,6 +618,10 @@
     min-height: 100%;
     overflow: visible;
     grid-template-rows: auto auto minmax(520px, 1fr);
+    /* The coarse-pointer command chip remains visible over the final shell
+       track. Reserve enough scroll tail for the pager to clear that chip
+       without reintroducing the desktop translate on mobile. */
+    padding-block-end: calc(var(--s38-command-row-height) + var(--hr-space-4));
   }
 
   .hr-grid-controls {

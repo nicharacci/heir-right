@@ -39,8 +39,8 @@ body[data-theme] {
   --glass-soft: var(--hr-chrome);
   --line: var(--hr-ruler);
   --line-strong: var(--hr-control-boundary);
-  --divider-line: var(--hr-ruler);
-  --divider-line-vertical: var(--hr-ruler);
+  --divider-line: var(--hr-divider-line);
+  --divider-line-vertical: var(--hr-divider-line-vertical);
   --text: var(--hr-text);
   --muted: var(--hr-text-muted);
   --soft: var(--hr-text-subtle);

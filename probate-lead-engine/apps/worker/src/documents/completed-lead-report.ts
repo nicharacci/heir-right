@@ -312,7 +312,7 @@ export function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholde
             address: displayAddress(address),
             county: formatCountyName(record.county, ""),
             dates: claimText(record.dates, ""),
-            sourceUrl: claimText(record.sourceUrl, ""),
+            sourceUrl: safeSourceLinkUrl(record.sourceUrl) ?? "",
           }];
         })
         : [];
@@ -600,14 +600,20 @@ function renderFamilyTreePacketHtml(input: {
     ["", "", "", "yellow"],
     ["", "", "", "yellow"],
   ];
-  const sourceLink = input.dossier.completedLeadReport?.sourceLinks.find((link) => link.url)?.url ?? "#";
+  const sourceLink = safeSourceLinkUrl(input.dossier.completedLeadReport?.sourceLinks.find((link) => link.url)?.url) ?? "#";
+  const obituaryLink = safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value);
   const contactChecklist = input.researchChecklist.find((step) => step.code === "CONTACTS");
   const openChecklist = input.researchChecklist.filter((step) => step.status !== "complete");
   const contactBlocks = contacts.map((contact, index) => {
     const name = escapeHtml(contact.name ?? `Possible heir ${index + 1}`);
     const age = contact.age ? `<p>(${contact.age})</p>` : "";
     const history = contact.addressHistory?.length
-      ? contact.addressHistory.map((item) => `<p><a href="${escapeHtml(item.sourceUrl || "#")}">${escapeHtml(displayAddress(item.address))}</a> ${item.county ? `(${escapeHtml(formatCountyName(item.county, ""))})` : ""}<br><span>${escapeHtml(item.dates || "Dates need review")}</span></p>`).join("")
+      ? contact.addressHistory.map((item) => {
+        const address = escapeHtml(displayAddress(item.address));
+        const sourceUrl = safeSourceLinkUrl(item.sourceUrl);
+        const source = sourceUrl ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noreferrer noopener">${address}</a>` : address;
+        return `<p>${source} ${item.county ? `(${escapeHtml(formatCountyName(item.county, ""))})` : ""}<br><span>${escapeHtml(item.dates || "Dates need review")}</span></p>`;
+      }).join("")
       : `<p><a href="#">${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "Address needs approved enrichment"))}</a></p>`;
     const phones = contact.phones.length ? contact.phones.map((phone) => `<p>${escapeHtml(phone)}</p>`).join("") : "<p>Needs approved enrichment</p>";
     const emails = contact.emails.length ? contact.emails.map((email) => `<p><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>`).join("") : "<p>Needs approved enrichment</p>";
@@ -690,7 +696,7 @@ function renderFamilyTreePacketHtml(input: {
     <p><strong>${escapeHtml(ownerName)}</strong></p>
     <p>DOB: ${escapeHtml(claimText(dossier.marriageDeathIndicators.dateOfBirth.value, "Needs review"))}</p>
     <p>DOD: ${escapeHtml(claimText(dossier.marriageDeathIndicators.dateOfDeath.value, "Needs review"))}</p>
-    <p>Obituary ${dossier.marriageDeathIndicators.obituaryLink.value ? `<a href="${escapeHtml(dossier.marriageDeathIndicators.obituaryLink.value)}">Found</a>` : `not found - <a href="https://www.intelius.com/">Intelius</a>`}</p>
+    <p>Obituary ${obituaryLink ? `<a href="${escapeHtml(obituaryLink)}" target="_blank" rel="noreferrer noopener">Found</a>` : `not found - <a href="https://www.intelius.com/" target="_blank" rel="noreferrer noopener">Intelius</a>`}</p>
   </section>
   <section class="status">
     <p><strong>Discovery status:</strong> ${openChecklist.length ? `${openChecklist.length} open section${openChecklist.length === 1 ? "" : "s"}` : "Ready for operator review"}</p>
@@ -716,7 +722,8 @@ function renderSourceLinks(sourceLinks: CompletedLeadReport["sourceLinks"]): str
   if (!sourceLinks.length) return ["- No source URLs captured in this run."];
   return sourceLinks.map((link) => {
     const label = `${link.label} (${link.source})`;
-    return link.url ? `- [${label}](${link.url})` : `- ${label} - URL needs review`;
+    const sourceUrl = safeSourceLinkUrl(link.url);
+    return sourceUrl ? `- [${label}](${sourceUrl})` : `- ${label} - URL needs review`;
   });
 }
 
@@ -769,7 +776,7 @@ function hydrateRenderedLinks(
 ): string {
   const linkTargets = [
     ...sections.map((section) => ({ href: `#${section.id}`, internal: true })),
-    ...sourceLinks.map((link) => ({ href: link.url, internal: false })),
+    ...sourceLinks.map((link) => ({ href: safeSourceLinkUrl(link.url), internal: false })),
   ];
   let linkIndex = 0;
   const withLinks = renderedMarkdown.replace(
@@ -935,7 +942,7 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
     `| Owner / estate | ${claimText(dossier.summary.estateName ?? dossier.property.ownerName.value)} |`,
     `| Owner DOB | ${claimText(dossier.marriageDeathIndicators.dateOfBirth.value)} |`,
     `| Owner DOD | ${claimText(dossier.marriageDeathIndicators.dateOfDeath.value)} |`,
-    `| Obituary status | ${claimText(dossier.marriageDeathIndicators.obituaryLink.value, "Not found in the current public-source run; manual obituary search required.")} |`,
+    `| Obituary status | ${safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value) ?? "Not found in the current public-source run; manual obituary search required."} |`,
     `| County | ${formatCountyName(dossier.property.county.value)} |`,
     `| Folio / parcel | ${claimText(dossier.property.parcelId.value)} |`,
     `| Case / file | ${claimText(dossier.property.caseNumber.value, "Needs probate/court search")} |`,

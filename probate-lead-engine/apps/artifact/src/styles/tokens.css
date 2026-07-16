@@ -15,6 +15,20 @@
   --hr-accent-ink: #ffffff;
   --hr-focus: #64b5ff;
   --hr-ruler: rgb(100 181 255 / 17%);
+  --hr-divider-line: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--hr-ruler) 10%,
+    var(--hr-ruler) 90%,
+    transparent 100%
+  );
+  --hr-divider-line-vertical: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--hr-ruler) 10%,
+    var(--hr-ruler) 90%,
+    transparent 100%
+  );
   --hr-control-boundary: #5d6f85;
   --hr-action-surface: #191d24;
   --hr-action-surface-hover: #202a37;

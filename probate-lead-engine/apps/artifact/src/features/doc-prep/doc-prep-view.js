@@ -161,11 +161,8 @@ function renderDocPrepView({ bridge }) {
           <wa-button variant="brand" appearance="filled" data-open-estates>
             ${buttonStartIcon(bridge, "estates", 17)}<span>${escape(disposition.next.label)}</span>
           </wa-button>
-          ` : `<wa-button variant="brand" appearance="filled" data-run-discovery ${running ? "disabled loading" : ""}>
-            ${buttonStartIcon(bridge, "magnifier-route", 17)}<span>${escape(runLabel)}</span>
-          </wa-button>
-          ${flow.isDiscovery ? `<button
-            class="hr-upload-command"
+          ` : `${flow.isDiscovery ? `<button
+            class="hr-upload-command hr-idi-report-command"
             type="button"
             data-idi-picker
             ${state.busy || (reportLinked && !canReplaceIdi) ? "disabled" : ""}
@@ -178,7 +175,10 @@ function renderDocPrepView({ bridge }) {
             data-idi-file-input
             accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             aria-label="Choose an IDI report PDF or DOCX file"
-          >` : ""}`}
+          >` : ""}
+          <wa-button variant="brand" appearance="filled" data-run-discovery ${running ? "disabled loading" : ""}>
+            ${buttonStartIcon(bridge, "magnifier-route", 17)}<span>${escape(runLabel)}</span>
+          </wa-button>`}
         </div>
         <div class="hr-discovery-progress">
           <span><strong>${escape(currentStageLabel(snapshot, state))}</strong><span>${escape(`${progress}% complete`)}</span></span>

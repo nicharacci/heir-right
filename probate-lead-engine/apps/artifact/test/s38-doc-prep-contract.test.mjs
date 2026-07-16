@@ -214,8 +214,9 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   const html = viewModule.renderDocPrepView({ bridge: bridgeFor(snapshot) });
   const runIndex = html.indexOf("data-run-discovery");
   const uploadIndex = html.indexOf("data-idi-picker");
-  assert.ok(runIndex > -1 && uploadIndex > runIndex, "Upload IDI Report must sit to the right of the First-step action");
+  assert.ok(uploadIndex > -1 && runIndex > uploadIndex, "Replace IDI Report must precede the Discovery rerun action");
   assert.match(html, /data-feature="doc-prep" data-estate-id="estate-contract"/);
+  assert.match(html, /class="hr-upload-command hr-idi-report-command"/);
   assert.match(html, /aria-label="Replace IDI Report for Estate of Morgan Reyes"/);
   assert.match(html, /Replace IDI Report/);
   assert.match(html, /accept="\.pdf,\.docx,application\/pdf,application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document"/);
@@ -910,6 +911,11 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   const gridRegister = read("src/features/data-grid/register.js");
   const estatesGrid = read("src/features/data-grid/estates-grid.js");
   const gridsCss = read("src/features/data-grid/grids.css");
+  const docPrepCss = read("src/features/doc-prep/doc-prep.css");
+  const dividerCss = read("src/styles/dividers.css");
+  const tokensCss = read("src/styles/tokens.css");
+  const compatCss = read("src/styles/compat.css");
+  const entrySource = read("src/entry.js");
   const legacy = read("src/legacy/app.js");
   const docPrepRailSource = read("src/features/doc-prep/doc-prep-rail.js");
   const unifiedRailHost = read("src/features/shell/unified-rail-host.js");
@@ -971,7 +977,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
     assert.match(gridsCss, new RegExp(`\\.hr-estates-grid-view > \\.${selector}\\s*\\{[^}]*grid-area:\\s*${area}`), `${selector} must stay bound to the ${area} layout area`);
   }
   assert.match(gridsCss, /\.hr-estates-grid-view > \.hr-community-grid\[data-community-grid="estates"\][\s\S]*\.ag-root-wrapper\s*\{[^}]*height:\s*100%/, "the Estates AG Grid wrapper must stretch through its flexible layout area");
-  assert.match(gridsCss, /\.hr-community-grid\[data-community-grid="estates"\] \.ag-paging-panel\s*\{[^}]*justify-content:\s*center[^}]*transform:\s*translateY\(/, "the Estates paging controls must float at the bottom center on desktop");
+  assert.match(gridsCss, /\.hr-community-grid\[data-community-grid="estates"\] \.ag-paging-panel\s*\{[^}]*justify-content:\s*center[^}]*transform:\s*translateY\(calc\(-1 \* var\(--hr-space-8\)\)\)/, "the Estates paging controls must float above the command hover zone at the bottom center on desktop");
   assert.doesNotMatch(gridsCss, /hr-estates-command-clearance|padding-block-end:\s*calc\([^;]*command-clearance/, "Estates must not reserve a second command-row gutter that strands pagination above the workbench bottom");
   assert.match(gridsCss, /@media \(max-width: 620px\)[\s\S]*\.hr-community-grid\[data-community-grid="estates"\] \.ag-paging-panel\s*\{[^}]*transform:\s*none/, "mobile paging must stay centered without a desktop translation");
   assert.match(gridsCss, /@media \(max-width: 620px\)[\s\S]*\.ag-paging-row-summary-panel\s*\{[^}]*display:\s*none[\s\S]*\.ag-paging-page-size, \.ag-paging-page-summary-panel[^}]*white-space:\s*nowrap[\s\S]*data-ref="btFirst"[\s\S]*data-ref="btLast"[\s\S]*display:\s*none/, "mobile paging must remove duplicate and edge controls so Page Size plus previous/next stay on one readable line");
@@ -985,6 +991,19 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.doesNotMatch(gridsCss, /@keyframes hr-grid-enter[\s\S]*?from\s*\{[^}]*opacity:\s*0/, "grid content must remain visible if its entrance motion never runs");
   assert.doesNotMatch(gridsCss, /\.hr-grid-primary-action:hover[^}]*\{[^}]*transform:/, "primary grid actions must not jump on hover");
   assert.doesNotMatch(gridTree, /AllCommunityModule|AllEnterpriseModule|ag-grid-enterprise/i);
+  assert.match(docPrepCss, /\.hr-upload-command\.hr-idi-report-command\s*\{[^}]*background:\s*transparent[^}]*border-color:\s*transparent[^}]*box-shadow:\s*none/, "the IDI replacement action must remain a bare control");
+  assert.match(docPrepCss, /@media \(max-width:\s*620px\)[\s\S]*\.hr-discovery-actions\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/, "mobile Discovery actions must stack so their labels remain fully readable");
+  assert.match(tokensCss, /--hr-divider-line:\s*linear-gradient\([\s\S]*transparent 0%[\s\S]*var\(--hr-ruler\) 10%[\s\S]*var\(--hr-ruler\) 90%[\s\S]*transparent 100%/, "horizontal divider edges must share one theme-aware fade token");
+  assert.match(tokensCss, /--hr-divider-line-vertical:\s*linear-gradient\([\s\S]*180deg/, "vertical divider edges must share the matching fade token");
+  assert.match(compatCss, /--divider-line:\s*var\(--hr-divider-line\)/, "legacy semantic dividers must consume the shared fade token");
+  assert.match(entrySource, /virtual:heirright-features";[\s\S]*styles\/dividers\.css/, "the divider authority layer must load after all feature styles");
+  assert.match(dividerCss, /\.hr-docprep-header[\s\S]*\.dashboard-decision-band[\s\S]*\.shell-rail-header/, "the divider authority must cover Document Prep, Dashboard, and the unified rail");
+  assert.match(dividerCss, /border-image-source:\s*var\(--hr-divider-line\)[\s\S]*border-image-slice:\s*1/, "semantic horizontal borders must paint the shared fade without changing layout");
+  assert.match(dividerCss, /\.dashboard-estate-row,[\s\S]*\.journey-document-row,[\s\S]*\.journey-action-row,[\s\S]*\.template-attachment-option,[\s\S]*\{[\s\S]*border-image-source:\s*var\(--hr-divider-line\)/, "semantic rows and panels must outrank their native border reset without changing grid internals");
+  assert.match(dividerCss, /border-image-source:\s*var\(--hr-divider-line-vertical\)/, "semantic vertical borders must fade at both ends");
+  const dividerRules = dividerCss.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.doesNotMatch(dividerRules, /ag-(?:cell|row|root)|input|textarea|focus-visible|wa-progress|progress-bar/, "grid structure, fields, focus rings, and progress tracks must stay outside the divider override");
+  assert.doesNotMatch(dividerRules, /settings-status-list/, "card and status-panel outlines must not be repainted as divider gradients");
   assert.deepEqual(
     [...new Set([...gridTree.matchAll(/data-community-grid="([^"]+)"/g)].map((match) => match[1]))].sort(),
     ["admin-audit", "estates", "queue"],

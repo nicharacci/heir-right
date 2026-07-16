@@ -7258,7 +7258,8 @@ function safeDossierPreviewSrcdoc(value = "") {
     [...element.attributes].forEach((attribute) => {
       const name = attribute.name.toLowerCase();
       const target = String(attribute.value || "").trim().toLowerCase();
-      const unsafeUrl = /^(?:javascript|vbscript):/i.test(target) || /^data:\s*text\/html/i.test(target);
+      const normalizedTarget = target.replace(/[\u0000-\u0020\u007f]+/g, "");
+      const unsafeUrl = /^(?:javascript|vbscript):/i.test(normalizedTarget) || /^data:text\/html/i.test(normalizedTarget);
       if (name.startsWith("on") || name === "srcdoc" || (unsafeUrl && ["href", "src", "action", "formaction", "xlink:href"].includes(name))) {
         element.removeAttribute(attribute.name);
       }
@@ -9780,8 +9781,14 @@ function popOutDossierDocument(docId) {
     addShellEvent("Pop-out blocked", "Allow browser pop-outs to open the selected dossier document in a separate window.", "blocked", true);
     return;
   }
+  // The blank window must be retained long enough to write the inert preview,
+  // so sever its opener synchronously before any report-controlled markup is
+  // parsed. This provides the same isolation as rel=noopener without losing the
+  // Window handle that the preview writer requires.
+  popout.opener = null;
+  const safePreview = safeDossierPreviewSrcdoc(doc?.body ?? "");
   popout.document.open();
-  popout.document.write(doc.body);
+  popout.document.write(safePreview);
   popout.document.close();
 }
 

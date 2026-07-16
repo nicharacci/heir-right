@@ -127,9 +127,14 @@
 #workspace[data-s38-shell="case-journey"] .nav-item.is-active {
   color: var(--hr-action-ink);
   background: var(--hr-action-surface);
-  border: 1px solid var(--hr-action-border);
+  border: 0;
   border-radius: 999px;
-  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+  box-shadow: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .nav-item.is-active:focus-visible {
+  outline: var(--hr-focus-width) solid var(--hr-focus);
+  outline-offset: 2px;
 }
 
 #workspace[data-s38-shell="case-journey"] .nav-icon {
@@ -1564,7 +1569,7 @@ body.s38-rail-resizing {
 /* Shared action material: true commands use one graphite plate. Navigation,
    segmented theme choices, menu rows, and editorial rows keep their own
    geometry even when their accessible primitive is a button. */
-body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)) {
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)) {
   margin-block-start: var(--s38-action-row-offset-y);
   color: var(--hr-action-ink);
   background: var(--hr-action-surface);
@@ -1576,30 +1581,30 @@ body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .jo
   transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard), opacity var(--hr-motion-feedback) var(--hr-ease-standard);
 }
 
-body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(:hover, :focus-visible) {
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(:hover, :focus-visible) {
   color: var(--hr-action-ink);
   background: var(--hr-action-surface-hover);
   border-color: var(--hr-action-border-strong);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 22%);
 }
 
-body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):active {
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):active {
   background: var(--hr-action-surface-active);
 }
 
-body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(.primary, .shell-primary-command, .dashboard-primary-action, .hr-grid-primary-action, .journey-action-primary, [aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .is-active) {
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(.primary, .shell-primary-command, .dashboard-primary-action, .hr-grid-primary-action, .journey-action-primary, [aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .is-active) {
   color: var(--hr-action-ink);
   background: var(--hr-action-surface-active);
   border-color: var(--hr-action-border-strong);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 22%);
 }
 
-body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(.hr-danger-command) {
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(.hr-danger-command) {
   color: #ffc0ba;
   border-color: rgb(240 139 130 / 36%);
 }
 
-body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):disabled {
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):disabled {
   opacity: 0.46;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--hr-action-highlight) 50%, transparent);
   cursor: not-allowed;

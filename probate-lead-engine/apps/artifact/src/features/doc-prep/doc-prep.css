@@ -247,6 +247,30 @@ body[data-theme] #dossiersView.hr-docprep-mount {
     opacity var(--hr-motion-feedback) var(--hr-ease-standard);
 }
 
+/* The IDI report control is deliberately a bare secondary action beside the
+ * filled Discovery command. Its boundary comes from focus, never a resting
+ * plate, so the two operations stay visually distinct without changing the
+ * existing upload behavior. */
+.hr-upload-command.hr-idi-report-command {
+  color: var(--hr-accent-strong);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.hr-upload-command.hr-idi-report-command:hover:not(:disabled) {
+  color: var(--hr-text);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.hr-upload-command.hr-idi-report-command:active:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .hr-upload-command:hover:not(:disabled),
 .hr-text-command:hover:not(:disabled) {
   color: var(--hr-text);
@@ -842,7 +866,7 @@ body[data-theme] #dossiersView.hr-docprep-mount {
 
   .hr-discovery-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
   }
 
