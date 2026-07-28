@@ -95,7 +95,7 @@ assert.match(safePreview, /name\.startsWith\("on"\)/);
 assert.match(safePreview, /javascript\|vbscript/);
 
 const closingRoute = fs.readFileSync(path.resolve(here, "../../worker/src/cloudflare.ts"), "utf8");
-const idiExtractRoute = fs.readFileSync(path.resolve(here, "../api/discovery/idi-asset-search/extract.js"), "utf8");
+const idiExtractRoute = fs.readFileSync(path.resolve(here, "../server/idi-extract-handler.js"), "utf8");
 assert.match(idiExtractRoute, /mode: "uploaded_file"/);
 assert.match(idiExtractRoute, /extractPdf/);
 assert.match(idiExtractRoute, /mammoth\.extractRawText/);

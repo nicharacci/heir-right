@@ -49,6 +49,10 @@
     }
   ],
   "functions": {
+    "api/discovery/idi-asset-search/extract.js": {
+      "includeFiles": "{runtime-assets,runtime-functions}/**",
+      "maxDuration": 60
+    },
     "api/**/*.js": {
       "excludeFiles": "dist/**/*.map",
       "maxDuration": 60

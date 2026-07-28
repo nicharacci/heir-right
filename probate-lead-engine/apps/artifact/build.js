@@ -13,6 +13,8 @@ const esbuild = require("esbuild");
 const sourceDir = join(__dirname, "src");
 const distDir = join(__dirname, "dist");
 const assetsDir = join(distDir, "assets");
+const runtimeAssetsDir = join(__dirname, "runtime-assets");
+const runtimeFunctionsDir = join(__dirname, "runtime-functions");
 const production = process.argv.includes("--production") || process.env.NODE_ENV === "production";
 const virtualFeatureModule = "virtual:heirright-features";
 const forbiddenRuntimeAsset = /https?:\/\/(?:ka-[fp]\.fontawesome\.com|ka-f\.webawesome\.com|cdn\.jsdelivr\.net|unpkg\.com|fonts\.bunny\.net|fonts\.googleapis\.com|fonts\.gstatic\.com)/i;
@@ -116,6 +118,51 @@ function copyBrandAssets() {
   copyFileSync(join(sourceDir, "assets", "heirright-mark.png"), join(assetsDir, "heirright-mark.png"));
 }
 
+function copyPdfExtractionRuntime() {
+  const pdfjsSource = dirname(require.resolve("pdfjs-dist/package.json"));
+  const canvasSource = dirname(require.resolve("@napi-rs/canvas/package.json"));
+  const pdfjsTarget = join(runtimeAssetsDir, "pdfjs-dist");
+  const canvasTarget = join(runtimeAssetsDir, "@napi-rs", "canvas");
+  const standardFontsSource = join(pdfjsSource, "standard_fonts");
+  const standardFontsTarget = join(pdfjsTarget, "standard_fonts");
+
+  rmSync(runtimeAssetsDir, { recursive: true, force: true });
+  mkdirSync(join(pdfjsTarget, "legacy", "build"), { recursive: true });
+  mkdirSync(standardFontsTarget, { recursive: true });
+  mkdirSync(canvasTarget, { recursive: true });
+
+  for (const file of ["LICENSE", "package.json"]) {
+    copyFileSync(join(pdfjsSource, file), join(pdfjsTarget, file));
+    copyFileSync(join(canvasSource, file), join(canvasTarget, file));
+  }
+  for (const file of ["pdf.mjs", "pdf.worker.mjs"]) {
+    copyFileSync(join(pdfjsSource, "legacy", "build", file), join(pdfjsTarget, "legacy", "build", file));
+  }
+  for (const entry of readdirSync(standardFontsSource, { withFileTypes: true })) {
+    if (!entry.isFile() || !(/\.(?:pfb|ttf)$/i.test(entry.name) || entry.name.startsWith("LICENSE_"))) continue;
+    copyFileSync(join(standardFontsSource, entry.name), join(standardFontsTarget, entry.name));
+  }
+  copyFileSync(join(canvasSource, "geometry.js"), join(canvasTarget, "geometry.js"));
+}
+
+async function buildIdiExtractionFunction() {
+  rmSync(runtimeFunctionsDir, { recursive: true, force: true });
+  mkdirSync(runtimeFunctionsDir, { recursive: true });
+  await esbuild.build({
+    absWorkingDir: __dirname,
+    entryPoints: [join(__dirname, "server", "idi-extract-handler.js")],
+    outfile: join(runtimeFunctionsDir, "idi-extract.cjs"),
+    bundle: true,
+    format: "cjs",
+    platform: "node",
+    target: ["node20"],
+    sourcemap: false,
+    minify: production,
+    legalComments: "eof",
+    logLevel: "info",
+  });
+}
+
 function assertLocalRuntimeAssets() {
   for (const relativePath of ["index.html", "assets/app.js", "assets/app.css"]) {
     const source = readFileSync(join(distDir, relativePath), "utf8");
@@ -150,6 +197,8 @@ function assertNoPublicOperatorData() {
 async function buildArtifact() {
   rmSync(distDir, { recursive: true, force: true });
   mkdirSync(assetsDir, { recursive: true });
+  copyPdfExtractionRuntime();
+  await buildIdiExtractionFunction();
 
   const registerModules = walkRegisterModules(join(sourceDir, "features"));
   await esbuild.build({

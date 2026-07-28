@@ -54,8 +54,7 @@
   ],
   "functions": {
     "api/discovery/idi-asset-search/extract.js": {
-      "includeFiles": "apps/artifact/node_modules/{pdfjs-dist/{package.json,legacy/build/{pdf.mjs,pdf.worker.mjs},standard_fonts/*},@napi-rs/canvas/{package.json,geometry.js}}",
-      "excludeFiles": "apps/artifact/node_modules/{pdfjs-dist/**/*.map,@napi-rs/canvas-*/**}",
+      "includeFiles": "apps/artifact/{runtime-assets,runtime-functions}/**",
       "maxDuration": 60
     },
     "api/**/*.js": {

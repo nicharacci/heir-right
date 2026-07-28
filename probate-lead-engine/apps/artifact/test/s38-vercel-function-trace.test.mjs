@@ -40,23 +40,27 @@ for (const source of Object.values(filePathMap)) {
 }
 
 assert.ok(
-  matches("/node_modules/pdfjs-dist/package.json").length > 0,
-  "the extraction function trace must preserve pdfjs-dist package resolution",
+  matches("/runtime-functions/idi-extract.cjs").length > 0,
+  "the extraction function must contain its generated dependency bundle",
 );
 assert.ok(
-  matches("/node_modules/@napi-rs/canvas/package.json").length > 0,
-  "the extraction function trace must preserve DOMMatrix package resolution",
+  matches("/runtime-assets/pdfjs-dist/package.json").length > 0,
+  "the extraction function trace must preserve the packaged pdfjs-dist runtime",
 );
 assert.ok(
-  matches("/node_modules/pdfjs-dist/legacy/build/pdf.mjs").length > 0,
+  matches("/runtime-assets/@napi-rs/canvas/package.json").length > 0,
+  "the extraction function trace must preserve the packaged DOMMatrix runtime",
+);
+assert.ok(
+  matches("/runtime-assets/pdfjs-dist/legacy/build/pdf.mjs").length > 0,
   "the extraction function must contain the pdfjs runtime module",
 );
 assert.ok(
-  matches("/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs").length > 0,
+  matches("/runtime-assets/pdfjs-dist/legacy/build/pdf.worker.mjs").length > 0,
   "the extraction function must contain the pdfjs fake-worker module required in Node",
 );
 assert.ok(
-  matches("/node_modules/@napi-rs/canvas/geometry.js").length > 0,
+  matches("/runtime-assets/@napi-rs/canvas/geometry.js").length > 0,
   "the extraction function must contain the pure-JavaScript DOMMatrix required by PDF.js",
 );
 assert.equal(
@@ -78,7 +82,7 @@ const expectedFonts = fs.readdirSync(sourceFontDir)
 assert.ok(expectedFonts.length > 0, "the installed pdfjs package must expose standard fonts");
 for (const font of expectedFonts) {
   assert.ok(
-    matches(`/node_modules/pdfjs-dist/standard_fonts/${font}`).length > 0,
+    matches(`/runtime-assets/pdfjs-dist/standard_fonts/${font}`).length > 0,
     `the extraction trace must contain pdfjs standard font ${font}`,
   );
 }
@@ -86,8 +90,9 @@ for (const font of expectedFonts) {
 console.log(JSON.stringify({
   ok: true,
   checks: [
-    "pdfjs_package_resolution_traced",
-    "pdfjs_dommatrix_package_resolution_traced",
+    "idi_extraction_dependency_bundle_traced",
+    "pdfjs_runtime_assets_traced",
+    "pdfjs_dommatrix_runtime_assets_traced",
     "pdfjs_runtime_module_traced",
     "pdfjs_worker_module_traced",
     "pdfjs_dommatrix_runtime_traced",

@@ -12,7 +12,7 @@ const idiExtractHandler = require("../api/discovery/idi-asset-search/extract.js"
 
 const legacyAppSource = readFileSync(new URL("../src/legacy/app.js", import.meta.url), "utf8");
 const idiImportRouteSource = readFileSync(new URL("../api/discovery/idi-asset-search/import.js", import.meta.url), "utf8");
-const idiExtractRouteSource = readFileSync(new URL("../api/discovery/idi-asset-search/extract.js", import.meta.url), "utf8");
+const idiExtractRouteSource = readFileSync(new URL("../server/idi-extract-handler.js", import.meta.url), "utf8");
 const contactReviewRouteSource = readFileSync(new URL("../api/discovery/contact-candidates/[id]/review.js", import.meta.url), "utf8");
 const localServerSource = readFileSync(new URL("../server.js", import.meta.url), "utf8");
 const rootIdiImportWrapperSource = readFileSync(new URL("../../../api/discovery/idi-asset-search/import.js", import.meta.url), "utf8");
