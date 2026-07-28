@@ -193,6 +193,41 @@ async function call(env, pathname, body) {
 
 const reviewedDossier = structuredClone(sourceRun.dossier);
 reviewedDossier.id = ESTATE_ID;
+const obituaryUrl = "https://source.example.test/annie-hawkins-obituary";
+const obituaryRawId = `${reviewedDossier.runId}:obituary:google-lifecycle`;
+reviewedDossier.audit.facts.push({
+  id: obituaryRawId,
+  runId: reviewedDossier.runId,
+  source: "clerk_of_courts",
+  rawId: obituaryRawId,
+  fetchedAt: reviewedDossier.generatedAt,
+  county: "miami-dade",
+  subject: { estateName: reviewedDossier.summary.estateName, propertyAddress: reviewedDossier.property.address.value },
+  factType: "obituary_link",
+  value: obituaryUrl,
+  confidence: 0.9,
+  sourceUrl: obituaryUrl,
+  attachment: {
+    label: "Annie Hawkins obituary",
+    sourceUrl: obituaryUrl,
+    fileKind: "html",
+    capturedAt: reviewedDossier.generatedAt,
+    capturedBy: "test",
+    reviewFlags: [],
+  },
+  reviewFlags: [],
+});
+reviewedDossier.marriageDeathIndicators.obituaryLink = {
+  value: obituaryUrl,
+  confidence: 0.9,
+  sourceRefs: [{ source: "clerk_of_courts", rawId: obituaryRawId, fetchedAt: reviewedDossier.generatedAt }],
+  reviewFlags: [],
+};
+reviewedDossier.completedLeadReport.sourceLinks.push({
+  label: "Annie Hawkins obituary",
+  url: obituaryUrl,
+  source: "clerk_of_courts",
+});
 reviewedDossier.completedLeadReport.contactPlaceholders = [{
   role: "child",
   name: "Sandra Hawkins",

@@ -387,15 +387,15 @@ function renderIdiControlState(snapshot, state, bridge) {
     </div>
   ` : "";
   const review = isDiscovery && file ? `
-    <div class="hr-idi-file-review" data-idi-file-review>
+    <div class="hr-idi-file-review beui-file-upload" data-idi-file-review>
       <span class="hr-idi-file-copy">
         <strong>${escape(file.name)}</strong>
         <span>${escape(reportKind(file) || "Report")} - ${escape(formatBytes(file.size))}</span>
       </span>
       <span class="hr-idi-file-actions">
-        <button type="button" class="hr-text-command" data-idi-choose-another ${state.busy ? "disabled" : ""}>Choose another</button>
-        <button type="button" class="hr-text-command" data-idi-remove ${state.busy ? "disabled" : ""}>Remove</button>
-        <wa-button variant="brand" appearance="filled" data-idi-submit ${state.busy ? "disabled loading" : ""}>${state.busy ? "Uploading report" : replacing ? "Replace and rerun Discovery" : "Upload and run Discovery"}</wa-button>
+        <button type="button" class="hr-text-command beui-button" data-idi-choose-another ${state.busy ? "disabled" : ""}>Choose another</button>
+        <button type="button" class="hr-text-command beui-button" data-idi-remove ${state.busy ? "disabled" : ""}>Remove</button>
+        <wa-button class="beui-button" variant="brand" appearance="filled" data-idi-submit ${state.busy ? "disabled loading" : ""}>${state.busy ? "Uploading report" : replacing ? "Replace and rerun Discovery" : "Upload and run Discovery"}</wa-button>
       </span>
       ${replacing ? `
         <label class="hr-idi-replacement-reason" for="hrIdiReplacementReason">

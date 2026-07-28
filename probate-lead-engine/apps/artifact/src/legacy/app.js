@@ -50,7 +50,7 @@ const state = {
   actionErrorLog: [],
   railRenaming: false,
   dashboardActivityTab: "activities",
-  selectedDossierDocId: "discovery-dossier",
+  selectedDossierDocId: "",
   activeDocPrepFlow: "discovery",
   docPrepListOpen: true,
   searchPopupOpen: false,
@@ -1650,16 +1650,16 @@ function renderAccountMenu() {
   menu.dataset.open = state.accountMenuOpen ? "true" : "false";
   chip.setAttribute("aria-expanded", state.accountMenuOpen ? "true" : "false");
   menu.innerHTML = `
-    <div class="account-menu-head">
+    <div class="account-menu-head beui-menu-head">
       <strong>${escapeHtml(name)}</strong>
       <span>${escapeHtml(email)}</span>
     </div>
     <div class="account-menu-divider" role="presentation"></div>
-    <a class="account-menu-action" role="menuitem" href="/auth/login?prompt=select_account">
+    <a class="account-menu-action beui-menu-item" role="menuitem" href="/auth/login?prompt=select_account">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M19 8v4m2-2h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       <span>Switch account</span>
     </a>
-    <a class="account-menu-action" role="menuitem" href="/auth/logout">
+    <a class="account-menu-action beui-menu-item" role="menuitem" href="/auth/logout">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 6H6.5A2.5 2.5 0 0 0 4 8.5v7A2.5 2.5 0 0 0 6.5 18H10m4-8 4 4-4 4m4-4H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>Log out</span>
     </a>
@@ -1669,6 +1669,10 @@ function renderAccountMenu() {
 function setAccountMenuOpen(open) {
   state.accountMenuOpen = Boolean(open && !authGateBlocking());
   renderAccountMenu();
+  wireBeuiMenuKeyboard(document.getElementById("accountMenu") || document);
+  if (state.accountMenuOpen) {
+    document.querySelector("#accountMenu [role='menuitem']")?.focus({ preventScroll: true });
+  }
 }
 
 function renderSession(session) {
@@ -4030,6 +4034,7 @@ function seedImportedDealStatus(row) {
 function setActiveDocPrepFlow(flowId = "discovery", { persist = true, rerender = true } = {}) {
   const nextFlow = docPrepFlows[flowId] ? flowId : "discovery";
   state.activeDocPrepFlow = nextFlow;
+  state.selectedDossierDocId = "";
   const phases = docPrepPhases(nextFlow);
   const currentIndex = docPrepCurrentIndex(selectedRow(), nextFlow);
   state.docPrepPhaseIndex[nextFlow] = Number.isFinite(currentIndex)
@@ -5142,6 +5147,7 @@ function linkGeneratedDocPrepPackets(row = selectedRow(), flowId = state.activeD
   const docs = docsForFlow(row, dossierForRow(row), flow.id);
   const flowState = docPrepFlowState(row, flow.id);
   const artifactId = String(packet.artifact?.artifactId || "");
+  const documentArtifacts = new Map((packet.documentArtifacts || []).map((document) => [String(document.documentId || ""), document]));
   const correctionNote = normalizePacketCorrectionNote(options.correctionNote);
   const existingPacket = correctionNote
     ? null
@@ -5151,24 +5157,36 @@ function linkGeneratedDocPrepPackets(row = selectedRow(), flowId = state.activeD
   if (!existingPacket && (!Number.isInteger(boundPacketRevision) || boundPacketRevision !== expectedPacketRevision)) return 0;
   let linked = 0;
   docs.forEach((doc) => {
+    const boundArtifact = flow.id === "discovery" && doc.id !== "discovery-dossier"
+      ? documentArtifacts.get(doc.id)
+      : {
+          artifactId,
+          artifactUrl: packet.artifactUrl,
+          contentHash: packet.artifact.contentHash,
+          expiresAt: packet.artifact.expiresAt,
+          verification: packet.verification
+        };
+    if (!boundArtifact?.artifactId || !boundArtifact?.artifactUrl || !boundArtifact?.contentHash
+      || boundArtifact?.verification?.readbackStatus !== "verified") return;
     const storageKey = documentStorageKey(row, doc.id);
     const existing = documentFileRecord(doc.id, row);
-    if (existing?.artifactId === artifactId) return;
+    if (existing?.artifactId === boundArtifact.artifactId) return;
     state.documentFiles[storageKey] = {
       id: doc.id,
-      name: `${flow.title} - ${docPrepOwnerLabel(row)}.pdf`,
-      size: packet.verification.byteLength,
+      name: `${doc.title} - ${docPrepOwnerLabel(row)}.pdf`,
+      size: boundArtifact.verification.byteLength,
       type: "application/pdf",
       source: "verified_packet_artifact",
-      artifactId,
-      artifactUrl: packet.artifactUrl,
-      contentHash: packet.artifact.contentHash,
+      artifactId: boundArtifact.artifactId,
+      artifactUrl: boundArtifact.artifactUrl,
+      contentHash: boundArtifact.contentHash,
       readbackStatus: "verified",
       sectionTitle: doc.title,
+      sectionIds: boundArtifact.sectionIds || [],
       version: existing ? Number(existing.version || 1) + 1 : 1,
       linkedAt: Date.now(),
       linkedBy: state.session?.user?.email || "team",
-      expiresAt: packet.artifact.expiresAt
+      expiresAt: boundArtifact.expiresAt
     };
     linked += 1;
   });
@@ -5185,7 +5203,7 @@ function linkGeneratedDocPrepPackets(row = selectedRow(), flowId = state.activeD
         artifactUrl: packet.artifactUrl,
         contentHash: packet.artifact.contentHash,
         readbackStatus: "verified",
-        artifact: "single_pdf",
+        artifact: flow.id === "discovery" ? "combined_and_separated_pdf" : "single_pdf",
         documents: docs.length,
         sections: packet.sections
       }),
@@ -5613,6 +5631,7 @@ async function hydratePersistedDiscoveryFile(row = selectedRow()) {
         contentType: packetReference.contentType,
         artifactUrl: packetReference.artifactUrl,
         sections: packetReference.sections || [],
+        documentArtifacts: packetReference.documentArtifacts || [],
         packetPersistence: [{ estateId: key, stored: true, readbackStatus: "verified" }],
         artifact: {
           kind: "single_pdf",
@@ -6069,13 +6088,13 @@ function documentRequirementHtml(doc, row = selectedRow()) {
         <button class="btn icon-only document-icon-button" type="button" data-document-action="preview" data-document-id="${escapeHtml(doc.id)}" aria-label="Preview ${escapeHtml(doc.title)}" title="Preview">${nucleoIcon("eye", 16)}</button>
         <button class="btn primary solvys-liquid-glass document-run-button ${running ? "is-running" : ""}" type="button" data-document-action="add" data-document-id="${escapeHtml(doc.id)}">${escapeHtml(actionLabel)}</button>
             <span class="headless-menu-wrap" data-ui-menu>
-              <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Document actions for ${escapeHtml(doc.title)}">${nucleoIcon("sliders", 16)}</button>
-          <span class="headless-menu t-dropdown" data-origin="top-right" role="menu" hidden>
-            <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("eye", 15)}<span>Preview</span></button>
-            ${verifiedPacketReady ? `<button type="button" role="menuitem" data-ui-menu-action="link-generated" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("batch-tray", 15)}<span>Use verified packet</span></button>` : ""}
-            <button type="button" role="menuitem" data-ui-menu-action="replace" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("packet-clock", 15)}<span>Save new version</span></button>
-            ${file.linked && file.recordSource === "supporting_document" ? `<button type="button" role="menuitem" data-ui-menu-action="remove" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("trash", 15)}<span>Remove supporting file</span></button>` : ""}
-            <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("flag", 15)}<span>Stage for export</span></button>
+              <button class="btn icon-only beui-menu-trigger" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Document actions for ${escapeHtml(doc.title)}">${nucleoIcon("sliders", 16)}</button>
+          <span class="headless-menu beui-menu t-dropdown" data-beui-menu-surface data-origin="top-right" role="menu" hidden>
+            <button class="beui-menu-item" type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("eye", 15)}<span>Preview</span></button>
+            ${verifiedPacketReady ? `<button class="beui-menu-item" type="button" role="menuitem" data-ui-menu-action="link-generated" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("batch-tray", 15)}<span>Use verified packet</span></button>` : ""}
+            <button class="beui-menu-item" type="button" role="menuitem" data-ui-menu-action="replace" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("packet-clock", 15)}<span>Save new version</span></button>
+            ${file.linked && file.recordSource === "supporting_document" ? `<button class="beui-menu-item" type="button" role="menuitem" data-ui-menu-action="remove" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("trash", 15)}<span>Remove supporting file</span></button>` : ""}
+            <button class="beui-menu-item" type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(doc.id)}">${nucleoIcon("flag", 15)}<span>Stage for export</span></button>
           </span>
         </span>
         <span class="document-action-status">${linearStatusIconHtml(statusState, statusLabel)}</span>
@@ -6377,7 +6396,7 @@ function renderDocumentActionModal() {
       : "The estate that created this brief is no longer available. Cancel and reopen the handoff from the estate.";
     mount.innerHTML = `
       <section class="document-modal-layer" role="presentation" data-document-modal-layer>
-        <div class="document-modal chatgpt-work-modal" role="dialog" aria-modal="true" aria-labelledby="documentModalTitle" aria-describedby="chatgptWorkCopyHelp">
+        <div class="document-modal beui-dialog chatgpt-work-modal" role="dialog" aria-modal="true" aria-labelledby="documentModalTitle" aria-describedby="chatgptWorkCopyHelp">
           <div class="document-modal-head">
             <div>
               <h2 id="documentModalTitle" class="rail-title">Copy the ChatGPT Work brief</h2>
@@ -6416,7 +6435,7 @@ function renderDocumentActionModal() {
   const verifiedPacketReady = Boolean(packet?.verification?.verified && packet?.verification?.readbackStatus === "verified");
   mount.innerHTML = `
     <section class="document-modal-layer" role="presentation" data-document-modal-layer>
-      <div class="document-modal" role="dialog" aria-modal="true" aria-labelledby="documentModalTitle">
+      <div class="document-modal beui-dialog" role="dialog" aria-modal="true" aria-labelledby="documentModalTitle">
         <div class="document-modal-head">
           <div>
             <p class="eyebrow">File control</p>
@@ -6935,7 +6954,7 @@ function renderCrmImportModal() {
   const provider = ["podio", "google-sheets", "csv"].includes(state.crmImportModal.provider) ? state.crmImportModal.provider : "podio";
   mount.innerHTML = `
     <section class="document-modal-layer" role="presentation" data-crm-import-layer>
-      <form class="document-modal crm-import-modal" role="dialog" aria-modal="true" aria-labelledby="crmImportTitle" data-crm-import-form>
+      <form class="document-modal beui-dialog crm-import-modal" role="dialog" aria-modal="true" aria-labelledby="crmImportTitle" data-crm-import-form>
         <input type="hidden" name="mode" value="${isBatch ? "batch" : "single"}">
         <div class="document-modal-head">
           <div>
@@ -7205,6 +7224,34 @@ function wireHeadlessMenus(root = document) {
         handleDocumentMenuAction(item.dataset.uiMenuAction, item.dataset.documentId);
         closeHeadlessMenus();
       });
+    });
+  });
+  wireBeuiMenuKeyboard(root);
+}
+
+function wireBeuiMenuKeyboard(root = document) {
+  if (!document.documentElement.dataset.beuiMenuKeyboardWired) {
+    document.documentElement.dataset.beuiMenuKeyboardWired = "true";
+    document.addEventListener("keydown", (event) => {
+      const surface = event.target.closest?.("[data-beui-menu-surface]");
+      if (!surface) return;
+      const items = [...surface.querySelectorAll('[role="menuitem"]')]
+        .filter((item) => !item.disabled && !item.hidden && item.getClientRects().length);
+      if (!items.length) return;
+      const current = items.indexOf(document.activeElement);
+      const move = (index) => {
+        event.preventDefault();
+        items[(index + items.length) % items.length]?.focus();
+      };
+      if (event.key === "ArrowDown") move(current < 0 ? 0 : current + 1);
+      if (event.key === "ArrowUp") move(current < 0 ? items.length - 1 : current - 1);
+      if (event.key === "Home") move(0);
+      if (event.key === "End") move(items.length - 1);
+    });
+  }
+  root.querySelectorAll?.("[data-beui-menu-surface]").forEach((surface) => {
+    surface.querySelectorAll('[role="menuitem"]').forEach((item) => {
+      if (!item.hasAttribute("tabindex")) item.tabIndex = -1;
     });
   });
 }
@@ -9536,10 +9583,10 @@ function renderDossiersView() {
             <div class="process-side-actions">
               <button class="btn primary solvys-liquid-glass" type="button" data-queue-stage>Queue</button>
               <span class="headless-menu-wrap" data-ui-menu>
-                <button class="btn icon-only" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Process actions">${nucleoIcon("sliders", 16)}</button>
-                <span class="headless-menu t-dropdown" data-origin="top-right" role="menu" hidden>
-                  <button type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("batch-tray", 15)}<span>Stage bundle</span></button>
-                  <button type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("eye", 15)}<span>Preview packet</span></button>
+                <button class="btn icon-only beui-menu-trigger" type="button" aria-haspopup="menu" aria-expanded="false" data-ui-menu-button aria-label="Process actions">${nucleoIcon("sliders", 16)}</button>
+                <span class="headless-menu beui-menu t-dropdown" data-beui-menu-surface data-origin="top-right" role="menu" hidden>
+                  <button class="beui-menu-item" type="button" role="menuitem" data-ui-menu-action="queue" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("batch-tray", 15)}<span>Stage bundle</span></button>
+                  <button class="beui-menu-item" type="button" role="menuitem" data-ui-menu-action="preview" data-document-id="${escapeHtml(docs[0]?.id ?? "discovery-dossier")}">${nucleoIcon("eye", 15)}<span>Preview packet</span></button>
                 </span>
               </span>
             </div>
@@ -9576,8 +9623,6 @@ function renderDossiersView() {
   target.querySelectorAll("[data-doc-flow]").forEach((button) => {
     button.addEventListener("click", async () => {
       setActiveDocPrepFlow(button.dataset.docFlow, { persist: true, rerender: false });
-      const nextDocs = docsForFlow(selectedRow(), dossierForRow(selectedRow()), state.activeDocPrepFlow);
-      if (!nextDocs.some((doc) => doc.id === state.selectedDossierDocId)) state.selectedDossierDocId = nextDocs[0]?.id || "discovery-dossier";
       renderDossiersView();
       renderRail();
       addShellEvent(`${docPrepFlow().label} template selected`, `${docPrepFlow().title} is now the active DocPrep workflow for the selected estate.`, "review", false);
@@ -13270,7 +13315,7 @@ function renderSearchPopup() {
   }
   const rows = searchPopupMatches(query);
   popup.innerHTML = `
-    <div class="search-popup-title">
+    <div class="search-popup-title beui-command-heading">
       <span>Matching estates</span>
       <span>${rows.length} shown</span>
     </div>
@@ -13774,8 +13819,59 @@ async function verifyPacketArtifact(result, estateId = "", expectedEstateIds = [
   if (returnedId !== artifactId || returnedHash !== contentHash || bytes.byteLength < 10_000) {
     throw new Error("The stored packet did not pass artifact identity, hash, and content readback.");
   }
+  const requiredDiscoveryDocuments = [
+    "completed-report",
+    "source-notes",
+    "deed-title-notes",
+    "tax-history",
+    "probate-request",
+    "heir-contact-matrix",
+    "outreach-drafts",
+    "drip-schedule",
+    "crm-handoff"
+  ];
+  const documentArtifacts = Array.isArray(result.documentArtifacts) ? result.documentArtifacts : [];
+  if (result.flow === "discovery") {
+    const returnedDocumentIds = new Set(documentArtifacts.map((document) => String(document?.documentId || "")));
+    if (returnedDocumentIds.size !== requiredDiscoveryDocuments.length
+      || requiredDiscoveryDocuments.some((documentId) => !returnedDocumentIds.has(documentId))) {
+      throw new Error("Discovery did not return one separated PDF artifact for every document-prep step.");
+    }
+  }
+  const verifiedDocumentArtifacts = [];
+  for (const document of documentArtifacts) {
+    const documentId = String(document?.documentId || "");
+    const childArtifactId = String(document?.artifactId || "");
+    const childArtifactUrl = String(document?.artifactUrl || "");
+    const childContentHash = String(document?.contentHash || "");
+    if (!documentId || !childArtifactId || !childArtifactUrl || !childContentHash
+      || !childArtifactUrl.includes(encodeURIComponent(childArtifactId))) {
+      throw new Error(`The separated ${documentId || "document"} PDF returned an incomplete artifact record.`);
+    }
+    const childResponse = await fetch(childArtifactUrl, { cache: "no-store" });
+    const childBytes = await childResponse.arrayBuffer();
+    if (!childResponse.ok
+      || childResponse.headers.get("content-type") !== "application/pdf"
+      || childResponse.headers.get("x-heirright-artifact-id") !== childArtifactId
+      || childResponse.headers.get("x-heirright-content-hash") !== childContentHash
+      || childBytes.byteLength < 700) {
+      throw new Error(`The separated ${documentId} PDF did not pass artifact identity, hash, and content readback.`);
+    }
+    verifiedDocumentArtifacts.push({
+      ...document,
+      verification: {
+        verified: true,
+        readbackStatus: "verified",
+        artifactId: childArtifactId,
+        contentHash: childContentHash,
+        byteLength: childBytes.byteLength,
+        verifiedAt: new Date().toISOString()
+      }
+    });
+  }
   return {
     ...result,
+    documentArtifacts: verifiedDocumentArtifacts,
     verification: {
       verified: true,
       readbackStatus: "verified",
@@ -14404,6 +14500,8 @@ function setExportMenuOpen(open) {
   popover?.classList.toggle("is-open", open);
   if (open) popover?.classList.remove("is-closing");
   else popover?.classList.add("is-closing");
+  wireBeuiMenuKeyboard(menu || document);
+  if (open) popover?.querySelector("[role='menuitem']")?.focus({ preventScroll: true });
 }
 
 function setCrmImportMenuOpen(open) {
@@ -14417,7 +14515,8 @@ function setCrmImportMenuOpen(open) {
   if (open) {
     popover.hidden = false;
     popover.classList.remove("is-closing");
-    requestAnimationFrame(() => popover.classList.add("is-open"));
+    popover.classList.add("is-open");
+    popover.querySelector("[role='menuitem']")?.focus({ preventScroll: true });
   } else {
     popover.classList.remove("is-open");
     popover.classList.add("is-closing");
@@ -14498,6 +14597,10 @@ function openEnhancedSelect(wrapper) {
   const button = wrapper.querySelector(".select-button");
   if (!menu) return;
   closeAllEnhancedSelects(wrapper);
+  const buttonRect = button?.getBoundingClientRect();
+  const menuHeight = Math.min(260, window.innerHeight * 0.48);
+  const opensUp = Boolean(buttonRect && buttonRect.top > menuHeight && buttonRect.bottom + menuHeight + 12 > window.innerHeight);
+  wrapper.dataset.beuiPlacement = opensUp ? "top" : "bottom";
   window.clearTimeout(Number(wrapper.dataset.closeTimer || 0));
   wrapper.classList.add("is-open");
   button?.setAttribute("aria-expanded", "true");
@@ -14585,23 +14688,30 @@ function enhanceSelect(select) {
   if (!select || select.classList.contains("select-native") || select.closest(".select-enhanced")) return;
   syncDealStatusSelectLabels(select);
   const wrapper = document.createElement("div");
-  wrapper.className = "select-enhanced";
+  // The app is a vanilla DOM surface, so this adapter keeps the native select
+  // as the source of truth while matching the authenticated beUI Pro menu contract.
+  wrapper.className = "select-enhanced beui-select";
+  wrapper.dataset.beuiComponent = "select";
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "select-button solvys-liquid-glass";
+  button.className = "select-button beui-select-trigger solvys-liquid-glass";
+  button.id = `${select.id || "select"}-beui-trigger`;
+  button.setAttribute("role", "combobox");
   button.setAttribute("aria-haspopup", "listbox");
   button.setAttribute("aria-expanded", "false");
+  button.setAttribute("aria-controls", `${button.id}-listbox`);
   button.innerHTML = `
     <span class="select-label"></span>
     <svg class="select-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
   `;
   const menu = document.createElement("div");
-  menu.className = "select-menu solvys-liquid-glass-strong t-dropdown";
+  menu.className = "select-menu beui-select-content solvys-liquid-glass-strong t-dropdown";
+  menu.id = `${button.id}-listbox`;
   menu.hidden = true;
   menu.setAttribute("role", "listbox");
   [...select.options].forEach((option) => {
     const optionButton = document.createElement("div");
-    optionButton.className = "select-option";
+    optionButton.className = "select-option beui-select-item";
     optionButton.dataset.value = option.value;
     optionButton.setAttribute("role", "option");
     if (option.disabled) optionButton.setAttribute("aria-disabled", "true");
@@ -14680,6 +14790,12 @@ function enhanceSelect(select) {
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       options[Math.max(0, index - 1)]?.focus({ preventScroll: true });
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      options[0]?.focus({ preventScroll: true });
+    } else if (event.key === "End") {
+      event.preventDefault();
+      options[options.length - 1]?.focus({ preventScroll: true });
     }
   });
   select.addEventListener("change", () => syncEnhancedSelect(select));
@@ -14900,6 +15016,20 @@ function openUtilityRail(kind, source = null) {
 
 function wireEvents() {
   enhanceSelectMenus();
+  wireBeuiMenuKeyboard();
+  if (!window.__heirrightBeuiSelectObserver) {
+    const observer = new MutationObserver((records) => {
+      records.forEach((record) => {
+        record.addedNodes.forEach((node) => {
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+          if (node.matches?.("select")) enhanceSelect(node);
+          node.querySelectorAll?.("select").forEach(enhanceSelect);
+        });
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.__heirrightBeuiSelectObserver = observer;
+  }
   document.getElementById("sidebarToggle").addEventListener("click", () => {
     const workspace = document.getElementById("workspace");
     if (workspace.classList.contains("is-auto-collapsed")) return;
@@ -15366,6 +15496,94 @@ function publicEstateRow(row) {
   };
 }
 
+function evidenceStepForType(value = "") {
+  const type = String(value || "").toLowerCase();
+  if (/tax|receipt|reassessment/.test(type)) return "Tax History";
+  if (/deed|title|mortgage|lien|official_record|ownership|sale/.test(type)) return "Deed & Title";
+  if (/probate|court|docket|affidavit|case_/.test(type)) return "Probate";
+  if (/obituar|death|birth|marriage|vital/.test(type)) return "Back Story";
+  if (/contact|heir|family|relative/.test(type)) return "Heir Contact";
+  if (/owner|property|parcel|folio|mailing|address/.test(type)) return "Estate Summary";
+  return "Source Notes";
+}
+
+function publicEvidenceAttachments(row) {
+  if (!row) return [];
+  const dossier = dossierForRow(row);
+  const capture = sourceCaptureForRow(row);
+  const entries = new Map();
+  const add = (input = {}) => {
+    const href = String(input.href || input.sourceUrl || "").trim();
+    const fileName = cleanDisplayValue(input.fileName || "");
+    if (!href && !fileName) return;
+    const key = href || `${input.label || "Evidence"}:${fileName}`;
+    const existing = entries.get(key);
+    const next = {
+      id: cleanDisplayValue(input.id || `evidence-${entries.size + 1}`),
+      label: cleanDisplayValue(input.label || fileName || "Source evidence"),
+      source: cleanDisplayValue(input.source || "HeirRight Discovery"),
+      step: cleanDisplayValue(input.step || evidenceStepForType(input.factType)),
+      href,
+      fileName,
+      fileKind: cleanDisplayValue(input.fileKind || (href ? "link" : "file")),
+      capturedAt: input.capturedAt || input.fetchedAt || "",
+      reviewFlags: Array.isArray(input.reviewFlags) ? input.reviewFlags.map((flag) => cleanDisplayValue(flag)) : [],
+      downloadable: Boolean(
+        input.downloadable
+        || /^\/api\/documents\/attachments\b/.test(href)
+        || /\.(pdf|png|jpe?g|csv|json|txt)(?:$|[?#])/i.test(href)
+        || ["pdf", "image", "csv", "json", "text"].includes(String(input.fileKind || "").toLowerCase())
+      )
+    };
+    if (!existing || (!existing.href && next.href) || (!existing.fileName && next.fileName)) entries.set(key, next);
+  };
+  const sourceFacts = [
+    ...(Array.isArray(dossier?.audit?.facts) ? dossier.audit.facts : []),
+    ...(Array.isArray(capture?.sourceFacts) ? capture.sourceFacts : [])
+  ];
+  sourceFacts.forEach((fact, index) => add({
+    id: fact?.id || `source-fact-${index + 1}`,
+    label: fact?.attachment?.label || displayStatus(fact?.factType, "Source evidence"),
+    source: displayStatus(fact?.source, "Discovery source"),
+    step: evidenceStepForType(fact?.factType),
+    factType: fact?.factType,
+    href: fact?.attachment?.sourceUrl || fact?.sourceUrl,
+    fileName: fact?.attachment?.fileName,
+    fileKind: fact?.attachment?.fileKind,
+    capturedAt: fact?.attachment?.capturedAt || fact?.fetchedAt,
+    reviewFlags: [...(fact?.reviewFlags || []), ...(fact?.attachment?.reviewFlags || [])]
+  }));
+  (dossier?.completedLeadReport?.sourceLinks || []).forEach((link, index) => add({
+    id: `report-source-${index + 1}`,
+    label: link?.label,
+    source: displayStatus(link?.source, "Completed lead report"),
+    href: link?.url,
+    fileKind: "link",
+    step: evidenceStepForType(link?.label)
+  }));
+  [
+    ["Property Appraiser record", capture?.propertyAppraiser?.sourceUrl, "property_appraiser", "Estate Summary"],
+    ["Tax Collector listing page", capture?.taxReceipt?.listingUrl, "tax_collector", "Tax History"],
+    ["Tax receipt", capture?.taxReceipt?.receiptLink || capture?.taxReceipt?.sourceUrl, "tax_collector", "Tax History"],
+    ["Official Records search", capture?.deed?.sourceUrl, "official_records", "Deed & Title"],
+    ["Recorded deed", capture?.deed?.documentUrl, "official_records", "Deed & Title"],
+    ["Probate docket", capture?.probate?.docketUrl || capture?.probate?.sourceUrl, "probate_court", "Probate"],
+    ["Obituary", capture?.obituary?.sourceUrl, "public obituary", "Back Story"]
+  ].forEach(([label, href, source, step], index) => add({
+    id: `capture-evidence-${index + 1}`,
+    label,
+    href,
+    source,
+    step,
+    fileKind: /\.pdf(?:$|[?#])/i.test(String(href || "")) ? "pdf" : "link",
+    capturedAt: capture?.updatedAt
+  }));
+  return [...entries.values()].sort((left, right) => {
+    const byStep = left.step.localeCompare(right.step);
+    return byStep || left.label.localeCompare(right.label);
+  });
+}
+
 function publicDocumentRows(row) {
   if (!row) return [];
   const dossier = dossierForRow(row);
@@ -15383,6 +15601,12 @@ function publicDocumentRows(row) {
       fileSource: file?.source === "supporting_document" ? "supporting_document" : file?.source === "verified_packet_artifact" ? "verified_packet_artifact" : "",
       updatedAt: Number(file?.linkedAt || docPrepDocumentActivityAt(row, state.activeDocPrepFlow) || 0),
       hasVerifiedFile: Boolean(file?.readbackStatus === "verified" && file?.artifactId && file?.artifactUrl && file?.contentHash),
+      artifactId: String(file?.artifactId || ""),
+      artifactUrl: String(file?.artifactUrl || ""),
+      contentHash: String(file?.contentHash || ""),
+      fileName: cleanDisplayValue(file?.name || ""),
+      expiresAt: String(file?.expiresAt || ""),
+      sectionIds: Array.isArray(file?.sectionIds) ? file.sectionIds.map(String) : [],
       selected: doc.id === state.selectedDossierDocId,
     };
   });
@@ -15406,6 +15630,12 @@ function publicDocumentRows(row) {
         processActivityTime(idiImport?.attachment?.capturedAt)
       ),
       hasVerifiedFile: Boolean(idiFile?.readbackStatus === "verified" && idiFile?.artifactId && idiFile?.artifactUrl && idiFile?.contentHash),
+      artifactId: String(idiFile?.artifactId || ""),
+      artifactUrl: String(idiFile?.artifactUrl || ""),
+      contentHash: String(idiFile?.contentHash || ""),
+      fileName: cleanDisplayValue(idiFile?.name || ""),
+      expiresAt: String(idiFile?.expiresAt || ""),
+      sectionIds: [],
       selected: state.selectedDossierDocId === "idi-asset-search",
     },
     ...rows,
@@ -15513,6 +15743,14 @@ function legacyPublicSnapshot() {
       currentPhase: phase ? { id: phase.id, label: phase.label, source: phase.source } : null,
       complete: Boolean(row && docPrepFlowIsComplete(row, flow.id)),
       documents: publicDocumentRows(row),
+      attachments: publicEvidenceAttachments(row),
+      packet: publicPacketIsVerified(row, flow.id, packet) ? {
+        artifactId: String(packet?.artifact?.artifactId || ""),
+        artifactUrl: String(packet?.artifactUrl || ""),
+        contentHash: String(packet?.artifact?.contentHash || ""),
+        expiresAt: String(packet?.artifact?.expiresAt || ""),
+        fileName: `${flow.title} - ${docPrepOwnerLabel(row)}.pdf`,
+      } : null,
       packetVerified: publicPacketIsVerified(row, flow.id, packet),
       packetExpired: publicPacketIsExpired(row, flow.id, packet),
       packetApproved: Boolean(currentPacketApproval(row, flow.id)),
@@ -15733,8 +15971,14 @@ async function dispatchLegacyCommand(command, payload = {}) {
       if (!row) throw new Error("Select an available estate.");
       await importIdiReportFile(payload.file, row, { adminOverrideReason: payload.adminOverrideReason });
     } else if (id === "open-document") {
-      state.selectedDossierDocId = String(payload.documentId || "discovery-dossier");
+      state.selectedDossierDocId = String(payload.documentId || "");
       previewDossierDocument(state.selectedDossierDocId);
+    } else if (id === "clear-document-selection") {
+      const row = estateForLegacyCommand(payload);
+      if (!row) throw new Error("Select an available estate.");
+      state.selectedId = row.id;
+      state.selectedDossierDocId = "";
+      renderRail();
     } else if (id === "document-action") {
       const row = estateForLegacyCommand(payload);
       if (!row) throw new Error("Select an available estate.");

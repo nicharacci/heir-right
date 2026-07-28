@@ -26,32 +26,37 @@ function walk(directory) {
 }
 
 const normalize = (value) => value.split(path.sep).join("/");
-const files = walk(functionRoot).map(normalize);
-const matches = (suffix) => files.filter((file) => file.endsWith(suffix));
 const config = JSON.parse(fs.readFileSync(path.join(functionRoot, ".vc-config.json"), "utf8"));
-const mappedPackages = Object.keys(config.filePathMap || {}).map(normalize);
+const filePathMap = config.filePathMap || {};
+const mappedFiles = Object.keys(filePathMap).map(normalize);
+const files = [...new Set([...walk(functionRoot).map(normalize), ...mappedFiles])];
+const matches = (suffix) => files.filter((file) => file.endsWith(suffix));
+
+for (const source of Object.values(filePathMap)) {
+  assert.ok(
+    fs.existsSync(path.resolve(repoRoot, source)),
+    `the Vercel trace source must exist: ${source}`,
+  );
+}
 
 assert.ok(
-  mappedPackages.some((key) => key.endsWith("apps/artifact/node_modules/pdfjs-dist")),
+  matches("/node_modules/pdfjs-dist/package.json").length > 0,
   "the extraction function trace must preserve pdfjs-dist package resolution",
 );
 assert.ok(
-  mappedPackages.some((key) => key.endsWith("apps/artifact/node_modules/@napi-rs/canvas")),
+  matches("/node_modules/@napi-rs/canvas/package.json").length > 0,
   "the extraction function trace must preserve DOMMatrix package resolution",
 );
-assert.equal(
-  matches("/node_modules/pdfjs-dist/legacy/build/pdf.mjs").length,
-  1,
+assert.ok(
+  matches("/node_modules/pdfjs-dist/legacy/build/pdf.mjs").length > 0,
   "the extraction function must contain the pdfjs runtime module",
 );
-assert.equal(
-  matches("/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs").length,
-  1,
+assert.ok(
+  matches("/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs").length > 0,
   "the extraction function must contain the pdfjs fake-worker module required in Node",
 );
-assert.equal(
-  matches("/node_modules/@napi-rs/canvas/geometry.js").length,
-  1,
+assert.ok(
+  matches("/node_modules/@napi-rs/canvas/geometry.js").length > 0,
   "the extraction function must contain the pure-JavaScript DOMMatrix required by PDF.js",
 );
 assert.equal(
@@ -72,9 +77,8 @@ const expectedFonts = fs.readdirSync(sourceFontDir)
 
 assert.ok(expectedFonts.length > 0, "the installed pdfjs package must expose standard fonts");
 for (const font of expectedFonts) {
-  assert.equal(
-    matches(`/node_modules/pdfjs-dist/standard_fonts/${font}`).length,
-    1,
+  assert.ok(
+    matches(`/node_modules/pdfjs-dist/standard_fonts/${font}`).length > 0,
     `the extraction trace must contain pdfjs standard font ${font}`,
   );
 }

@@ -1,12 +1,18 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import type { PacketLine, PacketModel } from "./packet-model";
+import {
+  PDFDocument,
+  PDFHexString,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFPage,
+} from "pdf-lib";
+import type { PacketAttachment, PacketModel, PacketSection } from "./packet-model";
 import { CLOSING_FIELD_MAP, closingTemplateBytes } from "./closing-template-data";
 
 const PAGE_WIDTH = 612;
 const PAGE_HEIGHT = 792;
 const MARGIN = 54;
 const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2);
-const FOOTER_Y = 28;
 
 function ascii(value: string): string {
   return String(value || "")
@@ -53,21 +59,479 @@ function wrap(text: string, font: PDFFont, size: number, width: number): string[
   return lines;
 }
 
-function lineText(line: PacketLine): string {
-  return line.label ? `${line.label}: ${line.value}` : line.value;
+function splitFirstLine(text: string, font: PDFFont, size: number, width: number): [string, string] {
+  const words = ascii(text).split(/\s+/).filter(Boolean);
+  let first = "";
+  while (words.length) {
+    const candidate = first ? `${first} ${words[0]}` : words[0];
+    if (first && font.widthOfTextAtSize(candidate, size) > width) break;
+    first = candidate;
+    words.shift();
+  }
+  return [first, words.join(" ")];
 }
 
-function pageHeader(page: PDFPage, regular: PDFFont, title: string, packetLabel: string): void {
-  page.drawText("HEIRRIGHT", { x: MARGIN, y: PAGE_HEIGHT - 34, size: 9, font: regular, color: rgb(0.08, 0.28, 0.24) });
-  page.drawText(ascii(packetLabel), { x: MARGIN, y: PAGE_HEIGHT - 48, size: 7.5, font: regular, color: rgb(0.42, 0.44, 0.43) });
-  page.drawLine({ start: { x: MARGIN, y: PAGE_HEIGHT - 58 }, end: { x: PAGE_WIDTH - MARGIN, y: PAGE_HEIGHT - 58 }, thickness: 0.7, color: rgb(0.78, 0.8, 0.78) });
-  if (title) page.drawText(ascii(title), { x: MARGIN, y: PAGE_HEIGHT - 82, size: 9, font: regular, color: rgb(0.2, 0.22, 0.21) });
+function safeUrl(value: string | undefined): string {
+  const url = String(value || "").trim();
+  return /^https?:\/\//i.test(url) || (url.startsWith("/") && !url.startsWith("//")) ? url : "";
 }
 
-function pageFooter(page: PDFPage, regular: PDFFont, pageNumber: number, generatedAt: string): void {
-  page.drawLine({ start: { x: MARGIN, y: FOOTER_Y + 12 }, end: { x: PAGE_WIDTH - MARGIN, y: FOOTER_Y + 12 }, thickness: 0.5, color: rgb(0.82, 0.83, 0.82) });
-  page.drawText(`Generated ${ascii(generatedAt.slice(0, 10))} | Internal review packet`, { x: MARGIN, y: FOOTER_Y, size: 7, font: regular, color: rgb(0.46, 0.47, 0.46) });
-  page.drawText(`Page ${pageNumber}`, { x: PAGE_WIDTH - MARGIN - 38, y: FOOTER_Y, size: 7, font: regular, color: rgb(0.46, 0.47, 0.46) });
+function packetValue(value: string | undefined): string {
+  return ascii(String(value || "Not confirmed").split(" | confidence ")[0] || "Not confirmed");
+}
+
+function sectionById(sections: PacketSection[], id: string): PacketSection | undefined {
+  return sections.find((section) => section.id === id);
+}
+
+function sectionValue(section: PacketSection | undefined, label: string, fallback = "Not confirmed"): string {
+  const line = section?.lines.find((item) => item.label?.toLowerCase() === label.toLowerCase());
+  return packetValue(line?.value || fallback);
+}
+
+function annotationLink(
+  pdf: PDFDocument,
+  page: PDFPage,
+  url: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): void {
+  const href = safeUrl(url);
+  if (!href || width <= 0 || height <= 0) return;
+  const annotation = pdf.context.register(pdf.context.obj({
+    Type: "Annot",
+    Subtype: "Link",
+    Rect: [x, y, x + width, y + height],
+    Border: [0, 0, 0],
+    A: {
+      Type: "Action",
+      S: "URI",
+      URI: PDFHexString.fromText(href),
+    },
+  }));
+  page.node.addAnnot(annotation);
+}
+
+function drawLinkedText(input: {
+  pdf: PDFDocument;
+  page: PDFPage;
+  text: string;
+  url: string;
+  x: number;
+  y: number;
+  font: PDFFont;
+  size: number;
+}): number {
+  const text = ascii(input.text);
+  const width = input.font.widthOfTextAtSize(text, input.size);
+  input.page.drawText(text, {
+    x: input.x,
+    y: input.y,
+    size: input.size,
+    font: input.font,
+    color: rgb(0, 0.2, 0.8),
+  });
+  input.page.drawLine({
+    start: { x: input.x, y: input.y - 1 },
+    end: { x: input.x + width, y: input.y - 1 },
+    thickness: 0.45,
+    color: rgb(0, 0.2, 0.8),
+  });
+  annotationLink(input.pdf, input.page, input.url, input.x, input.y - 2, width, input.size + 3);
+  return width;
+}
+
+function centeredX(text: string, font: PDFFont, size: number): number {
+  return Math.max(MARGIN, (PAGE_WIDTH - font.widthOfTextAtSize(ascii(text), size)) / 2);
+}
+
+function drawCenteredCellText(
+  page: PDFPage,
+  text: string,
+  x: number,
+  width: number,
+  y: number,
+  font: PDFFont,
+  size: number,
+): void {
+  const value = ascii(text);
+  page.drawText(value, {
+    x: x + Math.max(4, (width - font.widthOfTextAtSize(value, size)) / 2),
+    y,
+    size,
+    font,
+    color: rgb(0, 0, 0),
+  });
+}
+
+function friendlyDate(value: string): string {
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) return ascii(value.slice(0, 10));
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    month: "2-digit",
+    day: "2-digit",
+    year: "2-digit",
+  }).format(parsed);
+}
+
+function matchingAttachment(section: PacketSection | undefined, pattern: RegExp): PacketAttachment | undefined {
+  return section?.attachments?.find((attachment) => (
+    pattern.test(attachment.label)
+    || pattern.test(attachment.fileName || "")
+    || pattern.test(attachment.url)
+  ));
+}
+
+function drawOfferProfitTable(
+  page: PDFPage,
+  regular: PDFFont,
+  bold: PDFFont,
+  section: PacketSection | undefined,
+  startY: number,
+): number {
+  const left = 72;
+  const width = 332;
+  const columns = [106, 115, 111];
+  const rowHeight = 16.5;
+  const rows = [
+    "As-Is Value",
+    "Taxes Due",
+    "Liens",
+    "Mortgages",
+    "Selling Costs",
+    "Probate Costs",
+    "Partition Costs",
+    "Post Equity Value",
+    "Amount per heir $$",
+    "# of heirs on board",
+    "Profit",
+    "Offer per heir",
+    "",
+    "",
+    "",
+    "Min Profit",
+    "$100,000 Net",
+    "",
+    "",
+  ];
+  const values = new Map((section?.lines || []).map((line) => [String(line.label || "").toLowerCase(), packetValue(line.value)]));
+  let y = startY;
+  page.drawRectangle({ x: left, y: y - rowHeight, width, height: rowHeight, color: rgb(0.25, 0.66, 0.84), borderWidth: 0.7, borderColor: rgb(0.05, 0.05, 0.05) });
+  const heading = "Offer/Profit";
+  drawCenteredCellText(page, heading, left, width, y - 11.8, bold, 11);
+  y -= rowHeight;
+  const headerLabels = ["Description", "Percentage", "Total"];
+  let x = left;
+  headerLabels.forEach((label, index) => {
+    page.drawRectangle({ x, y: y - rowHeight, width: columns[index], height: rowHeight, borderWidth: 0.7, borderColor: rgb(0.05, 0.05, 0.05) });
+    drawCenteredCellText(page, label, x, columns[index], y - 11.8, bold, 11);
+    x += columns[index];
+  });
+  y -= rowHeight;
+  rows.forEach((label, rowIndex) => {
+    const fill = label === "Min Profit"
+      ? rgb(0.04, 0.67, 0.86)
+      : rowIndex >= rows.length - 3
+        ? rgb(1, 0.75, 0)
+        : undefined;
+    x = left;
+    columns.forEach((column, index) => {
+      page.drawRectangle({
+        x,
+        y: y - rowHeight,
+        width: column,
+        height: rowHeight,
+        ...(fill && index === 0 ? { color: fill } : {}),
+        borderWidth: 0.7,
+        borderColor: rgb(0.05, 0.05, 0.05),
+      });
+      x += column;
+    });
+    if (label) {
+      const labelFont = ["As-Is Value", "Post Equity Value", "Profit", "Min Profit"].includes(label) ? bold : regular;
+      drawCenteredCellText(page, label, left, columns[0], y - 11.8, labelFont, 11);
+      const value = values.get(label.toLowerCase()) || "";
+      const percentage = label === "Offer per heir" && /%/.test(value) ? value.match(/[0-9.]+%/)?.[0] || "" : "";
+      const total = percentage ? value.replace(percentage, "").trim() : value;
+      if (percentage) drawCenteredCellText(page, percentage, left + columns[0], columns[1], y - 11.8, regular, 10);
+      if (total && total !== "Not confirmed") drawCenteredCellText(page, total.slice(0, 24), left + columns[0] + columns[1], columns[2], y - 11.8, regular, 10);
+    }
+    y -= rowHeight;
+  });
+  return y;
+}
+
+async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  const regular = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  pdf.setTitle(model.title);
+  pdf.setAuthor("HeirRight");
+  pdf.setSubject("HeirRight estate discovery document package");
+  pdf.setProducer("HeirRight deterministic example-format renderer");
+  pdf.setCreator("HeirRight");
+  pdf.setCreationDate(new Date(model.generatedAt));
+
+  const addPage = (): PDFPage => pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  const drawSection = (estateName: string, section: PacketSection): void => {
+    let page = addPage();
+    let cursor = PAGE_HEIGHT - 66;
+    const newPage = (): void => {
+      page = addPage();
+      cursor = PAGE_HEIGHT - 66;
+    };
+    for (const titleLine of wrap(section.title, bold, 15, CONTENT_WIDTH)) {
+      page.drawText(titleLine, { x: MARGIN, y: cursor, size: 15, font: bold, color: rgb(0, 0, 0) });
+      cursor -= 20;
+    }
+    page.drawText(ascii(estateName), { x: MARGIN, y: cursor, size: 9, font: regular, color: rgb(0.24, 0.24, 0.24) });
+    cursor -= 25;
+    for (const line of section.lines) {
+      const label = line.label ? `${line.label}: ` : "";
+      const text = `${label}${packetValue(line.value)}`;
+      const lines = wrap(text, line.label ? bold : regular, 9.5, CONTENT_WIDTH);
+      if (cursor - (lines.length * 13) < 62) newPage();
+      lines.forEach((wrappedLine, index) => {
+        page.drawText(wrappedLine, {
+          x: MARGIN + (index ? 8 : 0),
+          y: cursor,
+          size: 9.5,
+          font: index === 0 && line.label ? bold : regular,
+          color: line.tone === "warning" ? rgb(0.48, 0.22, 0.05) : rgb(0, 0, 0),
+        });
+        cursor -= 13;
+      });
+      cursor -= 5;
+    }
+    const storedAttachments = section.attachments || [];
+    const links: PacketAttachment[] = storedAttachments.length
+      ? storedAttachments
+      : section.sourceUrls.map((url, index): PacketAttachment => ({
+        id: `source-${index}`,
+        label: `Source ${index + 1}`,
+        url,
+        source: "document_packet" as const,
+        fileKind: "link" as const,
+        reviewFlags: [],
+      }));
+    if (links.length) {
+      if (cursor < 110) newPage();
+      page.drawText("Evidence", { x: MARGIN, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+      cursor -= 18;
+      for (const link of links) {
+        const label = ascii(link.label || link.fileName || "Source evidence");
+        const wrapped = wrap(label, regular, 9, CONTENT_WIDTH - 16);
+        if (cursor - (wrapped.length * 12) < 62) newPage();
+        wrapped.forEach((item, index) => {
+          if (index === 0) drawLinkedText({ pdf, page, text: item, url: link.url, x: MARGIN + 8, y: cursor, font: regular, size: 9 });
+          else page.drawText(item, { x: MARGIN + 16, y: cursor, size: 9, font: regular, color: rgb(0, 0.2, 0.8) });
+          cursor -= 12;
+        });
+        cursor -= 3;
+      }
+    }
+  };
+
+  for (const estate of model.estates) {
+    const sections = estate.sections;
+    const summary = sectionById(sections, "estate-summary");
+    const offer = sectionById(sections, "offer-profit");
+    const vital = sectionById(sections, "vital-records");
+    const backstory = sectionById(sections, "backstory");
+    const contacts = sectionById(sections, "family-contacts");
+    const familyTreeFormat = Boolean(summary && (offer || backstory || contacts));
+
+    if (familyTreeFormat) {
+      let page = addPage();
+      const addressSuffix = ` - ${estate.propertyAddress}`.toLowerCase();
+      const displayName = estate.displayName.toLowerCase().endsWith(addressSuffix)
+        ? estate.displayName.slice(0, estate.displayName.length - addressSuffix.length)
+        : estate.displayName;
+      const title = ascii(displayName).toUpperCase();
+      const titleLines = wrap(title, regular, 26, 430);
+      let cursor = 695.6;
+      for (const titleLine of titleLines) {
+        page.drawText(titleLine, { x: centeredX(titleLine, regular, 26), y: cursor, size: 26, font: regular, color: rgb(0, 0, 0) });
+        cursor -= 44.2;
+      }
+      const subtitle = "Family Tree";
+      page.drawText(subtitle, { x: centeredX(subtitle, regular, 26), y: cursor, size: 26, font: regular, color: rgb(0, 0, 0) });
+      cursor -= 29.3;
+      const date = `Date added: ${friendlyDate(model.generatedAt)}`;
+      page.drawText(date, { x: centeredX(date, regular, 10), y: cursor, size: 10, font: regular, color: rgb(0, 0, 0) });
+      cursor -= 40.2;
+
+      const propertyPrefix = "Property Address: ";
+      const propertyLink = matchingAttachment(summary, /property|appraiser|parcel/i) || summary?.attachments?.[0];
+      page.drawText(propertyPrefix, { x: 72, y: cursor, size: 11, font: regular, color: rgb(0, 0, 0) });
+      const propertyX = 72 + regular.widthOfTextAtSize(propertyPrefix, 11);
+      if (propertyLink) drawLinkedText({ pdf, page, text: estate.propertyAddress, url: propertyLink.url, x: propertyX, y: cursor, font: regular, size: 11 });
+      else page.drawText(ascii(estate.propertyAddress), { x: propertyX, y: cursor, size: 11, font: regular, color: rgb(0, 0, 0) });
+      cursor -= 9.6;
+      if (offer) cursor = drawOfferProfitTable(page, regular, bold, offer, cursor);
+      else cursor -= 12;
+      cursor -= 25.3;
+
+      const owner = sectionValue(summary, "Owner of record", estate.displayName);
+      page.drawText("Owner:", { x: 72, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+      cursor -= 17.5;
+      page.drawText(owner, { x: 72, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+      cursor -= 17.5;
+      page.drawText(`DOB: ${sectionValue(vital, "Date of birth", "Needs review")}`, { x: 72, y: cursor, size: 11, font: regular, color: rgb(0, 0, 0) });
+      cursor -= 17.5;
+      page.drawText(`DOD: ${sectionValue(vital, "Date of death", "Needs review")}`, { x: 72, y: cursor, size: 11, font: regular, color: rgb(0, 0, 0) });
+      cursor -= 17.5;
+      const obituary = matchingAttachment(vital, /obituar|eulogy|memorial/i)
+        || matchingAttachment(backstory, /obituar|eulogy|memorial/i);
+      if (obituary) {
+        const obituaryWidth = drawLinkedText({ pdf, page, text: "Obituary", url: obituary.url, x: 72, y: cursor, font: regular, size: 11 });
+        page.drawText(" - ", { x: 72 + obituaryWidth, y: cursor, size: 11, font: regular, color: rgb(0, 0, 0) });
+        drawLinkedText({ pdf, page, text: obituary.label || "Source", url: obituary.url, x: 80 + obituaryWidth, y: cursor, font: regular, size: 11 });
+      } else {
+        page.drawText("Obituary - Needs review", { x: 72, y: cursor, size: 11, font: regular, color: rgb(0.48, 0.22, 0.05) });
+      }
+
+      if (backstory || contacts) {
+        page = addPage();
+        cursor = 718;
+        const familyLeft = 72;
+        const familyWidth = 468;
+        const familyLineHeight = 17.5;
+        const ensureFamilySpace = (height: number): void => {
+          if (cursor - height >= 54) return;
+          page = addPage();
+          cursor = 718;
+        };
+        const drawFamilyText = (text: string, options: {
+          font?: PDFFont;
+          size?: number;
+          color?: ReturnType<typeof rgb>;
+          indent?: number;
+        } = {}): void => {
+          const font = options.font || regular;
+          const size = options.size || 11;
+          const indent = options.indent || 0;
+          const lines = wrap(text, font, size, familyWidth - indent);
+          ensureFamilySpace(lines.length * familyLineHeight);
+          for (const item of lines) {
+            page.drawText(item, {
+              x: familyLeft + indent,
+              y: cursor,
+              size,
+              font,
+              color: options.color || rgb(0, 0, 0),
+            });
+            cursor -= familyLineHeight;
+          }
+        };
+        const storyParagraphs = backstory
+          ? backstory.lines.flatMap((line) => (
+            packetValue(line.value).split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean)
+          ))
+          : [];
+        storyParagraphs.forEach((paragraph, paragraphIndex) => {
+          ensureFamilySpace(42);
+          if (paragraphIndex === 0) {
+            const heading = "Back Story:";
+            const headingWidth = bold.widthOfTextAtSize(heading, 11);
+            const [firstLine, remainder] = splitFirstLine(paragraph, regular, 11, familyWidth - headingWidth - 4);
+            page.drawText(heading, { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+            page.drawText(firstLine, { x: familyLeft + headingWidth + 4, y: cursor, size: 11, font: regular, color: rgb(0, 0, 0) });
+            cursor -= familyLineHeight;
+            if (remainder) drawFamilyText(remainder);
+          } else {
+            drawFamilyText(paragraph);
+          }
+          cursor -= 10;
+        });
+        if (backstory?.attachments?.length) {
+          ensureFamilySpace(42);
+          page.drawText("Back Story evidence:", { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+          cursor -= familyLineHeight;
+          for (const attachment of backstory.attachments) {
+            ensureFamilySpace(familyLineHeight);
+            drawLinkedText({ pdf, page, text: attachment.label, url: attachment.url, x: familyLeft + 10, y: cursor, font: regular, size: 10 });
+            cursor -= familyLineHeight;
+          }
+          cursor -= 10;
+        }
+
+        if (contacts) {
+          ensureFamilySpace(52);
+          page.drawText("Heirs:", { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+          cursor -= familyLineHeight;
+          for (const line of contacts.lines) {
+            const label = String(line.label || "");
+            const value = packetValue(line.value);
+            const contactMatch = label.match(/^Contact\s+(\d+)/i);
+            if (contactMatch) {
+              cursor -= 5;
+              ensureFamilySpace(48);
+              const parts = value.split(/\s+\|\s+/);
+              const name = parts[0] || `Possible heir ${contactMatch[1]}`;
+              const relationship = parts.find((part) => /^relationship\s+/i.test(part))?.replace(/^relationship\s+/i, "");
+              const age = parts.find((part) => /^age\s+/i.test(part))?.replace(/^age\s+/i, "");
+              drawFamilyText(`${contactMatch[1]}. ${name.toUpperCase()}${relationship ? ` (${relationship})` : ""}`, { font: bold });
+              if (age) drawFamilyText(`(${age})`);
+              continue;
+            }
+            if (/^Likely Current Address$/i.test(label)) {
+              ensureFamilySpace(familyLineHeight * 2);
+              drawFamilyText(`Likely Current Address: ${value}`);
+              cursor -= 10;
+              continue;
+            }
+            if (/^Address \(County\/Parish\/Borough\) History$/i.test(label)) {
+              ensureFamilySpace(familyLineHeight * 2);
+              drawFamilyText(`${label}:`, { font: bold });
+              value.split(/\n+/).filter(Boolean).forEach((item) => drawFamilyText(item));
+              cursor -= 7;
+              continue;
+            }
+            if (/^Phone number$/i.test(label)) {
+              ensureFamilySpace(familyLineHeight * 2);
+              drawFamilyText("Phone number:", { font: bold });
+              value.split(/\n+/).filter(Boolean).forEach((item) => drawFamilyText(item));
+              continue;
+            }
+            if (/^Email Address$/i.test(label)) {
+              const emails = value.split(/\n+/).filter(Boolean);
+              ensureFamilySpace(familyLineHeight * Math.max(1, emails.length));
+              const emailHeading = "Email Address:";
+              const emailHeadingWidth = bold.widthOfTextAtSize(emailHeading, 11);
+              page.drawText(emailHeading, { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+              if (emails[0]) {
+                page.drawText(emails[0], { x: familyLeft + emailHeadingWidth + 4, y: cursor, size: 11, font: regular, color: rgb(0, 0.35, 0.82) });
+              }
+              cursor -= familyLineHeight;
+              emails.slice(1).forEach((item) => drawFamilyText(item, { color: rgb(0, 0.35, 0.82) }));
+              continue;
+            }
+            if (/^Review$/i.test(label)) {
+              drawFamilyText(`Review: ${value}`, { size: 9.5, color: rgb(0.25, 0.25, 0.25) });
+              cursor -= 10;
+              continue;
+            }
+            drawFamilyText(`${label ? `${label}: ` : ""}${value}`);
+          }
+        }
+      }
+
+      for (const section of sections) {
+        if (["estate-summary", "offer-profit", "vital-records", "backstory", "family-contacts"].includes(section.id)) continue;
+        drawSection(estate.displayName, section);
+      }
+      if (vital && !backstory) drawSection(estate.displayName, vital);
+      continue;
+    }
+
+    for (const section of sections) drawSection(estate.displayName, section);
+  }
+
+  return pdf.save({ useObjectStreams: false });
 }
 
 function hex(bytes: ArrayBuffer): string {
@@ -198,109 +662,5 @@ async function renderClosingPacketPdf(model: PacketModel): Promise<Uint8Array> {
 
 export async function renderPacketPdf(model: PacketModel): Promise<Uint8Array> {
   if (model.flow === "closing-docs") return renderClosingPacketPdf(model);
-  const pdf = await PDFDocument.create();
-  const regular = await pdf.embedFont(StandardFonts.Helvetica);
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  pdf.setTitle(model.title);
-  pdf.setAuthor("HeirRight");
-  pdf.setSubject(`${model.flow} document preparation packet`);
-  pdf.setProducer("HeirRight deterministic packet service");
-  pdf.setCreator("HeirRight");
-  pdf.setCreationDate(new Date(model.generatedAt));
-
-  let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  pageHeader(page, regular, "", model.flow === "discovery" ? "Discovery Prep" : "Closing Prep");
-  let coverY = PAGE_HEIGHT - 138;
-  for (const titleLine of wrap(model.title, bold, 22, CONTENT_WIDTH)) {
-    page.drawText(titleLine, { x: MARGIN, y: coverY, size: 22, font: bold, color: rgb(0.07, 0.11, 0.1) });
-    coverY -= 27;
-  }
-  page.drawText(`${model.estates.length} estate${model.estates.length === 1 ? "" : "s"} | ${model.sections.length} sections`, { x: MARGIN, y: coverY - 4, size: 10, font: regular, color: rgb(0.35, 0.38, 0.37) });
-  coverY -= 54;
-  page.drawText("TABLE OF CONTENTS", { x: MARGIN, y: coverY, size: 9, font: bold, color: rgb(0.08, 0.28, 0.24) });
-  let y = coverY - 22;
-  for (const estate of model.estates) {
-    if (y < 84) {
-      page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      pageHeader(page, regular, "Table of contents", model.flow === "discovery" ? "Discovery Prep" : "Closing Prep");
-      y = PAGE_HEIGHT - 100;
-    }
-    for (const estateLine of wrap(estate.displayName, bold, 11, CONTENT_WIDTH)) {
-      page.drawText(estateLine, { x: MARGIN, y, size: 11, font: bold, color: rgb(0.08, 0.1, 0.09) });
-      y -= 14;
-    }
-    y -= 2;
-    for (const section of estate.sections) {
-      if (y < 64) break;
-      page.drawText(ascii(section.title), { x: MARGIN + 12, y, size: 8.5, font: regular, color: rgb(0.3, 0.32, 0.31) });
-      y -= 13;
-    }
-    y -= 10;
-  }
-
-  for (const [estateIndex, estate] of model.estates.entries()) {
-    for (const [sectionIndex, section] of estate.sections.entries()) {
-      page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      pageHeader(page, regular, estate.displayName, model.flow === "discovery" ? "Discovery Prep" : "Closing Prep");
-      let cursor = PAGE_HEIGHT - 112;
-      if (sectionIndex === 0) {
-        page.drawText(`ESTATE ${estateIndex + 1} OF ${model.estates.length}`, { x: MARGIN, y: cursor, size: 8, font: bold, color: rgb(0.08, 0.28, 0.24) });
-        cursor -= 20;
-        page.drawText(ascii(estate.displayName), { x: MARGIN, y: cursor, size: 17, font: bold, color: rgb(0.07, 0.1, 0.09) });
-        cursor -= 18;
-        for (const addressLine of wrap(estate.propertyAddress, regular, 9, CONTENT_WIDTH)) {
-          page.drawText(addressLine, { x: MARGIN, y: cursor, size: 9, font: regular, color: rgb(0.35, 0.37, 0.36) });
-          cursor -= 12;
-        }
-        cursor -= 8;
-      }
-      page.drawText(ascii(section.title), { x: MARGIN, y: cursor, size: 15, font: bold, color: rgb(0.08, 0.28, 0.24) });
-      cursor -= 24;
-
-      const newContentPage = (): void => {
-        page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-        pageHeader(page, regular, `${estate.displayName} / ${section.title}`, model.flow === "discovery" ? "Discovery Prep" : "Closing Prep");
-        cursor = PAGE_HEIGHT - 92;
-      };
-
-      for (const line of section.lines) {
-        const text = lineText(line);
-        const wrapped = wrap(text, line.label ? bold : regular, line.label ? 8.7 : 9, CONTENT_WIDTH - 8);
-        const needed = (wrapped.length * 12) + 8;
-        if (cursor - needed < FOOTER_Y + 28) newContentPage();
-        const color = line.tone === "warning"
-          ? rgb(0.52, 0.24, 0.08)
-          : line.tone === "muted" ? rgb(0.43, 0.45, 0.44) : rgb(0.13, 0.15, 0.14);
-        for (const [index, wrappedLine] of wrapped.entries()) {
-          page.drawText(wrappedLine, {
-            x: MARGIN + (index ? 8 : 0),
-            y: cursor,
-            size: line.label ? 8.7 : 9,
-            font: index === 0 && line.label ? bold : regular,
-            color,
-          });
-          cursor -= 12;
-        }
-        cursor -= 7;
-      }
-
-      if (section.sourceUrls.length) {
-        if (cursor < 100) newContentPage();
-        page.drawText("SOURCE LINKS", { x: MARGIN, y: cursor, size: 8, font: bold, color: rgb(0.08, 0.28, 0.24) });
-        cursor -= 15;
-        for (const url of section.sourceUrls) {
-          for (const sourceLine of wrap(url, regular, 7.5, CONTENT_WIDTH - 8)) {
-            if (cursor < FOOTER_Y + 28) newContentPage();
-            page.drawText(sourceLine, { x: MARGIN + 8, y: cursor, size: 7.5, font: regular, color: rgb(0.12, 0.32, 0.47) });
-            cursor -= 10;
-          }
-          cursor -= 3;
-        }
-      }
-    }
-  }
-
-  const pages = pdf.getPages();
-  pages.forEach((item, index) => pageFooter(item, regular, index + 1, model.generatedAt));
-  return pdf.save({ useObjectStreams: false });
+  return renderDiscoveryPacketPdf(model);
 }

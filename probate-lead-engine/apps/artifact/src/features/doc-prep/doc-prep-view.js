@@ -133,9 +133,9 @@ function renderDocPrepView({ bridge }) {
           <p>${escape(estate.address)} - ${escape(estate.county)}</p>
         </div>
         <div class="hr-docprep-header-controls">
-          <div class="hr-docprep-flow-switch" role="tablist" aria-label="Document Prep workflow" aria-orientation="horizontal">
-            <button id="hrDocPrepFlowDiscovery" type="button" role="tab" tabindex="${flow.isDiscovery ? "0" : "-1"}" aria-controls="hrDocPrepFlowPanel" aria-selected="${flow.isDiscovery ? "true" : "false"}" data-docprep-flow="discovery">Discovery</button>
-            <button id="hrDocPrepFlowClosing" type="button" role="tab" tabindex="${flow.id === "closing-docs" ? "0" : "-1"}" aria-controls="hrDocPrepFlowPanel" aria-selected="${flow.id === "closing-docs" ? "true" : "false"}" data-docprep-flow="closing-docs">Closing Prep</button>
+          <div class="hr-docprep-flow-switch beui-tabs" role="tablist" aria-label="Document Prep workflow" aria-orientation="horizontal">
+            <button id="hrDocPrepFlowDiscovery" class="beui-tabs-trigger" type="button" role="tab" tabindex="${flow.isDiscovery ? "0" : "-1"}" aria-controls="hrDocPrepFlowPanel" aria-selected="${flow.isDiscovery ? "true" : "false"}" data-docprep-flow="discovery">Discovery</button>
+            <button id="hrDocPrepFlowClosing" class="beui-tabs-trigger" type="button" role="tab" tabindex="${flow.id === "closing-docs" ? "0" : "-1"}" aria-controls="hrDocPrepFlowPanel" aria-selected="${flow.id === "closing-docs" ? "true" : "false"}" data-docprep-flow="closing-docs">Closing Prep</button>
           </div>
           <label class="hr-estate-picker">
             <span>Selected estate</span>
@@ -165,6 +165,7 @@ function renderDocPrepView({ bridge }) {
             class="hr-upload-command hr-idi-report-command"
             type="button"
             data-idi-picker
+            data-beui-component="button"
             ${state.busy || (reportLinked && !canReplaceIdi) ? "disabled" : ""}
             aria-label="${reportLinked ? "Replace" : "Upload"} IDI Report for ${escape(estate.title)}"
             title="${reportLinked && !canReplaceIdi ? "A configured administrator must replace verified reports" : uploadLabel}"
@@ -176,13 +177,13 @@ function renderDocPrepView({ bridge }) {
             accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             aria-label="Choose an IDI report PDF or DOCX file"
           >` : ""}
-          <wa-button variant="brand" appearance="filled" data-run-discovery ${running ? "disabled loading" : ""}>
+          <wa-button class="beui-button" variant="brand" appearance="filled" data-run-discovery ${running ? "disabled loading" : ""}>
             ${buttonStartIcon(bridge, "magnifier-route", 17)}<span>${escape(runLabel)}</span>
           </wa-button>`}
         </div>
         <div class="hr-discovery-progress">
           <span><strong>${escape(currentStageLabel(snapshot, state))}</strong><span>${escape(`${progress}% complete`)}</span></span>
-          <wa-progress-bar value="${escape(progress)}" aria-label="${escape(flow.label)} progress"></wa-progress-bar>
+          <wa-progress-bar class="beui-progress" value="${escape(progress)}" aria-label="${escape(flow.label)} progress"></wa-progress-bar>
         </div>
         ${moveOn ? "" : renderIdiControlState(snapshot, state, bridge)}
         ${packetComplete && !moveOn ? `

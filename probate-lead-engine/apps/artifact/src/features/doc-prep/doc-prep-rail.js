@@ -12,8 +12,35 @@ function railContext(context = {}) {
 
 function selectedDocument(snapshot = {}) {
   return snapshot.docPrep?.documents?.find((document) => document.selected)
-    || snapshot.docPrep?.documents?.[0]
     || null;
+}
+
+function verifiedArtifactHref(candidate, artifactId) {
+  const id = String(artifactId || "").trim();
+  if (!id || !candidate) return "";
+  try {
+    const origin = globalThis.location?.origin || "http://localhost";
+    const url = new URL(String(candidate), origin);
+    if (url.origin !== origin || url.searchParams.get("artifactId") !== id) return "";
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return "";
+  }
+}
+
+function documentPreviewMarkup(input = {}, escape = String) {
+  const href = verifiedArtifactHref(input.artifactUrl, input.artifactId);
+  if (!href) return `
+    <section class="hr-document-overview" data-document-preview>
+      <h3>PDF preview</h3>
+      <p>${escape(input.emptyCopy || "Generate and verify this document to preview it here.")}</p>
+    </section>
+  `;
+  return `
+    <section class="hr-document-pdf-preview" data-document-preview>
+      <iframe src="${escape(href)}" title="${escape(input.title || "Estate document PDF")}" loading="lazy"></iframe>
+    </section>
+  `;
 }
 
 function activeFlowMeta(snapshot = {}) {
@@ -171,9 +198,20 @@ function renderDocumentRail(context) {
   const stopped = moveOnRailMarkup(snapshot, escape);
   if (stopped) return stopped;
   const document = selectedDocument(snapshot);
+  const packet = snapshot.docPrep?.packet;
   if (!document) return `
-    <section class="hr-docprep-rail-panel" data-docprep-rail-panel="document">
-      <header><p class="hr-eyebrow">Document</p><h2>Choose a document</h2><p>Open a document row to see its context and actions here.</p></header>
+    <section class="hr-docprep-rail-panel" data-docprep-rail-panel="document" data-document-view="full-packet">
+      <header><p class="hr-eyebrow">Full estate file</p><h2>${escape(snapshot.selectedEstate?.title || "Discovery packet")}</h2><p>All generated estate sections in one document.</p></header>
+      ${documentPreviewMarkup({
+        artifactUrl: packet?.artifactUrl,
+        artifactId: packet?.artifactId,
+        title: `${snapshot.selectedEstate?.title || "Estate"} full packet`,
+        emptyCopy: "Run and verify Document Prep to show the full estate packet here.",
+      }, escape)}
+      <div class="hr-rail-actions" aria-label="Full packet actions">
+        ${packet ? '<button type="button" class="hr-text-command" data-rail-action="open-packet">Open full packet</button>' : ""}
+        ${packet ? '<button type="button" class="hr-text-command" data-rail-action="download-packet">Download full packet</button>' : ""}
+      </div>
     </section>
   `;
   const isIdiReport = document.id === "idi-asset-search";
@@ -182,16 +220,19 @@ function renderDocumentRail(context) {
   return `
     <section class="hr-docprep-rail-panel" data-docprep-rail-panel="document" data-document-id="${escape(document.id)}">
       <header><p class="hr-eyebrow">Selected document</p><h2>${escape(document.title)}</h2><p>${escape(document.description || "Estate packet document")}</p></header>
+      <button type="button" class="hr-text-command hr-full-packet-command" data-rail-action="show-full-packet">Show full packet</button>
       <dl class="hr-document-facts">
         <div><dt>Status</dt><dd>${escape(document.hasVerifiedFile ? "Verified" : document.status || "Needs review")}</dd></div>
         <div><dt>Source</dt><dd>${escape(document.source || "Estate file")}</dd></div>
         <div><dt>Update</dt><dd>${escape(relativeUpdate(document.updatedAt))}</dd></div>
         <div><dt>Estate</dt><dd>${escape(snapshot.selectedEstate?.title || "Selected estate")}</dd></div>
       </dl>
-      <section class="hr-document-overview" data-document-preview aria-labelledby="hrDocumentPreviewTitle">
-        <h3 id="hrDocumentPreviewTitle">Document preview</h3>
-        <p>${escape(document.description || "Review this document in the selected estate file.")}</p>
-      </section>
+      ${documentPreviewMarkup({
+        artifactUrl: document.hasVerifiedFile ? document.artifactUrl : "",
+        artifactId: document.hasVerifiedFile ? document.artifactId : "",
+        title: `${document.title} PDF`,
+        emptyCopy: document.description || "Review this document in the selected estate file.",
+      }, escape)}
       <div class="hr-rail-actions" aria-label="Document actions">
         ${document.hasVerifiedFile ? '<button type="button" class="hr-text-command" data-rail-action="open-document">Open verified file</button>' : ""}
         ${document.hasVerifiedFile ? '<button type="button" class="hr-text-command" data-rail-action="download-document">Download verified file</button>' : ""}
@@ -201,6 +242,40 @@ function renderDocumentRail(context) {
         <button type="button" class="hr-text-command" data-rail-action="queue-document">Stage for export</button>
         ${canRemove ? '<button type="button" class="hr-text-command hr-danger-command" data-rail-action="remove-document">Remove supporting file</button>' : ""}
       </div>
+    </section>
+  `;
+}
+
+function renderAttachmentsRail(context) {
+  const { snapshot, escape } = railContext(context);
+  const stopped = moveOnRailMarkup(snapshot, escape);
+  if (stopped) return stopped;
+  const attachments = Array.isArray(snapshot.docPrep?.attachments) ? snapshot.docPrep.attachments : [];
+  return `
+    <section class="hr-docprep-rail-panel" data-docprep-rail-panel="attachments">
+      <header><p class="hr-eyebrow">Discovery evidence</p><h2>Attachments</h2><p>${escape(snapshot.selectedEstate?.title || "Selected estate")}</p></header>
+      ${attachments.length ? `
+        <div class="hr-attachment-list" aria-label="Back Story evidence">
+          ${attachments.map((attachment) => `
+            <article class="hr-attachment-row" data-attachment-id="${escape(attachment.id)}">
+              <div>
+                <strong>${escape(attachment.label)}</strong>
+                <span>${escape(`${attachment.step} · ${attachment.source}`)}</span>
+                ${attachment.fileName ? `<small>${escape(attachment.fileName)}</small>` : ""}
+              </div>
+              <div class="hr-attachment-actions">
+                ${attachment.href ? `<button type="button" class="hr-text-command" data-rail-action="open-attachment" data-attachment-id="${escape(attachment.id)}">Open</button>` : '<span class="hr-attachment-review">Link needs review</span>'}
+                ${attachment.href && attachment.downloadable ? `<button type="button" class="hr-text-command" data-rail-action="download-attachment" data-attachment-id="${escape(attachment.id)}">Download</button>` : ""}
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      ` : `
+        <div class="hr-rail-guidance">
+          <strong>No Back Story evidence is linked yet</strong>
+          <span>Run Discovery or attach the source files needed for this estate.</span>
+        </div>
+      `}
     </section>
   `;
 }
@@ -228,7 +303,7 @@ function renderCompletionRail(context) {
       <div class="hr-rail-actions" aria-label="Completion actions">
         ${ready ? '<button type="button" class="hr-text-command" data-rail-action="open-packet">Open current packet</button>' : ""}
         ${ready ? '<button type="button" class="hr-text-command" data-rail-action="download-packet">Download current packet</button>' : ""}
-        ${flow.isDiscovery ? `<wa-button variant="brand" appearance="filled" data-rail-action="chatgpt-work" ${ready ? "" : "disabled"}>Continue in ChatGPT Work</wa-button>` : ""}
+        ${flow.isDiscovery ? `<wa-button class="beui-button" variant="brand" appearance="filled" data-rail-action="chatgpt-work" ${ready ? "" : "disabled"}>Continue in ChatGPT Work</wa-button>` : ""}
         ${googleDelivered
           ? `<div class="hr-google-delivery" data-google-delivery="verified"><strong>Saved to Google Workspace</strong><span>${escape(googleDestination || "Verified in the selected Drive folder")}</span></div>`
           : googleReady
@@ -275,6 +350,36 @@ async function runPacketAction(action, payload) {
   const { bridge, estateId, flowId } = currentPayload(payload);
   if (!bridge || !estateId || !flowId) throw new Error("Select an estate packet first.");
   return bridge.dispatch("packet-action", { estateId, flowId, action });
+}
+
+async function showFullPacket(payload = {}) {
+  const { bridge, estateId } = currentPayload(payload);
+  if (!bridge || !estateId) throw new Error("Select an estate first.");
+  return bridge.dispatch("clear-document-selection", { estateId });
+}
+
+async function runAttachmentAction(action, payload = {}) {
+  const { snapshot } = currentPayload(payload);
+  const attachmentId = String(payload.attachmentId || "");
+  const attachment = (snapshot.docPrep?.attachments || []).find((item) => String(item.id || "") === attachmentId);
+  if (!attachment?.href) throw new Error("This evidence item does not have a verified source link.");
+  let href;
+  try {
+    href = new URL(String(attachment.href), globalThis.location?.origin || "http://localhost");
+  } catch {
+    throw new Error("This evidence link is invalid.");
+  }
+  if (!["http:", "https:"].includes(href.protocol)) throw new Error("This evidence link uses an unsupported protocol.");
+  const link = document.createElement("a");
+  link.href = href.href;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  if (action === "download" && href.origin === (globalThis.location?.origin || "http://localhost")) {
+    link.download = String(attachment.fileName || attachment.label || "HeirRight evidence");
+  }
+  document.body.append(link);
+  link.click();
+  link.remove();
 }
 
 async function runContactReviewAction(payload = {}) {
@@ -335,6 +440,18 @@ const docPrepRail = Object.freeze({
         "remove-document": (payload) => runDocumentAction("remove", payload),
         "queue-document": (payload) => runDocumentAction("queue", payload),
         "download-document": (payload) => runDocumentAction("download", payload),
+        "show-full-packet": showFullPacket,
+        "open-packet": (payload) => runPacketAction("open", payload),
+        "download-packet": (payload) => runPacketAction("download", payload),
+      }),
+    }),
+    Object.freeze({
+      id: "attachments",
+      label: "Attachments",
+      render: renderAttachmentsRail,
+      actions: Object.freeze({
+        "open-attachment": (payload) => runAttachmentAction("open", payload),
+        "download-attachment": (payload) => runAttachmentAction("download", payload),
       }),
     }),
     Object.freeze({
@@ -364,6 +481,7 @@ export {
   moveOnRailMarkup,
   renderAutomationRail,
   renderActiveFlowTimeline,
+  renderAttachmentsRail,
   renderContactReview,
   renderCompletionRail,
   renderDocumentRail,

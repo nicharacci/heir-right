@@ -8,7 +8,13 @@ import { TEXAS_EQUITY_PROS_LEADS_APP_ID, TEXAS_EQUITY_PROS_LEADS_SPACE_ID } from
 import { buildIdiAssetSearchFacts } from "./enrichment/idi-asset-search";
 import { buildIdiUploadCandidates, matchIdiReportSubject, safeIdiExtractionMetadata, type IdiUploadExtraction } from "./enrichment/idi-upload";
 import { buildClosingPacketModel, type ClosingFieldInput, type ClosingPacketOptions } from "./documents/closing-packet-model";
-import { buildDiscoveryPacketModel, validatePacketModel, type PacketModel } from "./documents/packet-model";
+import {
+  buildDiscoveryDocumentModels,
+  buildDiscoveryPacketModel,
+  validatePacketModel,
+  type DiscoveryDocumentId,
+  type PacketModel,
+} from "./documents/packet-model";
 import { renderPacketPdf } from "./documents/packet-pdf";
 import { runDryPipeline } from "./index";
 import { fact, intakeSubject, nowIso, seedIdentity, slug } from "./lib";
@@ -1611,6 +1617,16 @@ interface StoredPacketArtifact {
   estateIds?: string[];
   flow?: "controlled-test" | "discovery" | "closing-docs";
   packetRevision?: number;
+  documentId?: DiscoveryDocumentId;
+  documentTitle?: string;
+  parentArtifactId?: string;
+}
+
+interface StoredDocumentPacketArtifact {
+  documentId: DiscoveryDocumentId;
+  title: string;
+  sectionIds: string[];
+  artifact: StoredPacketArtifact;
 }
 
 interface StoredSupportingDocument {
@@ -2899,7 +2915,14 @@ async function workspaceStateResponse(request: Request, url: URL, env: Cloudflar
 async function storePacketArtifact(
   model: PacketModel,
   env: CloudflareEnv,
-  binding: { estateIds?: string[]; flow?: "controlled-test" | "discovery" | "closing-docs"; packetRevision?: number } = {},
+  binding: {
+    estateIds?: string[];
+    flow?: "controlled-test" | "discovery" | "closing-docs";
+    packetRevision?: number;
+    documentId?: DiscoveryDocumentId;
+    documentTitle?: string;
+    parentArtifactId?: string;
+  } = {},
 ): Promise<StoredPacketArtifact> {
   if (!env.PACKET_ARTIFACTS) throw new Error("packet_artifact_store_not_configured");
   const serializedModel = JSON.stringify(model);
@@ -2918,10 +2941,20 @@ async function storePacketArtifact(
     ...(estateIds.length ? { estateIds } : {}),
     ...(binding.flow ? { flow: binding.flow } : {}),
     ...(Number.isInteger(packetRevision) && packetRevision > 0 ? { packetRevision } : {}),
+    ...(binding.documentId ? { documentId: binding.documentId } : {}),
+    ...(binding.documentTitle ? { documentTitle: binding.documentTitle } : {}),
+    ...(binding.parentArtifactId ? { parentArtifactId: binding.parentArtifactId } : {}),
   };
   await env.PACKET_ARTIFACTS.put(packetArtifactKey(id), JSON.stringify(artifact), {
     expirationTtl: 7 * 24 * 60 * 60,
-    metadata: { flow: binding.flow || model.flow, estateIds: estateIds.length ? estateIds : model.estateIds, contentHash, packetRevision: artifact.packetRevision },
+    metadata: {
+      flow: binding.flow || model.flow,
+      estateIds: estateIds.length ? estateIds : model.estateIds,
+      contentHash,
+      packetRevision: artifact.packetRevision,
+      documentId: artifact.documentId,
+      parentArtifactId: artifact.parentArtifactId,
+    },
   });
   return artifact;
 }
@@ -2930,6 +2963,7 @@ async function persistPacketArtifactReferences(
   env: CloudflareEnv,
   estateIds: string[],
   artifact: StoredPacketArtifact,
+  documentArtifacts: StoredDocumentPacketArtifact[] = [],
 ): Promise<Array<{ estateId: string; stored: boolean; readbackStatus: string }>> {
   if (!env.PACKET_ARTIFACTS) return estateIds.map((estateId) => ({ estateId, stored: false, readbackStatus: "storage_unavailable" }));
   return Promise.all(estateIds.map(async (estateId) => {
@@ -2946,6 +2980,18 @@ async function persistPacketArtifactReferences(
       contentType: "application/pdf",
       contentHash: artifact.contentHash,
       sections: artifact.model.sections,
+      documentArtifacts: documentArtifacts.map((document) => ({
+        documentId: document.documentId,
+        title: document.title,
+        sectionIds: document.sectionIds,
+        artifactId: document.artifact.id,
+        artifactUrl: `/api/reports/pdf?artifactId=${encodeURIComponent(document.artifact.id)}`,
+        contentType: "application/pdf",
+        contentHash: document.artifact.contentHash,
+        createdAt: document.artifact.createdAt,
+        expiresAt: document.artifact.expiresAt,
+        readbackStatus: "verified",
+      })),
       createdAt: artifact.createdAt,
       expiresAt: artifact.expiresAt,
       readbackStatus: "verified",
@@ -2980,7 +3026,7 @@ async function packetArtifactResponse(request: Request, url: URL, env: Cloudflar
     return json({ ok: false, error: "artifact_integrity_failed", message: "Packet integrity validation failed." }, { status: 409 });
   }
   const pdf = await renderPacketPdf(artifact.model);
-  const filename = `${artifact.model.flow === "closing-docs" ? "closing-prep" : "discovery-prep"}-${artifact.id}.pdf`;
+  const filename = `${artifact.documentId || (artifact.model.flow === "closing-docs" ? "closing-prep" : "discovery-prep")}-${artifact.id}.pdf`;
   return new Response(byteArrayBuffer(pdf), {
     headers: {
       "content-type": "application/pdf",
@@ -3122,11 +3168,12 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
       blockers: packetBlockers,
     }, { status: 422, headers: { "cache-control": "no-store" } });
   }
-  if (flow === "closing-docs") {
-    try {
-      await renderPacketPdf(model);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "closing_packet_render_failed";
+  const discoveryDocumentModels = flow === "discovery" ? buildDiscoveryDocumentModels(model) : [];
+  try {
+    await renderPacketPdf(model);
+    for (const document of discoveryDocumentModels) await renderPacketPdf(document.model);
+  } catch (error) {
+      const message = error instanceof Error ? error.message : `${flow}_packet_render_failed`;
       const overflowField = message.startsWith("closing_field_overflow:")
         ? message.split(":")[1]?.replace(/_/g, " ")
         : "";
@@ -3139,29 +3186,58 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
         error: message,
         blockers: [overflowField
           ? `${overflowField} does not fit its approved template blank. Shorten or correct the value before export.`
-          : "The immutable Closing template failed its integrity or layout check. Export was not stored or delivered."],
+          : flow === "closing-docs"
+            ? "The immutable Closing template failed its integrity or layout check. Export was not stored or delivered."
+            : "The Discovery packet or one of its separated document copies failed deterministic PDF rendering. Export was not stored or delivered."],
       }, { status: 422, headers: { "cache-control": "no-store" } });
-    }
   }
   let artifact: StoredPacketArtifact;
+  let documentArtifacts: StoredDocumentPacketArtifact[] = [];
   try {
     artifact = await storePacketArtifact(model, env, {
       estateIds: responseEstateIds,
       flow,
       ...(Number.isInteger(packetRevision) && packetRevision > 0 ? { packetRevision } : {}),
     });
+    if (flow === "discovery") {
+      documentArtifacts = [];
+      for (const document of discoveryDocumentModels) {
+        documentArtifacts.push({
+          documentId: document.documentId,
+          title: document.title,
+          sectionIds: document.sectionIds,
+          artifact: await storePacketArtifact(document.model, env, {
+            estateIds: responseEstateIds,
+            flow,
+            ...(Number.isInteger(packetRevision) && packetRevision > 0 ? { packetRevision } : {}),
+            documentId: document.documentId,
+            documentTitle: document.title,
+            parentArtifactId: artifact.id,
+          }),
+        });
+      }
+    }
   } catch (error) {
+    for (const stored of [artifact!, ...documentArtifacts.map((document) => document.artifact)].filter(Boolean)) {
+      try {
+        await env.PACKET_ARTIFACTS?.delete(packetArtifactKey(stored.id));
+      } catch {
+        // The blocked response below remains authoritative; cleanup is best effort.
+      }
+    }
     const message = error instanceof Error ? error.message : "packet_artifact_store_not_configured";
     return json({ ok: false, status: "blocked", flow, error: message, blockers: ["Durable packet storage is not configured."] }, { status: 503 });
   }
-  const packetPersistence = await persistPacketArtifactReferences(env, responseEstateIds, artifact);
+  const packetPersistence = await persistPacketArtifactReferences(env, responseEstateIds, artifact, documentArtifacts);
   const explicitPersistenceFailed = requestedEstateIds.length > 0
     && packetPersistence.some((item) => item.readbackStatus !== "verified");
   if (explicitPersistenceFailed) {
     let cleanupReadbackStatus = "unavailable";
     try {
-      await env.PACKET_ARTIFACTS?.delete(packetArtifactKey(artifact.id));
-      cleanupReadbackStatus = await env.PACKET_ARTIFACTS?.get(packetArtifactKey(artifact.id)) === null ? "verified" : "failed";
+      const cleanupArtifacts = [artifact, ...documentArtifacts.map((document) => document.artifact)];
+      await Promise.all(cleanupArtifacts.map((stored) => env.PACKET_ARTIFACTS?.delete(packetArtifactKey(stored.id))));
+      const cleanupReadbacks = await Promise.all(cleanupArtifacts.map((stored) => env.PACKET_ARTIFACTS?.get(packetArtifactKey(stored.id))));
+      cleanupReadbackStatus = cleanupReadbacks.every((value) => value === null) ? "verified" : "failed";
     } catch {
       cleanupReadbackStatus = "failed";
     }
@@ -3203,6 +3279,17 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
     routes: result.routes,
     readback: result.routes,
     packetPersistence,
+    documentArtifacts: documentArtifacts.map((document) => ({
+      documentId: document.documentId,
+      title: document.title,
+      sectionIds: document.sectionIds,
+      artifactId: document.artifact.id,
+      artifactUrl: `/api/reports/pdf?artifactId=${encodeURIComponent(document.artifact.id)}`,
+      contentType: "application/pdf",
+      contentHash: document.artifact.contentHash,
+      expiresAt: document.artifact.expiresAt,
+      readbackStatus: "verified",
+    })),
     delivery: result,
     artifact: {
       kind: "single_pdf",

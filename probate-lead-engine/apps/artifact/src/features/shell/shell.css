@@ -896,7 +896,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--hr-space-3);
-  padding: 0 var(--hr-space-3);
+  padding: 0 var(--hr-space-3) 10px;
   color: var(--hr-text-muted);
   background: var(--hr-chrome);
   border: 0;

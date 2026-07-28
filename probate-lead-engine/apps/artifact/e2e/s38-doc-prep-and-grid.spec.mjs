@@ -1,5 +1,17 @@
 import { expect, test } from "@playwright/test";
 
+const DISCOVERY_DOCUMENTS = [
+  ["completed-report", "Completed Lead Report"],
+  ["source-notes", "Source Notes"],
+  ["deed-title-notes", "Deed & Title Notes"],
+  ["tax-history", "Tax History"],
+  ["probate-request", "Probate Request"],
+  ["heir-contact-matrix", "Heir Contact Matrix"],
+  ["outreach-drafts", "Outreach Drafts"],
+  ["drip-schedule", "Drip Schedule"],
+  ["crm-handoff", "CRM Handoff"],
+];
+
 function watchBrowserFailures(page, { expectedHttpStatuses = [] } = {}) {
   const failures = [];
   const expectedStatuses = new Set(expectedHttpStatuses.map(Number));
@@ -401,7 +413,28 @@ async function installSuccessfulIdiPipeline(page, { failFirstExtraction = false,
       const artifactId = `packet-1780000000000-${String(index).padStart(16, "0")}`;
       const contentHash = String(index).repeat(64).slice(0, 64);
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      packetArtifacts.set(artifactId, { contentHash });
+      packetArtifacts.set(artifactId, { contentHash, bytes: packetBytes });
+      const documentArtifacts = DISCOVERY_DOCUMENTS.map(([documentId, title], documentIndex) => {
+        const childArtifactId = `${artifactId}-${String(documentIndex + 1).padStart(2, "0")}`;
+        const childContentHash = `${index}${documentIndex + 1}`.repeat(64).slice(0, 64);
+        const childBytes = Buffer.concat([
+          Buffer.from(`%PDF-1.4\n% ${documentId}\n`),
+          Buffer.alloc(1_200 + documentIndex, 32),
+          Buffer.from("\n%%EOF\n"),
+        ]);
+        packetArtifacts.set(childArtifactId, { contentHash: childContentHash, bytes: childBytes });
+        return {
+          documentId,
+          title,
+          sectionIds: [`${documentId}-section`],
+          artifactId: childArtifactId,
+          artifactUrl: `/api/reports/pdf?artifactId=${encodeURIComponent(childArtifactId)}`,
+          contentType: "application/pdf",
+          contentHash: childContentHash,
+          expiresAt,
+          readbackStatus: "verified",
+        };
+      });
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -416,6 +449,7 @@ async function installSuccessfulIdiPipeline(page, { failFirstExtraction = false,
           sections: [],
           routes: [],
           packetPersistence: [{ estateId: body.estateId, stored: true, readbackStatus: "verified" }],
+          documentArtifacts,
           artifact: {
             kind: "single_pdf",
             artifactId,
@@ -450,7 +484,7 @@ async function installSuccessfulIdiPipeline(page, { failFirstExtraction = false,
         "x-heirright-artifact-id": artifactId,
         "x-heirright-content-hash": packet.contentHash,
       },
-      body: packetBytes,
+      body: packet.bytes,
     });
   });
 
@@ -507,11 +541,9 @@ test("Document Prep keeps the estate visible, rejects unsupported reports inline
   await page.keyboard.press("Enter");
   await expect(discoveryFlowTab).toBeFocused();
 
-  const previouslySelectedDocumentId = await workspace.locator('[data-document-open][aria-current="true"]').first().getAttribute("data-document-open");
-  const rowDocumentId = await workspace.locator('[data-document-open][aria-current="false"]').first().getAttribute("data-document-open");
-  const previouslySelectedRow = workspace.locator(`[data-document-open="${previouslySelectedDocumentId}"]`);
+  await expect(workspace.locator('[data-document-open][aria-current="true"]')).toHaveCount(0);
+  const rowDocumentId = await workspace.locator("[data-document-open]").first().getAttribute("data-document-open");
   const row = workspace.locator(`[data-document-open="${rowDocumentId}"]`);
-  await expect(previouslySelectedRow).toBeVisible();
   await expect(row).toBeVisible();
   await expect(row).toHaveAttribute("role", "button");
   await expect(row).toHaveAttribute("tabindex", "0");
@@ -525,7 +557,6 @@ test("Document Prep keeps the estate visible, rejects unsupported reports inline
   await expect(page.locator("[data-document-preview]")).toBeVisible();
   await expect(page.locator('[data-docprep-rail-panel="document"] h2')).toHaveText(rowTitle);
   await expect(row).toHaveAttribute("aria-current", "true");
-  await expect(previouslySelectedRow).toHaveAttribute("aria-current", "false");
   await closeUnifiedRail(page);
 
   await workspace.locator("[data-document-open]").first().focus();
@@ -660,6 +691,26 @@ test("a verified PDF binds to the selected estate, runs Discovery automatically,
   await expect(workspace.locator("[data-local-packet-complete]"), "Discovery must complete locally even when Google is absent").toBeVisible({ timeout: 30_000 });
   await expect.poll(() => pipeline.exportRequests.length, { timeout: 30_000 }).toBe(1);
   expect(pipeline.exportRequests[0]).toMatchObject({ estateId, flow: "discovery", packetRevision: 1 });
+  await expect(workspace.locator('[data-document-open="completed-report"]')).toContainText("Verified");
+
+  await workspace.locator('[data-document-open="completed-report"]').click();
+  await expect(page.locator("#s38UnifiedRail [role='tab']")).toHaveText([
+    "Automation",
+    "Document",
+    "Attachments",
+    "Completion",
+  ]);
+  await expect(page.locator('[data-docprep-rail-panel="document"] h2')).toHaveText("Completed Lead Report");
+  await expect(page.locator("[data-document-preview] iframe")).toHaveAttribute("src", /artifactId=.*-01$/);
+  await page.locator('[data-rail-action="show-full-packet"]').click();
+  await expect(page.locator('[data-docprep-rail-panel="document"]')).toHaveAttribute("data-document-view", "full-packet");
+  await expect(page.locator("[data-document-preview] iframe")).toHaveAttribute("src", /artifactId=packet-1780000000000-0000000000000001$/);
+  await page.locator('[data-unified-rail-tab="attachments"]').click();
+  await expect(page.locator('[data-docprep-rail-panel="attachments"] h2')).toHaveText("Attachments");
+  await expect.poll(() => page.locator("[data-attachment-id]").count()).toBeGreaterThanOrEqual(4);
+  await expect(page.locator('[data-docprep-rail-panel="attachments"]')).toContainText("Obituary");
+  await expect(page.locator('[data-docprep-rail-panel="attachments"]')).toContainText("Back Story");
+  await closeUnifiedRail(page);
 
   await workspace.locator('[data-document-open="idi-asset-search"]').click();
   await expect(page.locator('[data-docprep-rail-panel="document"] h2')).toHaveText("IDI Core Report");

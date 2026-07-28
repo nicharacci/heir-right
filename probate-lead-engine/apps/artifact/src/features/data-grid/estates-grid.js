@@ -61,14 +61,14 @@ function renderEstatesGrid({ bridge }) {
         <div><p class="hr-grid-eyebrow">Estates</p><h1>Estate review</h1><p>Sort and filter the property files, then press Enter on a row to open Document Prep.</p></div>
         <div class="hr-grid-controls">
           <label class="hr-grid-search"><span>Filter estates</span><input type="search" value="${escape(estateQuery)}" data-grid-quick-filter placeholder="Owner, address, county, or status"></label>
-          <button type="button" class="hr-grid-filter-toggle" data-estate-filters-toggle aria-expanded="${estateFiltersOpen}" aria-controls="hrEstateFilters">Filters <span data-estate-filter-count data-active="${filterCount > 0}">${filterCount}</span></button>
+          <button type="button" class="hr-grid-filter-toggle beui-popover-trigger" data-estate-filters-toggle aria-expanded="${estateFiltersOpen}" aria-controls="hrEstateFilters">Filters <span data-estate-filter-count data-active="${filterCount > 0}">${filterCount}</span></button>
           <span class="hr-estate-selection-assist" data-estates-selection-assist ${selectedCount ? "" : "hidden"}>
             <button type="button" class="hr-grid-primary-action" data-estates-add-queue ${selectedCount ? "" : "disabled"}>${selectedCount === 1 ? "Add estate to Queue" : `Add ${selectedCount} estates to Queue`}</button>
           </span>
           <span class="hr-grid-action-status" data-grid-status aria-live="polite"></span>
         </div>
       </header>
-      <section class="hr-estate-filters" id="hrEstateFilters" aria-label="Estate list filters" ${estateFiltersOpen ? "" : "hidden"}>
+      <section class="hr-estate-filters beui-popover" id="hrEstateFilters" data-beui-menu-surface aria-label="Estate list filters" ${estateFiltersOpen ? "" : "hidden"}>
         <label><span>County</span><select data-estate-filter="county">${countyOptions(snapshot.estates, escape)}</select></label>
         <label><span>Property status</span><select data-estate-filter="status">
           <option value="all">All statuses</option>
@@ -87,7 +87,7 @@ function renderEstatesGrid({ bridge }) {
           <option value="phones" ${estateFilters.missing === "phones" ? "selected" : ""}>Phone numbers</option>
           <option value="podio" ${estateFilters.missing === "podio" ? "selected" : ""}>CRM review</option>
         </select></label>
-        <label class="hr-estate-priority-filter"><input type="checkbox" data-estate-filter="priorityOnly" ${estateFilters.priorityOnly ? "checked" : ""}><span>High priority only</span></label>
+        <label class="hr-estate-priority-filter beui-checkbox"><input type="checkbox" data-estate-filter="priorityOnly" ${estateFilters.priorityOnly ? "checked" : ""}><span>High priority only</span></label>
         <button type="button" class="hr-text-command" data-estate-filters-clear>Clear filters</button>
       </section>
       <div class="hr-community-grid" data-community-grid="estates" data-grid-label="Estates"></div>

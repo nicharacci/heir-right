@@ -107,6 +107,24 @@ function snapshotFor(estateId = "estate-contract") {
       googleDestination: "",
       googleHandoffReady: true,
       googleHandoffDestination: "Discovery Packets / Estate of Morgan Reyes",
+      packet: {
+        artifactId: "packet-contract-1",
+        artifactUrl: "/api/reports/pdf?artifactId=packet-contract-1",
+        contentHash: "parent-hash",
+        fileName: "Discovery Packet - Morgan Reyes.pdf",
+      },
+      attachments: [{
+        id: "obituary-evidence",
+        label: "Obituary",
+        source: "Public obituary",
+        step: "Back Story",
+        href: "https://example.test/morgan-reyes-obituary",
+        fileName: "",
+        fileKind: "link",
+        capturedAt: new Date(now - 90_000).toISOString(),
+        reviewFlags: [],
+        downloadable: false,
+      }],
       automation: { status: "exported" },
       documents: [
         {
@@ -117,6 +135,10 @@ function snapshotFor(estateId = "estate-contract") {
           source: "IDI Core upload",
           updatedAt: now - 60_000,
           hasVerifiedFile: true,
+          artifactId: "idi-contract-1",
+          artifactUrl: "/api/documents/attachments?artifactId=idi-contract-1",
+          contentHash: "idi-hash",
+          fileName: "Morgan Reyes IDI Report.pdf",
           selected: true,
           fileSource: "",
           workflowStatus: "complete",
@@ -129,6 +151,10 @@ function snapshotFor(estateId = "estate-contract") {
           source: "Operator upload",
           updatedAt: now - 120_000,
           hasVerifiedFile: true,
+          artifactId: "support-contract-1",
+          artifactUrl: "/api/documents/attachments?artifactId=support-contract-1",
+          contentHash: "support-hash",
+          fileName: "Supporting affidavit.pdf",
           selected: false,
           fileSource: "supporting_document",
           workflowStatus: "complete",
@@ -479,8 +505,9 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   const snapshot = snapshotFor();
   const actionHandlers = new Set(railModule.docPrepRail.tabs.flatMap((tab) => Object.keys(tab.actions || {})));
   const idiRail = railModule.renderDocumentRail({ bridge: bridgeFor(snapshot), snapshot });
-  assert.deepEqual(railActionNames(idiRail), ["open-document", "download-document", "replace-document", "queue-document"]);
-  assert.match(idiRail, /data-document-preview[\s\S]*Document preview[\s\S]*Operator-approved source report/);
+  assert.deepEqual(railActionNames(idiRail), ["show-full-packet", "open-document", "download-document", "replace-document", "queue-document"]);
+  assert.match(idiRail, /data-document-preview[\s\S]*iframe[\s\S]*idi-contract-1/);
+  assert.match(idiRail, /data-rail-action="show-full-packet"[^>]*>Show full packet/);
   assert.match(idiRail, /data-rail-action="open-document"[^>]*>Open verified file/);
   assert.match(idiRail, /data-rail-action="download-document"[^>]*>Download verified file/);
   assert.match(idiRail, /data-rail-action="replace-document"[^>]*>Replace IDI report/);
@@ -518,6 +545,19 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   for (const html of [idiRail, supportingRail, generatedRail]) {
     railActionNames(html).forEach((action) => assert.ok(actionHandlers.has(action), `missing rail action handler: ${action}`));
   }
+
+  const fullPacketSnapshot = structuredClone(snapshot);
+  fullPacketSnapshot.docPrep.documents.forEach((document) => { document.selected = false; });
+  const fullPacketRail = railModule.renderDocumentRail({ bridge: bridgeFor(fullPacketSnapshot), snapshot: fullPacketSnapshot });
+  assert.match(fullPacketRail, /data-document-view="full-packet"[\s\S]*All generated estate sections in one document/);
+  assert.match(fullPacketRail, /iframe[\s\S]*packet-contract-1/);
+  assert.deepEqual(railActionNames(fullPacketRail), ["open-packet", "download-packet"]);
+
+  assert.deepEqual(railModule.docPrepRail.tabs.map((tab) => tab.id), ["automation", "document", "attachments", "completion"]);
+  const attachmentsRail = railModule.renderAttachmentsRail({ bridge: bridgeFor(snapshot), snapshot });
+  assert.match(attachmentsRail, /data-docprep-rail-panel="attachments"[\s\S]*Obituary[\s\S]*Back Story · Public obituary/);
+  assert.match(attachmentsRail, /data-rail-action="open-attachment"/);
+  assert.doesNotMatch(attachmentsRail, /download-attachment/, "a remote link is openable but must not claim a local download");
 
   const completion = railModule.renderCompletionRail({ bridge: bridgeFor(snapshot), snapshot });
   assert.match(completion, /data-rail-action="open-packet"[^>]*>Open current packet/);
@@ -1219,7 +1259,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(legacy, /state\.selectedDossierDocId = documentId;\s*if \(action === "select"\) return;/);
   assert.match(read("src/features/doc-prep/doc-prep-view.js"), /action: "select"/);
   assert.doesNotMatch(read("src/features/doc-prep/doc-prep-view.js"), /openDocumentContext[\s\S]*action: "preview"/);
-  assert.match(railModule.docPrepRail.tabs[2].actions["deliver-google-packet"].toString(), /deliver-google-packet/);
+  assert.match(railModule.docPrepRail.tabs.find((tab) => tab.id === "completion").actions["deliver-google-packet"].toString(), /deliver-google-packet/);
   assert.match(legacy, /documentActionModalInvoker = document\.activeElement/);
   assert.match(legacy, /s38OpenRail[\s\S]*visibleInvoker[\s\S]*visibleAction/, "file-control and handoff dialogs must restore focus to a visible invoker, action, or Case Journey trigger");
   const modalInert = legacy.slice(legacy.indexOf("function setDocumentActionModalBackgroundInert"), legacy.indexOf("function openDocumentActionModal"));

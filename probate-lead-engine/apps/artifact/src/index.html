@@ -52,57 +52,57 @@
     <header class="topbar">
       <label class="search-control">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m21 21-4.6-4.6M10.7 18a7.3 7.3 0 1 1 0-14.6 7.3 7.3 0 0 1 0 14.6Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        <input id="globalSearch" type="search" placeholder="Search by estate, address, case, folio, or missing info" aria-label="Search leads">
+        <input id="globalSearch" class="beui-input" type="search" placeholder="Search by estate, address, case, folio, or missing info" aria-label="Search leads">
         <span class="kbd">/</span>
       </label>
       <div id="searchPopup" class="search-popup" role="dialog" aria-label="Search results" hidden></div>
       <div id="topStatus" class="top-status">Load the latest lead packet to begin.</div>
       <div class="top-actions">
-        <div id="crmImportMenu" class="import-menu" data-open="false">
+        <div id="crmImportMenu" class="import-menu beui-menu-shell" data-open="false">
           <div class="import-split" aria-label="Import estates">
             <button id="crmImportSingle" class="import-split-main" type="button" data-open-crm-import title="Import one estate">
               <span>Import</span>
             </button>
-            <button id="crmImportBatchToggle" class="import-split-menu" type="button" aria-label="Open batch import menu" aria-haspopup="menu" aria-expanded="false" data-crm-import-batch-toggle>
+            <button id="crmImportBatchToggle" class="import-split-menu beui-menu-trigger" type="button" aria-label="Open batch import menu" aria-haspopup="menu" aria-expanded="false" data-crm-import-batch-toggle>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
-          <div id="crmImportPopover" class="import-popover t-dropdown" role="menu" aria-label="Batch import source" hidden>
-            <button class="import-option" type="button" role="menuitem" data-crm-batch-import="podio">
+          <div id="crmImportPopover" class="import-popover beui-menu t-dropdown" data-beui-menu-surface role="menu" aria-label="Batch import source" hidden>
+            <button class="import-option beui-menu-item" type="button" role="menuitem" data-crm-batch-import="podio">
               <span><strong>Batch from Podio</strong><span>Paste exported Lead rows for review.</span></span>
             </button>
-            <button class="import-option" type="button" role="menuitem" data-crm-batch-import="google-sheets">
+            <button class="import-option beui-menu-item" type="button" role="menuitem" data-crm-batch-import="google-sheets">
               <span><strong>Batch from Sheets</strong><span>Paste spreadsheet rows into DocPrep.</span></span>
             </button>
-            <button class="import-option" type="button" role="menuitem" data-crm-batch-import="csv">
+            <button class="import-option beui-menu-item" type="button" role="menuitem" data-crm-batch-import="csv">
               <span><strong>Batch from CSV</strong><span>Paste pipe, tab, or CSV rows.</span></span>
             </button>
           </div>
         </div>
-        <div id="exportMenu" class="export-menu" data-open="false">
-          <button id="exportToggle" class="btn primary export-toggle solvys-liquid-glass" type="button" aria-haspopup="menu" aria-expanded="false">
+        <div id="exportMenu" class="export-menu beui-menu-shell" data-open="false">
+          <button id="exportToggle" class="btn primary export-toggle solvys-liquid-glass beui-menu-trigger" type="button" aria-haspopup="menu" aria-expanded="false">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v11m0-11 4 4m-4-4-4 4M6 11v8h12v-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span id="exportToggleLabel" class="export-toggle-label">Prep export</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div id="exportPopover" class="export-popover solvys-liquid-glass-strong t-dropdown" data-origin="top-right" role="menu" aria-label="Choose export route">
-            <button class="export-option" type="button" role="menuitem" data-export-route="queue">
+          <div id="exportPopover" class="export-popover beui-menu solvys-liquid-glass-strong t-dropdown" data-beui-menu-surface data-origin="top-right" role="menu" aria-label="Choose export route">
+            <button class="export-option beui-menu-item" type="button" role="menuitem" data-export-route="queue">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h8M8 14h5M17 14l2 2 3-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
               <span><strong>Add to Queue</strong><span>Stage selected leads for one batch export review.</span></span>
             </button>
-            <button class="export-option" type="button" role="menuitem" data-export-route="google">
+            <button class="export-option beui-menu-item" type="button" role="menuitem" data-export-route="google">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Z" stroke="currentColor" stroke-width="1.7"/><path d="m5 8 7 5 7-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
               <span><strong>Google Workspace</strong><span>Prepare the completed report package for Docs or Sheets review.</span></span>
             </button>
-            <button class="export-option" type="button" role="menuitem" data-export-route="podio">
+            <button class="export-option beui-menu-item" type="button" role="menuitem" data-export-route="podio">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 6h14v12H5V6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
               <span><strong>Podio</strong><span>Prepare the completed report and lead fields for CRM review.</span></span>
             </button>
-            <button class="export-option" type="button" role="menuitem" data-export-route="podio-test">
+            <button class="export-option beui-menu-item" type="button" role="menuitem" data-export-route="podio-test">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 5.5h14v13H5v-13Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9h8M8 13h5M16 16.5l2 2 3-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
               <span><strong>Run Podio readiness check</strong><span>Create one approved sample Lead card and confirm it comes back.</span></span>
             </button>
-            <button class="export-option" type="button" role="menuitem" data-export-route="both">
+            <button class="export-option beui-menu-item" type="button" role="menuitem" data-export-route="both">
               <span class="export-option-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M8 7h10v12H8V7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1M11 11h4M11 15h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
               <span><strong>Google + Podio</strong><span>Prepare one completed report package for both export routes.</span></span>
             </button>
@@ -297,11 +297,11 @@
                 <button id="estateArchiveToggle" class="btn text-action" type="button" aria-pressed="false">Archive</button>
                 <span id="selectionState">0 selected</span>
                 <span class="table-filters-wrap">
-                  <button id="tableFiltersToggle" class="btn quick table-filters-toggle solvys-liquid-glass" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="tableFiltersPopover">
+                  <button id="tableFiltersToggle" class="btn quick table-filters-toggle solvys-liquid-glass beui-popover-trigger" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="tableFiltersPopover">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
                     Filters
                   </button>
-                  <div id="tableFiltersPopover" class="table-filters-popover solvys-liquid-glass-strong" role="dialog" aria-label="Estate list filters" hidden></div>
+                  <div id="tableFiltersPopover" class="table-filters-popover beui-popover solvys-liquid-glass-strong" data-beui-menu-surface role="dialog" aria-label="Estate list filters" hidden></div>
                 </span>
               </span>
             </div>
@@ -570,7 +570,7 @@
 <div id="crmImportModalMount"></div>
 <div id="outreachNotificationMount" class="outreach-toast-mount" aria-live="polite"></div>
 <div id="walkthroughMount" aria-live="polite"></div>
-<div id="accountMenu" class="account-menu" role="menu" aria-label="Account menu" data-open="false"></div>
+<div id="accountMenu" class="account-menu beui-menu" data-beui-menu-surface role="menu" aria-label="Account menu" data-open="false"></div>
 <div id="authGate" class="auth-gate" role="presentation" aria-live="polite">
   <section class="auth-card" role="dialog" aria-modal="true" aria-label="Checking access">
     <div>

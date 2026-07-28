@@ -384,7 +384,8 @@ export function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholde
     phones: [],
     emails: [],
     addresses: node.contactPlaceholder ? [node.contactPlaceholder] : [],
-    note: node.contactPlaceholder ?? "Contact candidate pending enrichment or manual capture.",
+    note: node.contactPlaceholder
+      ?? "IDI report pending. Public-source relationship hypothesis only; contact use and heirship still require operator review.",
     reviewFlags: uniqueFlags([...node.reviewFlags, "NO_ENRICHMENT_RUN", "HUMAN_REVIEW_REQUIRED"]),
   }));
 }
@@ -404,12 +405,12 @@ function safeSourceLinkUrl(value: unknown): string | undefined {
 function buildSourceLinks(dossier: RawDossier): Array<{ label: string; url?: string; source: SourceKey }> {
   const links = new Map<string, { label: string; url?: string; source: SourceKey }>();
   for (const fact of dossier.audit.facts) {
-    const sourceUrl = safeSourceLinkUrl(fact.sourceUrl);
+    const sourceUrl = safeSourceLinkUrl(fact.attachment?.sourceUrl || fact.sourceUrl);
     if (!sourceUrl) continue;
     const key = `${fact.source}:${sourceUrl}`;
     if (!links.has(key)) {
       links.set(key, {
-        label: `${fact.source} search`,
+        label: fact.attachment?.label || fact.factType.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
         url: sourceUrl,
         source: fact.source,
       });
@@ -431,6 +432,7 @@ function buildMissingData(dossier: RawDossier, offerMath: OfferProfitMath, inclu
   if (!dossier.deedHistory.latestDeed.value) missing.push("Latest deed record");
   if (!dossier.probateDocket.caseNumber.value) missing.push("Probate case number");
   if (!dossier.marriageDeathIndicators.dateOfDeath.value) missing.push("Date of death");
+  if (!safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value)) missing.push("Source-verified obituary");
   if (!dossier.familyTree.hypothesis.value?.nodes.length) missing.push("Family tree hypothesis nodes");
   if (includeDealSection && offerMath.asIsValue.value === null) missing.push("As-is value");
   if (includeDealSection && offerMath.heirCount.value === null) missing.push("Confirmed heir count");
@@ -439,10 +441,23 @@ function buildMissingData(dossier: RawDossier, offerMath: OfferProfitMath, inclu
 
 function buildBackstory(dossier: RawDossier): string {
   const enrichedContacts = dossier.audit.facts.filter((item) => item.factType === "enriched_contact_profile").length;
+  const familyNodes = dossier.familyTree.hypothesis.value?.nodes.filter((node) => node.name) ?? [];
+  const reportedSpouse = familyNodes.find((node) => node.role === "spouse")?.name;
+  const reportedChildren = familyNodes.filter((node) => node.role === "child").map((node) => node.name);
+  const publicEstateNarrative = safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value)
+    ? [
+      `The public record review concerns ${claimText(dossier.property.address.value)}. The Property Appraiser lists ${claimText(dossier.property.ownerName.value)} as owner of record and ${claimText(dossier.deedHistory.mailingAddressSignal.value)} as the mailing address.`,
+      dossier.deedHistory.orBookPage.value
+        ? `The latest sale is dated ${claimText(dossier.deedHistory.lastSaleDate.value)} and points to OR Book ${claimText(dossier.deedHistory.orBookPage.value.book)}, Page ${claimText(dossier.deedHistory.orBookPage.value.page)}.`
+        : `The latest deed and OR book/page still need confirmation.`,
+      `The published probate notice identifies case ${claimText(dossier.probateDocket.caseNumber.value)} and reports a date of death of ${claimText(dossier.marriageDeathIndicators.dateOfDeath.value)}.`,
+      `The published obituary reports a date of birth of ${claimText(dossier.marriageDeathIndicators.dateOfBirth.value)}${reportedSpouse ? ` and names ${reportedSpouse} as the spouse` : ""}${reportedChildren.length ? `, with ${reportedChildren.join(", ")} reported as children` : ""}. These relationship notes remain research hypotheses until the IDI report and probate records are reviewed.`,
+    ].join(" ")
+    : "";
   const parts = [
     enrichedContacts
       ? `${dossier.summary.displayName} was prepared as a family-tree discovery packet from the current public-record lead run. The packet includes property identity, deed history, tax review, probate review, and ${enrichedContacts} enriched contact profile${enrichedContacts === 1 ? "" : "s"} for operator review.`
-      : dossier.narrative,
+      : publicEstateNarrative || dossier.narrative,
     dossier.deedHistory.adversePossessionSignal.value === false
       ? "No adverse possession signal is currently recorded."
       : "Adverse possession status requires operator review.",
@@ -456,7 +471,7 @@ function buildBackstory(dossier: RawDossier): string {
       ? `Mortgage signal: ${dossier.deedHistory.mortgageSignal.value}.`
       : "Mortgage balance/details require operator confirmation.",
     dossier.probateDocket.caseStatus.value
-      ? `Probate case status: ${dossier.probateDocket.caseStatus.value}.`
+      ? `Probate case status: ${String(dossier.probateDocket.caseStatus.value).replace(/[.]+$/, "")}.`
       : "Probate case status is still open for research.",
     "Family tree and heirship notes are hypotheses only and do not constitute legal heir determinations.",
   ];
@@ -600,10 +615,21 @@ function renderFamilyTreePacketHtml(input: {
     ["", "", "", "yellow"],
     ["", "", "", "yellow"],
   ];
-  const sourceLink = safeSourceLinkUrl(input.dossier.completedLeadReport?.sourceLinks.find((link) => link.url)?.url) ?? "#";
+  const sourceLinks = buildSourceLinks(dossier);
+  const sourceLink = safeSourceLinkUrl(
+    sourceLinks.find((link) => link.source === "property_appraiser")?.url
+    || sourceLinks.find((link) => link.url)?.url,
+  ) ?? "#";
   const obituaryLink = safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value);
   const contactChecklist = input.researchChecklist.find((step) => step.code === "CONTACTS");
-  const openChecklist = input.researchChecklist.filter((step) => step.status !== "complete");
+  const backstoryEvidence = sourceLinks.length
+    ? `<p class="evidence"><strong>Back Story evidence:</strong> ${sourceLinks.map((link) => {
+      const href = safeSourceLinkUrl(link.url);
+      return href
+        ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer noopener">${escapeHtml(link.label)}</a>`
+        : escapeHtml(link.label);
+    }).join(" | ")}</p>`
+    : '<p class="evidence"><strong>Back Story evidence:</strong> Source links need review.</p>';
   const contactBlocks = contacts.map((contact, index) => {
     const name = escapeHtml(contact.name ?? `Possible heir ${index + 1}`);
     const age = contact.age ? `<p>(${contact.age})</p>` : "";
@@ -632,22 +658,26 @@ function renderFamilyTreePacketHtml(input: {
     ? `<table class="offer">
     <tr class="bar"><th colspan="3">Offer/Profit</th></tr>
     <tr><th>Description</th><th>Percentage</th><th>Total</th></tr>
-    ${offerRows.map(([label, percentage, total, tone]) => `<tr class="${tone}"><td><strong>${escapeHtml(label)}</strong></td><td>${escapeHtml(percentage)}</td><td>${escapeHtml(total)}</td></tr>`).join("")}
+    ${offerRows.map(([label, percentage, total, tone]) => `<tr class="${tone}"><td class="${["As-Is Value", "Post Equity Value", "Profit", "Min Profit"].includes(label) ? "strong" : ""}">${escapeHtml(label)}</td><td>${escapeHtml(percentage)}</td><td>${escapeHtml(total)}</td></tr>`).join("")}
   </table>`
     : `<table class="packet-summary">
     <tr class="bar"><th colspan="2">Discovery Summary</th></tr>
     ${packetSummaryRows.map(([label, value]) => `<tr><td><strong>${escapeHtml(label)}</strong></td><td>${escapeHtml(value)}</td></tr>`).join("")}
   </table>`;
   const tableStyles = includeDealSection
-    ? `table.offer, table.packet-summary { border-collapse: collapse; width: 470px; margin: 0 auto 24px; font-size: 14px; }
-  .offer th, .offer td, .packet-summary th, .packet-summary td { border: 1px solid #111; height: 21px; padding: 1px 8px; text-align: center; }
+    ? `table.offer, table.packet-summary { border-collapse: collapse; width: 332pt; margin: 0 0 25pt; font-size: 11pt; }
+  .offer th, .offer td, .packet-summary th, .packet-summary td { border: 0.7pt solid #111; height: 16.5pt; padding: 0 4pt; text-align: center; font-weight: 400; }
+  .offer th, .offer td.strong { font-weight: 700; }
+  .offer th:first-child, .offer td:first-child { width: 106pt; }
+  .offer th:nth-child(2), .offer td:nth-child(2) { width: 115pt; }
+  .offer th:nth-child(3), .offer td:nth-child(3) { width: 111pt; }
   .offer .bar th { background: #43abd6; font-weight: 700; }
   .offer .blue td:first-child { background: #13a3d8; font-weight: 700; }
-  .offer .yellow td:first-child { background: #ffc20a; }
+  .offer .yellow td:first-child { background: #ffc000; }
   .packet-summary .bar th { background: #43abd6; font-weight: 700; }
   .packet-summary td:first-child { width: 36%; text-align: left; }
   .packet-summary td:last-child { text-align: left; }`
-    : `table.packet-summary { border-collapse: collapse; width: 470px; margin: 0 auto 24px; font-size: 14px; }
+    : `table.packet-summary { border-collapse: collapse; width: 332pt; margin: 0 0 25pt; font-size: 11pt; }
   .packet-summary th, .packet-summary td { border: 1px solid #111; height: 21px; padding: 1px 8px; text-align: center; }
   .packet-summary .bar th { background: #43abd6; font-weight: 700; }
   .packet-summary td:first-child { width: 36%; text-align: left; }
@@ -663,56 +693,40 @@ function renderFamilyTreePacketHtml(input: {
   @page { size: letter; margin: 0.75in; }
   * { box-sizing: border-box; }
   body { margin: 0; background: #303030; color: #000; font-family: Arial, Helvetica, sans-serif; }
-  main { width: 8.5in; min-height: 11in; margin: 24px auto; background: #fff; padding: 0.82in 0.85in; font-size: 15px; line-height: 1.45; }
-  h1 { text-align: center; font-size: 30px; margin: 0 0 18px; font-weight: 500; letter-spacing: 0; }
-  .subtitle { text-align: center; font-size: 30px; margin: 0 0 18px; font-weight: 700; }
-  .date { text-align: center; margin-bottom: 56px; }
-  .property { text-align: left; margin: 0 auto 8px; width: 470px; }
+  main { width: 8.5in; min-height: 11in; margin: 24px auto; background: #fff; padding: 0.82in 1in; font-size: 11pt; line-height: 1.45; }
+  h1 { text-align: center; font-size: 26pt; line-height: 1.7; margin: 0; font-weight: 400; letter-spacing: 0; }
+  .subtitle { text-align: center; font-size: 26pt; line-height: 1.7; margin: 0; font-weight: 400; }
+  .date { text-align: center; font-size: 10pt; margin: 0 0 40pt; }
+  .property { text-align: left; margin: 0 0 7pt; width: 468pt; }
   a { color: #06e; text-decoration: underline; }
   ${tableStyles}
-  .summary { width: 470px; margin: 0 auto 28px; }
-  .summary p { margin: 4px 0; }
-  .status { width: 470px; margin: 0 auto 28px; border-top: 1px solid #777; border-bottom: 1px solid #777; padding: 10px 0; }
-  .status p { margin: 4px 0; }
+  .summary { width: 468pt; margin: 0 0 28pt; }
+  .summary p { margin: 0 0 4pt; }
   .story { margin-top: 10px; }
+  .evidence { margin-top: 18px; line-height: 1.7; }
   .person { page-break-inside: avoid; margin-top: 28px; }
   .person h3 { margin: 0 0 4px; font-size: 16px; }
   .person h4 { margin: 24px 0 4px; font-size: 14px; }
   .person p { margin: 2px 0; }
-  .toc { page-break-after: always; margin-top: 60px; }
-  .toc h2 { font-size: 20px; margin-bottom: 16px; }
-  .toc ol { line-height: 1.8; }
   @media print { body { background: #fff; } main { margin: 0; box-shadow: none; } }
 </style>
 </head>
 <body>
 <main>
   <h1>${escapeHtml(title)}</h1>
-  <p class="subtitle">Family tree</p>
+  <p class="subtitle">Family Tree</p>
   <p class="date">Date added: ${escapeHtml(formatShortDate(dossier.generatedAt))}</p>
   <p class="property">Property Address: <a href="${escapeHtml(sourceLink)}">${escapeHtml(propertyAddress)}</a></p>
   ${packetSummaryTable}
   <section class="summary">
+    <p><strong>Owner:</strong></p>
     <p><strong>${escapeHtml(ownerName)}</strong></p>
     <p>DOB: ${escapeHtml(claimText(dossier.marriageDeathIndicators.dateOfBirth.value, "Needs review"))}</p>
     <p>DOD: ${escapeHtml(claimText(dossier.marriageDeathIndicators.dateOfDeath.value, "Needs review"))}</p>
-    <p>Obituary ${obituaryLink ? `<a href="${escapeHtml(obituaryLink)}" target="_blank" rel="noreferrer noopener">Found</a>` : `not found - <a href="https://www.intelius.com/" target="_blank" rel="noreferrer noopener">Intelius</a>`}</p>
+    <p>${obituaryLink ? `<a href="${escapeHtml(obituaryLink)}" target="_blank" rel="noreferrer noopener">Obituary</a> - <a href="${escapeHtml(obituaryLink)}" target="_blank" rel="noreferrer noopener">View source</a>` : "Obituary - Needs review"}</p>
   </section>
-  <section class="status">
-    <p><strong>Discovery status:</strong> ${openChecklist.length ? `${openChecklist.length} open section${openChecklist.length === 1 ? "" : "s"}` : "Ready for operator review"}</p>
-    <p><strong>Contact enrichment:</strong> ${escapeHtml(contactChecklist?.status ? humanStatus(contactChecklist.status) : "Needs review")} - ${escapeHtml(contactChecklist?.note ?? "Verified contact enrichment still needs review.")}</p>
-  </section>
-  <section class="toc">
-    <h2>Table of Contents</h2>
-    <ol>
-      <li><a href="#back-story">Back Story</a></li>
-      <li><a href="#possible-heirs">Possible heirs</a></li>
-      <li><a href="#source-review">Source review</a></li>
-    </ol>
-  </section>
-  <section id="back-story" class="story"><p><strong>Back Story:</strong> ${escapeHtml(backstory).replace(/\n\n/g, "</p><p>")}</p></section>
-  <section id="possible-heirs"><h2>Possible heirs:</h2>${contactBlocks}</section>
-  <section id="source-review"><h2>Source review</h2><p>This packet is generated from public-record and configured skip-trace facts. Missing contact rows remain blocked until provider credentials or approved manual source capture are available.</p><p>${escapeHtml(contactChecklist?.note ?? "Verified contact enrichment still needs review.")}</p></section>
+  <section id="back-story" class="story"><p><strong>Back Story:</strong> ${escapeHtml(backstory).replace(/\n\n/g, "</p><p>")}</p>${backstoryEvidence}</section>
+  <section id="possible-heirs"><h2>Heirs:</h2>${contactBlocks}</section>
 </main>
 </body>
 </html>`;

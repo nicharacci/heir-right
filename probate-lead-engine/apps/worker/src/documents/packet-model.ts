@@ -3,6 +3,7 @@ import type {
   DossierClaim,
   OfferProfitField,
   RawDossier,
+  SourceKey,
   SourceRef,
 } from "@ple/types";
 
@@ -14,11 +15,23 @@ export interface PacketLine {
   tone?: "normal" | "muted" | "warning";
 }
 
+export interface PacketAttachment {
+  id: string;
+  label: string;
+  url: string;
+  source: SourceKey;
+  fileKind: "pdf" | "image" | "csv" | "html" | "text" | "json" | "link";
+  fileName?: string;
+  capturedAt?: string;
+  reviewFlags: string[];
+}
+
 export interface PacketSection {
   id: string;
   title: string;
   lines: PacketLine[];
   sourceUrls: string[];
+  attachments: PacketAttachment[];
 }
 
 export interface PacketEstate {
@@ -55,6 +68,46 @@ const GENERIC_IDENTITIES = new Set([
   "unknown owner",
   "sample owner",
 ]);
+
+export const DISCOVERY_DOCUMENT_SECTIONS = Object.freeze({
+  "discovery-dossier": Object.freeze([
+    "estate-summary",
+    "workflow-rules",
+    "offer-profit",
+    "tax-history",
+    "deed-title",
+    "probate-court",
+    "vital-records",
+    "backstory",
+    "family-contacts",
+    "source-review",
+    "blockers-next-action",
+  ]),
+  "completed-report": Object.freeze(["estate-summary", "offer-profit", "vital-records", "backstory", "family-contacts"]),
+  "source-notes": Object.freeze(["source-review"]),
+  "deed-title-notes": Object.freeze(["deed-title"]),
+  "tax-history": Object.freeze(["tax-history"]),
+  "probate-request": Object.freeze(["probate-court", "vital-records"]),
+  "heir-contact-matrix": Object.freeze(["family-contacts"]),
+  "outreach-drafts": Object.freeze(["blockers-next-action"]),
+  "drip-schedule": Object.freeze(["workflow-rules", "blockers-next-action"]),
+  "crm-handoff": Object.freeze(["estate-summary", "source-review", "blockers-next-action"]),
+} as const);
+
+export type DiscoveryDocumentId = keyof typeof DISCOVERY_DOCUMENT_SECTIONS;
+
+export const DISCOVERY_DOCUMENT_TITLES: Readonly<Record<DiscoveryDocumentId, string>> = Object.freeze({
+  "discovery-dossier": "Discovery Dossier",
+  "completed-report": "Completed Lead Report",
+  "source-notes": "Source Notes",
+  "deed-title-notes": "Deed & Title Notes",
+  "tax-history": "Tax History Packet",
+  "probate-request": "Probate Document Request",
+  "heir-contact-matrix": "Heir Contact Matrix",
+  "outreach-drafts": "Outreach Drafts",
+  "drip-schedule": "Drip Schedule",
+  "crm-handoff": "CRM Review",
+});
 
 function valueText(value: unknown): string {
   if (value === null || value === undefined || value === "") return "Not confirmed";
@@ -108,6 +161,92 @@ function sourceUrls(dossier: RawDossier, refs: SourceRef[] = []): string[] {
     .sort();
 }
 
+function safeEvidenceUrl(value: unknown): string {
+  const url = String(value || "").trim();
+  return /^https?:\/\//i.test(url) || (url.startsWith("/") && !url.startsWith("//")) ? url : "";
+}
+
+function factLabel(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function evidenceUrlKey(value: string): string {
+  const url = safeEvidenceUrl(value);
+  if (!url || url.startsWith("/")) return url;
+  try {
+    const parsed = new URL(url);
+    const params = [...parsed.searchParams.entries()]
+      .sort(([leftKey, leftValue], [rightKey, rightValue]) => (
+        leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue)
+      ));
+    parsed.hash = "";
+    parsed.search = "";
+    for (const [key, item] of params) parsed.searchParams.append(key, item);
+    if (parsed.pathname.length > 1) parsed.pathname = parsed.pathname.replace(/\/+$/, "");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+function evidenceLabel(url: string, factType: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    if (factType === "obituary_link") return host === "hispanicad.com" ? "HispanicAd obituary" : "Obituary";
+    if (host.includes("floridapublicnotices.com")) return "Florida public probate notice";
+    if (host.includes("miamidadepa.gov")) return "Miami-Dade Property Appraiser";
+    if (host.includes("miamidadeclerk.gov")) return "Miami-Dade Official Records";
+  } catch {
+    // Relative stored artifacts keep their existing evidence label.
+  }
+  return factLabel(factType);
+}
+
+function evidenceAttachments(dossier: RawDossier): PacketAttachment[] {
+  const byUrl = new Map<string, PacketAttachment>();
+  for (const fact of dossier.audit.facts) {
+    const url = safeEvidenceUrl(fact.attachment?.sourceUrl || fact.sourceUrl);
+    if (!url) continue;
+    const urlKey = evidenceUrlKey(url);
+    const attachment = fact.attachment;
+    const next: PacketAttachment = {
+      id: fact.id,
+      label: attachment?.label || evidenceLabel(url, fact.factType),
+      url,
+      source: fact.source,
+      fileKind: attachment?.fileKind || "link",
+      ...(attachment?.fileName ? { fileName: attachment.fileName } : {}),
+      ...(attachment?.capturedAt || fact.fetchedAt ? { capturedAt: attachment?.capturedAt || fact.fetchedAt } : {}),
+      reviewFlags: [...new Set([...(fact.reviewFlags || []), ...(attachment?.reviewFlags || [])])],
+    };
+    const existing = byUrl.get(urlKey);
+    const nextHasSpecificLabel = /obituar|deed|tax receipt|probate notice/i.test(next.label)
+      && !/obituar|deed|tax receipt|probate notice/i.test(existing?.label || "");
+    if (!existing || (existing.fileKind === "link" && next.fileKind !== "link") || nextHasSpecificLabel) byUrl.set(urlKey, next);
+  }
+  for (const [index, link] of (dossier.completedLeadReport?.sourceLinks || []).entries()) {
+    const url = safeEvidenceUrl(link.url);
+    const urlKey = evidenceUrlKey(url);
+    if (!url || byUrl.has(urlKey)) continue;
+    byUrl.set(urlKey, {
+      id: `report-source-${index + 1}`,
+      label: link.label,
+      url,
+      source: link.source,
+      fileKind: "link",
+      reviewFlags: [],
+    });
+  }
+  return [...byUrl.values()].sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function attachmentsForUrls(attachments: PacketAttachment[], urls: string[]): PacketAttachment[] {
+  const accepted = new Set(urls.map(evidenceUrlKey).filter(Boolean));
+  return attachments.filter((attachment) => accepted.has(evidenceUrlKey(attachment.url)));
+}
+
 function money(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "Not confirmed";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
@@ -124,19 +263,56 @@ function offerLine(field: OfferProfitField | undefined): PacketLine {
 
 function contactLines(contact: ContactPlaceholderEntry, index: number): PacketLine[] {
   const identity = contact.name || `${contact.role} contact`;
+  const addressHistory = (contact.addressHistory || []).map((item) => [
+    item.address,
+    item.county ? `(${item.county})` : "",
+    item.dates ? `\n(${item.dates})` : "",
+  ].filter(Boolean).join(" ")).join("\n");
   return [
     { label: `Contact ${index + 1}`, value: `${identity} | relationship ${contact.role}${contact.age ? ` | age ${contact.age}` : ""}` },
-    { label: "Current address", value: contact.likelyCurrentAddress || "Not confirmed", tone: contact.likelyCurrentAddress ? "normal" : "warning" },
-    { label: "Phones", value: contact.phones.length ? contact.phones.join(", ") : "None confirmed", tone: contact.phones.length ? "normal" : "warning" },
-    { label: "Emails", value: contact.emails.length ? contact.emails.join(", ") : "None confirmed", tone: contact.emails.length ? "normal" : "warning" },
-    { label: "Review", value: `${contact.note}${reviewText(contact.reviewFlags)}`, tone: contact.reviewFlags.length ? "warning" : "muted" },
+    { label: "Likely Current Address", value: contact.likelyCurrentAddress || "Not confirmed", tone: contact.likelyCurrentAddress ? "normal" : "warning" },
+    { label: "Address (County/Parish/Borough) History", value: addressHistory || "None confirmed", tone: addressHistory ? "normal" : "warning" },
+    { label: "Phone number", value: contact.phones.length ? contact.phones.join("\n") : "None confirmed", tone: contact.phones.length ? "normal" : "warning" },
+    { label: "Email Address", value: contact.emails.length ? contact.emails.join("\n") : "None confirmed", tone: contact.emails.length ? "normal" : "warning" },
+    {
+      label: "Review",
+      value: `${contact.note}${contact.reviewFlags.length ? ` Review gate: ${contact.reviewFlags.map(reviewLabel).join(", ")}.` : ""}`,
+      tone: contact.reviewFlags.length ? "warning" : "muted",
+    },
   ];
+}
+
+function hypothesisContactLines(dossier: RawDossier): PacketLine[] {
+  const nodes = dossier.familyTree.hypothesis.value?.nodes.filter((node) => node.name) ?? [];
+  return nodes.flatMap((node, index) => {
+    const relationship = node.role.replace(/_/g, " ");
+    return [
+      { label: `Contact ${index + 1}`, value: `${node.name} | relationship reported ${relationship}` },
+      { label: "Likely Current Address", value: "IDI report pending", tone: "warning" },
+      { label: "Address (County/Parish/Borough) History", value: "IDI report pending", tone: "warning" },
+      { label: "Phone number", value: "IDI report pending", tone: "warning" },
+      { label: "Email Address", value: "IDI report pending", tone: "warning" },
+      {
+        label: "Review",
+        value: "Public-source relationship hypothesis only. IDI evidence and operator review are required before contact use or any heirship conclusion.",
+        tone: "warning",
+      },
+    ];
+  });
 }
 
 function discoverySections(dossier: RawDossier): PacketSection[] {
   const report = dossier.completedLeadReport;
   const offer = report?.offerMath;
   const sourceLinks = report?.sourceLinks ?? [];
+  const allAttachments = evidenceAttachments(dossier);
+  const backstoryAttachments = allAttachments.filter((attachment) => !attachment.reviewFlags.some((flag) => (
+    flag === "SOURCE_EVIDENCE_REQUIRED"
+    || flag === "SOURCE_HEALTH_ONLY"
+    || flag === "TAX_RECEIPT_LINK_REQUIRED"
+    || flag === "VITAL_RECORDS_WORKFLOW_REQUIRED"
+  )));
+  const publicFamilyLines = hypothesisContactLines(dossier);
   const titleRefs = [
     ...dossier.deedHistory.sourceStatus.sourceRefs,
     ...dossier.deedHistory.latestDeed.sourceRefs,
@@ -152,7 +328,7 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
     ...dossier.probateDocket.caseNumber.sourceRefs,
     ...dossier.probateDocket.affidavitOfHeirs.sourceRefs,
   ];
-  return [
+  const sections: PacketSection[] = [
     {
       id: "estate-summary",
       title: "Estate Summary",
@@ -171,6 +347,7 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         ...dossier.property.address.sourceRefs,
         ...dossier.property.parcelId.sourceRefs,
       ]),
+      attachments: [],
     },
     {
       id: "workflow-rules",
@@ -181,6 +358,7 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         tone: rule.status === "continue" ? "normal" : "warning",
       })),
       sourceUrls: sourceUrls(dossier, dossier.workflow.rules.flatMap((rule) => rule.sourceRefs)),
+      attachments: [],
     },
     {
       id: "offer-profit",
@@ -201,6 +379,7 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         offerLine(offer.minimumNetProfit),
       ] : [{ value: "Offer math has not been confirmed from source-backed values.", tone: "warning" }],
       sourceUrls: sourceUrls(dossier, offer ? Object.values(offer).flatMap((field) => typeof field === "object" && field && "sourceRefs" in field ? field.sourceRefs : []) : []),
+      attachments: [],
     },
     {
       id: "tax-history",
@@ -217,6 +396,7 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         { label: "Operator task", value: dossier.taxHistory.manualReceiptTask.reason, tone: dossier.taxHistory.manualReceiptTask.required ? "warning" : "muted" },
       ],
       sourceUrls: [...new Set([...sourceUrls(dossier, taxRefs), ...(safeClaim(dossier.taxHistory.receiptLink).value ? [String(safeClaim(dossier.taxHistory.receiptLink).value)] : [])])],
+      attachments: [],
     },
     {
       id: "deed-title",
@@ -234,6 +414,7 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         claimLine("Adverse possession", dossier.deedHistory.adversePossessionSignal),
       ],
       sourceUrls: sourceUrls(dossier, titleRefs),
+      attachments: [],
     },
     {
       id: "probate-court",
@@ -249,6 +430,7 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         { label: "Document request", value: dossier.probateDocket.documentRequestTask.reason, tone: dossier.probateDocket.documentRequestTask.required ? "warning" : "muted" },
       ],
       sourceUrls: sourceUrls(dossier, probateRefs),
+      attachments: [],
     },
     {
       id: "vital-records",
@@ -263,20 +445,25 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         claimLine("Incarceration indicator", dossier.marriageDeathIndicators.incarcerationStatus),
       ],
       sourceUrls: [...new Set([...sourceUrls(dossier, dossier.marriageDeathIndicators.sourceStatus.sourceRefs), ...(dossier.marriageDeathIndicators.obituaryLink.value ? [dossier.marriageDeathIndicators.obituaryLink.value] : [])])],
+      attachments: [],
     },
     {
       id: "backstory",
       title: "Back Story",
       lines: [{ value: report?.backstory || dossier.narrative || "No source-backed narrative has been assembled.", tone: report?.backstory || dossier.narrative ? "normal" : "warning" }],
       sourceUrls: sourceLinks.map((link) => link.url).filter((url): url is string => Boolean(url)),
+      attachments: backstoryAttachments,
     },
     {
       id: "family-contacts",
       title: "Family Tree And Contact Review",
       lines: report?.contactPlaceholders.length
         ? report.contactPlaceholders.flatMap(contactLines)
-        : [{ value: "No reviewed family or contact candidates are attached to this dossier.", tone: "warning" }],
+        : publicFamilyLines.length
+          ? publicFamilyLines
+          : [{ value: "No reviewed family or contact candidates are attached to this dossier.", tone: "warning" }],
       sourceUrls: sourceUrls(dossier, dossier.familyTree.hypothesis.sourceRefs),
+      attachments: [],
     },
     {
       id: "source-review",
@@ -290,6 +477,7 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         ...(sourceLinks.map((link) => ({ label: link.label, value: link.url || "Source reference recorded without a public URL", tone: link.url ? "normal" as const : "muted" as const }))),
       ],
       sourceUrls: sourceLinks.map((link) => link.url).filter((url): url is string => Boolean(url)),
+      attachments: allAttachments,
     },
     {
       id: "blockers-next-action",
@@ -304,8 +492,15 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         { label: "Next action", value: dossier.summary.nextBestAction },
       ],
       sourceUrls: [],
+      attachments: [],
     },
   ];
+  return sections.map((section) => ({
+    ...section,
+    attachments: section.attachments.length
+      ? section.attachments
+      : attachmentsForUrls(allAttachments, section.sourceUrls),
+  }));
 }
 
 function dossierBlockers(dossier: RawDossier): string[] {
@@ -315,6 +510,8 @@ function dossierBlockers(dossier: RawDossier): string[] {
   if (!dossier.property.address.value) blockers.push(`${dossier.summary.displayName}: property address is not confirmed.`);
   if (!dossier.property.ownerName.value) blockers.push(`${dossier.summary.displayName}: owner of record is not confirmed.`);
   if (!dossier.completedLeadReport) blockers.push(`${dossier.summary.displayName}: completed lead report is missing.`);
+  const obituaryUrl = safeEvidenceUrl(dossier.marriageDeathIndicators.obituaryLink.value);
+  if (!obituaryUrl) blockers.push(`${dossier.summary.displayName}: a source-verified obituary link or stored obituary artifact is required.`);
   const genericContacts = dossier.completedLeadReport?.contactPlaceholders.filter((contact) => (
     !contact.name
     || /\bplaceholder\b/i.test(contact.name)
@@ -349,6 +546,40 @@ export function buildDiscoveryPacketModel(dossiers: RawDossier[], generatedAt = 
     sections,
     blockers: dossiers.flatMap(dossierBlockers),
   };
+}
+
+export function buildDiscoveryDocumentModels(model: PacketModel): Array<{
+  documentId: DiscoveryDocumentId;
+  title: string;
+  sectionIds: string[];
+  model: PacketModel;
+}> {
+  if (model.flow !== "discovery") return [];
+  return (Object.keys(DISCOVERY_DOCUMENT_SECTIONS) as DiscoveryDocumentId[])
+    .filter((documentId) => documentId !== "discovery-dossier")
+    .map((documentId) => {
+      const accepted = new Set<string>(DISCOVERY_DOCUMENT_SECTIONS[documentId]);
+      const estates = model.estates.map((estate) => ({
+        ...estate,
+        sections: estate.sections.filter((section) => accepted.has(section.id)),
+      }));
+      const sections = estates.flatMap((estate) => estate.sections.map((section) => ({
+        id: `${estate.dossierId}:${section.id}`,
+        title: section.title,
+        estateId: estate.dossierId,
+      })));
+      return {
+        documentId,
+        title: DISCOVERY_DOCUMENT_TITLES[documentId],
+        sectionIds: [...accepted],
+        model: {
+          ...model,
+          title: `${DISCOVERY_DOCUMENT_TITLES[documentId]} - ${model.estates.length === 1 ? model.estates[0].displayName : `${model.estates.length} estates`}`,
+          estates,
+          sections,
+        },
+      };
+    });
 }
 
 export function validatePacketModel(model: PacketModel): string[] {

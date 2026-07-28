@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { PDFDocument } from "pdf-lib";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import workerModule, { WorkspaceState } from "../../worker/dist/cloudflare.js";
 import { buildContactPlaceholders } from "../../worker/dist/documents/completed-lead-report.js";
 
@@ -44,7 +45,43 @@ const env = {
 };
 
 const reviewedDossier = structuredClone(sourceRun.dossier);
+const obituaryUrl = "https://source.example.test/annie-hawkins-obituary";
+const obituaryRawId = `${reviewedDossier.runId}:obituary:reviewed`;
 reviewedDossier.audit.facts.push({
+  id: obituaryRawId,
+  runId: reviewedDossier.runId,
+  source: "clerk_of_courts",
+  rawId: obituaryRawId,
+  fetchedAt: reviewedDossier.generatedAt,
+  county: "miami-dade",
+  subject: { estateName: reviewedDossier.summary.estateName, propertyAddress: reviewedDossier.property.address.value },
+  factType: "obituary_link",
+  value: obituaryUrl,
+  confidence: 0.9,
+  sourceUrl: obituaryUrl,
+  attachment: {
+    label: "Annie Hawkins obituary",
+    sourceUrl: obituaryUrl,
+    fileKind: "html",
+    capturedAt: reviewedDossier.generatedAt,
+    capturedBy: "test",
+    reviewFlags: [],
+  },
+  reviewFlags: [],
+});
+reviewedDossier.marriageDeathIndicators.obituaryLink = {
+  value: obituaryUrl,
+  confidence: 0.9,
+  sourceRefs: [{ source: "clerk_of_courts", rawId: obituaryRawId, fetchedAt: reviewedDossier.generatedAt }],
+  reviewFlags: [],
+};
+reviewedDossier.completedLeadReport.sourceLinks.push({
+  label: "Annie Hawkins obituary",
+  url: obituaryUrl,
+  source: "clerk_of_courts",
+});
+reviewedDossier.audit.facts.push({
+  id: `${reviewedDossier.runId}:idi:reviewed-contact`,
   runId: reviewedDossier.runId,
   source: "idi",
   rawId: `${reviewedDossier.runId}:idi:reviewed-contact`,
@@ -60,7 +97,7 @@ reviewedDossier.audit.facts.push({
     phones: ["305-555-0101"],
     emails: ["sandra.hawkins@example.com"],
     currentAddress: "Miami, FL",
-    addressHistory: ["Miami, FL"],
+    addressHistory: ["Miami, FL", "Orlando, FL"],
     ownerLastNameMatch: true,
     confidence: 0.86,
     sourceRefs: [],
@@ -113,12 +150,29 @@ assert.equal(single.body.packetPersistence[0].readbackStatus, "verified");
 assert.match(single.body.artifactUrl, /^\/api\/reports\/pdf\?artifactId=packet-/);
 assert.equal(single.body.estateIds.length, 1);
 assert.ok(single.body.sections.length >= 10);
+assert.equal(single.body.documentArtifacts.length, 9);
+assert.deepEqual(
+  single.body.documentArtifacts.map((document) => document.documentId).sort(),
+  [
+    "completed-report",
+    "crm-handoff",
+    "deed-title-notes",
+    "drip-schedule",
+    "heir-contact-matrix",
+    "outreach-drafts",
+    "probate-request",
+    "source-notes",
+    "tax-history",
+  ],
+);
+assert.ok(single.body.documentArtifacts.every((document) => document.artifactId !== single.body.artifact.artifactId));
 
 const artifactId = single.body.artifact.artifactId;
 const persistedDiscoveryResponse = await worker.fetch(new Request(`https://worker.test/api/discovery/file?estateId=${encodeURIComponent(persistedEstateId)}`), env);
 const persistedDiscoveryFile = await persistedDiscoveryResponse.json();
 assert.equal(persistedDiscoveryFile.packetArtifacts[0].artifactId, artifactId);
 assert.equal(persistedDiscoveryFile.packetArtifacts[0].readbackStatus, "verified");
+assert.equal(persistedDiscoveryFile.packetArtifacts[0].documentArtifacts.length, 9);
 const persistedDiscoveryRevisionKey = [...kv.values.keys()].find((key) => key.startsWith(`${discoveryFileKey}:revision:`));
 assert.ok(persistedDiscoveryRevisionKey, "packet references must be staged as an immutable Discovery File revision");
 assert.equal(
@@ -149,8 +203,50 @@ assert.equal(pdfResponse.headers.get("content-type"), "application/pdf");
 const singlePdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
 assert.ok(singlePdfBytes.byteLength > 10_000);
 const singlePdf = await PDFDocument.load(singlePdfBytes);
-assert.ok(singlePdf.getPageCount() > 10);
+assert.ok(singlePdf.getPageCount() >= 8);
 assert.equal(singlePdf.getTitle(), single.body.artifact.flow === "discovery" ? stored.model.title : undefined);
+assert.ok(
+  singlePdf.getPages().some((page) => (page.node.Annots()?.size() || 0) > 0),
+  "the exact-format Discovery PDF must contain clickable evidence annotations",
+);
+const renderedDiscovery = await getDocument({ data: singlePdfBytes.slice(), disableWorker: true }).promise;
+const firstPageText = (await (await renderedDiscovery.getPage(1)).getTextContent()).items.filter((item) => item.str?.trim());
+const firstPageItem = (text) => firstPageText.find((item) => item.str === text);
+assert.ok(Math.abs(firstPageItem("Property Address:")?.transform?.[4] - 72) < 0.2, "the property row must retain the approved 72-point left edge");
+assert.ok(Math.abs(firstPageItem("Offer/Profit")?.transform?.[4] - 208.7) < 1, "the 332-point offer table heading must stay centered like the approved HeirRight example");
+assert.ok(Math.abs(firstPageItem("Description")?.transform?.[4] - 94.6) < 1, "the approved first offer-table column geometry must not drift");
+assert.equal(firstPageItem("Owner:")?.transform?.[4], 72, "the owner block must align with the approved HeirRight example");
+assert.equal(firstPageItem("Obituary")?.transform?.[4], 72, "the source-linked obituary must remain present in the approved first-page position");
+const familyTreeText = [];
+for (let pageNumber = 2; pageNumber <= Math.min(3, renderedDiscovery.numPages); pageNumber += 1) {
+  const textContent = await (await renderedDiscovery.getPage(pageNumber)).getTextContent();
+  familyTreeText.push(...textContent.items.map((item) => item.str).filter(Boolean));
+}
+const familyTreeCopy = familyTreeText.join(" ");
+for (const required of [
+  "Back Story:",
+  "Back Story evidence:",
+  "Heirs:",
+  "Address (County/Parish/Borough) History:",
+  "Miami, FL",
+  "Orlando, FL",
+  "Phone number:",
+  "305-555-0101",
+  "Email Address:",
+  "sandra.hawkins@example.com",
+]) assert.match(familyTreeCopy, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+
+for (const document of single.body.documentArtifacts) {
+  const documentResponse = await worker.fetch(new Request(`https://worker.test${document.artifactUrl}`), env);
+  assert.equal(documentResponse.status, 200);
+  assert.equal(documentResponse.headers.get("x-heirright-artifact-id"), document.artifactId);
+  assert.equal(documentResponse.headers.get("x-heirright-content-hash"), document.contentHash);
+  const documentBytes = new Uint8Array(await documentResponse.arrayBuffer());
+  assert.ok(documentBytes.byteLength > 700);
+  const documentPdf = await PDFDocument.load(documentBytes);
+  assert.ok(documentPdf.getPageCount() >= 1);
+  assert.match(documentPdf.getTitle() || "", new RegExp(document.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+}
 
 const secondDossier = structuredClone(reviewedDossier);
 secondDossier.id = `${secondDossier.id}-second`;
