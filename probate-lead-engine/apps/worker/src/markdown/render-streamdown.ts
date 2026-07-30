@@ -8,10 +8,6 @@ type StreamdownComponent = ComponentType<{
   skipHtml?: boolean;
 }>;
 
-async function importModule<T>(specifier: string): Promise<T> {
-  return import(specifier) as Promise<T>;
-}
-
 let rendererModules:
   | Promise<{
       React: ReactModule;
@@ -22,9 +18,9 @@ let rendererModules:
 
 async function loadRendererModules(): NonNullable<typeof rendererModules> {
   rendererModules ??= Promise.all([
-    importModule<ReactModule>("react"),
-    importModule<ReactDomServerModule>("react-dom/server"),
-    importModule<{ Streamdown: StreamdownComponent }>("streamdown"),
+    import("react") as Promise<ReactModule>,
+    import("react-dom/server") as Promise<ReactDomServerModule>,
+    import("streamdown") as Promise<{ Streamdown: StreamdownComponent }>,
   ]).then(([react, reactDomServer, streamdown]) => ({
     React: react,
     renderToStaticMarkup: reactDomServer.renderToStaticMarkup,

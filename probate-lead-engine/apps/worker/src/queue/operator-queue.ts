@@ -19,7 +19,7 @@ function item(input: OperatorQueueItem): OperatorQueueItem {
   };
 }
 
-export function buildOperatorQueue(dossier: Omit<RawDossier, "operatorQueue" | "evidenceQa" | "outreach">): OperatorQueue {
+export function buildOperatorQueue(dossier: Omit<RawDossier, "operatorQueue" | "evidenceQa" | "sourceCoverage" | "outreach">): OperatorQueue {
   const items: OperatorQueueItem[] = [];
   const auditFlags = dossier.audit.reviewFlags;
 
@@ -30,7 +30,7 @@ export function buildOperatorQueue(dossier: Omit<RawDossier, "operatorQueue" | "
         label: rule.label,
         state: "disqualified",
         reason: rule.explanation,
-        nextAction: "Move this lead out of the active queue unless a human operator overrides the rule.",
+        nextAction: "Move this lead out of the active queue. Correct and rerun the source record if the stop fact is wrong.",
         sourceRefs: rule.sourceRefs,
         reviewFlags: rule.reviewFlags,
       }));
@@ -87,7 +87,7 @@ export function buildOperatorQueue(dossier: Omit<RawDossier, "operatorQueue" | "
     state,
     reasonCodes: unique(items.map((entry) => entry.code)),
     nextAction: state === "disqualified"
-      ? "Inspect the disqualification reason and decide whether to override or keep the lead out of the active queue."
+      ? "Inspect the disqualification reason and keep the lead out of the active queue unless corrected source evidence removes the stop."
       : state === "blocked"
         ? "Resolve the source blocker before continuing this lead."
         : "Clear the manual review items before enrichment, CRM writes, document prep, or outreach.",

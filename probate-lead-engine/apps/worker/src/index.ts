@@ -11,9 +11,11 @@ import { fetchTaxHistoryFacts } from "./adapters/tax-history";
 import { PodioAdapter } from "./crm/podio-adapter";
 import { buildRawDossier } from "./dossier/build-raw-dossier";
 import { generateCompletedLeadReport } from "./documents/completed-lead-report";
+import { fetchSkipTraceFacts } from "./enrichment/skip-trace";
 import { generateInternalSummary } from "./documents/internal-summary";
 import { fact, intakeSubject, normalizeEstateSearchKey, nowIso, seedIdentity, slug } from "./lib";
 import { buildOutreachWorkflow } from "./outreach/build-outreach-workflow";
+import { buildQualificationDecision } from "./qualification/qualification-review";
 import { jsonOutput, PipelineOutput, textOutput } from "./storage/output-manifest";
 
 type RuntimeEnv = Record<string, string | undefined>;
@@ -124,6 +126,26 @@ function intakeFacts(runId: string, seed: IntakeSeed): SourceFact[] {
   return facts;
 }
 
+function confirmedSourceFacts(runId: string, seed: IntakeSeed): SourceFact[] {
+  const identity = seedIdentity(seed);
+  const subject = intakeSubject(seed);
+  const fetchedAt = nowIso();
+
+  return (seed.confirmedSourceFacts ?? []).map((sourceFact, index) => fact({
+    runId,
+    source: sourceFact.source,
+    rawId: sourceFact.rawId ?? `confirmed-source:${slug(identity)}:${index + 1}:${slug(sourceFact.factType)}`,
+    fetchedAt: sourceFact.fetchedAt ?? fetchedAt,
+    county: seed.county,
+    subject,
+    factType: sourceFact.factType,
+    value: sourceFact.value,
+    confidence: sourceFact.confidence ?? 0.9,
+    sourceUrl: sourceFact.sourceUrl,
+    reviewFlags: sourceFact.reviewFlags ?? [],
+  }));
+}
+
 export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options: RunDryPipelineOptions = {}): Promise<{
   runId: string;
   facts: SourceFact[];
@@ -135,18 +157,32 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
   const runId = `run-${Date.now()}-${slug(identity)}`;
   const subject = intakeSubject(seed);
 
-  const [propertyFacts, officialRecordFacts, taxFacts, deedFacts, probateFacts, marriageDeathFacts, familyTreeFacts, governanceFacts, offerProfitFacts] = await Promise.all([
+  const [propertyFacts, officialRecordFacts, taxFacts, deedFacts, probateFacts, marriageDeathFacts, familyTreeFacts, governanceFacts, offerProfitFacts, skipTraceFacts] = await Promise.all([
     fetchPropertyFacts(runId, seed),
-    fetchOfficialRecordFacts(runId, seed),
-    fetchTaxHistoryFacts(runId, seed),
+    fetchOfficialRecordFacts(runId, seed, options.env),
+    fetchTaxHistoryFacts(runId, seed, options.env),
     fetchDeedEvidenceFacts(runId, seed),
-    fetchProbateCourtFacts(runId, seed),
-    fetchMarriageDeathIndicatorFacts(runId, seed),
+    fetchProbateCourtFacts(runId, seed, options.env),
+    fetchMarriageDeathIndicatorFacts(runId, seed, options.env),
     fetchFamilyTreeHypothesisFacts(runId, seed),
     fetchSourceGovernanceFacts(runId, seed),
-    fetchOfferProfitInputFacts(runId, seed),
+    seed.includeDealMath === false ? Promise.resolve([]) : fetchOfferProfitInputFacts(runId, seed),
+    seed.includeSkipTrace === false ? Promise.resolve([]) : fetchSkipTraceFacts(runId, seed, options.env),
   ]);
-  const facts = [...intakeFacts(runId, seed), ...propertyFacts, ...officialRecordFacts, ...taxFacts, ...deedFacts, ...probateFacts, ...marriageDeathFacts, ...familyTreeFacts, ...governanceFacts, ...offerProfitFacts];
+  const facts = [
+    ...intakeFacts(runId, seed),
+    ...confirmedSourceFacts(runId, seed),
+    ...propertyFacts,
+    ...officialRecordFacts,
+    ...taxFacts,
+    ...deedFacts,
+    ...probateFacts,
+    ...marriageDeathFacts,
+    ...familyTreeFacts,
+    ...governanceFacts,
+    ...offerProfitFacts,
+    ...skipTraceFacts,
+  ];
   const propertyCountyFact = fact({
     runId,
     source: "property_appraiser",
@@ -165,6 +201,7 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
   dossier.completedLeadReport = await generateCompletedLeadReport(dossier);
   dossier.outreach = buildOutreachWorkflow(dossier, dossier.completedLeadReport);
   dossier.completedLeadReport = await generateCompletedLeadReport(dossier);
+  dossier.qualificationDecision = buildQualificationDecision(dossier);
   const podio = new PodioAdapter(options.env);
   const podioPayload = await podio.dryRun(dossier);
   dossier.crm.payload = podioPayload;
@@ -178,6 +215,7 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
     summaryHtml: textOutput("internal-summary.html", dossier.documentPacket.formats.html, "text/html; charset=utf-8"),
     completedReportMarkdown: textOutput("completed-lead-report.md", dossier.completedLeadReport.formats.markdown),
     completedReportHtml: textOutput("completed-lead-report.html", dossier.completedLeadReport.formats.html, "text/html; charset=utf-8"),
+    familyTreeReportHtml: textOutput("family-tree-discovery-report.html", dossier.completedLeadReport.formats.familyTreeHtml ?? dossier.completedLeadReport.formats.html, "text/html; charset=utf-8"),
   };
   const outputs = {
     latestRun: outputFiles.latestRun.path,
@@ -187,6 +225,7 @@ export async function runDryPipeline(seed: IntakeSeed = seedFromArgs(), options:
     summaryHtml: outputFiles.summaryHtml.path,
     completedReportMarkdown: outputFiles.completedReportMarkdown.path,
     completedReportHtml: outputFiles.completedReportHtml.path,
+    familyTreeReportHtml: outputFiles.familyTreeReportHtml.path,
   };
 
   return { runId, facts, dossier, outputs, outputFiles };

@@ -1,8 +1,44 @@
 name = "heirright-probate-lead-engine"
 main = "src/cloudflare.ts"
 compatibility_date = "2026-05-18"
+compatibility_flags = ["nodejs_compat"]
 account_id = "e7a583857399cb19fd86f879c3a4629f"
 
 [vars]
 DEPLOYMENT_KEY = "heirright"
 COUNTY_LIST = "miami-dade"
+IDI_CORE_LOGIN_URL = "https://login.idicore.com/"
+IDI_CORE_PORTAL_URL = "https://idicore.com/search/PropertySearch"
+IDI_CORE_LIVE_RUN_APPROVED = "false"
+BROWSERBASE_BATCH_APPROVAL_REQUIRED = "true"
+BROWSERBASE_BATCH_RUN_APPROVED = "false"
+BROWSERBASE_BATCH_MAX_SESSIONS = "10"
+BROWSERBASE_BATCH_CONCURRENCY = "2"
+BROWSERBASE_PROXY_ENABLED = "true"
+PODIO_OAUTH_REDIRECT_URI = "https://surface.heirright.com/api/podio/oauth/callback"
+PODIO_PER_USER_AUTH_REQUIRED = "true"
+PODIO_DURABLE_AUTH_REQUIRED = "false"
+MIAMI_DADE_CLERK_API_BASE = "https://www2.miamidadeclerk.gov/Developers/api"
+# Set IDI_CORE_API_TOKEN as a Wrangler secret, not a plain var:
+# wrangler secret put IDI_CORE_API_TOKEN
+# Set Browserbase and the shared Podio OAuth client secret as Wrangler secrets, not plain vars:
+# wrangler secret put BROWSERBASE_API_KEY
+# wrangler secret put PODIO_CLIENT_SECRET
+# wrangler secret put MIAMI_DADE_CLERK_AUTH_KEY
+
+[[kv_namespaces]]
+binding = "PODIO_TOKEN_STORE"
+id = "d21d2926fe3e4e12ae17bc89e0907a93"
+
+[[kv_namespaces]]
+binding = "PACKET_ARTIFACTS"
+id = "23c96c2fed534d8b86e36139f44230f7"
+
+[durable_objects]
+bindings = [
+  { name = "WORKSPACE_STATE", class_name = "WorkspaceState" }
+]
+
+[[migrations]]
+tag = "v1-workspace-state"
+new_sqlite_classes = ["WorkspaceState"]

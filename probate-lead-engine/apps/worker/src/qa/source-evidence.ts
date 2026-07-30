@@ -47,7 +47,7 @@ function rollup(checks: SourceEvidenceQaCheck[]): SourceEvidenceQaStatus {
   return "passed";
 }
 
-export function runSourceEvidenceQa(dossier: Omit<RawDossier, "evidenceQa" | "outreach">): SourceEvidenceQaResult {
+export function runSourceEvidenceQa(dossier: Omit<RawDossier, "evidenceQa" | "sourceCoverage" | "outreach">): SourceEvidenceQaResult {
   const checks = [
     checkClaim({ code: "PROPERTY_ADDRESS", label: "Property address", claim: dossier.property.address }),
     checkClaim({ code: "PROPERTY_OWNER", label: "Property owner", claim: dossier.property.ownerName }),
@@ -56,6 +56,8 @@ export function runSourceEvidenceQa(dossier: Omit<RawDossier, "evidenceQa" | "ou
     checkClaim({ code: "UNPAID_TAX_YEARS", label: "Unpaid tax years", claim: dossier.taxHistory.unpaidYears }),
     checkClaim({ code: "TAX_AMOUNT_DUE", label: "Tax amount due", claim: dossier.taxHistory.amountDue }),
     checkClaim({ code: "TAX_RECEIPT_STATUS", label: "Tax receipt status", claim: dossier.taxHistory.receiptStatus }),
+    checkClaim({ code: "TAX_RECEIPT_LINK", label: "Tax Collector receipt link", claim: dossier.taxHistory.receiptLink }),
+    checkClaim({ code: "TAX_PAID_DATE", label: "Tax paid date", claim: dossier.taxHistory.paidDate }),
     checkClaim({ code: "TAX_PAYER_IDENTITY", label: "Tax payer identity", claim: dossier.taxHistory.payerIdentity }),
     checkClaim({ code: "DEED_HISTORY_STATUS", label: "Deed history status", claim: dossier.deedHistory.sourceStatus }),
     checkClaim({ code: "LATEST_DEED", label: "Latest deed", claim: dossier.deedHistory.latestDeed }),
@@ -75,17 +77,19 @@ export function runSourceEvidenceQa(dossier: Omit<RawDossier, "evidenceQa" | "ou
     checkClaim({ code: "FAMILY_TREE_HYPOTHESIS", label: "Family tree hypothesis", claim: dossier.familyTree.hypothesis }),
     checkClaim({ code: "SOURCE_GOVERNANCE", label: "Source governance catalog", claim: dossier.sourceGovernance.catalog }),
   ];
-  if (dossier.completedLeadReport) {
+  if (dossier.completedLeadReport?.offerMath) {
     checks.push({
       code: "OFFER_AS_IS_VALUE",
       label: "As-is value",
       status: dossier.completedLeadReport.offerMath.asIsValue.value !== null ? "passed" : "review_required",
       explanation: dossier.completedLeadReport.offerMath.asIsValue.value !== null
         ? "As-is value captured for underwriting."
-        : "As-is value remains a placeholder with visible review flags.",
+        : "As-is value is missing with visible review flags.",
       sourceRefs: dossier.completedLeadReport.offerMath.asIsValue.sourceRefs,
       reviewFlags: dossier.completedLeadReport.offerMath.asIsValue.reviewFlags,
     });
+  }
+  if (dossier.completedLeadReport) {
     checks.push({
       code: "REPORT_REVIEW_GATE",
       label: "Report review gate",

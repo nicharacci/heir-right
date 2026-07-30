@@ -1,4 +1,5 @@
 import type { CrmAdapter, RawDossier } from "@ple/types";
+import { formatCountyName } from "../display";
 import {
   PODIO_LIVE_WRITE_APPROVAL_KEY,
   podioMissingExportConfig,
@@ -8,6 +9,43 @@ import {
 } from "../export/podio-config";
 
 type EnvLookup = Record<string, string | undefined>;
+
+const DEAL_FACT_TYPES = new Set([
+  "offer_as_is_value",
+  "offer_heir_count",
+  "offer_buy_percentage",
+  "offer_minimum_net_profit",
+]);
+
+function includesDealMath(dossier: RawDossier): boolean {
+  return dossier.audit.facts.some((fact) => DEAL_FACT_TYPES.has(fact.factType));
+}
+
+function filterDealText(value: string, includeDealMath: boolean): boolean {
+  return includeDealMath || !/offer|underwriting/i.test(value);
+}
+
+function discoveryReviewGate(dossier: RawDossier, includeDealMath: boolean): unknown {
+  const gate = dossier.completedLeadReport?.reviewGate;
+  if (!gate || includeDealMath) return gate;
+  const { underwritingStatus: _underwritingStatus, reviewFlags, approvalPlaceholder, ...rest } = gate;
+  return {
+    ...rest,
+    approvalPlaceholder: approvalPlaceholder.replace(/ or offers/gi, ""),
+    reviewFlags: reviewFlags.filter((flag) => !/OFFER|UNDERWRITING/i.test(flag)),
+  };
+}
+
+function discoveryOutreachReadiness(dossier: RawDossier, includeDealMath: boolean): unknown {
+  const readiness = dossier.outreach.readiness;
+  if (includeDealMath) return readiness;
+  return {
+    ...readiness,
+    blockers: readiness.blockers.filter((blocker) => filterDealText(blocker, false)),
+    nextAction: readiness.nextAction.replace("offer, ", ""),
+    reviewFlags: readiness.reviewFlags.filter((flag) => !/OFFER|UNDERWRITING/i.test(flag)),
+  };
+}
 
 export interface PodioDryRunPayload {
   provider: "podio";
@@ -60,6 +98,10 @@ export class PodioAdapter implements CrmAdapter<PodioDryRunPayload> {
   async dryRun(dossier: RawDossier): Promise<PodioDryRunPayload> {
     const health = await this.healthcheck();
     const missingConfig = podioMissingExportConfig(this.env);
+    const includeDealMath = includesDealMath(dossier);
+    const outreachAssets = dossier.outreach.assets.filter((asset) => filterDealText(`${asset.title} ${asset.intendedUse}`, includeDealMath));
+    const outreachTasks = dossier.outreach.followUpTasks.filter((task) => filterDealText(`${task.title} ${task.description}`, includeDealMath));
+    const outreachReadiness = discoveryOutreachReadiness(dossier, includeDealMath) as RawDossier["outreach"]["readiness"];
     return {
       provider: "podio",
       mode: "dry_run",
@@ -74,7 +116,7 @@ export class PodioAdapter implements CrmAdapter<PodioDryRunPayload> {
           case_number: dossier.summary.caseNumber,
           property_address: dossier.property.address.value,
           owner_name: dossier.property.ownerName.value,
-          county: dossier.property.county.value ?? "miami-dade",
+          county: formatCountyName(dossier.property.county.value, "Miami-Dade"),
           parcel_id: dossier.property.parcelId.value,
           source_status: dossier.audit.reviewFlags.includes("SOURCE_BLOCKED") ? "blocked" : "source_checked",
           dossier_status: dossier.status,
@@ -84,7 +126,10 @@ export class PodioAdapter implements CrmAdapter<PodioDryRunPayload> {
             amount_due: dossier.taxHistory.amountDue.value,
             reassessment: dossier.taxHistory.reassessment.value,
             receipt_status: dossier.taxHistory.receiptStatus.value,
+            receipt_link: dossier.taxHistory.receiptLink.value,
+            paid_date: dossier.taxHistory.paidDate.value,
             payer_identity: dossier.taxHistory.payerIdentity.value,
+            receipt_attachment: dossier.taxHistory.receiptAttachment.value,
             review_tasks: dossier.taxHistory.reviewTasks,
             manual_receipt_task: dossier.taxHistory.manualReceiptTask,
           },
@@ -138,6 +183,8 @@ export class PodioAdapter implements CrmAdapter<PodioDryRunPayload> {
             unpaid_years: dossier.taxHistory.unpaidYears.value,
             amount_due: dossier.taxHistory.amountDue.value,
             receipt_status: dossier.taxHistory.receiptStatus.value,
+            receipt_link: dossier.taxHistory.receiptLink.value,
+            paid_date: dossier.taxHistory.paidDate.value,
             reassessment: dossier.taxHistory.reassessment.value,
           },
           title_deed_flags: {
@@ -159,14 +206,14 @@ export class PodioAdapter implements CrmAdapter<PodioDryRunPayload> {
             reviewFlags: dossier.workflow.reviewFlags,
           },
           lead_quality_reason_codes: dossier.completedLeadReport?.leadQualityProfile.reasonCodes ?? dossier.workflow.leadQuality.reasonCodes,
-          offer_math: dossier.completedLeadReport?.offerMath,
-          report_review_gate: dossier.completedLeadReport?.reviewGate,
+          ...(includeDealMath ? { offer_math: dossier.completedLeadReport?.offerMath } : {}),
+          report_review_gate: discoveryReviewGate(dossier, includeDealMath),
           outreach_readiness: dossier.completedLeadReport?.reviewGate.outreachReadiness ?? "blocked",
           outreach_workflow: {
             compliance_status: dossier.outreach.complianceStatus,
-            readiness: dossier.outreach.readiness,
+            readiness: outreachReadiness,
             no_auto_send_guard: dossier.outreach.noAutoSendGuard,
-            draft_assets: dossier.outreach.assets.map((asset) => ({
+            draft_assets: outreachAssets.map((asset) => ({
               id: asset.id,
               title: asset.title,
               intended_use: asset.intendedUse,
@@ -177,7 +224,7 @@ export class PodioAdapter implements CrmAdapter<PodioDryRunPayload> {
               external_use_allowed: asset.externalUseAllowed,
               source_document: asset.sourceDocument,
             })),
-            manual_follow_up_tasks: dossier.outreach.followUpTasks,
+            manual_follow_up_tasks: outreachTasks,
           },
           completed_lead_report_id: dossier.completedLeadReport?.id,
           completed_lead_report_status: dossier.completedLeadReport?.reviewGate.reportStatus ?? "internal_draft",
@@ -249,21 +296,23 @@ export class PodioAdapter implements CrmAdapter<PodioDryRunPayload> {
           title: "Review completed lead report",
           description: dossier.completedLeadReport?.reviewGate.approvalPlaceholder ?? "Human review required before outreach.",
         },
-        {
-          title: "Confirm offer/profit underwriting",
-          description: dossier.completedLeadReport?.offerMath.asIsValue.note ?? "Capture as-is value, heir count, and deduction inputs before offer math is trusted.",
-        },
+        ...(includeDealMath
+          ? [{
+            title: "Confirm offer/profit underwriting",
+            description: dossier.completedLeadReport?.offerMath?.asIsValue.note ?? "Capture as-is value, heir count, and deduction inputs before offer math is trusted.",
+          }]
+          : []),
         {
           title: "Decide enrichment run",
           description: "Run skip trace/contact enrichment only after raw public-source facts are accepted.",
         },
-        ...dossier.outreach.followUpTasks.map((task) => ({
+        ...outreachTasks.map((task) => ({
           title: task.title,
           description: task.description,
         })),
         {
           title: "Review outreach scripts and disclaimers",
-          description: dossier.outreach.readiness.nextAction,
+          description: outreachReadiness.nextAction,
         },
       ],
       browserAutomationFallback: {
@@ -290,7 +339,9 @@ export class PodioAdapter implements CrmAdapter<PodioDryRunPayload> {
         safeLiveWriteTestSteps: [
           "Create one clearly labeled test lead item from the dry-run payload.",
           "Attach or link the completed lead report to the test item.",
-          "Create research, offer-review, and manual follow-up tasks only.",
+          includeDealMath
+            ? "Create research, offer-review, and manual follow-up tasks only."
+            : "Create research and manual follow-up tasks only.",
           "Add one source-note comment with review flags.",
           "Read the item back and compare fields, tasks, comments, and links against the dry-run payload.",
           "Delete or archive the test item only after readback evidence is captured.",
@@ -298,7 +349,9 @@ export class PodioAdapter implements CrmAdapter<PodioDryRunPayload> {
         csvDryRunRequirements: [
           "Export qualified leads from Google Sheets.",
           "Export bonus or warm leads from Podio.",
-          "Map estate name, property address, folio, probate status, family-tree status, offer math, outreach status, and owner queue.",
+          includeDealMath
+            ? "Map estate name, property address, folio, probate status, family-tree status, offer math, outreach status, and owner queue."
+            : "Map estate name, property address, folio, probate status, family-tree status, contact-review status, outreach status, and owner queue.",
           "Produce a dry-run import report without mutating either original system.",
         ],
         readbackChecks: [

@@ -8,8 +8,8 @@ import type {
   WorkflowRuleStatus,
 } from "@ple/types";
 import { nowIso, sourceRef } from "../lib";
+import { isEntityOwnerName, isTrustOrEstateOwnerName } from "./entity-owner";
 
-const ENTITY_OWNER_PATTERN = /\b(LLC|L\.L\.C\.|INC|CORP|CORPORATION|COMPANY|CO\.|LTD|LP|LLP|BANK|TRUST|ASSOCIATION|FOUNDATION)\b/i;
 const FIVE_YEARS_MS = 5 * 365.25 * 24 * 60 * 60 * 1000;
 
 function unique<T>(items: T[]): T[] {
@@ -25,6 +25,14 @@ function refsFor(facts: SourceFact[], factType: SourceFact["factType"]): SourceR
 function valueFor<T>(facts: SourceFact[], factType: SourceFact["factType"]): T | null {
   const item = facts.find((candidate) => candidate.factType === factType && candidate.value !== null && candidate.value !== undefined);
   return item ? (item.value as T) : null;
+}
+
+const BLOCKING_SOURCE_FACT_FLAGS: ReviewFlag[] = ["SOURCE_EVIDENCE_REQUIRED", "SOURCE_HEALTH_ONLY", "SOURCE_BLOCKED"];
+
+function isSourceBackedFact(fact: SourceFact): boolean {
+  if (fact.value === null || fact.value === undefined || fact.value === "") return false;
+  if (fact.source === "intake" || fact.source === "document_packet" || fact.source === "podio") return false;
+  return !fact.reviewFlags.some((flag) => BLOCKING_SOURCE_FACT_FLAGS.includes(flag));
 }
 
 function rule(input: {
@@ -61,14 +69,26 @@ function evaluateOwnerType(facts: SourceFact[]): WorkflowRuleResult {
   }
 
   const normalizedType = ownerType?.toLowerCase();
-  const looksLikeEntity = normalizedType === "company" || ENTITY_OWNER_PATTERN.test(ownerName);
+  const looksLikeEntity = normalizedType === "company" || isEntityOwnerName(ownerName);
   if (looksLikeEntity) {
     return rule({
       code: "OWNER_TYPE",
       label: "Owner qualification",
       status: "stop",
-      explanation: "The owner appears to be an entity or trust. This should leave the active play unless a human overrides it.",
+      explanation: "The Property Appraiser owner appears to be a company or other non-probate entity, so this lead must leave the active play.",
       reasonCodes: ["COMPANY_OWNER"],
+      sourceRefs,
+      reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
+    });
+  }
+
+  if (["trust", "estate", "trust_estate_review"].includes(normalizedType || "") || isTrustOrEstateOwnerName(ownerName)) {
+    return rule({
+      code: "OWNER_TYPE",
+      label: "Owner qualification",
+      status: "continue",
+      explanation: "The owner appears to be a trust or estate. Keep the lead active and verify the trustee, personal representative, and current Property Appraiser record.",
+      reasonCodes: ["TRUST_OR_ESTATE_OWNER_REVIEW"],
       sourceRefs,
       reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
     });
@@ -119,7 +139,7 @@ function evaluateRecentSale(facts: SourceFact[], nowMs = Date.now()): WorkflowRu
       code: "RECENT_SALE",
       label: "Recent sale guard",
       status: "stop",
-      explanation: "The property appears to have sold within the last 5 years. Stop unless a human override says the lead is still viable.",
+      explanation: "The property appears to have sold within the last 5 years, so this lead must stop and move on.",
       reasonCodes: ["RECENT_SALE_WITHIN_5_YEARS"],
       sourceRefs,
       reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
@@ -235,8 +255,10 @@ function evaluateLeadQuality(facts: SourceFact[], settings: LeadQualitySettings)
 
 function evaluateSourceEvidence(facts: SourceFact[]): WorkflowRuleResult {
   const sourceRefs = facts.map((item) => sourceRef(item.source, item.rawId, item.fetchedAt));
-  const missingFactFlags = facts.flatMap((item) => item.reviewFlags).filter((flag) => flag.startsWith("MISSING_"));
-  const sourceHealthOnly = facts.some((item) => item.reviewFlags.includes("SOURCE_HEALTH_ONLY"));
+  const sourceBackedFactTypes = new Set(facts.filter(isSourceBackedFact).map((item) => item.factType));
+  const effectiveFacts = facts.filter((item) => isSourceBackedFact(item) || !sourceBackedFactTypes.has(item.factType));
+  const missingFactFlags = effectiveFacts.flatMap((item) => item.reviewFlags).filter((flag) => flag.startsWith("MISSING_"));
+  const sourceHealthOnly = effectiveFacts.some((item) => item.reviewFlags.includes("SOURCE_HEALTH_ONLY"));
 
   if (missingFactFlags.length || sourceHealthOnly) {
     return rule({
@@ -279,7 +301,7 @@ export function evaluateWorkflowRules(facts: SourceFact[]): WorkflowRuleEvaluati
   const status = rollupStatus(rules);
   const reviewFlags = unique(rules.flatMap((item) => item.reviewFlags));
   const nextAction = status === "stop"
-      ? "Move the lead into the disqualification/review queue unless a human operator overrides the stop rule."
+      ? "Move the lead into the disqualification queue. Correct the underlying source fact if the stop was based on bad evidence."
       : status === "review_required"
         ? "Resolve workflow review flags before enrichment, document prep, CRM writes, or outreach."
       : "Continue to the next lead-review stage with checked records attached.";

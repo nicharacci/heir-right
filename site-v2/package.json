@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "build": "tsc && vite build",
+    "generate:locales": "node scripts/generate-locales.mjs",
+    "dev": "pnpm generate:locales && vite --host 127.0.0.1",
+    "build": "pnpm generate:locales && tsc && vite build",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

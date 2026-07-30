@@ -1,0 +1,37 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--hr-canvas);
+  color: var(--hr-text);
+  font-family: var(--hr-font-sans);
+}
+
+body {
+  background: var(--hr-canvas);
+  color: var(--hr-text);
+}
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: var(--hr-focus-width) solid var(--hr-focus);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+[inert] {
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}

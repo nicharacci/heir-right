@@ -1,6 +1,8 @@
-import type { DailyLeadResult, DailyRunConfig, DailyRunResult, IntakeSeed, RawDossier } from "@ple/types";
+import type { DailyDuplicateLeadResult, DailyLeadResult, DailyRunConfig, DailyRunResult, IntakeSeed, LeadQualitySettings, RawDossier, SeedBatchSummary, SourceCoverageBlocker, SourceCoverageSummary } from "@ple/types";
 import { runDryPipeline, type RunDryPipelineOptions } from "../index";
 import { nowIso, seedIdentity, slug } from "../lib";
+import { buildQualificationDecision, buildQualificationReviewPacket, qualificationBlockers } from "../qualification/qualification-review";
+import { loadConfiguredSeedBatch } from "./seed-batch";
 
 type RuntimeEnv = Record<string, string | undefined>;
 
@@ -16,12 +18,11 @@ function numberFromEnv(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function parseSeeds(env: RuntimeEnv, counties: string[]): IntakeSeed[] {
-  if (env.DAILY_RUN_SEEDS_JSON) {
-    const parsed = JSON.parse(env.DAILY_RUN_SEEDS_JSON) as IntakeSeed[];
-    return parsed.map((seed) => ({ ...seed, source: seed.source ?? "operator_cli" }));
-  }
+function unique<T>(items: T[]): T[] {
+  return Array.from(new Set(items));
+}
 
+function defaultReviewSeeds(counties: string[]): IntakeSeed[] {
   return counties.map((county) => ({
     propertyAddress: county.toLowerCase() === "miami-dade"
       ? "20611 NW 33rd Pl, Miami Gardens, FL 33056"
@@ -30,13 +31,95 @@ function parseSeeds(env: RuntimeEnv, counties: string[]): IntakeSeed[] {
     ownerName: "Fresh public-source lead",
     county,
     source: "operator_cli",
+    seedBatchId: "default-review-seeds",
+    seedSourceLabel: "Default review seeds",
+    sourceOwner: "Codex Automation",
+    approvalMarker: "review_only_not_for_acceptance",
   }));
+}
+
+function aggregateCoverageStatus(summary: Omit<SourceCoverageSummary, "status">): SourceCoverageSummary["status"] {
+  if (summary.blockedAreaCount > 0 || summary.leadCount === 0) return "blocked";
+  if (summary.partialAreaCount > 0) return "partial";
+  return "extracted";
+}
+
+function summarizeSourceCoverage(leads: DailyLeadResult[]): SourceCoverageSummary {
+  const areaMap = new Map<string, { key: SourceCoverageSummary["areaStatuses"][number]["key"]; label: string; extracted: number; partial: number; blocked: number }>();
+  let extractedAreaCount = 0;
+  let partialAreaCount = 0;
+  let blockedAreaCount = 0;
+  let extractedFieldCount = 0;
+  let missingFieldCount = 0;
+
+  for (const lead of leads) {
+    extractedAreaCount += lead.sourceCoverage.extractedAreaCount;
+    partialAreaCount += lead.sourceCoverage.partialAreaCount;
+    blockedAreaCount += lead.sourceCoverage.blockedAreaCount;
+    extractedFieldCount += lead.sourceCoverage.extractedFieldCount;
+    missingFieldCount += lead.sourceCoverage.missingFieldCount;
+    for (const area of lead.sourceCoverage.areas) {
+      const current = areaMap.get(area.key) ?? { key: area.key, label: area.label, extracted: 0, partial: 0, blocked: 0 };
+      if (area.status === "extracted") current.extracted += 1;
+      if (area.status === "partial") current.partial += 1;
+      if (area.status === "blocked") current.blocked += 1;
+      areaMap.set(area.key, current);
+    }
+  }
+
+  const base = {
+    leadCount: leads.length,
+    extractedAreaCount,
+    partialAreaCount,
+    blockedAreaCount,
+    extractedFieldCount,
+    missingFieldCount,
+    areaStatuses: Array.from(areaMap.values()),
+  };
+  return {
+    status: aggregateCoverageStatus(base),
+    ...base,
+  };
+}
+
+function summarizeSourceCoverageBlockers(leads: DailyLeadResult[]): SourceCoverageBlocker[] {
+  const blockerMap = new Map<SourceCoverageBlocker["key"], SourceCoverageBlocker & { runIds: Set<string> }>();
+
+  for (const lead of leads) {
+    for (const area of lead.sourceCoverage.areas) {
+      if (area.status === "extracted") continue;
+      const current = blockerMap.get(area.key) ?? {
+        key: area.key,
+        label: area.label,
+        status: area.status === "partial" ? "partial" : "blocked",
+        affectedLeadCount: 0,
+        capturedFields: [],
+        missingFields: [],
+        reviewFlags: [],
+        nextAction: area.nextAction,
+        runIds: new Set<string>(),
+      };
+      current.status = current.status === "blocked" || area.status === "blocked" ? "blocked" : "partial";
+      current.runIds.add(lead.runId);
+      current.affectedLeadCount = current.runIds.size;
+      current.capturedFields = unique([...current.capturedFields, ...area.extractedFields]).sort();
+      current.missingFields = unique([...current.missingFields, ...area.missingFields]).sort();
+      current.reviewFlags = unique([...current.reviewFlags, ...area.reviewFlags]).sort();
+      blockerMap.set(area.key, current);
+    }
+  }
+
+  return Array.from(blockerMap.values()).map(({ runIds: _runIds, ...blocker }) => blocker);
 }
 
 export function dailyRunConfigFromEnv(env: RuntimeEnv = process.env): DailyRunConfig {
   const counties = splitList(env.DAILY_COUNTIES || env.COUNTY_LIST, "miami-dade,broward").map((county) => county.toLowerCase());
+  const seedBatch = loadConfiguredSeedBatch(env);
+  const runCounties = seedBatch?.batch.counties.length ? seedBatch.batch.counties : counties;
+  const seeds = seedBatch?.acceptedSeeds ?? defaultReviewSeeds(runCounties);
+  const summary: SeedBatchSummary | undefined = seedBatch?.batch;
   return {
-    counties,
+    counties: runCounties,
     targetRawLeadRange: {
       min: numberFromEnv(env.DAILY_TARGET_RAW_MIN, 200),
       max: numberFromEnv(env.DAILY_TARGET_RAW_MAX, 400),
@@ -45,8 +128,9 @@ export function dailyRunConfigFromEnv(env: RuntimeEnv = process.env): DailyRunCo
       min: numberFromEnv(env.DAILY_TARGET_QUALIFIED_MIN, 80),
       max: numberFromEnv(env.DAILY_TARGET_QUALIFIED_MAX, 150),
     },
-    seeds: parseSeeds(env, counties),
-    seedSource: env.DAILY_RUN_SEEDS_JSON ? "configured_batch" : "default_review_seeds",
+    seeds,
+    seedSource: seedBatch ? "configured_batch" : "default_review_seeds",
+    seedBatch: summary,
     startedBy: "automation",
   };
 }
@@ -59,20 +143,10 @@ function dedupeKey(dossier: RawDossier): string {
   return slug(caseNumber || parcelId || `${address || "unknown-address"}:${owner || "unknown-owner"}`);
 }
 
-function qualificationBlockers(dossier: RawDossier): string[] {
-  const blockers: string[] = [];
-  const profile = dossier.completedLeadReport?.leadQualityProfile;
-  if (!profile?.promotionEligible) blockers.push(`Lead bucket is ${profile?.leadBucket ?? "unknown"}, not qualified.`);
-  if (dossier.workflow.status !== "continue") blockers.push(`Workflow status is ${dossier.workflow.status}.`);
-  if (dossier.operatorQueue.state !== "ready_for_review") blockers.push(`Operator queue is ${dossier.operatorQueue.state}.`);
-  if (dossier.audit.reviewFlags.includes("SOURCE_HEALTH_ONLY")) blockers.push("Only source reachability is proven for at least one source.");
-  if (dossier.audit.reviewFlags.includes("NO_ENRICHMENT_RUN")) blockers.push("No enrichment/contact run has been approved or completed.");
-  if (dossier.completedLeadReport?.missingData.length) blockers.push(`Report has ${dossier.completedLeadReport.missingData.length} missing section(s).`);
-  return Array.from(new Set(blockers));
-}
-
 function leadResult(dossier: RawDossier): DailyLeadResult {
   const blockers = qualificationBlockers(dossier);
+  const qualificationDecision = buildQualificationDecision(dossier, blockers);
+  dossier.qualificationDecision = qualificationDecision;
   return {
     dedupeKey: dedupeKey(dossier),
     county: dossier.property.county.value ?? "unknown",
@@ -82,9 +156,11 @@ function leadResult(dossier: RawDossier): DailyLeadResult {
     workflowStatus: dossier.workflow.status,
     operatorQueueState: dossier.operatorQueue.state,
     leadBucket: dossier.completedLeadReport?.leadQualityProfile.leadBucket ?? "review_required",
-    qualified: blockers.length === 0,
+    qualified: qualificationDecision.status === "qualified" && blockers.length === 0,
     blockers,
     reportId: dossier.completedLeadReport?.id,
+    sourceCoverage: dossier.sourceCoverage,
+    qualificationDecision,
   };
 }
 
@@ -92,19 +168,30 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
   const generatedAt = nowIso();
   const runId = `daily-${Date.now()}-${slug(config.counties.join("-"))}`;
   const leads: DailyLeadResult[] = [];
+  const duplicates: DailyDuplicateLeadResult[] = [];
   const deadLetters: DailyRunResult["deadLetters"] = [];
-  const seen = new Set<string>();
-  let duplicateCount = 0;
+  const seen = new Map<string, DailyLeadResult>();
+  let settings: LeadQualitySettings | undefined;
 
   for (const seed of config.seeds) {
     try {
       const result = await runDryPipeline(seed, options);
+      settings = settings ?? result.dossier.workflow.leadQuality;
       const lead = leadResult(result.dossier);
-      if (seen.has(lead.dedupeKey)) {
-        duplicateCount += 1;
+      const original = seen.get(lead.dedupeKey);
+      if (original) {
+        duplicates.push({
+          dedupeKey: lead.dedupeKey,
+          county: lead.county,
+          runId: lead.runId,
+          displayName: lead.displayName,
+          originalRunId: original.runId,
+          reason: "Duplicate dedupe key matched an earlier lead in this daily run.",
+          nextAction: "Keep the first packet and suppress this duplicate from qualified counts.",
+        });
         continue;
       }
-      seen.add(lead.dedupeKey);
+      seen.set(lead.dedupeKey, lead);
       leads.push(lead);
     } catch (error) {
       deadLetters.push({
@@ -122,6 +209,7 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
   const rawLeadCount = leads.length;
   const qualifiedLeadCount = leads.filter((lead) => lead.qualified).length;
   const reviewLeadCount = leads.filter((lead) => !lead.qualified).length;
+  const duplicateCount = duplicates.length;
   const blockers = Array.from(new Set(leads.flatMap((lead) => lead.blockers)));
   const missedVolumeReasons: string[] = [];
   if (rawLeadCount < config.targetRawLeadRange.min) {
@@ -130,10 +218,33 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
   if (qualifiedLeadCount < config.targetQualifiedLeadRange.min) {
     missedVolumeReasons.push(`Qualified lead count ${qualifiedLeadCount} is below target ${config.targetQualifiedLeadRange.min}-${config.targetQualifiedLeadRange.max}.`);
   }
-  if (config.seedSource !== "configured_batch") {
+  if (config.seedSource === "default_review_seeds") {
     missedVolumeReasons.push("No production batch seed file was provided; default review seeds do not satisfy contract volume.");
   }
+  if (config.seedSource === "manual") {
+    missedVolumeReasons.push("Manual operator seeds do not satisfy production batch volume until an approved seed file is provided.");
+  }
+  if (config.seedSource === "external_live_source") {
+    missedVolumeReasons.push("Operator-requested live source pulls prove fresh external intake, but still need approved production-volume criteria before contract volume is satisfied.");
+  }
+  if (config.seedBatch?.rejectedSeedCount) {
+    missedVolumeReasons.push(`${config.seedBatch.rejectedSeedCount} seed(s) were rejected by intake validation before the run.`);
+  }
+  const sourceCoverageSummary = summarizeSourceCoverage(leads);
+  const sourceCoverageBlockers = summarizeSourceCoverageBlockers(leads);
+  if (sourceCoverageSummary.blockedAreaCount > 0) {
+    missedVolumeReasons.push(`${sourceCoverageSummary.blockedAreaCount} source area(s) are still blocked by missing extracted property, tax, deed, probate, or family-tree facts.`);
+  }
   if (deadLetters.length) missedVolumeReasons.push(`${deadLetters.length} seed(s) failed and were written to dead letters.`);
+  const qualificationReview = buildQualificationReviewPacket({
+    dailyRunId: runId,
+    generatedAt,
+    leads,
+    duplicates,
+    deadLetters,
+    sourceCoverageSummary,
+    settings,
+  });
 
   return {
     id: runId,
@@ -145,8 +256,12 @@ export async function runDailyProduction(config: DailyRunConfig = dailyRunConfig
     duplicateCount,
     errorCount: deadLetters.length,
     leads,
+    duplicates,
     deadLetters,
     missedVolumeReasons,
     blockers,
+    sourceCoverageSummary,
+    sourceCoverageBlockers,
+    qualificationReview,
   };
 }

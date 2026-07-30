@@ -1,15 +1,22 @@
 import type { IntakeSeed, SourceFact } from "@ple/types";
 import { fact, fetchStatus, intakeSubject, nowIso, seedIdentity, slug } from "../lib";
+import { fetchOfficialRecordsCommercialApiFacts } from "./clerk-commercial-api";
 
 const OFFICIAL_RECORDS_URL = "https://onlineservices.miamidadeclerk.gov/officialrecords";
 
-export async function fetchOfficialRecordFacts(runId: string, seed: IntakeSeed): Promise<SourceFact[]> {
+type RuntimeEnv = Record<string, string | undefined>;
+
+export async function fetchOfficialRecordFacts(runId: string, seed: IntakeSeed, env?: RuntimeEnv): Promise<SourceFact[]> {
   const fetchedAt = nowIso();
-  const status = await fetchStatus(OFFICIAL_RECORDS_URL);
+  const [commercialApiFacts, status] = await Promise.all([
+    fetchOfficialRecordsCommercialApiFacts(runId, seed, { env }),
+    fetchStatus(OFFICIAL_RECORDS_URL),
+  ]);
   const rawId = `official-records:${slug(seedIdentity(seed))}`;
   const subject = intakeSubject(seed);
 
   return [
+    ...commercialApiFacts,
     fact({
       runId,
       source: "official_records",

@@ -1,19 +1,26 @@
 import type { IntakeSeed, SourceFact } from "@ple/types";
 import { fact, fetchStatus, intakeSubject, nowIso, seedIdentity, slug } from "../lib";
+import { fetchCivilProbateCommercialApiFacts } from "./clerk-commercial-api";
 
 const PROBATE_COURT_SEARCH_URL = "https://www2.miamidadeclerk.gov/ocs/";
 const OFFICIAL_RECORDS_URL = "https://onlineservices.miamidadeclerk.gov/officialrecords";
 
-export async function fetchProbateCourtFacts(runId: string, seed: IntakeSeed): Promise<SourceFact[]> {
+type RuntimeEnv = Record<string, string | undefined>;
+
+export async function fetchProbateCourtFacts(runId: string, seed: IntakeSeed, env?: RuntimeEnv): Promise<SourceFact[]> {
   const fetchedAt = nowIso();
   const identity = slug(seedIdentity(seed));
   const rawId = `probate-court:${identity}`;
   const subject = intakeSubject(seed);
-  const status = await fetchStatus(PROBATE_COURT_SEARCH_URL);
+  const [commercialApiFacts, status] = await Promise.all([
+    fetchCivilProbateCommercialApiFacts(runId, seed, { env }),
+    fetchStatus(PROBATE_COURT_SEARCH_URL),
+  ]);
   const missingProbateFlags = ["MISSING_PROBATE_FACT", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"] as const;
   const missingAffidavitFlags = ["MISSING_AFFIDAVIT_OF_HEIRS_FACT", "PROBATE_DOCUMENT_REQUEST_REQUIRED", "SOURCE_EVIDENCE_REQUIRED", "HUMAN_REVIEW_REQUIRED", "NO_ENRICHMENT_RUN"] as const;
 
   return [
+    ...commercialApiFacts,
     fact({
       runId,
       source: "probate_court",

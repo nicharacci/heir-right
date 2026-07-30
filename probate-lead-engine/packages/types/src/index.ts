@@ -5,8 +5,10 @@ export type SourceKey =
   | "property_appraiser"
   | "probate_court"
   | "tax_collector"
+  | "idi"
   | "skip_trace"
   | "official_records"
+  | "source_governance"
   | "podio"
   | "intake"
   | "document_packet";
@@ -178,8 +180,178 @@ export interface DailyRunConfig {
   targetRawLeadRange: { min: number; max: number };
   targetQualifiedLeadRange: { min: number; max: number };
   seeds: IntakeSeed[];
-  seedSource: "configured_batch" | "default_review_seeds" | "manual";
-  startedBy: "automation" | "operator_cli";
+  seedSource: "configured_batch" | "default_review_seeds" | "manual" | "external_live_source";
+  seedBatch?: SeedBatchSummary;
+  startedBy: "automation" | "operator_cli" | "operator_ui";
+}
+
+export interface SeedBatchSummary {
+  batchId: string;
+  sourceLabel: string;
+  sourceOwner: string;
+  approvalMarker: string;
+  seedCount: number;
+  acceptedSeedCount: number;
+  rejectedSeedCount: number;
+  duplicateCount: number;
+  counties: string[];
+  inputPath?: string;
+}
+
+export type SeedValidationSeverity = "error" | "warning";
+
+export interface SeedValidationIssue {
+  severity: SeedValidationSeverity;
+  code: string;
+  message: string;
+  seedIndex?: number;
+}
+
+export interface SeedValidationReport {
+  ok: boolean;
+  generatedAt: string;
+  batch: SeedBatchSummary;
+  issues: SeedValidationIssue[];
+  acceptedSeeds: IntakeSeed[];
+  rejectedSeeds: Array<{ seed: IntakeSeed; issues: SeedValidationIssue[] }>;
+  operatorSummary: string;
+  nextActions: string[];
+}
+
+export type SourceCoverageAreaKey = "property" | "tax" | "deed_title" | "probate" | "family_tree_contacts" | "family_tree_offer";
+export type SourceCoverageAreaStatus = "extracted" | "partial" | "blocked";
+
+export interface SourceCoverageArea {
+  key: SourceCoverageAreaKey;
+  label: string;
+  status: SourceCoverageAreaStatus;
+  extractedFields: string[];
+  missingFields: string[];
+  nextAction: string;
+  sourceRefs: SourceRef[];
+  reviewFlags: ReviewFlag[];
+}
+
+export interface SourceCoverageProfile {
+  status: SourceCoverageAreaStatus;
+  checkedAt: string;
+  extractedAreaCount: number;
+  partialAreaCount: number;
+  blockedAreaCount: number;
+  extractedFieldCount: number;
+  missingFieldCount: number;
+  areas: SourceCoverageArea[];
+}
+
+export interface SourceCoverageSummary {
+  status: SourceCoverageAreaStatus;
+  leadCount: number;
+  extractedAreaCount: number;
+  partialAreaCount: number;
+  blockedAreaCount: number;
+  extractedFieldCount: number;
+  missingFieldCount: number;
+  areaStatuses: Array<{ key: SourceCoverageAreaKey; label: string; extracted: number; partial: number; blocked: number }>;
+}
+
+export interface SourceCoverageBlocker {
+  key: SourceCoverageAreaKey;
+  label: string;
+  status: Exclude<SourceCoverageAreaStatus, "extracted">;
+  affectedLeadCount: number;
+  capturedFields: string[];
+  missingFields: string[];
+  reviewFlags: ReviewFlag[];
+  nextAction: string;
+}
+
+export type QualificationDecisionStatus = "qualified" | "review" | "disqualified" | "duplicate" | "dead_letter";
+
+export interface QualificationCoverageScore {
+  area: SourceCoverageAreaKey;
+  label: string;
+  status: SourceCoverageAreaStatus;
+  weight: number;
+  earned: number;
+  reasonCode: string;
+  nextAction: string;
+}
+
+export interface QualificationDecision {
+  status: Exclude<QualificationDecisionStatus, "duplicate" | "dead_letter">;
+  label: string;
+  promotionEligible: boolean;
+  coverageScore: number;
+  requiredCoverageScore: number;
+  sourceCoverageStatus: SourceCoverageAreaStatus;
+  evidenceSummary: string;
+  reasonCodes: string[];
+  blockers: string[];
+  nextAction: string;
+  coverage: QualificationCoverageScore[];
+  reviewedAt: string;
+}
+
+export interface DailyDuplicateLeadResult {
+  dedupeKey: string;
+  county: string;
+  runId: string;
+  displayName: string;
+  originalRunId?: string;
+  reason: string;
+  nextAction: string;
+}
+
+export interface QualificationReviewRecord {
+  status: QualificationDecisionStatus;
+  dedupeKey: string;
+  county: string;
+  runId: string;
+  displayName: string;
+  qualified: boolean;
+  leadBucket?: LeadBucket;
+  workflowStatus?: WorkflowRuleStatus;
+  operatorQueueState?: OperatorQueueState;
+  coverageScore?: number;
+  requiredCoverageScore?: number;
+  reasonCodes: string[];
+  blockers: string[];
+  nextAction: string;
+  reportId?: string;
+}
+
+export interface QualificationReviewPacket {
+  id: string;
+  runId: string;
+  generatedAt: string;
+  operatorSummary: string;
+  settings: {
+    model: LeadQualitySettings["model"];
+    requiredCoverageScore: number;
+    minEnabledSignalWeightForPromotion: number;
+    evidenceGatesCannotBeWeakened: boolean;
+    enabledSignals: string[];
+    reasonCodes: string[];
+  };
+  summary: {
+    totalRecords: number;
+    qualified: number;
+    review: number;
+    disqualified: number;
+    duplicate: number;
+    deadLetter: number;
+    blockedFromPromotion: number;
+  };
+  sourceCoverageSummary: SourceCoverageSummary;
+  records: QualificationReviewRecord[];
+  samples: {
+    qualified: QualificationReviewRecord[];
+    review: QualificationReviewRecord[];
+    disqualified: QualificationReviewRecord[];
+    duplicate: QualificationReviewRecord[];
+    deadLetter: QualificationReviewRecord[];
+  };
+  nextActions: string[];
 }
 
 export interface DailyLeadResult {
@@ -194,6 +366,8 @@ export interface DailyLeadResult {
   qualified: boolean;
   blockers: string[];
   reportId?: string;
+  sourceCoverage: SourceCoverageProfile;
+  qualificationDecision: QualificationDecision;
 }
 
 export interface DailyRunResult {
@@ -206,9 +380,80 @@ export interface DailyRunResult {
   duplicateCount: number;
   errorCount: number;
   leads: DailyLeadResult[];
+  duplicates: DailyDuplicateLeadResult[];
   deadLetters: DeadLetter[];
   missedVolumeReasons: string[];
   blockers: string[];
+  sourceCoverageSummary: SourceCoverageSummary;
+  sourceCoverageBlockers: SourceCoverageBlocker[];
+  qualificationReview: QualificationReviewPacket;
+}
+
+export type FreshLeadSourceKey = "miami_dade_property_appraiser";
+export type FreshLeadSearchMode = "owner" | "address" | "folio";
+
+export interface FreshLeadFilters {
+  county?: string;
+  query?: string;
+  searchMode?: FreshLeadSearchMode;
+  limit?: number;
+  leadType?: string;
+  status?: string;
+  minimumEvidence?: number;
+  missingInfo?: string;
+  priorityOnly?: boolean;
+  includeCompanyOwners?: boolean;
+}
+
+export interface FreshLeadBatchRequest {
+  source?: FreshLeadSourceKey;
+  filters?: FreshLeadFilters;
+  startedBy?: DailyRunConfig["startedBy"];
+}
+
+export interface FreshLeadSourceLedgerEntry {
+  label: string;
+  url: string;
+  status: "used" | "checked" | "blocked";
+  note: string;
+}
+
+export interface FreshLeadCandidateSummary {
+  rawId: string;
+  folio?: string;
+  ownerName?: string;
+  propertyAddress?: string;
+  county?: string;
+  municipality?: string;
+  sourceUrl: string;
+  accepted: boolean;
+  rejectedReason?: string;
+  sourceRecord?: unknown;
+}
+
+export interface FreshLeadPipelineRun {
+  runId: string;
+  seed: IntakeSeed;
+  facts: SourceFact[];
+  dossier: RawDossier;
+}
+
+export interface FreshLeadBatchResult {
+  ok: boolean;
+  source: FreshLeadSourceKey;
+  generatedAt: string;
+  filters: Required<Pick<FreshLeadFilters, "county" | "query" | "searchMode" | "limit">> & FreshLeadFilters;
+  externalRecordCount: number;
+  acceptedSeedCount: number;
+  rejectedCandidateCount: number;
+  seeds: IntakeSeed[];
+  candidates: FreshLeadCandidateSummary[];
+  leadRuns: FreshLeadPipelineRun[];
+  dailyRun: DailyRunResult;
+  latestRun?: FreshLeadPipelineRun;
+  blockers: string[];
+  operatorSummary: string;
+  sourceLedger: FreshLeadSourceLedgerEntry[];
 }
 
 export type ExportRoute = "google" | "podio";
@@ -217,6 +462,13 @@ export interface ExportRequest {
   routes: ExportRoute[];
   dossier: RawDossier;
   dryRun?: boolean;
+  controlledTest?: boolean;
+  documentTitle?: string;
+  documentBody?: string;
+  workspaceDestination?: string;
+  workspaceDestinationEmail?: string;
+  shareWithEmails?: string[];
+  requestedByEmail?: string;
 }
 
 export interface ExportRouteResult {
@@ -225,6 +477,8 @@ export interface ExportRouteResult {
   mode: "live" | "dry_run" | "blocked";
   externalId?: string;
   url?: string;
+  workspaceDestination?: string;
+  sharedWithEmails?: string[];
   readbackOk: boolean;
   blockers: string[];
   message: string;
@@ -239,11 +493,145 @@ export interface ExportResult {
 }
 
 export interface ConnectionStatus {
-  name: "Podio" | "Google" | "Web Search";
+  name: "Podio" | "Google" | "Resend" | "SMS Gateway" | "Web Search" | "Tax Collector Source" | "Miami-Dade Clerk API" | "Vital/Obituary Workflow" | "IDI Core" | "Browserbase Usage" | "Activepieces" | "Linear Support" | "Leads Engine Access";
   ok: boolean;
-  mode: "live" | "dry_run" | "blocked";
+  mode: "live" | "dry_run" | "review" | "blocked";
   message: string;
   checkedAt: string;
+  configuredMode?: "api" | "commercial_api" | "operator_portal" | "script_listing" | "browser_workflow" | "usage_policy" | "none";
+  blockers?: string[];
+  auth?: {
+    mode: "bearer" | "app_auth" | "refresh" | "browser_refresh" | "missing";
+    durableTeamAuth: boolean;
+    appTokenConfigured: boolean;
+    serverRefreshConfigured: boolean;
+    browserSessionRefresh: boolean;
+    bearerTokenConfigured: boolean;
+    reconnectRequired: boolean;
+    durableRequired: boolean;
+  };
+  portal?: {
+    configured: boolean;
+    searchUrl: string;
+    loginUrl: string;
+  };
+  api?: {
+    endpointConfigured: boolean;
+    accessConfigured: boolean;
+    sharedDefaultConfigured?: boolean;
+    userOverrideAllowed?: boolean;
+    liveRunApproved: boolean;
+  };
+  apiRequest?: {
+    status: "pending_vendor_credentials" | "not_requested" | "issued";
+    requestedCredentials?: string[];
+    supportEmail?: string;
+    backendAutomationAllowed: boolean;
+    manualImportAllowed: boolean;
+  };
+  sourceAutomation?: {
+    scriptDirectListingConfigured?: boolean;
+    scriptLiveProbeEnabled?: boolean;
+    browserWorkflowConfigured?: boolean;
+    browserbaseFunctionConfigured?: boolean;
+    publicSearchUrl?: string;
+    officialRecordsApi?: string;
+    civilCaseApi?: string;
+    civilDocketApi?: string;
+    baseUrl?: string;
+    workflowConfigured?: boolean;
+    supports?: string[];
+  };
+  usagePolicy?: {
+    apiConfigured: boolean;
+    projectConfigured: boolean;
+    taxCollectorFunctionConfigured: boolean;
+    vitalObituaryFunctionConfigured: boolean;
+    proxyEnabled: boolean;
+    batchApprovalRequired: boolean;
+    batchApprovedByEnv: boolean;
+    maxBatchSessions: number;
+    maxConcurrency: number;
+  };
+}
+
+export type ReadbackRouteStatus = "passed" | "blocked" | "prepared_only";
+
+export interface ReadbackRouteEvidence {
+  route: ExportRoute;
+  label: string;
+  status: ReadbackRouteStatus;
+  mode: ExportRouteResult["mode"];
+  prepared: boolean;
+  liveWriteAttempted: boolean;
+  createdRecord: boolean;
+  externalId?: string;
+  url?: string;
+  readbackOk: boolean;
+  verification: {
+    record: string;
+    reportBody: string;
+    trackingRow: string;
+    reviewTask: string;
+    cleanup: string;
+  };
+  blockers: string[];
+  nextAction: string;
+  checkedAt: string;
+}
+
+export interface ReadbackEvidencePacket {
+  id: string;
+  generatedAt: string;
+  overallStatus: "passed" | "blocked";
+  operatorSummary: string;
+  routes: ReadbackRouteEvidence[];
+  blockers: string[];
+  cleanupNotes: string[];
+  nextActions: string[];
+}
+
+export type MilestoneEvidenceGateStatus = "passed" | "review_required" | "blocked";
+
+export interface MilestoneEvidenceGate {
+  id: string;
+  label: string;
+  status: MilestoneEvidenceGateStatus;
+  evidence: string;
+  nextAction: string;
+  blockers: string[];
+}
+
+export interface ThirtyDayMilestoneEvidence {
+  milestone: "30-Day Workflow Automation Milestone";
+  generatedAt: string;
+  overallStatus: "ready_for_human_review" | "blocked";
+  operatorSummary: string;
+  dailyRun: {
+    id: string;
+    seedSource: DailyRunConfig["seedSource"];
+    counties: string[];
+    rawLeadCount: number;
+    rawLeadTarget: DailyRunConfig["targetRawLeadRange"];
+    qualifiedLeadCount: number;
+    qualifiedLeadTarget: DailyRunConfig["targetQualifiedLeadRange"];
+    reviewLeadCount: number;
+    duplicateCount: number;
+    errorCount: number;
+    missedVolumeReasons: string[];
+    seedBatch?: SeedBatchSummary;
+    sourceCoverageSummary: SourceCoverageSummary;
+    sourceCoverageBlockers: SourceCoverageBlocker[];
+    qualificationReviewSummary: QualificationReviewPacket["summary"];
+  };
+  exportReadiness: {
+    connectionStatuses: ConnectionStatus[];
+    dryRunRoutes: ExportRouteResult[];
+    readbackEvidence: ReadbackEvidencePacket;
+  };
+  gates: MilestoneEvidenceGate[];
+  blockers: string[];
+  nextActions: string[];
 }
 
 export type ReviewFlag =
@@ -265,6 +653,10 @@ export type ReviewFlag =
   | "MISSING_TAX_HISTORY_FACT"
   | "MISSING_TAX_RECEIPT_FACT"
   | "MISSING_TAX_PAYER_FACT"
+  | "TAX_COLLECTOR_LISTING_PAGE_REQUIRED"
+  | "TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED"
+  | "TAX_RECEIPT_LINK_REQUIRED"
+  | "TAX_RECEIPT_LINK_CAPTURED"
   | "SOURCE_EVIDENCE_REQUIRED"
   | "MANUAL_TAX_RECEIPT_DOWNLOAD_REQUIRED"
   | "REASSESSMENT_REVIEW_REQUIRED"
@@ -275,6 +667,7 @@ export type ReviewFlag =
   | "MISSING_AFFIDAVIT_OF_HEIRS_FACT"
   | "PROBATE_DOCUMENT_REQUEST_REQUIRED"
   | "MISSING_MARRIAGE_DEATH_FACT"
+  | "VITAL_RECORDS_WORKFLOW_REQUIRED"
   | "MANUAL_DEATH_CERTIFICATE_REQUIRED"
   | "PAID_SOURCE_APPROVAL_REQUIRED"
   | "MANUAL_SOURCE_APPROVAL_REQUIRED"
@@ -287,7 +680,14 @@ export type ReviewFlag =
   | "COMPLIANCE_REVIEW_REQUIRED"
   | "CONTACT_REVIEW_REQUIRED"
   | "LIVE_OUTREACH_DISABLED"
-  | "NO_AUTO_SEND_GUARD";
+  | "NO_AUTO_SEND_GUARD"
+  | "MISSING_SKIPTRACE_CONFIG"
+  | "SKIPTRACE_PROVIDER_FAILED"
+  | "MISSING_IDI_ASSET_SEARCH"
+  | "IDI_ASSET_SEARCH_REVIEW_REQUIRED"
+  | "DUPLICATE_IDI_RUN_BLOCKED"
+  | "CONTACT_ACCEPTANCE_REQUIRED"
+  | "SOURCE_ATTACHMENT_REQUIRED";
 
 export type FactType =
   | "source_status"
@@ -303,10 +703,15 @@ export type FactType =
   | "tax_amount_due"
   | "tax_reassessment_signal"
   | "tax_receipt_status"
+  | "tax_receipt_link"
+  | "tax_paid_date"
   | "tax_payer_identity"
+  | "tax_receipt_attachment"
+  | "tax_last_paid_by"
   | "deed_history_status"
   | "latest_deed"
   | "or_book_page"
+  | "deed_attachment"
   | "last_sale_date"
   | "ownership_activity_note"
   | "mortgage_signal"
@@ -334,11 +739,18 @@ export type FactType =
   | "date_of_birth"
   | "date_of_death"
   | "obituary_link"
-  | "memorial_search_placeholder"
+  | "obituary_snapshot"
+  | "memorial_search_tasks"
   | "death_certificate_status"
   | "incarceration_status_signal"
   | "family_tree_status"
   | "family_tree_hypothesis"
+  | "idi_asset_search_status"
+  | "idi_asset_report_attachment"
+  | "primary_contact_profile"
+  | "alternative_contact_profile"
+  | "enriched_contact_profile"
+  | "skip_trace_status"
   | "source_governance_catalog"
   | "offer_as_is_value"
   | "offer_heir_count"
@@ -366,7 +778,49 @@ export interface SourceFact {
   value: unknown;
   confidence: number;
   sourceUrl?: string;
+  attachment?: SourceAttachmentRef;
   reviewFlags: ReviewFlag[];
+}
+
+export interface SourceAttachmentRef {
+  label: string;
+  sourceUrl?: string;
+  fileKind: "pdf" | "image" | "csv" | "html" | "text" | "json" | "link";
+  fileName?: string;
+  capturedAt: string;
+  capturedBy?: string;
+  reviewFlags: ReviewFlag[];
+}
+
+export type ContactCandidateGroup = "primary" | "alternative";
+
+export interface ContactCandidate {
+  id: string;
+  name: string;
+  relationship: string;
+  group: ContactCandidateGroup;
+  phones: string[];
+  emails: string[];
+  currentAddress?: string;
+  addressHistory: string[];
+  ownerLastNameMatch: boolean;
+  confidence: number;
+  sourceRefs: SourceRef[];
+  reviewStatus: "imported" | "accepted" | "rejected" | "promoted";
+  reviewFlags: ReviewFlag[];
+}
+
+export type ConfirmedSourceFactSource = "clerk_of_courts" | "property_appraiser" | "probate_court" | "tax_collector" | "official_records" | "idi" | "skip_trace";
+
+export interface ConfirmedSourceFactInput {
+  source: ConfirmedSourceFactSource;
+  factType: FactType;
+  value: unknown;
+  rawId?: string;
+  fetchedAt?: string;
+  confidence?: number;
+  sourceUrl?: string;
+  reviewFlags?: ReviewFlag[];
 }
 
 export interface DossierClaim<T = unknown> {
@@ -456,7 +910,11 @@ export interface TaxHistory {
   amountDue: DossierClaim<TaxAmountDue>;
   reassessment: DossierClaim<string>;
   receiptStatus: DossierClaim<string>;
+  receiptLink: DossierClaim<string>;
+  paidDate: DossierClaim<string>;
   payerIdentity: DossierClaim<string>;
+  receiptAttachment: DossierClaim<SourceAttachmentRef>;
+  lastPaidBy: DossierClaim<string>;
   reviewTasks: SourceEvidenceReviewTask[];
   manualReceiptTask: {
     required: boolean;
@@ -484,6 +942,7 @@ export interface DeedHistory {
   sourceStatus: DossierClaim<string>;
   latestDeed: DossierClaim<LatestDeedRecord>;
   orBookPage: DossierClaim<OrBookPageRef>;
+  deedAttachment: DossierClaim<SourceAttachmentRef>;
   lastSaleDate: DossierClaim<string>;
   mailingAddressSignal: DossierClaim<string>;
   ownershipActivity: DossierClaim<string>;
@@ -526,7 +985,7 @@ export interface ProbateDocket {
   };
 }
 
-export interface MemorialSearchPlaceholder {
+export interface MemorialSearchTask {
   provider: "findagrave" | "legacy" | "google";
   query?: string;
   url?: string;
@@ -539,7 +998,8 @@ export interface MarriageDeathIndicators {
   dateOfBirth: DossierClaim<string>;
   dateOfDeath: DossierClaim<string>;
   obituaryLink: DossierClaim<string>;
-  memorialSearches: DossierClaim<MemorialSearchPlaceholder[]>;
+  obituarySnapshot: DossierClaim<SourceAttachmentRef>;
+  memorialSearches: DossierClaim<MemorialSearchTask[]>;
   deathCertificateStatus: DossierClaim<string>;
   incarcerationStatus: DossierClaim<string>;
   reviewTasks: SourceEvidenceReviewTask[];
@@ -575,6 +1035,7 @@ export interface FamilyTreeNode {
 export interface FamilyTreeHypothesisData {
   status: "hypothesis" | "needs_review" | "reviewed";
   nodes: FamilyTreeNode[];
+  contactCandidates?: ContactCandidate[];
   unresolvedQuestions: string[];
 }
 
@@ -604,8 +1065,28 @@ export interface ManualResearchTask {
   reviewFlags: ReviewFlag[];
 }
 
+export interface PublicSourceAcquisitionStage {
+  code: string;
+  title: string;
+  operatorAction: string;
+  requiredEvidence: string[];
+  blocksUntilCaptured: boolean;
+}
+
+export interface PublicSourceAcquisitionContract {
+  code: string;
+  label: string;
+  source: SourceKey;
+  accessClass: SourceAccessClass;
+  automationAllowed: boolean;
+  entryUrl: string;
+  stages: PublicSourceAcquisitionStage[];
+  reviewFlags: ReviewFlag[];
+}
+
 export interface SourceGovernanceCatalog {
   taxonomy: SourceAccessClass[];
+  publicSourceContracts: PublicSourceAcquisitionContract[];
   governedSources: GovernedSourceEntry[];
   manualTasks: ManualResearchTask[];
   auditNotes: string[];
@@ -628,7 +1109,7 @@ export type LeadBucket = "qualified" | "bonus_warm" | "generic_seed" | "disquali
 
 export interface ReportReviewGate {
   reportStatus: ReportReviewStatus;
-  underwritingStatus: UnderwritingReviewStatus;
+  underwritingStatus?: UnderwritingReviewStatus;
   documentReadiness: DocumentReadinessStatus;
   outreachReadiness: OutreachReadinessStatus;
   externalUseBlocked: boolean;
@@ -747,9 +1228,12 @@ export interface ResearchStepChecklistItem {
 export interface ContactPlaceholderEntry {
   role: string;
   name?: string;
+  age?: number;
+  likelyCurrentAddress?: string;
   phones: string[];
   emails: string[];
   addresses: string[];
+  addressHistory?: Array<{ address: string; county?: string; dates?: string; sourceUrl?: string }>;
   note: string;
   reviewFlags: ReviewFlag[];
 }
@@ -781,10 +1265,11 @@ export interface CompletedLeadReport {
   sourceLinks: Array<{ label: string; url?: string; source: SourceKey }>;
   reviewFlags: ReviewFlag[];
   leadQualityProfile: LeadQualityProfile;
-  offerMath: OfferProfitMath;
+  offerMath?: OfferProfitMath;
   formats: {
     markdown: string;
     html: string;
+    familyTreeHtml?: string;
   };
 }
 
@@ -857,6 +1342,8 @@ export interface RawDossier {
   workflow: WorkflowRuleEvaluation;
   operatorQueue: OperatorQueue;
   evidenceQa: SourceEvidenceQaResult;
+  sourceCoverage: SourceCoverageProfile;
+  qualificationDecision?: QualificationDecision;
   narrative: string;
   crm: {
     provider: "podio";
@@ -902,5 +1389,14 @@ export interface IntakeSeed {
   caseNumber?: string;
   county: string;
   parcelId?: string;
-  source: "landing_page" | "operator_cli";
+  taxCollectorListingUrl?: string;
+  taxCollectorReceiptUrl?: string;
+  source: "landing_page" | "operator_cli" | "external_public_source";
+  seedBatchId?: string;
+  seedSourceLabel?: string;
+  sourceOwner?: string;
+  approvalMarker?: string;
+  includeDealMath?: boolean;
+  includeSkipTrace?: boolean;
+  confirmedSourceFacts?: ConfirmedSourceFactInput[];
 }

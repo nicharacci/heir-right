@@ -1,0 +1,560 @@
+{
+  "at": "2026-07-04T03:19:48.962Z",
+  "url": "http://localhost:4194/?view=dossiers&docprep=estate&rail=open&walkthrough=off&flow=closing-docs",
+  "ok": true,
+  "checks": [
+    {
+      "name": "desktop rerun path exposed and used",
+      "passed": true,
+      "detail": {
+        "startPath": {
+          "path": "rerun-review"
+        },
+        "rerunPath": {
+          "review": true,
+          "note": {
+            "text": "S30 proof rerun: rebuild the closing packet preview from the reviewed Discovery File and source-backed tax receipt.",
+            "hasRun": true,
+            "runText": "Run corrected packet"
+          }
+        }
+      }
+    },
+    {
+      "name": "desktop heading is Preview",
+      "passed": true,
+      "detail": "Preview"
+    },
+    {
+      "name": "desktop no legacy/placeholder text",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasTaxReceipt": true,
+        "hasTemplateLock": true,
+        "hasShortcut": true
+      }
+    },
+    {
+      "name": "desktop receipt evidence visible",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasTaxReceipt": true,
+        "hasTemplateLock": true,
+        "hasShortcut": true
+      }
+    },
+    {
+      "name": "desktop legal-template lock visible",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasTaxReceipt": true,
+        "hasTemplateLock": true,
+        "hasShortcut": true
+      }
+    },
+    {
+      "name": "desktop shortcut visible",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasTaxReceipt": true,
+        "hasTemplateLock": true,
+        "hasShortcut": true
+      }
+    },
+    {
+      "name": "desktop keyboard cycles sections",
+      "passed": true,
+      "detail": {
+        "before": "Closing package",
+        "afterDown": "Closing intake",
+        "afterUp": "Closing package",
+        "changedOnDown": true,
+        "changedBackOnUp": true,
+        "fallback": false
+      }
+    },
+    {
+      "name": "desktop preview contained",
+      "passed": true,
+      "detail": {
+        "panel": {
+          "width": 520,
+          "height": 579,
+          "top": -5,
+          "bottom": 574,
+          "left": 893,
+          "right": 1413
+        },
+        "document": {
+          "width": 494,
+          "height": 399,
+          "top": 165,
+          "bottom": 564,
+          "left": 906,
+          "right": 1400
+        },
+        "head": {
+          "width": 494,
+          "height": 74,
+          "top": 8,
+          "bottom": 82,
+          "left": 906,
+          "right": 1400
+        },
+        "control": {
+          "width": 494,
+          "height": 59,
+          "top": 94,
+          "bottom": 153,
+          "left": 906,
+          "right": 1400
+        },
+        "shortcut": {
+          "width": 494,
+          "height": 15,
+          "top": 546,
+          "bottom": 561,
+          "left": 906,
+          "right": 1400
+        },
+        "childBottoms": [
+          {
+            "className": "artifact-stream-head",
+            "top": 8,
+            "bottom": 82,
+            "height": 74
+          },
+          {
+            "className": "docprep-section-control",
+            "top": 94,
+            "bottom": 153,
+            "height": 59
+          },
+          {
+            "className": "artifact-stream-document",
+            "top": 165,
+            "bottom": 564,
+            "height": 399
+          },
+          {
+            "className": "artifact-stream-shortcut",
+            "top": 546,
+            "bottom": 561,
+            "height": 15
+          }
+        ],
+        "computed": {
+          "display": "grid",
+          "minHeight": "579px",
+          "height": "579px",
+          "gridTemplateRows": "74.375px 59px 368.781px 14.8438px",
+          "overflow": "hidden"
+        },
+        "heading": "Preview",
+        "progress": "5 / 5 sections",
+        "activeChip": "Closing package",
+        "textFlags": {
+          "hasLegacyHeader": false,
+          "hasFake": false,
+          "hasTaxReceipt": true,
+          "hasTemplateLock": true,
+          "hasShortcut": true
+        },
+        "scroll": {
+          "bodyScrollWidth": 1440,
+          "innerWidth": 1440,
+          "docScrollHeight": 1364,
+          "docClientHeight": 397
+        },
+        "href": "http://localhost:4194/?view=dossiers&docprep=estate&rail=open&walkthrough=off&flow=closing-docs&proofTs=1783135189278"
+      }
+    },
+    {
+      "name": "desktop no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "bodyScrollWidth": 1440,
+        "innerWidth": 1440,
+        "docScrollHeight": 1364,
+        "docClientHeight": 397
+      }
+    },
+    {
+      "name": "mobile heading is Preview",
+      "passed": true,
+      "detail": "Preview"
+    },
+    {
+      "name": "mobile no legacy/placeholder text",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasTaxReceipt": true,
+        "hasTemplateLock": true,
+        "hasShortcut": true
+      }
+    },
+    {
+      "name": "mobile receipt evidence visible",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasTaxReceipt": true,
+        "hasTemplateLock": true,
+        "hasShortcut": true
+      }
+    },
+    {
+      "name": "mobile legal-template lock visible",
+      "passed": true,
+      "detail": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasTaxReceipt": true,
+        "hasTemplateLock": true,
+        "hasShortcut": true
+      }
+    },
+    {
+      "name": "mobile preview contained",
+      "passed": true,
+      "detail": {
+        "panel": {
+          "width": 390,
+          "height": 539,
+          "top": 390,
+          "bottom": 929,
+          "left": 13,
+          "right": 403
+        },
+        "document": {
+          "width": 364,
+          "height": 321,
+          "top": 553,
+          "bottom": 874,
+          "left": 26,
+          "right": 390
+        },
+        "head": {
+          "width": 364,
+          "height": 74,
+          "top": 403,
+          "bottom": 477,
+          "left": 26,
+          "right": 390
+        },
+        "control": {
+          "width": 364,
+          "height": 52,
+          "top": 489,
+          "bottom": 541,
+          "left": 26,
+          "right": 390
+        },
+        "shortcut": {
+          "width": 364,
+          "height": 30,
+          "top": 886,
+          "bottom": 916,
+          "left": 26,
+          "right": 390
+        },
+        "childBottoms": [
+          {
+            "className": "artifact-stream-head",
+            "top": 403,
+            "bottom": 477,
+            "height": 74
+          },
+          {
+            "className": "docprep-section-control",
+            "top": 489,
+            "bottom": 541,
+            "height": 52
+          },
+          {
+            "className": "artifact-stream-document",
+            "top": 553,
+            "bottom": 874,
+            "height": 321
+          },
+          {
+            "className": "artifact-stream-shortcut",
+            "top": 886,
+            "bottom": 916,
+            "height": 30
+          }
+        ],
+        "computed": {
+          "display": "grid",
+          "minHeight": "500.72px",
+          "height": "538.781px",
+          "gridTemplateRows": "74.375px 52px 320.719px 29.6875px",
+          "overflow": "hidden"
+        },
+        "heading": "Preview",
+        "progress": "5 / 5 sections",
+        "activeChip": "Closing package",
+        "textFlags": {
+          "hasLegacyHeader": false,
+          "hasFake": false,
+          "hasTaxReceipt": true,
+          "hasTemplateLock": true,
+          "hasShortcut": true
+        },
+        "scroll": {
+          "bodyScrollWidth": 390,
+          "innerWidth": 390,
+          "docScrollHeight": 1572,
+          "docClientHeight": 319
+        },
+        "href": "http://localhost:4194/?view=dossiers&docprep=estate&rail=open&walkthrough=off&flow=closing-docs&proofTs=1783135196235"
+      }
+    },
+    {
+      "name": "mobile no horizontal overflow",
+      "passed": true,
+      "detail": {
+        "bodyScrollWidth": 390,
+        "innerWidth": 390,
+        "docScrollHeight": 1572,
+        "docClientHeight": 319
+      }
+    }
+  ],
+  "desktop": {
+    "complete": {
+      "hasStream": true,
+      "complete": true,
+      "blocked": true,
+      "review": false,
+      "hasRunCorrected": false,
+      "text": "HeirRight\nDashboard\nEstates\nDocument Prep\nOutreach\nQueue\nAdmin\nSettings\nHelp & Demos\n/\n+\nImport\nPrep export\nReport\nHistory\nActivity\nGuide\nAll clients\n/\nEstate of Fresh Public-Source Validation Lead\nEstate of Fresh Public-Source Validation Lead\n\n20611 NW 33rd Pl\nMiami Gardens\nFL 33056\n\nDEAL STATUS\nPre-Discovery\nPost-Discovery\nOutreach\nWarm\nHot\nCold\nPre-Discovery\nEstate Discovery\n100%\nClosing Prep\n100% · Closing templates\nAll\nLinked · 20\nMissing · 0\nEstate of Fresh Public-Source Validation Lead\n20/20 documents\nRun again\nComplete\nExport to Google Workspace\nCompleted Lead Report\nCompleted Lead Report - Owner needs review - Estate Discovery.pdf · 17 KB\nRendered report\nRun\nDeed & Title Notes\nDeed & Title Notes - Owner needs review - Estate Discovery.pdf · 4 KB\nOfficial records\nRun\nTax History Packet\nTax History Packet - Owner needs review - Estate Discovery.pdf · 5 KB\nTax collector\nRun\nHeir Contact Matrix\nHeir Contact Matrix - Owner needs review - Estate Discovery.pdf · 5 KB\nContact review\nRun\nCRM Review\nCRM Review - Owner needs review - Estate Discovery.pdf · 3 KB\nPodio fields\nRun\nClosing Packet Review\nClosing Packet Review - Owner needs review - Closing Prep.pdf · 7 KB\nGenerated packet\nRun\nFund Transfer / Bank Account Transfer\nFund Transfer / Bank Account Transfer - Owner needs review - Closing Prep.pdf · 4 KB\nDisbursement setup\nRun\nContract for Deed\nContract for Deed - Owner needs review - Closing Prep.pdf · 4 KB\nDraft agreement\nRun\nQuit Claim Deed\nQuit Claim Deed - Owner needs review - Closing Prep.pdf · 4 KB\nDeed prep\nRun\nLimited Power of Attorney\nLimited Power of Attorney - Owner needs review - Closing Prep.pdf · 4 KB\nAuthority review\nRun\nAssignment of Surplus Rights Purchase Agreement\nAssignment of Surplus Rights Purchase Agreement - Owner needs review - Closing Prep.pdf · 4 KB\nSurplus rights draft\nRun\nSame Name Affidavit\nSame Name Affidavit - Owner needs review - Closing Prep.pdf · 4 KB\nIdentity affidavit\nRun\nJoinder / Waiver / Consent\nJoinder / Waiver / Consent - Owner needs review - Closing Prep.pdf · 4 KB\nConsent packet\nRun\nAffidavit of Heirs\nAffidavit of Heirs - Owner needs review - Closing Prep.pdf · 4 KB\nHeirship affidavit\nRun\nValuable Consideration Disb"
+    },
+    "stream": {
+      "panel": {
+        "width": 520,
+        "height": 579,
+        "top": -5,
+        "bottom": 574,
+        "left": 893,
+        "right": 1413
+      },
+      "document": {
+        "width": 494,
+        "height": 399,
+        "top": 165,
+        "bottom": 564,
+        "left": 906,
+        "right": 1400
+      },
+      "head": {
+        "width": 494,
+        "height": 74,
+        "top": 8,
+        "bottom": 82,
+        "left": 906,
+        "right": 1400
+      },
+      "control": {
+        "width": 494,
+        "height": 59,
+        "top": 94,
+        "bottom": 153,
+        "left": 906,
+        "right": 1400
+      },
+      "shortcut": {
+        "width": 494,
+        "height": 15,
+        "top": 546,
+        "bottom": 561,
+        "left": 906,
+        "right": 1400
+      },
+      "childBottoms": [
+        {
+          "className": "artifact-stream-head",
+          "top": 8,
+          "bottom": 82,
+          "height": 74
+        },
+        {
+          "className": "docprep-section-control",
+          "top": 94,
+          "bottom": 153,
+          "height": 59
+        },
+        {
+          "className": "artifact-stream-document",
+          "top": 165,
+          "bottom": 564,
+          "height": 399
+        },
+        {
+          "className": "artifact-stream-shortcut",
+          "top": 546,
+          "bottom": 561,
+          "height": 15
+        }
+      ],
+      "computed": {
+        "display": "grid",
+        "minHeight": "579px",
+        "height": "579px",
+        "gridTemplateRows": "74.375px 59px 368.781px 14.8438px",
+        "overflow": "hidden"
+      },
+      "heading": "Preview",
+      "progress": "5 / 5 sections",
+      "activeChip": "Closing package",
+      "textFlags": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasTaxReceipt": true,
+        "hasTemplateLock": true,
+        "hasShortcut": true
+      },
+      "scroll": {
+        "bodyScrollWidth": 1440,
+        "innerWidth": 1440,
+        "docScrollHeight": 1364,
+        "docClientHeight": 397
+      },
+      "href": "http://localhost:4194/?view=dossiers&docprep=estate&rail=open&walkthrough=off&flow=closing-docs&proofTs=1783135189278"
+    }
+  },
+  "mobile": {
+    "complete": {
+      "hasStream": true,
+      "complete": true,
+      "blocked": true,
+      "review": false,
+      "hasRunCorrected": false,
+      "text": "+\nImport\nPrep export\nReport\nHistory\nActivity\nGuide\nAll clients\n/\nEstate of Fresh Public-Source Validation Lead\nEstate of Fresh Public-Source Validation Lead\n\n20611 NW 33rd Pl\nMiami Gardens\nFL 33056\n\nDEAL STATUS\nPre-Discovery\nPost-Discovery\nOutreach\nWarm\nHot\nCold\nPre-Discovery\nEstate Discovery\n100%\nClosing Prep\n100% · Closing templates\nAll\nLinked · 20\nMissing · 0\nEstate of Fresh Public-Source Validation Lead\n20/20 documents\nRun again\nComplete\nExport to Google Workspace\nCompleted Lead Report\nCompleted Lead Report - Owner needs review - Estate Discovery.pdf · 17 KB\nRendered report\nRun\nDeed & Title Notes\nDeed & Title Notes - Owner needs review - Estate Discovery.pdf · 4 KB\nOfficial records\nRun\nTax History Packet\nTax History Packet - Owner needs review - Estate Discovery.pdf · 5 KB\nTax collector\nRun\nHeir Contact Matrix\nHeir Contact Matrix - Owner needs review - Estate Discovery.pdf · 5 KB\nContact review\nRun\nCRM Review\nCRM Review - Owner needs review - Estate Discovery.pdf · 3 KB\nPodio fields\nRun\nClosing Packet Review\nClosing Packet Review - Owner needs review - Closing Prep.pdf · 7 KB\nGenerated packet\nRun\nFund Transfer / Bank Account Transfer\nFund Transfer / Bank Account Transfer - Owner needs review - Closing Prep.pdf · 4 KB\nDisbursement setup\nRun\nContract for Deed\nContract for Deed - Owner needs review - Closing Prep.pdf · 4 KB\nDraft agreement\nRun\nQuit Claim Deed\nQuit Claim Deed - Owner needs review - Closing Prep.pdf · 4 KB\nDeed prep\nRun\nLimited Power of Attorney\nLimited Power of Attorney - Owner needs review - Closing Prep.pdf · 4 KB\nAuthority review\nRun\nAssignment of Surplus Rights Purchase Agreement\nAssignment of Surplus Rights Purchase Agreement - Owner needs review - Closing Prep.pdf · 4 KB\nSurplus rights draft\nRun\nSame Name Affidavit\nSame Name Affidavit - Owner needs review - Closing Prep.pdf · 4 KB\nIdentity affidavit\nRun\nJoinder / Waiver / Consent\nJoinder / Waiver / Consent - Owner needs review - Closing Prep.pdf · 4 KB\nConsent packet\nRun\nAffidavit of Heirs\nAffidavit of Heirs - Owner needs review - Closing Prep.pdf · 4 KB\nHeirship affidavit\nRun\nValuable Consideration Disbursement\nValuable Consideration Disbursement - Owner needs review - Closing Prep.pdf · "
+    },
+    "stream": {
+      "panel": {
+        "width": 390,
+        "height": 539,
+        "top": 390,
+        "bottom": 929,
+        "left": 13,
+        "right": 403
+      },
+      "document": {
+        "width": 364,
+        "height": 321,
+        "top": 553,
+        "bottom": 874,
+        "left": 26,
+        "right": 390
+      },
+      "head": {
+        "width": 364,
+        "height": 74,
+        "top": 403,
+        "bottom": 477,
+        "left": 26,
+        "right": 390
+      },
+      "control": {
+        "width": 364,
+        "height": 52,
+        "top": 489,
+        "bottom": 541,
+        "left": 26,
+        "right": 390
+      },
+      "shortcut": {
+        "width": 364,
+        "height": 30,
+        "top": 886,
+        "bottom": 916,
+        "left": 26,
+        "right": 390
+      },
+      "childBottoms": [
+        {
+          "className": "artifact-stream-head",
+          "top": 403,
+          "bottom": 477,
+          "height": 74
+        },
+        {
+          "className": "docprep-section-control",
+          "top": 489,
+          "bottom": 541,
+          "height": 52
+        },
+        {
+          "className": "artifact-stream-document",
+          "top": 553,
+          "bottom": 874,
+          "height": 321
+        },
+        {
+          "className": "artifact-stream-shortcut",
+          "top": 886,
+          "bottom": 916,
+          "height": 30
+        }
+      ],
+      "computed": {
+        "display": "grid",
+        "minHeight": "500.72px",
+        "height": "538.781px",
+        "gridTemplateRows": "74.375px 52px 320.719px 29.6875px",
+        "overflow": "hidden"
+      },
+      "heading": "Preview",
+      "progress": "5 / 5 sections",
+      "activeChip": "Closing package",
+      "textFlags": {
+        "hasLegacyHeader": false,
+        "hasFake": false,
+        "hasTaxReceipt": true,
+        "hasTemplateLock": true,
+        "hasShortcut": true
+      },
+      "scroll": {
+        "bodyScrollWidth": 390,
+        "innerWidth": 390,
+        "docScrollHeight": 1572,
+        "docClientHeight": 319
+      },
+      "href": "http://localhost:4194/?view=dossiers&docprep=estate&rail=open&walkthrough=off&flow=closing-docs&proofTs=1783135196235"
+    }
+  },
+  "keyboard": {
+    "before": "Closing package",
+    "afterDown": "Closing intake",
+    "afterUp": "Closing package",
+    "changedOnDown": true,
+    "changedBackOnUp": true,
+    "fallback": false
+  },
+  "rerun": {
+    "startPath": {
+      "path": "rerun-review"
+    },
+    "rerunPath": {
+      "review": true,
+      "note": {
+        "text": "S30 proof rerun: rebuild the closing packet preview from the reviewed Discovery File and source-backed tax receipt.",
+        "hasRun": true,
+        "runText": "Run corrected packet"
+      }
+    }
+  }
+}

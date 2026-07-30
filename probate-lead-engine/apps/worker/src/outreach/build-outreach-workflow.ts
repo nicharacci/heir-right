@@ -28,7 +28,18 @@ function manualTask(input: Omit<FollowUpTaskTemplate, "manualOnly" | "reviewFlag
   };
 }
 
-function buildFollowUpTasks(): FollowUpTaskTemplate[] {
+const DEAL_FACT_TYPES = new Set([
+  "offer_as_is_value",
+  "offer_heir_count",
+  "offer_buy_percentage",
+  "offer_minimum_net_profit",
+]);
+
+function includesDealMath(dossier: Omit<RawDossier, "outreach">): boolean {
+  return dossier.audit.facts.some((fact) => DEAL_FACT_TYPES.has(fact.factType));
+}
+
+function buildFollowUpTasks(includeDealMath: boolean): FollowUpTaskTemplate[] {
   return [
     manualTask({
       id: "call-attempt-1",
@@ -78,7 +89,7 @@ function buildFollowUpTasks(): FollowUpTaskTemplate[] {
       attemptNumber: null,
       window: "multi_day",
       assignedRole: "operator",
-      description: "Check all known relatives, owners, and contact placeholders before deciding which person or number to call next.",
+      description: "Check all known relatives, owners, contact candidates, and missing-contact tasks before deciding which person or number to call next.",
     }),
     manualTask({
       id: "joshua-escalation",
@@ -88,17 +99,24 @@ function buildFollowUpTasks(): FollowUpTaskTemplate[] {
       attemptNumber: null,
       window: "manager_review",
       assignedRole: "manager",
-      description: "Send the reviewed lead packet, call notes, and open questions to Joshua before any offer or external document is used.",
+      description: includeDealMath
+        ? "Send the reviewed lead packet, call notes, and open questions to Joshua before any offer or external document is used."
+        : "Send the reviewed lead packet, call notes, and open questions to Joshua before any external document is used.",
     }),
   ];
 }
 
 function buildReadiness(dossier: Omit<RawDossier, "outreach">, report?: CompletedLeadReport): OutreachReadinessEvaluation {
+  const includeDealMath = includesDealMath(dossier);
   const blockers = [
     "Compliance approval is missing for every outreach script.",
-    "Approved disclaimers are not attached to script, text, email, or offer-letter drafts.",
-    "Contact data is still placeholder-only until enrichment or manual capture is reviewed.",
-    "Live calls, texts, emails, and offer letters are disabled by the no-auto-send guard.",
+    includeDealMath
+      ? "Approved disclaimers are not attached to script, text, email, or offer-letter drafts."
+      : "Approved disclaimers are not attached to script, text, or email drafts.",
+    "Contact data is still blocked until enrichment or manual capture is reviewed.",
+    includeDealMath
+      ? "Live calls, texts, emails, and offer letters are disabled by the no-auto-send guard."
+      : "Live calls, texts, and emails are disabled by the no-auto-send guard.",
   ];
   const reviewFlags: ReviewFlag[] = [
     "SCRIPT_REVIEW_REQUIRED",
@@ -114,7 +132,7 @@ function buildReadiness(dossier: Omit<RawDossier, "outreach">, report?: Complete
     blockers.unshift("Completed lead report still needs operator review.");
     reviewFlags.push("REPORT_REVIEW_REQUIRED");
   }
-  if (!report || report.offerMath.reviewFlags.includes("UNDERWRITING_REVIEW_REQUIRED")) {
+  if (includeDealMath && (!report?.offerMath || report.offerMath.reviewFlags.includes("UNDERWRITING_REVIEW_REQUIRED"))) {
     blockers.unshift("Offer/profit underwriting still needs operator review.");
     reviewFlags.push("UNDERWRITING_REVIEW_REQUIRED");
   }
@@ -128,34 +146,41 @@ function buildReadiness(dossier: Omit<RawDossier, "outreach">, report?: Complete
     evaluatedAt: nowIso(),
     blockers: unique(blockers),
     nextAction: blockers.length
-      ? "Clear the report, offer, contact, script, and compliance review items before any manual outreach."
+      ? includeDealMath
+        ? "Clear the report, offer, contact, script, and compliance review items before any manual outreach."
+        : "Clear the report, contact, script, and compliance review items before any manual outreach."
       : "Prepare manual outreach only; automated sends remain disabled.",
     reviewFlags: unique(reviewFlags),
   };
 }
 
-function buildNoAutoSendGuard(): NoAutoSendGuard {
+function buildNoAutoSendGuard(includeDealMath: boolean): NoAutoSendGuard {
   return {
     enabled: true,
     blockedActions: ["call", "voicemail", "text", "email", "letter"],
-    reason: "S8 creates draft assets and manual tasks only. Automated calls, texts, emails, letters, and offers require future explicit approval.",
+    reason: includeDealMath
+      ? "S8 creates draft assets and manual tasks only. Automated calls, texts, emails, letters, and offers require future explicit approval."
+      : "S8 creates draft assets and manual tasks only. Automated calls, texts, emails, and letters require future explicit approval.",
     reviewFlags: ["NO_AUTO_SEND_GUARD", "LIVE_OUTREACH_DISABLED", "OUTREACH_BLOCKED", "HUMAN_REVIEW_REQUIRED"],
   };
 }
 
 export function buildOutreachWorkflow(dossier: Omit<RawDossier, "outreach">, report?: CompletedLeadReport): OutreachWorkflow {
-  const assets = buildOutreachDraftAssets();
+  const includeDealMath = includesDealMath(dossier);
+  const assets = buildOutreachDraftAssets().filter((asset) => includeDealMath || !/offer|underwriting/i.test(`${asset.title} ${asset.intendedUse} ${asset.body}`));
   const readiness = buildReadiness(dossier, report);
   return {
     assets,
     complianceStatus: "needs_compliance_review",
-    followUpTasks: buildFollowUpTasks(),
+    followUpTasks: buildFollowUpTasks(includeDealMath),
     readiness,
-    noAutoSendGuard: buildNoAutoSendGuard(),
+    noAutoSendGuard: buildNoAutoSendGuard(includeDealMath),
     notes: [
       "Scripts are draft reference material sourced from workflow_templates.md.",
       "Follow-up work is represented as manual operator tasks only.",
-      "Joshua escalation is visible before manager calls, offers, or external documents.",
+      includeDealMath
+        ? "Joshua escalation is visible before manager calls, offers, or external documents."
+        : "Joshua escalation is visible before manager calls or external documents.",
       "No live Podio writes or live outreach sends are enabled by this sprint.",
     ],
   };

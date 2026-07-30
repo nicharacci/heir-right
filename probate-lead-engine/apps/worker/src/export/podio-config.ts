@@ -3,6 +3,7 @@ export const TEXAS_EQUITY_PROS_LEADS_SPACE_ID = "7008942";
 export const TEXAS_EQUITY_PROS_LEADS_WORKSPACE = "Texas Equity Pros LLC";
 export const TEXAS_EQUITY_PROS_LEADS_APP = "Leads";
 export const PODIO_LIVE_WRITE_APPROVAL_KEY = "PODIO_LIVE_WRITE_APPROVED";
+export const PODIO_CSV_BACKUP_CONFIRMATION_KEY = "PODIO_CSV_BACKUP_CONFIRMED";
 
 type RuntimeEnv = Record<string, string | undefined>;
 
@@ -26,6 +27,122 @@ export interface PodioFieldMapResolution {
   map: PodioFieldMap;
   source: "env" | "texas_equity_pros_leads_preset" | "missing";
   blockers: string[];
+}
+
+export function podioEnvValue(env: RuntimeEnv, keys: string[]): string | undefined {
+  return keys.map((key) => env[key]).find((value): value is string => Boolean(value));
+}
+
+export function podioAccessToken(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_ACCESS_TOKEN", "PODIO_OAUTH_ACCESS_TOKEN"]);
+}
+
+export function podioRefreshToken(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, [
+    "PODIO_DURABLE_REFRESH_TOKEN",
+    "PODIO_TEAM_REFRESH_TOKEN",
+    "PODIO_REFRESH_TOKEN",
+    "PODIO_OAUTH_REFRESH_TOKEN",
+    "PODIO_REFRESH_ACCESS_TOKEN",
+    "PODIO_BROWSER_REFRESH_TOKEN",
+  ]);
+}
+
+export function podioServerRefreshToken(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, [
+    "PODIO_DURABLE_REFRESH_TOKEN",
+    "PODIO_TEAM_REFRESH_TOKEN",
+    "PODIO_REFRESH_TOKEN",
+    "PODIO_OAUTH_REFRESH_TOKEN",
+    "PODIO_REFRESH_ACCESS_TOKEN",
+  ]);
+}
+
+export function podioBrowserRefreshToken(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_BROWSER_REFRESH_TOKEN"]);
+}
+
+export function podioClientId(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_CLIENT_ID", "PODIO_API_CLIENT_ID"]);
+}
+
+export function podioClientSecret(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_CLIENT_SECRET", "PODIO_API_CLIENT_SECRET"]);
+}
+
+export function podioAppId(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_APP_ID", "PODIO_LEADS_APP_ID"]);
+}
+
+export function podioAppToken(env: RuntimeEnv): string | undefined {
+  return podioEnvValue(env, ["PODIO_APP_TOKEN", "PODIO_LEADS_APP_TOKEN"]);
+}
+
+export function podioAuthConfigured(env: RuntimeEnv): boolean {
+  const clientId = podioClientId(env);
+  const clientSecret = podioClientSecret(env);
+  return Boolean(
+    podioAccessToken(env)
+      || (clientId && clientSecret && podioRefreshToken(env))
+      || (clientId && clientSecret && podioAppId(env) && podioAppToken(env))
+  );
+}
+
+export function podioDurableAuthConfigured(env: RuntimeEnv): boolean {
+  const clientId = podioClientId(env);
+  const clientSecret = podioClientSecret(env);
+  return Boolean(
+    (clientId && clientSecret && podioAppId(env) && podioAppToken(env))
+      || (clientId && clientSecret && podioServerRefreshToken(env))
+      || podioAccessToken(env)
+  );
+}
+
+export function podioAuthSummary(env: RuntimeEnv): {
+  mode: "bearer" | "app_auth" | "refresh" | "browser_refresh" | "missing";
+  durableTeamAuth: boolean;
+  appTokenConfigured: boolean;
+  serverRefreshConfigured: boolean;
+  browserSessionRefresh: boolean;
+  bearerTokenConfigured: boolean;
+  reconnectRequired: boolean;
+  durableRequired: boolean;
+  perUserRequired: boolean;
+  userScopedRefresh: boolean;
+  accessRequirementMet: boolean;
+} {
+  const clientId = podioClientId(env);
+  const clientSecret = podioClientSecret(env);
+  const appTokenConfigured = Boolean(clientId && clientSecret && podioAppId(env) && podioAppToken(env));
+  const serverRefreshConfigured = Boolean(clientId && clientSecret && podioServerRefreshToken(env));
+  const browserSessionRefresh = Boolean(clientId && clientSecret && podioBrowserRefreshToken(env));
+  const bearerTokenConfigured = Boolean(podioAccessToken(env));
+  const durableTeamAuth = appTokenConfigured || serverRefreshConfigured || bearerTokenConfigured;
+  const durableRequired = env.PODIO_DURABLE_AUTH_REQUIRED !== "false";
+  const perUserRequired = env.PODIO_PER_USER_AUTH_REQUIRED === "true";
+  const userScopedRefresh = env.PODIO_USER_SCOPED_REFRESH === "true" || browserSessionRefresh;
+  const accessRequirementMet = perUserRequired ? userScopedRefresh : (!durableRequired || durableTeamAuth);
+  return {
+    mode: appTokenConfigured
+      ? "app_auth"
+      : serverRefreshConfigured
+        ? "refresh"
+        : browserSessionRefresh
+          ? "browser_refresh"
+          : bearerTokenConfigured
+            ? "bearer"
+            : "missing",
+    durableTeamAuth,
+    appTokenConfigured,
+    serverRefreshConfigured,
+    browserSessionRefresh,
+    bearerTokenConfigured,
+    reconnectRequired: !accessRequirementMet,
+    durableRequired,
+    perUserRequired,
+    userScopedRefresh,
+    accessRequirementMet,
+  };
 }
 
 export const TEXAS_EQUITY_PROS_LEADS_FIELD_MAP: PodioFieldMap = {
@@ -166,7 +283,7 @@ function parsePodioFieldMap(raw: string): PodioFieldMapResolution {
 }
 
 export function resolvePodioFieldMap(env: RuntimeEnv): PodioFieldMapResolution {
-  const hasTexasPreset = env.PODIO_APP_ID === TEXAS_EQUITY_PROS_LEADS_APP_ID;
+  const hasTexasPreset = podioAppId(env) === TEXAS_EQUITY_PROS_LEADS_APP_ID;
   if (env.PODIO_FIELD_MAP_JSON) {
     const parsed = parsePodioFieldMap(env.PODIO_FIELD_MAP_JSON);
     if (parsed.blockers.length) return parsed;
@@ -195,7 +312,10 @@ export function resolvePodioFieldMap(env: RuntimeEnv): PodioFieldMapResolution {
 }
 
 export function podioMissingExportConfig(env: RuntimeEnv): string[] {
-  const missing = ["PODIO_ACCESS_TOKEN", "PODIO_APP_ID"].filter((key) => !env[key]);
+  const missing = podioAppId(env) ? [] : ["PODIO_APP_ID"];
+  if (!podioAuthConfigured(env)) {
+    missing.push("PODIO_ACCESS_TOKEN, PODIO_REFRESH_TOKEN, or PODIO_CLIENT_ID/PODIO_CLIENT_SECRET/PODIO_APP_TOKEN");
+  }
   const fieldMap = resolvePodioFieldMap(env);
   if (fieldMap.blockers.length) {
     missing.push("PODIO_FIELD_MAP_JSON or PODIO_APP_ID=24265877");
@@ -205,4 +325,8 @@ export function podioMissingExportConfig(env: RuntimeEnv): string[] {
 
 export function podioLiveWriteApproved(env: RuntimeEnv): boolean {
   return env[PODIO_LIVE_WRITE_APPROVAL_KEY] === "true";
+}
+
+export function podioCsvBackupConfirmed(env: RuntimeEnv): boolean {
+  return env[PODIO_CSV_BACKUP_CONFIRMATION_KEY] === "true";
 }

@@ -3,20 +3,21 @@
 Team: Solvys / HeirRight implementation
 Historical project: HeirRight Friday Delivery
 Active project: HeirRight Deal Engine Automation
-Phase: Post-Friday milestone execution
+Phase: Contract completion planning and execution (S22-S27)
 Owner for implementation issues: Claude Cowork / Codex Automation
 Human blocker assignee: sam@solvys.io
 Audience: internal implementation only
-Track cap: 5 child tracks per execution batch; S12-S15 2.0 Beta pack uses exactly 2 tracks per sprint and 2 sprints per repo branch.
+Track cap: 5 child tracks per execution batch; S22-S27 completion pack uses exactly 6 full sprints, with the daily run-point taking 2 full sprints per day unless the second sprint is concretely blocked.
 
 ## Post-Friday Linear Operating Model
 
 - Preserve `HEI-5` through `HEI-28` as completed S1-S4 Friday delivery evidence.
-- Use the active `HeirRight Deal Engine Automation` project for S5-S15, run-point setup, and milestone gates.
+- Use the active `HeirRight Deal Engine Automation` project for S5-S27, run-point setup, and milestone gates.
 - Keep granular agent tickets for execution, but create human testing tickets only at milestone gates.
 - Assign human-only tickets to `sam@solvys.io` only for credentials, approvals, legal/compliance review, live-write permission, or milestone acceptance.
 - Podio remains CRM/work queue of record unless smoke tests disprove it; Macro and Close stay fallback candidates.
-- Live outreach remains excluded unless explicitly approved later.
+- The client has authorized finishing the remaining project assembly. Live outreach, production CRM writes, paid-source runs, and legal/compliance claims still require the matching credential, test, and approval gate before they can be marked complete.
+- IDI Core is expensive per run. Once the Asset Discovery intake pipeline is verified once, do not modify or reroute it unless TP explicitly reopens that scope.
 
 Issue description contract:
 
@@ -27,12 +28,41 @@ Issue description contract:
 - validation commands
 - no-live-outreach guard where relevant
 
-Active milestones:
+Active milestone gates:
 
-- Project Semi-Automation Setup: May 27, 2026.
-- Pre-Alaska MVP Testing Handoff: June 4, 2026.
-- 30-Day Workflow Automation Milestone: June 21, 2026.
-- 90-Day Deal Engine Milestone: August 20, 2026.
+- FULLY FUNCTIONAL PRD.
+- FULL-APP HUMAN-PRACTICAL TESTING.
+- UX AND PRODUCT LOOP HUMAN REVIEW.
+
+Historical milestone names remain preserved as delivery history only.
+
+## Current Repo Status - 2026-06-29
+
+Live Linear updates are blocked by reauthentication (`oauth_token_invalid_grant`), so this section is the repo-local fallback status for the HEI-001 run.
+
+- S21 DocPrep product loop: repo/daily-handoff evidence shows the app has CRM import, Discovery, Closing Docs, document rows, process fuses, and prep-gated export language. Remaining gap: per-estate/per-flow completion truth and field-mapped closing packet generation.
+- Website: `site-v2` is production-deployed with landing, legal, and contact routes. Remaining gap: safest completion path is separate Terms and Privacy subpages/routes unless client explicitly approves the combined legal page.
+- Outreach: draft/template and UI prep exists, but production-shaped automation still needs persistence, approval, audit, sync/retry handling, and no-send readback proof.
+- Google/Podio: guarded dry/prep routes exist; live integration complete requires one controlled Google Sheets write/readback and one controlled Podio item/comment/task/readback.
+- IDI Asset Discovery: scoped brief exists. It must run once only when approved, then stay locked as the intake pipeline.
+- Closing template packet: two 54-page PDFs reviewed; material difference found at one entity-name line (`HeirRight, LLC` vs `Somi Home Buyers, LLC`). Closing DocPrep must treat entity/trust/buyer/seller fields as variables.
+- S17 structured source extraction: approved seed batches can now carry guarded `confirmedSourceFacts` from public property, tax, official-record, probate, or clerk sources. Seed validation rejects unsupported sources, source-health-only placeholders, missing values, missing record references, and invalid confidence values.
+- S18 qualification loop: dossier claims now prefer real source-backed facts over same-field placeholders, so confirmed facts can clear their own coverage field without letting remaining missing fields promote the lead. Validation proves confirmed sample facts reduce source blockers while qualified count stays `0`.
+- S20 30-Day acceptance packet: aggregate source blockers now say `captured on at least one lead` and `still missing on at least one lead`, so Sam/Joshua can read mixed-lead coverage without contradictory wording.
+- Latest sample-file evidence: `DAILY_RUN_SEEDS_FILE=input/production-seeds.example.json pnpm --filter @ple/worker milestone:30-day` reports `overallStatus: blocked`, `blockedGateCount: 5`, 2 raw leads, 0 qualified leads, and no live Google/Podio readback.
+- Human/external blockers: Google Workspace target/config, Podio credentials/controlled test values, CSV backup/export access, explicit live-write approval, SMS provider decision if Podio lacks SMS, legal/compliance approval for live outreach and closing documents, optional production seed volume, and Linear reauthentication.
+
+## Current Repo Status - 2026-06-30
+
+Live Linear updates were not performed from this run; this section is the repo-local fallback status for S26/S27 closeout.
+
+- S26 full-app human-practical testing: repo-implemented, locally verified, production-smoke-passed. The practical pass found and fixed the operator-dashboard lead-label regression where the current dry-run lead displayed as `Lead, F.` instead of `Fresh Public-Source Lead`.
+- S27 UX and product-loop human review: repo-implemented, locally verified, production-smoke-passed. The daily handoff at `docs/run-point-daily/2026-06-30-heirright-run-point.md` is the final review packet for this branch.
+- Website: `site-v2` was deployed to `https://heirright.vercel.app` as deployment `dpl_fuaqa1EbYQiNBAQyq3AFTa38Qy1P`. Routes `/`, `/contact.html`, `/legal.html`, `/terms.html`, and `/privacy.html` returned 200, and production browser checks passed at desktop and mobile widths.
+- Operator app: `probate-lead-engine` was deployed to `https://heirright-landing-demo.vercel.app` as deployment `dpl_12gtibGrHCTQNuJUsJrSFJARaQzw`. Routes `/`, `/health`, `/api/connections/status`, and `/latest-run.json` returned 200, and production browser checks passed at desktop and mobile widths.
+- Form route: production `/api/review-request` returned honeypot-safe receipt `HR-20260630-0D7070BD`; no real consultation lead was created.
+- Required smoke gates passed: `pnpm build`, `pnpm --filter @ple/worker test`, dry-run, daily run, dry export, milestone packet, artifact build, `site-v2` build, `git diff --check`, and local/production Playwright route checks.
+- Expected blocked gates remain external: Google Workspace credentials/target Sheet, Podio credentials/field map/controlled-write approval, outreach compliance approval, SMS provider decision, final closing-template approval, optional custom-domain migration, optional approved single IDI proof, canonical workflow PDF placement, and Linear reauthentication.
 
 ## S1-ORCH: HeirRight live public-source search
 
@@ -697,3 +727,438 @@ Acceptance:
 - OpenPanel/PostHog analytics and monitoring path is represented behind a provider-agnostic event contract.
 - Solvys admin dashboard requirements cover cross-project analytics and deeper Solvys-1 control.
 - HeirRight MVP validation gates generic shell extraction.
+
+## S12-S20 Local Linear Recovery Pack
+
+Sync status: live Linear connector is blocked by reauthentication as of June 16, 2026. Treat this section as the local sync source until the HeirRight Linear workspace is reauthenticated.
+
+Current repo branch for recovery pack: `v2.4.1/heirright-2026-06-16-run-point`
+Planning sources: `@sprint-md/S12-ORCHESTRATION.md` through `@sprint-md/S20-ORCHESTRATION.md`, plus `@docs/discovery/heirright-retrospective-discovery-2026-06-15.md`.
+
+## S12-ORCH: Organization Access + Beta Runtime Gate
+
+Owner: TP
+Milestone: Pre-Alaska MVP Testing Handoff
+Brief: `@sprint-md/S12-ORCHESTRATION.md`
+Status: repo-planned / implementation evidence exists in run-point handoffs
+
+Child tracks:
+
+- `S12-T1: Google OAuth Login`
+- `S12-T2: Protected Beta Runtime`
+
+Acceptance:
+
+- Allowed HeirRight and configured Solvys users can enter.
+- Non-allowed Google accounts are rejected.
+- Lead packet JSON and report data are not exposed without a valid session or internal API token.
+- Missing OAuth configuration shows a clear blocker instead of exposing data.
+
+## S13-ORCH: Report Rail + Operator UI Completion
+
+Owner: TP
+Milestone: Pre-Alaska MVP Testing Handoff
+Brief: `@sprint-md/S13-ORCHESTRATION.md`
+Status: repo-planned / implementation evidence exists in run-point handoffs
+
+Child tracks:
+
+- `S13-T1: Streamdown Report Rail`
+- `S13-T2: HeirRight Report Shape Polish`
+
+Acceptance:
+
+- Report Rail shows the completed lead report workspace, not raw artifacts.
+- Preview includes date added, property, owner/estate, heirs/contact placeholders, offer status, missing data, and source-note context.
+- UI stays in plain real estate workflow language.
+
+## S14-ORCH: Daily Lead Production + Qualification
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S14-ORCHESTRATION.md`
+Status: repo-planned / partially implemented
+
+Child tracks:
+
+- `S14-T1: Configurable Daily County Runs`
+- `S14-T2: Qualification Intelligence`
+
+Acceptance:
+
+- Daily runs can target configured counties.
+- Duplicate, source-blocked, and placeholder-only records do not count as qualified.
+- Output reports raw leads, qualified leads, blockers, dead letters, and missed-volume reasons.
+
+## S15-ORCH: Google/Podio Export + Readback
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S15-ORCHESTRATION.md`
+Status: repo-complete for guarded dry/prep path; live readback externally blocked
+
+Child tracks:
+
+- `S15-T1: Google Workspace Export`
+- `S15-T2: Podio Export + Readback`
+
+Acceptance:
+
+- Google export prepares Drive, Docs, and Sheet output with readback when credentials exist.
+- Podio export creates the item, adds the source-note handoff, creates the review task, and verifies readback when approved live credentials exist.
+- Failed or skipped exports create visible blockers.
+
+External blockers:
+
+- Google Workspace token and target Sheet/Drive/Docs config.
+- Podio bearer token, app ID/field map or Texas Equity preset, controlled test values, CSV backup/export access, and explicit live-write approval.
+
+## S16-ORCH: Production Seed Intake + Acceptance Batch
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S16-ORCHESTRATION.md`
+Status: implemented for contract/example path; real production batch externally blocked
+
+Child tracks:
+
+- `S16-T1: Production Seed File Contract`
+- `S16-T2: Seed Review + Import CLI`
+- `S16-T3: Small Production Batch Falsifier`
+
+Acceptance:
+
+- Approved production seeds load from `DAILY_RUN_SEEDS_JSON` or `apps/worker/input/production-seeds.json`.
+- Default review seeds cannot satisfy milestone acceptance.
+- Seed import output shows provenance, duplicates, missing identifiers, county support, and failure piles.
+- No paid/manual source data, live outreach, or CRM write is triggered by seed intake.
+
+External blocker:
+
+- Sam/Joshua must provide or approve the first real Miami-Dade production seed file.
+
+## S17-ORCH: Structured Source Extraction Upgrade
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S17-ORCHESTRATION.md`
+Status: partially implemented for coverage gate; extraction adapters still need real source facts
+
+Child tracks:
+
+- `S17-T1: Property + Tax Extraction Path`
+- `S17-T2: Official Records + Deed Extraction Path`
+- `S17-T3: Probate + Court Extraction Path`
+
+Acceptance:
+
+- A meaningful share of an approved small batch has extracted property identity, tax status, deed/title, and probate/case facts with source references.
+- Reports show fewer placeholder missing sections for extracted records.
+- Source-health-only facts are not treated as evidence.
+- Paid/manual sources and legal heirship conclusions remain approval-gated.
+
+## S18-ORCH: Qualification Promotion Loop
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S18-ORCHESTRATION.md`
+Status: repo-implemented on `v2.4.3/heirright-2026-06-18-run-point`; live acceptance still depends on real source coverage and production seed volume
+
+Child tracks:
+
+- `S18-T1: Evidence Coverage Scoring` - repo-implemented
+- `S18-T2: Lead-Quality Settings Activation` - repo-implemented
+- `S18-T3: Operator Spot-Check Packet` - repo-implemented through `qualification-review.md`
+
+Acceptance:
+
+- The system can promote real source-backed candidates or honestly explain why none qualify.
+- No lead with open core blockers is counted as qualified.
+- Operator review can tune thresholds without weakening source-evidence rules.
+- A `qualification-review.md` packet samples qualified, review, disqualified, duplicate, and dead-letter states.
+
+## S19-ORCH: Controlled Google + Podio Readback
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S19-ORCHESTRATION.md`
+Status: repo packet implemented for S19-T3; S19-T1/T2 live readbacks externally blocked
+
+Child tracks:
+
+- `S19-T1: Google Workspace Readback` - externally blocked until approved Workspace target/config exists
+- `S19-T2: Podio Controlled Write` - externally blocked until credentials, test values, CSV backup/export access, and explicit write approval exist
+- `S19-T3: Readback Evidence Packet` - repo-implemented through `readback-evidence.md`
+
+Acceptance:
+
+- Google live export returns readback evidence from the configured Drive/Docs/Sheets target.
+- Podio live test creates one clearly labeled test item and reads it back.
+- The 30-day packet no longer blocks on Google/Podio readback only after both routes have proof.
+- No real outreach or external send occurs.
+
+External blockers:
+
+- Google Workspace credentials and target config.
+- Podio credentials, controlled test values, CSV backup/export access, and `PODIO_LIVE_WRITE_APPROVED=true`.
+- Live Linear mutation is currently unavailable through the Codex connector (`oauth_token_invalid_grant`), so this repo-local sheet is the current planning fallback.
+
+## S20-ORCH: 30-Day Acceptance Run
+
+Owner: TP
+Milestone: 30-Day Workflow Automation Milestone
+Brief: `@sprint-md/S20-ORCHESTRATION.md`
+Status: repo packet/review-script implemented; milestone remains blocked by production seed volume, qualified volume, source coverage, and live readback
+
+Child tracks:
+
+- `S20-T1: Production-Volume Run` - blocked by missing approved production seed batch and volume
+- `S20-T2: Acceptance Packet` - repo-implemented, currently blocked by acceptance gates
+- `S20-T3: Client Review Script` - repo-implemented through `thirty-day-review-script.md`
+
+Acceptance:
+
+- Approved seeds run toward the 200-400 raw / 80-150 qualified target or preserve a named blocker.
+- The packet answers raw volume, qualified volume, report completeness, Google/Podio readback, no-auto-send guard, and next actions.
+- `overallStatus` is `ready_for_human_review` or blocked by a small named set of non-repo decisions.
+- The review script tells Sam/Joshua what is automated, what remains manual, and what decision unblocks the next milestone.
+
+## S21-ORCH: Discovery Dossiers Product Loop
+
+Owner: Codex Automation
+Milestone: Contract completion setup
+Brief: `@sprint-md/S21-BRIEF-discovery-dossiers-product-loop.md`
+Status: repo-implemented / production-deployed for DocPrep product loop; S23 hardening complete
+
+Child tracks:
+
+- `S21-T1: Sidebar Product Loop` - complete
+- `S21-T2: CRM Import Estate File` - complete for local/prep import
+- `S21-T3: Discovery Workflow Template` - complete for UI flow
+- `S21-T4: Closing Docs Workflow Template` - complete for UI flow
+- `S21-T5: Production Visual Proof` - complete on app alias
+
+Acceptance:
+
+- Dashboard, Find Estates, Dossiers, Outreach/Drips, Queue, Admin, and Settings are represented.
+- Import estate flow creates a local estate file from Podio, Google Sheets, or pasted rows.
+- Discovery and Closing Docs are both visible under Document Prep.
+- Production proof exists on `https://heirright-landing-demo.vercel.app`.
+- S23 gap closed: fresh estates now keep per-estate/per-flow progress, and Closing Docs are field-mapped to the reviewed template packet.
+
+## S22-ORCH: Contract Completion PRD + Source Lock
+
+Owner: Codex Automation
+Milestone: FULLY FUNCTIONAL PRD
+Brief: `@sprint-md/S22-BRIEF-contract-completion-prd-source-lock.md`
+Status: done
+Completed: 2026-06-29
+
+Child tracks:
+
+- `S22-T1: Corrected Scope Lock`
+- `S22-T2: Completed Work Reconciliation`
+- `S22-T3: Closing Template Packet Inventory`
+- `S22-T4: IDI Core Cost Guardrail`
+- `S22-T5: Six-Sprint Run-Point Map`
+
+Acceptance:
+
+- Corrected scope is written as current contract truth.
+- Lead generation volume is treated as future capability, not current acceptance.
+- Closing-template PDFs are reviewed and entity-name discrepancy is captured.
+- IDI Core warning appears in run-point docs and all remaining sprint briefs.
+- `linear/HEIRRIGHT_LINEAR_TICKETS.md` and `docs/HEIRRIGHT_CONTRACT_COMPLETION_PLAN_2026-06-29.md` agree.
+
+Validation:
+
+```bash
+rg -n "S22|S23|S24|S25|S26|S27|IDI Core is expensive|FULLY FUNCTIONAL PRD|FULL-APP HUMAN-PRACTICAL TESTING|UX AND PRODUCT LOOP HUMAN REVIEW" docs linear sprint-md probate-lead-engine/sprint-md
+git diff --check
+```
+
+## S23-ORCH: Discovery + Closing DocPrep Automation
+
+Owner: Codex Automation
+Milestone: Contract implementation
+Brief: `@sprint-md/S23-BRIEF-docprep-discovery-closing-automation.md`
+Status: done
+Completed: 2026-06-29
+
+Child tracks:
+
+- `S23-T1: Per-Estate Discovery Progress`
+- `S23-T2: Per-Estate Closing Progress`
+- `S23-T3: Closing Template Field Map`
+- `S23-T4: Draft Packet Generation`
+- `S23-T5: IDI Asset Discovery Proof/Freeze`
+
+Completion evidence:
+
+- Estate-scoped DocPrep state added for Discovery and Closing Docs.
+- CRM imports persist through browser storage plus local review fallback and reopen in DocPrep after reload.
+- Discovery completion survived reload for `Estate of S23 Server 12092`; Closing remained at 0% until Closing's own phases are completed.
+- Production proof on `https://heirright-landing-demo.vercel.app` imported `Estate of S23 Prod Pass 00444`, completed Tax Receipt to 29%, reloaded, and kept the imported estate selected while Closing remained at 0%.
+- Closing Packet Review and reviewed template-family rows render in the app with operator blockers.
+- IDI Core was not run; intake remains locked pending explicit controlled proof approval.
+
+Acceptance:
+
+- Fresh imported estate starts Discovery and Closing at that estate's own first phase.
+- Discovery and Closing progress persists per estate and per flow.
+- Closing documents map to the reviewed packet families and surface missing fields.
+- IDI is either proved once through Asset Discovery and frozen, or explicitly blocked awaiting approval.
+- No preview claims live Podio, Google, legal, signature, escrow, SMS, or email action.
+
+Validation:
+
+```bash
+cd probate-lead-engine
+pnpm build
+pnpm --filter @ple/worker test
+pnpm --filter @ple/artifact build
+```
+
+## S24-ORCH: Outreach Automation + Google/Podio Integration
+
+Owner: Codex Automation
+Milestone: Contract implementation
+Brief: `@sprint-md/S24-BRIEF-outreach-google-podio-integration.md`
+Status: reviewed in S26; app routes and approval gates complete, live Google/Podio readback externally blocked
+
+Child tracks:
+
+- `S24-T1: Outreach Persistence + Approval`
+- `S24-T2: Email/SMS Queue + Provider Boundary`
+- `S24-T3: Podio Controlled Write + Readback`
+- `S24-T4: Google Sheets Controlled Write + Readback`
+- `S24-T5: Integration Failure UX + Audit`
+
+Acceptance:
+
+- Campaign/template workflow persists and blocks unauthorized approval.
+- Resend is used only as configured email fallback.
+- SMS uses an approved provider or Podio-native path; no fake OSS-only SMS send claim.
+- Google Sheets and Podio each have one controlled write/readback or exact missing-config blocker.
+- Outreach sync never triggers unapproved live send.
+
+Validation:
+
+```bash
+cd probate-lead-engine
+pnpm build
+pnpm --filter @ple/worker test
+pnpm --filter @ple/worker export:dry
+pnpm --filter @ple/worker export:podio-live-test
+pnpm --filter @ple/artifact build
+```
+
+## S25-ORCH: Website + Legal Page Finalization
+
+Owner: Codex Automation
+Milestone: Contract implementation
+Brief: `@sprint-md/S25-BRIEF-website-legal-finalization.md`
+Status: reviewed in S26; Vercel website/app aliases production-proved, custom domain migration remains optional/external
+
+Child tracks:
+
+- `S25-T1: Landing Route Verification`
+- `S25-T2: Terms Route`
+- `S25-T3: Privacy Route`
+- `S25-T4: Form + Sitemap Proof`
+- `S25-T5: Production Alias Separation`
+
+Acceptance:
+
+- Landing page is production-proved.
+- Terms of Use and Privacy Policy are readable as legal subpages or explicitly approved independent sections.
+- Sitemap and metadata include the legal routes.
+- Website production alias and app production alias remain separate and healthy.
+- Desktop/mobile browser proof has no console errors or horizontal overflow.
+
+Validation:
+
+```bash
+cd site-v2
+pnpm build
+```
+
+## S26-ORCH: Full-App Human-Practical Testing
+
+Owner: Human reviewer + Codex Automation
+Milestone: FULL-APP HUMAN-PRACTICAL TESTING
+Brief: `@sprint-md/S26-BRIEF-full-app-human-practical-testing.md`
+Status: complete on `v1.1.0/heirright-contract-completion-s26-s27`; see `docs/run-point-daily/2026-06-29-s26-s27-completion.md`
+
+Child tracks:
+
+- `S26-T1: Estate Import Practical Test`
+- `S26-T2: Discovery + Closing Practical Test`
+- `S26-T3: Outreach + Integration Practical Test`
+- `S26-T4: Website Practical Test`
+- `S26-T5: Mobile/Error-State Practical Test`
+
+Acceptance:
+
+- Operator can complete the practical flow without developer language or hidden next actions.
+- Google/Podio status is proved or exactly blocked.
+- IDI duplicate blocking is verified without rerunning paid IDI after proof exists.
+- Defects are routed back to S23/S24/S25 by owner.
+
+Completion proof:
+
+- Production app practical test passed on `https://heirright-landing-demo.vercel.app`.
+- Defects found during S26 were fixed and redeployed: artifact API guardrails, closed rail hit testing, fresh-lead blocker copy, DocPrep estate labels, and mobile export-menu overflow.
+- Fresh lead generation is available as a guarded capability and fails closed until `HEIRRIGHT_WORKER_URL` or `WORKER_API_URL` is configured.
+- IDI path was exercised through operator import with `paidRun: false`; duplicate blocking was verified without triggering another paid IDI Core run.
+- Google/Podio live routes fail closed with exact missing credential/config blockers; no unapproved live write was performed.
+
+Validation:
+
+```bash
+cd probate-lead-engine
+pnpm build
+pnpm --filter @ple/worker test
+pnpm --filter @ple/worker run:daily
+pnpm --filter @ple/worker export:dry
+pnpm --filter @ple/worker milestone:30-day
+pnpm --filter @ple/artifact build
+cd ../site-v2
+pnpm build
+```
+
+## S27-ORCH: UX + Product Loop Human Review
+
+Owner: Human reviewer + Codex Automation
+Milestone: UX AND PRODUCT LOOP HUMAN REVIEW
+Brief: `@sprint-md/S27-BRIEF-ux-product-loop-human-review.md`
+Status: complete as final review packet; external signoffs remain tracked below
+
+Child tracks:
+
+- `S27-T1: Final Review Packet`
+- `S27-T2: Sam/Joshua Product Loop Walkthrough`
+- `S27-T3: Human Decision Capture`
+- `S27-T4: Linear/Docs Closeout`
+- `S27-T5: Contract Objective Readback`
+
+Acceptance:
+
+- Final packet states complete, blocked, or awaiting signoff for each corrected contract item.
+- TP annotations are incorporated into follow-up issues or acceptance notes after this planning pass.
+- Google Sheets, Podio, IDI, website, DocPrep, and outreach statuses are backed by proof or exact blockers.
+- No new feature work is introduced unless S26 found a launch-blocking defect.
+
+Final packet:
+
+- Contract objective is implementation-complete for app code, website/legal pages, guarded outreach prep, and integration onboarding.
+- Remaining external decisions: closing-template legal/client approval, outreach compliance approval, SMS provider/Podio-native SMS decision, Google/Podio credential owner plus one controlled readback, optional `heirright.com` migration, and timing for fresh lead generation activation.
+- IDI Core remains locked: it is expensive per run, was not rerun in S26/S27, and should only receive one explicitly approved paid Asset Discovery proof if still required.
+- Evidence file: `docs/run-point-daily/2026-06-29-s26-s27-completion.md`.
+
+Validation:
+
+```bash
+git diff --check
+rg -n "Required corrections before complete|blocked|readback|IDI Core is expensive|S22|S23|S24|S25|S26|S27" docs linear sprint-md probate-lead-engine/sprint-md
+```

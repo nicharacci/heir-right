@@ -12,11 +12,11 @@ const ROLE_LABELS: Record<FamilyRelationshipRole, string> = {
   niece_nephew: "Niece/Nephew",
 };
 
-function placeholderNode(role: FamilyRelationshipRole, runId: string, fetchedAt: string): FamilyTreeHypothesisData["nodes"][number] {
+function reviewCandidateNode(role: FamilyRelationshipRole, runId: string, fetchedAt: string): FamilyTreeHypothesisData["nodes"][number] {
   return {
-    id: `${role}-placeholder`,
+    id: `${role}-review-candidate`,
     role,
-    contactPlaceholder: `${ROLE_LABELS[role]} contact placeholder`,
+    contactPlaceholder: `${ROLE_LABELS[role]} contact candidate needed`,
     confidence: 0,
     reviewStatus: "needs_review",
     sourceRefs: [sourceRef("intake", `${runId}:family-tree:${role}`, fetchedAt)],
@@ -31,7 +31,7 @@ export async function fetchFamilyTreeHypothesisFacts(runId: string, seed: Intake
   const roles = Object.keys(ROLE_LABELS) as FamilyRelationshipRole[];
   const hypothesis: FamilyTreeHypothesisData = {
     status: "hypothesis",
-    nodes: roles.map((role) => placeholderNode(role, runId, fetchedAt)),
+    nodes: roles.map((role) => reviewCandidateNode(role, runId, fetchedAt)),
     unresolvedQuestions: [
       "Who is the surviving spouse, if any?",
       "Which children or descendants are known from public records?",

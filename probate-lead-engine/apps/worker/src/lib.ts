@@ -1,4 +1,4 @@
-import type { IntakeSeed, ReviewFlag, SourceFact, SourceKey, SourceRef, SourceSubject } from "@ple/types";
+import type { IntakeSeed, ReviewFlag, SourceAttachmentRef, SourceFact, SourceKey, SourceRef, SourceSubject } from "@ple/types";
 
 export function nowIso(): string {
   return new Date().toISOString();
@@ -46,6 +46,7 @@ export function fact(input: {
   value: unknown;
   confidence: number;
   sourceUrl?: string;
+  attachment?: SourceAttachmentRef;
   reviewFlags?: ReviewFlag[];
 }): SourceFact {
   return {
@@ -60,6 +61,7 @@ export function fact(input: {
     value: input.value,
     confidence: input.confidence,
     sourceUrl: input.sourceUrl,
+    attachment: input.attachment,
     reviewFlags: input.reviewFlags ?? [],
   };
 }

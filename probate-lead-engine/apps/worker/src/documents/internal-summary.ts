@@ -1,4 +1,5 @@
 import type { DocumentPacket, RawDossier } from "@ple/types";
+import { formatCountyName } from "../display";
 import { nowIso, slug } from "../lib";
 import { renderMarkdownWithStreamdown } from "../markdown/render-streamdown";
 
@@ -18,6 +19,12 @@ function readableRecord(value: unknown): string {
   return entries.length ? entries.join("; ") : "Needs review";
 }
 
+function readableList(value: unknown): string {
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "None found";
+  if (value === null || value === undefined || value === "") return "Needs review";
+  return String(value);
+}
+
 export async function generateInternalSummary(dossier: RawDossier): Promise<DocumentPacket> {
   const lines = [
     `# HeirRight Internal Summary - ${dossier.summary.displayName}`,
@@ -31,7 +38,7 @@ export async function generateInternalSummary(dossier: RawDossier): Promise<Docu
     `Case number: ${dossier.summary.caseNumber ?? "Needs review"}`,
     `Address: ${dossier.property.address.value ?? "Needs review"}`,
     `Owner: ${dossier.property.ownerName.value ?? "Needs review"}`,
-    `County: ${dossier.property.county.value ?? "miami-dade"}`,
+    `County: ${formatCountyName(dossier.property.county.value, "Miami-Dade")}`,
     `Parcel/Folio: ${dossier.property.parcelId.value ?? "Needs review"}`,
     "",
     "## Public Source Findings",
@@ -46,10 +53,12 @@ export async function generateInternalSummary(dossier: RawDossier): Promise<Docu
     "",
     "## Tax History",
     `Status: ${dossier.taxHistory.sourceStatus.value ?? "Needs review"}`,
-    `Unpaid years: ${dossier.taxHistory.unpaidYears.value?.join(", ") ?? "Needs review"}`,
+    `Unpaid years: ${readableList(dossier.taxHistory.unpaidYears.value)}`,
     `Amount due: ${dossier.taxHistory.amountDue.value ? `${dossier.taxHistory.amountDue.value.currency} ${dossier.taxHistory.amountDue.value.amount}` : "Needs review"}`,
     `Reassessment: ${dossier.taxHistory.reassessment.value ?? "Needs review"}`,
-    `Receipt status: ${dossier.taxHistory.receiptStatus.value ?? "Manual receipt capture required"}`,
+    `Receipt status: ${dossier.taxHistory.receiptStatus.value ?? "Listing-page receipt link required"}`,
+    `Receipt link: ${dossier.taxHistory.receiptLink.value ?? "Needs Tax Collector listing-page receipt link"}`,
+    `Paid date: ${dossier.taxHistory.paidDate.value ?? "Needs review"}`,
     `Payer identity: ${dossier.taxHistory.payerIdentity.value ?? "Needs review"}`,
     "",
     "### Tax Review Tasks",

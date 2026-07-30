@@ -1,12 +1,20 @@
 import { existsSync } from "node:fs";
 import type { SourceFact, SourceKey, SourceSubject } from "@ple/types";
 import { runDailyProduction } from "../daily/run-daily";
+import { validateSeedBatchInput } from "../daily/seed-batch";
+import { acquireTaxCollectorReceipt } from "../adapters/tax-collector-receipt";
+import { fetchMarriageDeathIndicatorFacts } from "../adapters/marriage-death-indicators";
 import { buildRawDossier } from "../dossier/build-raw-dossier";
-import { connectionStatuses, exportCompletedReport } from "../export/export-package";
+import { buildControlledPodioTestSeed } from "../export/controlled-test-lead";
+import { connectionStatuses, exportCompletedReport, resolvePodioAccessToken } from "../export/export-package";
 import { PODIO_LIVE_WRITE_APPROVAL_KEY, TEXAS_EQUITY_PROS_LEADS_APP_ID } from "../export/podio-config";
 import { runDryPipeline } from "../index";
 import { fact, nowIso } from "../lib";
+import { generateThirtyDayMilestoneEvidence, renderThirtyDayClientReviewScriptMarkdown, renderThirtyDayMilestoneEvidenceMarkdown } from "../milestone/thirty-day-evidence";
+import { renderQualificationReviewMarkdown } from "../qualification/qualification-review";
+import { buildReadbackEvidencePacket, renderReadbackEvidenceMarkdown } from "../readback/readback-evidence";
 import { persistOutput } from "../storage/write-output";
+import { isEntityOwnerName } from "../workflow/entity-owner";
 
 function fixtureFact(input: {
   runId: string;
@@ -62,6 +70,126 @@ function buildS5FixtureDossier(input: {
 }
 
 async function main(): Promise<void> {
+  const taxReceiptProof = await acquireTaxCollectorReceipt({
+    listingUrl: "https://miamidade.county-taxes.test/property/3421080072710",
+  }, {
+    env: { TAX_COLLECTOR_ALLOWED_ORIGINS: "https://miamidade.county-taxes.test" },
+    fetchImpl: async () => new Response(`
+      <main>
+        <a href="/payments/history">Payment history</a>
+        <aside style="float:right">
+          <a href="/receipts/2025-paid.pdf">Print payment receipt</a>
+        </aside>
+      </main>
+      <footer><a href="/payments/history?from=footer">Payment history</a></footer>
+    `, {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    }),
+  });
+  const taxCollectorBlockedProof = await acquireTaxCollectorReceipt({
+    listingUrl: "https://miamidade.county-taxes.test/public",
+  }, {
+    env: { TAX_COLLECTOR_ALLOWED_ORIGINS: "https://miamidade.county-taxes.test" },
+    fetchImpl: async () => new Response("<title>Just a moment...</title><script>window._cf_chl_opt={}</script>", {
+      status: 403,
+      headers: { "cf-mitigated": "challenge", "content-type": "text/html" },
+    }),
+  });
+  const taxCollectorBrowserbaseProof = await acquireTaxCollectorReceipt({
+    parcelId: "3031030000010",
+    propertyAddress: "2325 NW 88th St, Miami, FL",
+    ownerName: "Example Owner",
+  }, {
+    env: {
+      BROWSERBASE_API_KEY: "validation-key",
+      TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID: "tax-function",
+      TAX_COLLECTOR_ALLOWED_ORIGINS: "https://miamidade.county-taxes.test",
+    },
+    fetchImpl: async () => new Response(JSON.stringify({
+      id: "inv-tax-validation",
+      sessionId: "sess-tax-validation",
+      status: "COMPLETED",
+      results: {
+        listingUrl: "https://miamidade.county-taxes.test/listing/3031030000010",
+        listingHtml: "<a href=\"/x\">Other</a><a class=\"receipt\" href=\"/receipts/2025-browserbase.pdf\">Print receipt</a>",
+      },
+    }), {
+      status: 202,
+      headers: { "content-type": "application/json" },
+    }),
+  });
+  const taxCollectorBillingProof = await acquireTaxCollectorReceipt({
+    parcelId: "3031030000010",
+    propertyAddress: "2325 NW 88th St, Miami, FL",
+  }, {
+    env: {
+      BROWSERBASE_API_KEY: "validation-key",
+      TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID: "tax-function",
+      TAX_COLLECTOR_ALLOWED_ORIGINS: "https://miamidade.county-taxes.test",
+    },
+    fetchImpl: async () => new Response(JSON.stringify({
+      error: "payment_required",
+      message: "Add credits before invoking a function.",
+    }), {
+      status: 402,
+      headers: { "content-type": "application/json" },
+    }),
+  });
+  const podioOriginalFetch = globalThis.fetch;
+  let podioRefreshCalls = 0;
+  globalThis.fetch = async () => {
+    podioRefreshCalls += 1;
+    return new Response(JSON.stringify({
+      access_token: "validation-access-token",
+      refresh_token: "validation-rotated-refresh-token",
+    }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  const podioRefreshProof = await resolvePodioAccessToken({
+    PODIO_CLIENT_ID: "validation-client",
+    PODIO_CLIENT_SECRET: "validation-secret",
+    PODIO_DURABLE_REFRESH_TOKEN: "validation-refresh-token",
+  });
+  const podioResolvedReuseProof = await resolvePodioAccessToken({
+    PODIO_RESOLVED_ACCESS_TOKEN: podioRefreshProof.token,
+    PODIO_RESOLVED_AUTH_MODE: podioRefreshProof.mode,
+    PODIO_CLIENT_ID: "validation-client",
+    PODIO_CLIENT_SECRET: "validation-secret",
+    PODIO_DURABLE_REFRESH_TOKEN: "validation-refresh-token",
+  });
+  globalThis.fetch = podioOriginalFetch;
+  const vitalOriginalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    id: "inv-vital-validation",
+    sessionId: "sess-vital-validation",
+    status: "COMPLETED",
+    results: {
+      ok: true,
+      status: "reviewed-with-source",
+      dateOfDeath: "2024-01-02",
+      obituaryLink: "https://legacy.test/example-obituary",
+      marriageLicenseSignal: "reviewed-no-hit",
+      deathCertificateStatus: "requested-not-attached",
+    },
+  }), {
+    status: 202,
+    headers: { "content-type": "application/json" },
+  });
+  const vitalBrowserbaseFacts = await fetchMarriageDeathIndicatorFacts("run-vital-validation", {
+    estateName: "Estate of Example Owner",
+    ownerName: "Example Owner",
+    propertyAddress: "2325 NW 88th St, Miami, FL",
+    county: "miami-dade",
+    source: "operator_cli",
+  }, {
+    BROWSERBASE_API_KEY: "validation-key",
+    OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID: "vital-function",
+  });
+  globalThis.fetch = vitalOriginalFetch;
+
   const result = await runDryPipeline({
     propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
     ownerName: "Fresh public-source validation lead",
@@ -71,19 +199,40 @@ async function main(): Promise<void> {
   for (const output of Object.values(result.outputFiles)) persistOutput(output);
 
   const failures: string[] = [];
+  for (const ownerName of ["Sample Property LLC", "Sample Property Inc.", "Sample Estate Holdings"]) {
+    if (!isEntityOwnerName(ownerName)) failures.push(`S5 entity-owner vocabulary missed ${ownerName}.`);
+  }
+  for (const ownerName of ["The Rivera Family Trust", "Estate of Avery Rivera"]) {
+    if (isEntityOwnerName(ownerName)) failures.push(`S5 entity-owner vocabulary incorrectly stopped probate owner ${ownerName}.`);
+  }
   if (!result.facts.length) failures.push("No source facts generated.");
+  if (!taxReceiptProof.ok) failures.push("Tax Collector fixture acquisition did not capture receipt link.");
+  if (taxReceiptProof.discovery?.receiptUrl !== "https://miamidade.county-taxes.test/receipts/2025-paid.pdf") failures.push("Tax Collector bottom-right receipt URL resolution failed.");
+  if (taxReceiptProof.mode !== "listing_page_bottom_right") failures.push("Tax Collector receipt acquisition mode missing.");
+  if (taxCollectorBlockedProof.mode !== "browser_workflow_required") failures.push("Tax Collector Cloudflare/browser blocker mode missing.");
+  if (!taxCollectorBlockedProof.reviewFlags.includes("TAX_COLLECTOR_BROWSER_WORKFLOW_REQUIRED")) failures.push("Tax Collector browser workflow review flag missing.");
+  if (!taxCollectorBrowserbaseProof.ok || taxCollectorBrowserbaseProof.discovery?.receiptUrl !== "https://miamidade.county-taxes.test/receipts/2025-browserbase.pdf") failures.push("Tax Collector Browserbase function receipt proof failed.");
+  if (!taxCollectorBrowserbaseProof.paidRun) failures.push("Successful Browserbase Tax Collector proof was not marked as a paid run.");
+  if (taxCollectorBillingProof.mode !== "browserbase_billing_required" || !taxCollectorBillingProof.paidRun) failures.push("Browserbase billing failure was not classified as a paid provider run.");
+  if (podioRefreshProof.nextRefreshToken !== "validation-rotated-refresh-token" || !podioRefreshProof.refreshTokenRotated) failures.push("Podio rotated refresh token was not returned for durable storage.");
+  if (podioResolvedReuseProof.token !== "validation-access-token" || podioRefreshCalls !== 1) failures.push("Podio request-scoped access token did not prevent duplicate refresh exchanges.");
+  if (!vitalBrowserbaseFacts.some((item) => item.factType === "date_of_death" && item.value === "2024-01-02")) failures.push("Vital/obituary Browserbase function proof failed.");
   if (!result.dossier.property.address.value) failures.push("Dossier address missing.");
   if (!result.dossier.audit.sourceRefs.length) failures.push("Dossier sourceRefs missing.");
   if (!result.dossier.crm.payload) failures.push("Podio dry-run payload missing.");
   if (!result.dossier.documentPacket?.formats.markdown) failures.push("Internal summary markdown missing.");
   if (!result.dossier.documentPacket?.formats.html.includes("streamdown-doc")) failures.push("Streamdown HTML output missing.");
   if (result.dossier.documentPacket?.renderer !== "streamdown") failures.push("Document packet renderer is not Streamdown.");
-  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Completed Lead Report")) failures.push("Completed lead report markdown missing.");
+  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Family-Tree Discovery Dossier")) failures.push("Completed lead report North Star title missing.");
   if (!result.dossier.completedLeadReport?.formats.markdown.includes("Date added:")) failures.push("Completed lead report date-added line missing.");
-  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Client Report Snapshot")) failures.push("Completed lead report client snapshot missing.");
-  if (!result.dossier.completedLeadReport?.formats.html.includes("Internal draft")) failures.push("Completed lead report review banner missing.");
+  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Lead Snapshot")) failures.push("Completed lead report lead snapshot missing.");
+  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Offer / Profit")) failures.push("Completed lead report offer/profit table missing.");
+  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Source Links")) failures.push("Completed lead report source links missing.");
+  if (!result.dossier.completedLeadReport?.formats.markdown.includes("Podio And Google Handoff Prep")) failures.push("Completed lead report handoff prep missing.");
+  if (!result.dossier.completedLeadReport?.formats.html.includes("REVIEW DRAFT")) failures.push("Completed lead report review banner missing.");
+  if (!result.dossier.completedLeadReport?.formats.html.includes("<a href=")) failures.push("Completed lead report HTML source anchors missing.");
   if (!result.dossier.completedLeadReport?.reviewGate.externalUseBlocked) failures.push("Completed lead report external-use gate missing.");
-  if (!result.dossier.completedLeadReport?.offerMath.reviewFlags.includes("UNDERWRITING_REVIEW_REQUIRED")) failures.push("Offer math underwriting review flag missing.");
+  if (!result.dossier.completedLeadReport?.offerMath?.reviewFlags.includes("UNDERWRITING_REVIEW_REQUIRED")) failures.push("Offer math underwriting review flag missing.");
   if (!result.dossier.completedLeadReport?.researchChecklist.length) failures.push("Completed lead report research checklist missing.");
   if (!result.dossier.completedLeadReport?.leadQualityProfile.leadBucket) failures.push("Lead quality profile bucket missing.");
   if (!result.facts.some((item) => item.factType === "offer_buy_percentage")) failures.push("Offer buy percentage fact missing.");
@@ -123,7 +272,9 @@ async function main(): Promise<void> {
   if (!result.dossier.workflow.rules.length) failures.push("Workflow rules missing.");
   if (!result.dossier.workflow.leadQuality.enabledSignals.length) failures.push("Lead-quality settings missing.");
   if (!result.facts.some((item) => item.factType === "owner_type")) failures.push("Owner-type workflow fact missing.");
-  if (!result.dossier.taxHistory.manualReceiptTask.required) failures.push("Manual tax receipt fallback missing.");
+  if (!result.dossier.taxHistory.manualReceiptTask.required) failures.push("Tax Collector receipt capture task missing.");
+  if (!result.dossier.taxHistory.reviewTasks.some((task) => task.code === "TAX_RECEIPT_LINK")) failures.push("Tax Collector listing-page receipt link task missing.");
+  if (!result.facts.some((item) => item.source === "tax_collector" && item.factType === "source_status" && typeof item.value === "object" && item.value && "mode" in item.value)) failures.push("Tax Collector acquisition status fact missing.");
   if (result.dossier.taxHistory.reviewTasks.length < 5) failures.push("Tax history review tasks missing.");
   if (result.dossier.deedHistory.reviewTasks.length < 7) failures.push("Deed/title review tasks missing.");
   if (!result.dossier.probateDocket.reviewTasks.length) failures.push("Probate docket review tasks missing.");
@@ -133,13 +284,23 @@ async function main(): Promise<void> {
   if (!podioProbate) failures.push("Podio probate_docket payload missing.");
   if (!result.dossier.marriageDeathIndicators.reviewTasks.length) failures.push("Marriage/death review tasks missing.");
   if (!result.dossier.marriageDeathIndicators.deathCertificateTask.required) failures.push("Death certificate task missing.");
+  if (!result.facts.some((item) => item.source === "clerk_of_courts" && item.factType === "source_status" && item.reviewFlags.includes("VITAL_RECORDS_WORKFLOW_REQUIRED"))) failures.push("Vital/obituary workflow source-status blocker missing.");
   if (!result.dossier.familyTree.hypothesis.value?.nodes.length) failures.push("Family tree hypothesis nodes missing.");
   if (!result.dossier.sourceGovernance.catalog.value?.governedSources.length) failures.push("Source governance catalog missing.");
+  if (!result.dossier.sourceGovernance.catalog.value?.publicSourceContracts.length) failures.push("Public source acquisition contracts missing.");
+  const taxCollectorContract = result.dossier.sourceGovernance.catalog.value?.publicSourceContracts.find((source) => source.code === "tax_collector_receipt");
+  if (!taxCollectorContract?.stages.some((stage) => stage.code === "bottom_right_receipt" && stage.blocksUntilCaptured)) {
+    failures.push("Tax Collector bottom-right receipt source contract missing.");
+  }
   const paidSource = result.dossier.sourceGovernance.catalog.value?.governedSources.find((source) => source.code === "idi");
   if (paidSource?.automationAllowed) failures.push("Paid source IDI incorrectly marked as automated.");
+  const governedCodes = new Set((result.dossier.sourceGovernance.catalog.value?.governedSources ?? []).map((source) => source.code));
+  for (const code of ["voter_records", "professional_licenses", "business_address_associations", "social_profiles", "deceased_indicator_crosscheck"]) {
+    if (!governedCodes.has(code)) failures.push(`Governed source ${code} missing from source governance catalog.`);
+  }
   if (!result.facts.some((item) => item.factType === "marriage_death_status")) failures.push("Marriage/death status fact missing.");
   if (!result.facts.some((item) => item.factType === "family_tree_hypothesis")) failures.push("Family tree hypothesis fact missing.");
-  if (!result.facts.some((item) => item.factType === "source_governance_catalog")) failures.push("Source governance catalog fact missing.");
+  if (!result.facts.some((item) => item.source === "source_governance" && item.factType === "source_governance_catalog")) failures.push("Source governance catalog fact missing.");
   const podioHeirship = (result.dossier.crm.payload as { appModel?: { fields?: { marriage_death_indicators?: unknown; family_tree?: unknown; source_governance?: unknown } } })?.appModel?.fields;
   if (!podioHeirship?.marriage_death_indicators) failures.push("Podio marriage_death_indicators payload missing.");
   if (!podioHeirship?.family_tree) failures.push("Podio family_tree payload missing.");
@@ -149,6 +310,14 @@ async function main(): Promise<void> {
   if (!result.dossier.operatorQueue.items.length) failures.push("Operator queue items missing.");
   if (!result.dossier.evidenceQa.checks.length) failures.push("Source evidence QA checks missing.");
   if (result.dossier.evidenceQa.status === "failed") failures.push("Source evidence QA failed.");
+  if (!result.dossier.sourceCoverage.areas.length) failures.push("S17 source coverage areas missing.");
+  if (result.dossier.sourceCoverage.extractedFieldCount <= 0) failures.push("S17 source coverage should count property seed facts as captured.");
+  if (result.dossier.sourceCoverage.blockedAreaCount <= 0) failures.push("S17 source coverage should keep missing source areas blocked.");
+  if (!result.dossier.qualificationDecision) failures.push("S18 dry-run qualification decision missing.");
+  if (result.dossier.qualificationDecision?.status !== "review") failures.push("S18 default dry-run lead should remain in review.");
+  if ((result.dossier.qualificationDecision?.coverageScore ?? 0) <= 0) failures.push("S18 qualification coverage score missing.");
+  if (!result.dossier.qualificationDecision?.reasonCodes.length) failures.push("S18 qualification reason codes missing.");
+  if (!result.dossier.qualificationDecision?.blockers.some((blocker) => blocker.includes("No enrichment/contact"))) failures.push("S18 no-enrichment promotion blocker missing.");
 
   const dailyResult = await runDailyProduction({
     counties: ["miami-dade", "broward"],
@@ -179,10 +348,147 @@ async function main(): Promise<void> {
   if (!dailyResult.id.startsWith("daily-")) failures.push("S14 daily run id missing.");
   if (dailyResult.rawLeadCount !== 2) failures.push("S14 daily run did not dedupe repeated seeds.");
   if (dailyResult.duplicateCount !== 1) failures.push("S14 daily duplicate count missing.");
-  if (dailyResult.qualifiedLeadCount !== 0) failures.push("S14 should not count review-placeholder/no-enrichment leads as qualified.");
+  if (dailyResult.duplicates.length !== 1) failures.push("S18 daily duplicate sample missing.");
+  if (dailyResult.qualifiedLeadCount !== 0) failures.push("S14 should not count review-only/no-enrichment leads as qualified.");
+  if (dailyResult.leads.some((lead) => !lead.qualificationDecision)) failures.push("S18 daily lead qualification decision missing.");
+  if (dailyResult.leads.some((lead) => lead.qualified && lead.qualificationDecision.blockers.length)) failures.push("S18 blocked lead was counted as qualified.");
+  if (dailyResult.qualificationReview.summary.qualified !== 0) failures.push("S18 review-only run should have zero qualified samples.");
+  if (dailyResult.qualificationReview.summary.review < 1) failures.push("S18 review sample count missing.");
+  if (dailyResult.qualificationReview.summary.duplicate !== 1) failures.push("S18 duplicate summary missing.");
+  if (!dailyResult.qualificationReview.samples.review.length) failures.push("S18 review sample missing.");
+  if (!dailyResult.qualificationReview.samples.duplicate.length) failures.push("S18 duplicate sample section missing.");
+  const qualificationReviewMarkdown = renderQualificationReviewMarkdown(dailyResult.qualificationReview);
+  if (!qualificationReviewMarkdown.includes("HeirRight Qualification Review Packet")) failures.push("S18 qualification review markdown heading missing.");
+  for (const heading of ["Qualified Samples", "Review Samples", "Disqualified Samples", "Duplicate Samples", "Dead-Letter Samples"] as const) {
+    if (!qualificationReviewMarkdown.includes(heading)) failures.push(`S18 qualification review markdown section missing ${heading}.`);
+  }
   if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("Qualified lead count"))) failures.push("S14 missed qualified-volume reason missing.");
-  if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("No production batch seed file"))) failures.push("S14 production seed blocker missing.");
+  if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("Manual operator seeds"))) failures.push("S14 production seed blocker missing.");
+  if (!dailyResult.missedVolumeReasons.some((reason) => reason.includes("source area"))) failures.push("S17 source coverage missed-volume reason missing.");
+  if (!dailyResult.sourceCoverageSummary.areaStatuses.length) failures.push("S17 daily source coverage rollup missing.");
+  if (!dailyResult.sourceCoverageBlockers.length) failures.push("S17 source coverage blocker summary missing.");
+  if (!dailyResult.sourceCoverageBlockers.some((blocker) => blocker.label === "Tax status" && blocker.missingFields.includes("unpaid tax years"))) failures.push("S17 source coverage blocker fields missing.");
+  if (!dailyResult.sourceCoverageBlockers.some((blocker) => blocker.label === "Property identity" && blocker.capturedFields.includes("property address"))) failures.push("S17 source coverage captured-fields plan missing.");
   if (!dailyResult.blockers.some((blocker) => blocker.includes("No enrichment/contact"))) failures.push("S14 no-enrichment qualification blocker missing.");
+
+  const confirmedSourceRun = await runDailyProduction({
+    counties: ["miami-dade"],
+    targetRawLeadRange: { min: 1, max: 2 },
+    targetQualifiedLeadRange: { min: 1, max: 2 },
+    seedSource: "configured_batch",
+    seedBatch: {
+      batchId: "validation-confirmed-source-facts",
+      sourceLabel: "Validation confirmed source facts",
+      sourceOwner: "HeirRight operator",
+      approvalMarker: "approved_for_production_batch",
+      seedCount: 1,
+      acceptedSeedCount: 1,
+      rejectedSeedCount: 0,
+      duplicateCount: 0,
+      counties: ["miami-dade"],
+    },
+    startedBy: "automation",
+    seeds: [{
+      propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+      ownerName: "Fresh public-source validation lead",
+      county: "miami-dade",
+      parcelId: "validated-folio",
+      source: "operator_cli",
+      confirmedSourceFacts: [
+        {
+          source: "property_appraiser",
+          factType: "mailing_address_signal",
+          value: "Mailing address matched the county property record.",
+          rawId: "validation-property-record-mailing",
+          confidence: 0.85,
+        },
+        {
+          source: "tax_collector",
+          factType: "tax_history_status",
+          value: "Tax account reviewed by operator.",
+          rawId: "validation-tax-status",
+          confidence: 0.85,
+        },
+        {
+          source: "official_records",
+          factType: "last_sale_date",
+          value: "2018-04-12",
+          rawId: "validation-last-sale",
+          confidence: 0.85,
+        },
+      ],
+    }],
+  });
+  const confirmedLead = confirmedSourceRun.leads[0];
+  const propertyArea = confirmedLead?.sourceCoverage.areas.find((area) => area.key === "property");
+  const taxBlocker = confirmedSourceRun.sourceCoverageBlockers.find((blocker) => blocker.key === "tax");
+  const deedBlocker = confirmedSourceRun.sourceCoverageBlockers.find((blocker) => blocker.key === "deed_title");
+  if (!propertyArea?.extractedFields.includes("mailing address")) failures.push("S17 confirmed source facts should clear mailing-address coverage.");
+  if (!taxBlocker?.capturedFields.includes("tax status")) failures.push("S17 confirmed source facts should appear in tax captured fields.");
+  if (!deedBlocker?.capturedFields.includes("last sale date")) failures.push("S17 confirmed source facts should appear in deed/title captured fields.");
+  if (confirmedSourceRun.qualifiedLeadCount !== 0) failures.push("S18 confirmed source facts should not override remaining promotion blockers.");
+  if (!confirmedLead?.qualificationDecision.blockers.some((blocker) => blocker.includes("No enrichment/contact"))) failures.push("S18 confirmed source fact run should keep no-enrichment blocker.");
+
+  const validSeedReport = validateSeedBatchInput({
+    batchId: "validation-miami-dade-seeds",
+    sourceLabel: "Validation county seed batch",
+    sourceOwner: "HeirRight operator",
+    approvalMarker: "approved_for_production_batch",
+    seeds: [
+      {
+        propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+        ownerName: "Fresh public-source validation lead",
+        county: "miami-dade",
+        source: "operator_cli",
+        confirmedSourceFacts: [{
+          source: "tax_collector",
+          factType: "tax_history_status",
+          value: "Tax record review started.",
+          rawId: "validation-tax-status",
+          confidence: 0.8,
+        }],
+      },
+      {
+        propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+        ownerName: "Fresh public-source validation lead",
+        county: "miami-dade",
+        source: "operator_cli",
+      },
+    ],
+  });
+  if (!validSeedReport.ok) failures.push("S16 approved Miami-Dade seed batch should validate.");
+  if (validSeedReport.batch.acceptedSeedCount !== 1) failures.push("S16 seed validator should dedupe duplicate seeds.");
+  if (validSeedReport.batch.duplicateCount !== 1) failures.push("S16 seed validator duplicate count missing.");
+  if (validSeedReport.acceptedSeeds[0]?.confirmedSourceFacts?.[0]?.factType !== "tax_history_status") failures.push("S17 confirmed source facts should survive seed validation.");
+  const invalidSeedReport = validateSeedBatchInput({
+    batchId: "validation-unapproved-seeds",
+    sourceLabel: "Unapproved county seed batch",
+    sourceOwner: "HeirRight operator",
+    seeds: [{
+      county: "broward",
+      source: "operator_cli",
+      confirmedSourceFacts: [{
+        source: "intake",
+        factType: "source_status",
+        value: null,
+        reviewFlags: ["SOURCE_EVIDENCE_REQUIRED"],
+      }],
+    }],
+  });
+  if (invalidSeedReport.ok) failures.push("S16 unapproved or unsupported seed batch should be blocked.");
+  if (!invalidSeedReport.issues.some((item) => item.code === "MISSING_APPROVAL_MARKER")) failures.push("S16 missing approval marker issue missing.");
+  if (!invalidSeedReport.issues.some((item) => item.code === "UNSUPPORTED_COUNTY")) failures.push("S16 unsupported county issue missing.");
+  if (!invalidSeedReport.issues.some((item) => item.code === "INVALID_CONFIRMED_SOURCE")) failures.push("S17 invalid confirmed source issue missing.");
+  if (!invalidSeedReport.issues.some((item) => item.code === "MISSING_CONFIRMED_FACT_VALUE")) failures.push("S17 empty confirmed source fact issue missing.");
+  if (!invalidSeedReport.issues.some((item) => item.code === "BLOCKED_CONFIRMED_SOURCE_FACT")) failures.push("S17 blocked confirmed source fact issue missing.");
+
+  const controlledPodioSeed = buildControlledPodioTestSeed({}, new Date("2026-06-23T19:00:00.000Z"));
+  const controlledPodioSeedText = JSON.stringify(controlledPodioSeed);
+  if (controlledPodioSeed.estateName !== "HeirRight Podio Test 20260623190000") failures.push("S9 controlled Podio test seed should be timestamped and synthetic.");
+  if (controlledPodioSeed.approvalMarker !== "approved_controlled_podio_test_export") failures.push("S9 controlled Podio test seed approval marker missing.");
+  if (controlledPodioSeedText.includes("AMARANTHE") || controlledPodioSeedText.includes("ACHILLE") || controlledPodioSeedText.includes("20611 NW 33rd Pl")) {
+    failures.push("S9 controlled Podio test seed must not reuse packet or default validation lead data.");
+  }
 
   const dryExport = await exportCompletedReport({
     routes: ["google", "podio"],
@@ -203,6 +509,140 @@ async function main(): Promise<void> {
   if (dryExport.routes.length !== 2) failures.push("S15 dry export did not return Google and Podio routes.");
   if (!dryExport.routes.every((route) => route.mode === "dry_run")) failures.push("S15 dry export routes should stay dry-run.");
   if (!dryExport.routes.every((route) => route.blockers.some((blocker) => blocker.includes("skipped in dry-run")))) failures.push("S15 dry export readback blockers missing.");
+  const dryReadbackPacket = buildReadbackEvidencePacket(dryExport, await connectionStatuses({
+    GOOGLE_WORKSPACE_ACCESS_TOKEN: "validation-google-token",
+    GOOGLE_TRACKING_SHEET_ID: "validation-sheet",
+    PODIO_ACCESS_TOKEN: "validation-podio-token",
+    PODIO_APP_ID: "validation-app",
+    PODIO_FIELD_MAP_JSON: JSON.stringify({ title: "title" }),
+  }));
+  const dryReadbackMarkdown = renderReadbackEvidenceMarkdown(dryReadbackPacket);
+  if (dryReadbackPacket.overallStatus !== "blocked") failures.push("S19 dry readback packet should stay blocked until live readback passes.");
+  if (!dryReadbackPacket.routes.every((route) => route.status === "prepared_only")) failures.push("S19 dry readback routes should be prepared-only.");
+  if (!dryReadbackMarkdown.includes("HeirRight Google + Podio Readback Evidence")) failures.push("S19 readback markdown heading missing.");
+  if (!dryReadbackMarkdown.includes("No live record")) failures.push("S19 readback markdown should show no live record for dry prep.");
+
+  const originalFetch = globalThis.fetch;
+  const googlePermissionRequests: Array<{ fileId: string; email: string }> = [];
+  try {
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
+      if (url === "https://www.googleapis.com/drive/v3/files") {
+        return Response.json({ id: "validation-folder", webViewLink: "https://drive.google.com/drive/folders/validation-folder" });
+      }
+      if (url.startsWith("https://www.googleapis.com/drive/v3/files?")) {
+        return Response.json({ id: "validation-doc", webViewLink: "https://docs.google.com/document/d/validation-doc/edit" });
+      }
+      if (url === "https://docs.googleapis.com/v1/documents/validation-doc:batchUpdate") {
+        return Response.json({ replies: [] });
+      }
+      if (url.includes("/permissions?")) {
+        const match = url.match(/\/files\/([^/]+)\/permissions/);
+        googlePermissionRequests.push({ fileId: match?.[1] ?? "", email: String(body.emailAddress || "") });
+        return Response.json({ id: `${match?.[1] ?? "file"}-${body.emailAddress}` });
+      }
+      if (url.includes("/values/Lead%20Reports!A%3AG:append")) {
+        return Response.json({ updates: { updatedRange: "Lead Reports!A1:G1" } });
+      }
+      if (url.includes("/values/Lead%20Reports!A1%3AG1")) {
+        return Response.json({ values: [[nowIso(), result.dossier.summary.displayName, "validation-doc"]] });
+      }
+      if (url === "https://www.googleapis.com/drive/v3/files/validation-doc?fields=id,webViewLink") {
+        return Response.json({ id: "validation-doc", webViewLink: "https://docs.google.com/document/d/validation-doc/edit" });
+      }
+      return Response.json({ error: "unexpected_google_validation_fetch", url }, { status: 500 });
+    };
+    const liveGoogleShareExport = await exportCompletedReport({
+      routes: ["google"],
+      dossier: result.dossier,
+      dryRun: false,
+      workspaceDestination: "heirright",
+      workspaceDestinationEmail: "sam@heirright.com",
+      shareWithEmails: ["joshua@heirright.com"],
+      requestedByEmail: "sam@heirright.com",
+    }, {
+      GOOGLE_WORKSPACE_ACCESS_TOKEN: "validation-google-token",
+      GOOGLE_TRACKING_SHEET_ID: "validation-sheet",
+      GOOGLE_LIVE_WRITE_APPROVED: "true",
+    });
+    const liveGoogleRoute = liveGoogleShareExport.routes.find((route) => route.route === "google");
+    if (!liveGoogleShareExport.ok) failures.push(`S19 live Google share export should pass with mocked Drive permissions: ${liveGoogleShareExport.blockers.join("; ")}`);
+    if (liveGoogleRoute?.workspaceDestination !== "heirright") failures.push("S19 live Google export should target HeirRight workspace.");
+    for (const email of ["sam@heirright.com", "joshua@heirright.com"] as const) {
+      if (!liveGoogleRoute?.sharedWithEmails?.includes(email)) failures.push(`S19 live Google export missing sharedWithEmails ${email}.`);
+      for (const fileId of ["validation-folder", "validation-doc"] as const) {
+        if (!googlePermissionRequests.some((request) => request.fileId === fileId && request.email === email)) {
+          failures.push(`S19 live Google export did not grant ${email} access to ${fileId}.`);
+        }
+      }
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const webhookBodies: Array<Record<string, unknown>> = [];
+  try {
+    globalThis.fetch = async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
+      webhookBodies.push(body);
+      return Response.json({
+        ok: true,
+        docId: "validation-webhook-doc",
+        docUrl: "https://docs.google.com/open?id=validation-webhook-doc",
+        readbackOk: true,
+      });
+    };
+    const webhookExport = await exportCompletedReport({
+      routes: ["google"],
+      dossier: result.dossier,
+      dryRun: false,
+      workspaceDestination: "heirright",
+      workspaceDestinationEmail: "sam@heirright.com",
+      shareWithEmails: ["joshua@heirright.com"],
+      requestedByEmail: "sam@heirright.com",
+    }, {
+      GOOGLE_WORKSPACE_WEBHOOK_URL: "https://workspace.example.test/export",
+      GOOGLE_WORKSPACE_WEBHOOK_SECRET: "validation-secret",
+      GOOGLE_LIVE_WRITE_APPROVED: "true",
+    });
+    if (!webhookExport.ok) failures.push(`S19 webhook Google export should pass when HeirRight readback returns a Doc URL: ${webhookExport.blockers.join("; ")}`);
+    if (webhookBodies[0]?.workspaceDestination !== "heirright") failures.push("S19 webhook payload should target HeirRight workspace.");
+    if (!Array.isArray(webhookBodies[0]?.shareWithEmails) || !(webhookBodies[0]?.shareWithEmails as string[]).includes("sam@heirright.com")) {
+      failures.push("S19 webhook payload should include HeirRight reviewer emails.");
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  try {
+    globalThis.fetch = async (): Promise<Response> => Response.json({
+      ok: true,
+      docId: "validation-webhook-doc",
+      docUrl: "https://docs.google.com/open?id=validation-webhook-doc",
+      readbackOk: true,
+      sharedWithEmails: ["sam@heirright.com"],
+    });
+    const partialShareWebhookExport = await exportCompletedReport({
+      routes: ["google"],
+      dossier: result.dossier,
+      dryRun: false,
+      workspaceDestination: "heirright",
+      workspaceDestinationEmail: "sam@heirright.com",
+      shareWithEmails: ["joshua@heirright.com"],
+      requestedByEmail: "sam@heirright.com",
+    }, {
+      GOOGLE_WORKSPACE_WEBHOOK_URL: "https://workspace.example.test/export",
+      GOOGLE_WORKSPACE_WEBHOOK_SECRET: "validation-secret",
+      GOOGLE_LIVE_WRITE_APPROVED: "true",
+    });
+    if (partialShareWebhookExport.ok) failures.push("S19 webhook Google export should block when explicit sharedWithEmails omits a requested HeirRight reviewer.");
+    if (!partialShareWebhookExport.blockers.some((blocker) => blocker.includes("did not confirm Drive access"))) {
+      failures.push("S19 partial webhook sharing response missing Drive access confirmation blocker.");
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 
   const podioPresetDryExport = await exportCompletedReport({
     routes: ["podio"],
@@ -256,6 +696,33 @@ async function main(): Promise<void> {
     if (!statuses.some((status) => status.name === name)) failures.push(`S15 connection status missing ${name}.`);
   }
 
+  const thirtyDayEvidence = await generateThirtyDayMilestoneEvidence({});
+  const thirtyDayEvidenceMarkdown = renderThirtyDayMilestoneEvidenceMarkdown(thirtyDayEvidence);
+  const thirtyDayReviewScript = renderThirtyDayClientReviewScriptMarkdown(thirtyDayEvidence);
+  if (thirtyDayEvidence.milestone !== "30-Day Workflow Automation Milestone") failures.push("HEI-77 milestone evidence title missing.");
+  if (thirtyDayEvidence.overallStatus !== "blocked") failures.push("HEI-77 default evidence should be blocked without production seeds and live readback.");
+  if (!thirtyDayEvidence.gates.some((item) => item.id === "production_seed_batch" && item.status === "blocked")) failures.push("HEI-77 production seed blocker missing.");
+  if (!thirtyDayEvidence.gates.some((item) => item.id === "qualified_lead_volume" && item.status === "blocked")) failures.push("HEI-77 qualified-volume blocker missing.");
+  if (!thirtyDayEvidence.gates.some((item) => item.id === "qualification_integrity" && item.status === "passed")) failures.push("HEI-77 qualification-integrity gate missing.");
+  if (!thirtyDayEvidence.gates.some((item) => item.id === "structured_source_coverage" && item.status === "blocked")) failures.push("S17 structured-source coverage gate missing.");
+  if (!thirtyDayEvidence.gates.some((item) => item.id === "external_use_guard" && item.status === "passed")) failures.push("HEI-77 external-use guard gate missing.");
+  if (!thirtyDayEvidence.dailyRun.sourceCoverageBlockers.length) failures.push("S17 milestone source coverage blockers missing.");
+  if (!thirtyDayEvidence.dailyRun.qualificationReviewSummary) failures.push("S18 milestone qualification summary missing.");
+  if (!thirtyDayEvidence.exportReadiness.readbackEvidence) failures.push("S19 milestone readback evidence packet missing.");
+  if (thirtyDayEvidence.exportReadiness.readbackEvidence.overallStatus !== "blocked") failures.push("S19 default milestone readback evidence should remain blocked.");
+  if (!thirtyDayEvidenceMarkdown.includes("HeirRight 30-Day Milestone Evidence")) failures.push("HEI-77 evidence markdown heading missing.");
+  if (!thirtyDayEvidenceMarkdown.includes("Source Coverage Blockers")) failures.push("S17 milestone markdown source blocker section missing.");
+  if (!thirtyDayEvidenceMarkdown.includes("Captured on at least one lead: property address")) failures.push("S17 milestone markdown captured source fields missing.");
+  if (!thirtyDayEvidenceMarkdown.includes("Qualification review:")) failures.push("S18 milestone markdown qualification summary missing.");
+  if (!thirtyDayEvidenceMarkdown.includes("Google + Podio Readback")) failures.push("S19 milestone markdown readback section missing.");
+  if (!thirtyDayEvidenceMarkdown.includes("Not ready for 30-Day acceptance")) failures.push("HEI-77 evidence markdown summary missing.");
+  if (!thirtyDayReviewScript.includes("HeirRight 30-Day Review Agenda")) failures.push("S20 client review script heading missing.");
+  if (!thirtyDayReviewScript.includes("Records To Pull Next")) failures.push("S20 client review script source blocker section missing.");
+  if (!thirtyDayReviewScript.includes("already captured on at least one lead: property address")) failures.push("S20 client review script captured-vs-missing source plan missing.");
+  for (const phrase of ["production seed", "Google", "Podio", "qualified"] as const) {
+    if (!thirtyDayReviewScript.includes(phrase)) failures.push(`S20 client review script missing ${phrase}.`);
+  }
+
   const estateResult = await runDryPipeline({
     estateName: "Estate of Maria Lopez",
     county: "miami-dade",
@@ -290,6 +757,36 @@ async function main(): Promise<void> {
   const companyRule = companyDossier.workflow.rules.find((rule) => rule.code === "OWNER_TYPE");
   if (companyRule?.status !== "stop") failures.push("S5 company-owner rule did not stop the lead.");
   if (companyDossier.operatorQueue.state !== "disqualified") failures.push("S5 company-owner fixture did not enter disqualified queue.");
+
+  const holdingsDossier = buildS5FixtureDossier({
+    runId: "validation-s5-holdings-owner",
+    ownerName: "Sample Estate Holdings",
+    ownerType: "individual_review",
+  });
+  const holdingsRule = holdingsDossier.workflow.rules.find((rule) => rule.code === "OWNER_TYPE");
+  if (holdingsRule?.status !== "stop") failures.push("S5 Holdings owner-name rule did not stop the lead.");
+  if (holdingsDossier.operatorQueue.state !== "disqualified") failures.push("S5 Holdings owner-name fixture did not enter disqualified queue.");
+
+  for (const punctuatedEntityOwner of ["Sample Property Co.", "Sample Property L.L.C."]) {
+    const punctuatedEntityDossier = buildS5FixtureDossier({
+      runId: `validation-s5-${punctuatedEntityOwner.includes("L.L.C") ? "llc" : "co"}-owner`,
+      ownerName: punctuatedEntityOwner,
+      ownerType: "individual_review",
+    });
+    const punctuatedEntityRule = punctuatedEntityDossier.workflow.rules.find((rule) => rule.code === "OWNER_TYPE");
+    if (punctuatedEntityRule?.status !== "stop") failures.push(`S5 punctuated entity owner ${punctuatedEntityOwner} did not stop the lead.`);
+    if (punctuatedEntityDossier.operatorQueue.state !== "disqualified") failures.push(`S5 punctuated entity owner ${punctuatedEntityOwner} did not enter the disqualified queue.`);
+  }
+
+  const trustDossier = buildS5FixtureDossier({
+    runId: "validation-s5-trust-owner",
+    ownerName: "The Rivera Family Trust",
+    ownerType: "trust_estate_review",
+  });
+  const trustRule = trustDossier.workflow.rules.find((rule) => rule.code === "OWNER_TYPE");
+  if (trustRule?.status !== "continue") failures.push("S5 trust-owner review was incorrectly stopped as a company lead.");
+  if (trustRule?.reasonCodes.includes("COMPANY_OWNER")) failures.push("S5 trust-owner review received the company stop reason.");
+  if (trustDossier.operatorQueue.state === "disqualified") failures.push("S5 trust-owner fixture incorrectly entered the disqualified queue.");
 
   const recentSaleDossier = buildS5FixtureDossier({
     runId: "validation-s5-recent-sale",

@@ -1,12 +1,12 @@
-# HeirRight S1-S15 Run-Point Roadmap
+# HeirRight S1-S27 Run-Point Roadmap
 
-Status: implementation-facing roadmap and run-point plan
+Status: implementation-facing roadmap and contract-completion run-point plan
 Friday delivery target: completed Friday, May 22, 2026
 Post-Friday owner: Claude Cowork / Codex Automation, with TP/Sam at milestone gates
 Track cap: 5 child tracks max per execution batch
 Historical Linear project: HeirRight Friday Delivery preserves completed S1-S4 evidence
 Active Linear project: HeirRight Deal Engine Automation
-2.0 Beta rule: S12-S15 use whole sprints, exactly two tracks per sprint, and two sprints per repo branch.
+Completion rule: S22-S27 are exactly six full sprints, run two full sprints per daily automation run unless the second sprint is concretely blocked.
 
 ## New Onboarding Inputs
 
@@ -32,12 +32,28 @@ Pre-Alaska delivery target:
 - Use Joshua's June 6-20 unavailable window for debugging and refinement.
 - Resume full forward testing when Joshua returns.
 
-Success metrics:
+Historical success metrics:
 
 - 30-day: automate at least 60% of front-end qualified lead generation and lead report creation, plus implement text/email follow-up workflow scaffolding.
 - 90-day: full document prep automation and a working deal engine that produces qualified prospects with closing opportunities.
 
-Linear milestone targets:
+Corrected contract-completion target as of June 29, 2026:
+
+- Automate Discovery DocPrep.
+- Automate Closing DocPrep.
+- Finalize the public website with landing, Terms of Use, and Privacy Policy content.
+- Automate SMS/email outreach through Podio, Resend, or an owned app queue plus an approved SMS carrier gateway.
+- Prove the tested UI surfaces are error-free.
+- Prove Google Sheets and Podio integrations with controlled write/readback.
+- Preserve lead generation as future capability, not the current completion yardstick.
+
+Current milestone gates:
+
+- FULLY FUNCTIONAL PRD.
+- FULL-APP HUMAN-PRACTICAL TESTING.
+- UX AND PRODUCT LOOP HUMAN REVIEW.
+
+Historical Linear milestone targets:
 
 - Project Semi-Automation Setup: May 27, 2026.
 - Pre-Alaska MVP Testing Handoff: June 4, 2026.
@@ -48,6 +64,7 @@ Run-point rule:
 
 - Codex Automation starts daily at 11:30 AM America/New_York.
 - It reviews the previous day's work, runs smoke gates, fixes regressions first, performs a Solvys UI audit, then starts the current day's ready briefs in Cursor Web PWA tabs.
+- It takes two full sprints per day until S22-S27 are complete unless the second sprint is blocked by credentials, live-write approval, legal/compliance review, or a failing smoke gate.
 - Human testing is created only at milestone acceptance gates, not after every S5-S11 execution batch.
 - Human-attention blockers go to `sam@solvys.io` only for credentials, approvals, legal/compliance review, live-write permission, or milestone acceptance.
 
@@ -56,6 +73,7 @@ Scope posture:
 - 2-week MVP should be assisted automation plus human review, not fully autonomous county scraping, paid-source enrichment, CRM migration, and live outreach all at once.
 - Website redesign begins after lead engine delivery, during forward testing.
 - HeirRight is the first testbed for a future Solvys white-labeled operator shell, but generic shell extraction should wait until after the HeirRight MVP proves the pattern.
+- IDI Core is expensive per run. The approved Asset Discovery intake path can be verified once, then it must remain locked unless TP explicitly reopens it.
 
 ## Friday Done
 
@@ -332,8 +350,20 @@ Last roadmap sync: June 3, 2026. Linear project `HeirRight Deal Engine Automatio
 | S13 — Report rail + operator UI completion | `HEI-82`–`HEI-84` | Done | 2026-06-02 |
 | S14 — Daily lead production + qualification | `HEI-85`, `HEI-87`–`HEI-88` | Done; production seeds needed for volume proof | 2026-06-02 |
 | S15 — Google/Podio export + readback | `HEI-86`, `HEI-89`–`HEI-90` | Done; live credentials/readback needed for milestone proof | 2026-06-02 |
+| S16 — Production seed intake + acceptance batch | local fallback | Done for contract/example path; real production batch optional/future | 2026-06-16 |
+| S17 — Structured source extraction upgrade | local fallback | Partially implemented; remaining extraction depth is future lead-generation capability unless needed for DocPrep proof | — |
+| S18 — Qualification promotion loop | local fallback | Done in repo; live acceptance still depends on real source coverage if lead-volume mode is activated | 2026-06-17 |
+| S19 — Controlled Google + Podio readback | local fallback | Packet done; live readback still externally blocked | — |
+| S20 — 30-day acceptance run | local fallback | Packet/review script done; old lead-volume milestone no longer controls current contract completion | 2026-06-17 |
+| S21 — Discovery dossiers product loop | local fallback | Done for UI/product loop; S23 hardening complete | 2026-06-28 |
+| S22 — Contract completion PRD + source lock | local fallback | Done | 2026-06-29 |
+| S23 — Discovery + Closing DocPrep automation | local fallback | Done | 2026-06-29 |
+| S24 — Outreach automation + Google/Podio integration | local fallback | Ready; credentials required for live completion | — |
+| S25 — Website + legal page finalization | local fallback | Mostly implemented; route split/verification remains | — |
+| S26 — Full-app human-practical testing | local fallback | Pending S23-S25 | — |
+| S27 — UX + product-loop human review | local fallback | Pending S26 | — |
 
-Milestone gates: `HEI-76` (Pre-Alaska MVP, due 2026-06-04) still blocks on S9 Podio access/readback validation; `HEI-77` (30-Day Workflow Automation) is In Progress with S14/S15 evidence attached and remains blocked on live Podio/Google readback plus production volume seeds; `HEI-78` remains open for the 90-Day Deal Engine gate.
+Current milestone gates: S22 closes FULLY FUNCTIONAL PRD, S26 closes FULL-APP HUMAN-PRACTICAL TESTING, and S27 closes UX AND PRODUCT LOOP HUMAN REVIEW. Historical gates `HEI-76`, `HEI-77`, and `HEI-78` remain useful history, but the corrected contract objective is now S22-S27.
 
 ### Implemented in the workspace
 
@@ -355,6 +385,27 @@ Milestone gates: `HEI-76` (Pre-Alaska MVP, due 2026-06-04) still blocks on S9 Po
 - `site-v2/` now contains the built Civic Ledger public-site draft with responsive layout, intake bridge, generated dossier image, SEO metadata, and S10 launch QA notes.
 - `@ple/artifact` now carries the S11 HeirRight operator shell foundation: project-specific nav, CRM/work-queue shell status, bottom composer, lightweight activity drawer, lead-quality settings, runtime/Linear panel, Solvys admin event counters, and prep-only export guardrails.
 - `docs/S11_OPERATOR_SHELL_FOUNDATION.md` records the reusable shell contract, HeirRight config example, analytics event inventory, local runtime/Linear sync model, and extraction plan for Solvys-1/Fintheon hooks.
+- S21 added the current DocPrep product loop: CRM import, Discovery and Closing Docs flow tabs, closing document rows, estate process fuses, queue prep, and production app proof.
+- S23 completed DocPrep hardening: per-estate/per-flow Discovery and Closing progress, reload-safe CRM/DocPrep state, reviewed closing-template family mapping, generated Closing Packet Review, and in-app Quick Look blocker preview.
+- `docs/HEIRRIGHT_CONTRACT_COMPLETION_PLAN_2026-06-29.md` records the corrected contract objective, reviewed closing-template packet, IDI Core guardrails, and S22-S27 sprint map.
+
+## Current Contract Completion Pack - S22-S27
+
+S22-S27 are the remaining six sprints total. TP annotations should be captured after this planning pass and routed into the sprint that owns the affected behavior.
+
+1. S22: Contract Completion PRD + Source Lock.
+2. S23: Discovery and Closing DocPrep Automation.
+3. S24: Outreach Automation + Google/Podio Integration.
+4. S25: Website + Legal Page Finalization.
+5. S26: Full-App Human-Practical Testing.
+6. S27: UX + Product Loop Human Review.
+
+Annotation routing:
+
+- UI/product-loop annotations for app workflow go to S23 or S26 depending on whether they are implementation changes or test observations.
+- Outreach, approval, SMS/email, Google Sheets, and Podio annotations go to S24.
+- Public website, Terms, Privacy, contact, copy, or route annotations go to S25.
+- Final judgment calls, acceptance notes, and client-review annotations go to S27.
 
 ## Workflow PDF Planning Deltas
 

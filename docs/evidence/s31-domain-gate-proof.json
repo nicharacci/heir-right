@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "allowedSession": {
+    "status": 200,
+    "authenticated": true,
+    "domain": "heirright.com"
+  },
+  "disallowedSession": {
+    "status": 200,
+    "authenticated": false
+  },
+  "allowedDataStatus": 200,
+  "disallowedDataStatus": 401,
+  "checks": [
+    "signed allowed-domain session authenticates",
+    "signed personal-domain session is rejected",
+    "protected data route accepts allowed domain and rejects disallowed domain"
+  ],
+  "at": "2026-07-04T03:59:44.716Z"
+}

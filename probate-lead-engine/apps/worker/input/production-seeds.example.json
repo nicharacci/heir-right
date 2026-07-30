@@ -1,0 +1,47 @@
+{
+  "batchId": "sample-miami-dade-production-contract",
+  "sourceLabel": "Sample Miami-Dade county seed batch",
+  "sourceOwner": "HeirRight operator",
+  "approvalMarker": "approved_for_production_batch",
+  "seeds": [
+    {
+      "county": "miami-dade",
+      "propertyAddress": "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+      "ownerName": "Fresh public-source lead",
+      "parcelId": "sample-folio-review",
+      "source": "operator_cli",
+      "confirmedSourceFacts": [
+        {
+          "source": "property_appraiser",
+          "factType": "mailing_address_signal",
+          "value": "Mailing address requires operator comparison against the county property record.",
+          "rawId": "sample-property-record-mailing-address",
+          "confidence": 0.75,
+          "sourceUrl": "https://www.miamidade.gov/Apps/PA/PropertySearch/#/"
+        },
+        {
+          "source": "tax_collector",
+          "factType": "tax_history_status",
+          "value": "Tax record review started; unpaid-year and receipt details still need confirmation.",
+          "rawId": "sample-tax-record-status",
+          "confidence": 0.7,
+          "sourceUrl": "https://www.miamidade.gov/global/service.page?Mduid_service=ser1499797463762502"
+        },
+        {
+          "source": "official_records",
+          "factType": "last_sale_date",
+          "value": "2018-04-12",
+          "rawId": "sample-official-records-last-sale",
+          "confidence": 0.8,
+          "sourceUrl": "https://onlineservices.miamidadeclerk.gov/officialrecords"
+        }
+      ]
+    },
+    {
+      "county": "miami-dade",
+      "estateName": "Estate of Sample Public Source Lead",
+      "caseNumber": "2026-CP-SAMPLE",
+      "source": "operator_cli"
+    }
+  ]
+}

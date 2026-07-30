@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "generatedAt": "2026-07-04T15:20:02.184Z",
+  "base": "http://localhost:4202",
+  "checks": [
+    "anonymous session reports auth required",
+    "signed heirright.com session authenticates",
+    "signed personal-domain session is rejected",
+    "protected data route accepts allowed domain",
+    "protected data route rejects disallowed and anonymous sessions",
+    "root shell includes client auth-session gate code",
+    "auth/login redirects only to Google OAuth"
+  ],
+  "anonymousSession": {
+    "status": 200,
+    "authenticated": false,
+    "auth": {
+      "required": true,
+      "configured": true,
+      "allowedDomains": [
+        "heirright.com"
+      ],
+      "allowedEmails": []
+    }
+  },
+  "allowedSession": {
+    "status": 200,
+    "authenticated": true,
+    "user": {
+      "email": "operator@heirright.com",
+      "name": "S32 Allowed Operator",
+      "picture": "https://profiles.test/operator@heirright.com.png",
+      "domain": "heirright.com",
+      "mode": "oauth"
+    }
+  },
+  "disallowedSession": {
+    "status": 200,
+    "authenticated": false
+  },
+  "routeAccess": {
+    "allowedDataStatus": 200,
+    "disallowedDataStatus": 401,
+    "anonymousDataStatus": 401
+  },
+  "rootShell": {
+    "status": 200,
+    "contentType": "text/html",
+    "hasClientAuthCode": true
+  },
+  "loginStart": {
+    "status": 302,
+    "locationHost": "accounts.google.com"
+  }
+}

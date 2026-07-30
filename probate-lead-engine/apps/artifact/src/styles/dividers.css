@@ -1,0 +1,129 @@
+/*
+ * Divider authority layer
+ *
+ * These selectors cover semantic separators only. Component outlines, input
+ * boundaries, focus rings, progress tracks, table/grid cell rules, resize
+ * handles, and timeline connectors keep their own geometry and colors.
+ * `border-image` lets each existing one-pixel rule retain its layout while the
+ * shared token fades both ends cleanly in graphite and cream themes.
+ */
+
+:where(
+  .auth-allow-list,
+  .process-side-foot,
+  .document-modal-foot,
+  .admin-access-form,
+  .settings-section,
+  .settings-integrations-list .integration-card + .integration-card,
+  .closing-template-option,
+  .rail-item,
+  .outreach-modal-foot,
+  .template-attachment-option,
+  .template-body-head,
+  .chatgpt-work-handoff,
+  .hr-discovery-progress,
+  .hr-idi-file-review,
+  .hr-rerun-form,
+  .hr-local-completion,
+  .journey-document-list,
+  .journey-actions-list,
+  .journey-activity-list,
+  .dashboard-editorial-list,
+  .dashboard-estate-list,
+  .dashboard-activity-list,
+  .arsip-section,
+  .activity-row,
+  .library-row
+) {
+  border-image-source: var(--hr-divider-line);
+  border-image-slice: 1;
+}
+
+/* These components intentionally reset their complete native border before
+ * restoring one semantic edge. Match that specificity so the reset cannot
+ * discard the shared fade. */
+.dashboard-estate-row,
+.journey-document-row,
+.journey-action-row,
+.template-attachment-option,
+.process-side .process-side-head,
+.document-panel-head,
+.process-side-head,
+.settings-integrations-list .integration-card + .integration-card,
+.research-rail .glass-card.rail-card,
+.research-rail .glass-card.rail-title-card {
+  border-image-source: var(--hr-divider-line);
+  border-image-slice: 1;
+}
+
+:where(
+  .process-side .process-side-head,
+  .process-facts,
+  .document-modal-head,
+  .dossier-rail-toolbar,
+  .rail-chrome,
+  .research-rail .glass-card.rail-card,
+  .research-rail .glass-card.rail-title-card,
+  .outreach-modal-head,
+  .hr-docprep-header,
+  .hr-section-heading,
+  .hr-document-row,
+  .hr-docprep-rail-panel > header,
+  .hr-document-facts > div,
+  .journey-rail-disposition,
+  .journey-estate-facts > div,
+  .journey-document-row,
+  .journey-action-row,
+  .journey-activity-list li,
+  .dashboard-decision-band,
+  .dashboard-journey,
+  .dashboard-work-grid,
+  .dashboard-attention-row,
+  .dashboard-estate-row,
+  .dashboard-activity-list li,
+  .dashboard-kpis dl > div,
+  .dashboard-empty-row,
+  .hr-grid-header,
+  .hr-estate-filters,
+  .hr-admin-audit-header,
+  #workspace[data-s38-shell="case-journey"] .shell-rail-header,
+  #workspace[data-s38-shell="case-journey"] .shell-rail-tabs
+) {
+  border-image-source: var(--hr-divider-line);
+  border-image-slice: 1;
+}
+
+:where(
+  .results,
+  .process-side,
+  .dashboard-disposition,
+  .dashboard-kpis
+) {
+  border-image-source: var(--hr-divider-line-vertical);
+  border-image-slice: 1;
+}
+
+/* The desktop process rail resets its complete border before restoring only
+ * the left separator. Keep that real column boundary on the vertical token. */
+.process-side {
+  border-image-source: var(--hr-divider-line-vertical);
+  border-image-slice: 1;
+}
+
+#workspace[data-s38-shell="case-journey"] .filters::after {
+  background: var(--hr-divider-line-vertical);
+}
+
+/* At the stacked dashboard breakpoint, the two column separators rotate into
+ * horizontal rules. Keep their fades aligned with that responsive geometry. */
+@media (max-width: 1040px) {
+  :where(.dashboard-disposition, .dashboard-kpis) {
+    border-image-source: var(--hr-divider-line);
+  }
+}
+
+@media (max-width: 1180px) {
+  .process-side {
+    border-image-source: var(--hr-divider-line);
+  }
+}
