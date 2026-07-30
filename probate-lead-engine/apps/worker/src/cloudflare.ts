@@ -1735,8 +1735,8 @@ async function googleWorkspaceConnectionKey(email: string): Promise<string> {
   return `google-workspace-connection:${await sha256Hex(email.toLowerCase())}`;
 }
 
-function googleWorkspaceDeliveryKey(artifactId: string, destinationId: string): string {
-  return `google-workspace-delivery:${artifactId}:${destinationId}`;
+function googleWorkspaceDeliveryKey(artifactId: string, destinationId: string, documentId = ""): string {
+  return `google-workspace-delivery:${artifactId}:${documentId || "full-packet"}:${destinationId}`;
 }
 
 async function supportingDocumentIndexKey(estateId: string): Promise<string> {
@@ -3359,6 +3359,16 @@ function paidIdiStoredCandidates(
         ? candidate.group
         : /^(spouse|wife|husband|child|children|son|daughter)$/i.test(relationship) ? "primary" : "alternative";
       const addresses = paidIdiCandidateStrings(candidate.addressHistory, 25, 240);
+      const addressHistoryDetails = Array.isArray(candidate.addressHistoryDetails)
+        ? candidate.addressHistoryDetails.slice(0, 25).flatMap((value) => {
+          const item = objectValue(value);
+          const address = stringValue(item.address).slice(0, 240);
+          if (!address) return [];
+          const county = stringValue(item.county).slice(0, 120);
+          const dates = stringValue(item.dates).slice(0, 80);
+          return [{ address, ...(county ? { county } : {}), ...(dates ? { dates } : {}) }];
+        })
+        : addresses.map((address) => ({ address }));
       const currentAddress = (stringValue(candidate.currentAddress) || addresses[0] || "").slice(0, 240);
       const rawConfidence = Number(candidate.confidence);
       const confidence = Number.isFinite(rawConfidence)
@@ -3368,11 +3378,16 @@ function paidIdiStoredCandidates(
         id: `${assetKey}:idi:${index + 1}`,
         name,
         relationship,
+        ...(Number.isInteger(Number(candidate.age)) && Number(candidate.age) > 0 && Number(candidate.age) < 125
+          ? { age: Number(candidate.age) }
+          : {}),
+        ...(stringValue(candidate.interest) ? { interest: stringValue(candidate.interest).slice(0, 80) } : {}),
         group,
         phones: paidIdiCandidateStrings(candidate.phones, 20, 40),
         emails: paidIdiCandidateStrings(candidate.emails, 20, 254),
         currentAddress,
         addressHistory: addresses,
+        addressHistoryDetails,
         ownerLastNameMatch: Boolean(ownerLastName(ownerName) && ownerLastName(name) === ownerLastName(ownerName)),
         confidence,
         confidenceReason: "Validated IDI Core provider result; operator contact review is still required",
@@ -4516,6 +4531,8 @@ type StoredGoogleWorkspaceDelivery = {
   version: 2;
   revision: string;
   artifactId: string;
+  deliveryArtifactId: string;
+  deliveryDocumentId: string | null;
   estateId: string;
   flow: "discovery" | "closing-docs";
   packetRevision: number;
@@ -4540,6 +4557,8 @@ function storedGoogleWorkspaceDelivery(value: string | null): StoredGoogleWorksp
       version: 2,
       revision: stringValue(parsed.revision) || `legacy-${stringValue(parsed.pdfHash).slice(0, 16)}`,
       artifactId: stringValue(parsed.artifactId),
+      deliveryArtifactId: stringValue(parsed.deliveryArtifactId) || stringValue(parsed.artifactId),
+      deliveryDocumentId: stringValue(parsed.deliveryDocumentId) || null,
       estateId: stringValue(parsed.estateId),
       flow: parsed.flow === "closing-docs" ? "closing-docs" : "discovery",
       packetRevision: Number(parsed.packetRevision) || 0,
@@ -4584,6 +4603,8 @@ async function persistGoogleWorkspaceDelivery(
       metadata: {
         kind: "google_workspace_delivery",
         artifactId: record.artifactId,
+        deliveryArtifactId: record.deliveryArtifactId,
+        deliveryDocumentId: record.deliveryDocumentId,
         destinationId: record.destinationId,
         fileId: record.fileId,
         marker: record.marker,
@@ -4625,6 +4646,9 @@ function googleWorkspaceDeliveryResponse(
     ...(options.reconciled ? { reconciled: true } : {}),
     fileId: delivery.fileId,
     fileUrl: delivery.fileUrl,
+    artifactId: delivery.artifactId,
+    deliveryArtifactId: delivery.deliveryArtifactId,
+    deliveryDocumentId: delivery.deliveryDocumentId,
     destination: connection.destinationName,
     destinationId: connection.destinationId,
     readbackStatus: "verified",
@@ -4992,6 +5016,17 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     }, { status: 400, headers: { "cache-control": "no-store" } });
   }
   const artifactId = requested.artifactId;
+  const deliveryDocumentId = stringValue(body.deliveryDocumentId);
+  if ((requested.flow === "discovery" && deliveryDocumentId !== "completed-report")
+    || (requested.flow === "closing-docs" && deliveryDocumentId)) {
+    return json({
+      ok: false,
+      error: "google_workspace_delivery_document_invalid",
+      message: requested.flow === "discovery"
+        ? "Discovery delivery requires the verified client-facing completed report."
+        : "Closing Prep delivery does not accept a Discovery document selection.",
+    }, { status: 400, headers: { "cache-control": "no-store" } });
+  }
   let stored: string | null;
   try {
     stored = await env.PACKET_ARTIFACTS.get(packetArtifactKey(artifactId));
@@ -5067,9 +5102,84 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
   }
   const stopReasons = canonicalStopReasons(canonical.record);
   if (stopReasons.length) return canonicalStopJson(stopReasons, "Google Workspace delivery");
+  let deliveryArtifact = artifact;
+  if (deliveryDocumentId) {
+    const references = Array.isArray(activeFlowReference.documentArtifacts)
+      ? activeFlowReference.documentArtifacts as Array<Record<string, unknown>>
+      : [];
+    const deliveryReference = references.find((reference) => stringValue(reference.documentId) === deliveryDocumentId);
+    const deliveryArtifactId = stringValue(deliveryReference?.artifactId);
+    const deliveryContentHash = stringValue(deliveryReference?.contentHash);
+    if (!deliveryReference
+      || !/^packet-[0-9]+-[a-f0-9]{16}$/.test(deliveryArtifactId)
+      || !/^[a-f0-9]{64}$/.test(deliveryContentHash)
+      || stringValue(deliveryReference.readbackStatus) !== "verified") {
+      return json({
+        ok: false,
+        error: "google_workspace_delivery_document_unavailable",
+        message: "The verified client-facing completed report is not attached to this active packet revision.",
+      }, { status: 409, headers: { "cache-control": "no-store" } });
+    }
+    let storedDeliveryArtifact: string | null;
+    try {
+      storedDeliveryArtifact = await env.PACKET_ARTIFACTS.get(packetArtifactKey(deliveryArtifactId));
+    } catch {
+      return json({
+        ok: false,
+        error: "google_workspace_delivery_document_readback_failed",
+        message: "The client-facing completed report could not be read safely. Google Drive was not contacted.",
+      }, { status: 503, headers: { "cache-control": "no-store" } });
+    }
+    if (!storedDeliveryArtifact) {
+      return json({
+        ok: false,
+        error: "google_workspace_delivery_document_unavailable",
+        message: "The client-facing completed report is unavailable or has expired.",
+      }, { status: 404, headers: { "cache-control": "no-store" } });
+    }
+    try {
+      deliveryArtifact = JSON.parse(storedDeliveryArtifact) as StoredPacketArtifact;
+    } catch {
+      return json({
+        ok: false,
+        error: "google_workspace_delivery_document_integrity_failed",
+        message: "The client-facing completed report failed integrity validation.",
+      }, { status: 409, headers: { "cache-control": "no-store" } });
+    }
+    const deliveryEstateIds = Array.isArray(deliveryArtifact.model?.estateIds)
+      ? deliveryArtifact.model.estateIds.map(stringValue)
+      : [];
+    const deliveryEstates = Array.isArray(deliveryArtifact.model?.estates)
+      ? deliveryArtifact.model.estates
+      : [];
+    const deliveryExpiresAt = Date.parse(stringValue(deliveryArtifact.expiresAt));
+    if (deliveryArtifact.id !== deliveryArtifactId
+      || deliveryArtifact.contentHash !== deliveryContentHash
+      || await sha256Hex(JSON.stringify(deliveryArtifact.model)) !== deliveryArtifact.contentHash
+      || deliveryArtifact.documentId !== deliveryDocumentId
+      || deliveryArtifact.parentArtifactId !== artifactId
+      || deliveryArtifact.flow !== requested.flow
+      || deliveryArtifact.packetRevision !== requested.packetRevision
+      || deliveryArtifact.model?.flow !== requested.flow
+      || deliveryEstateIds.length !== 1
+      || deliveryEstateIds[0] !== requested.estateId
+      || deliveryEstates.length !== 1
+      || stringValue(deliveryEstates[0]?.dossierId) !== requested.estateId
+      || !Array.isArray(deliveryArtifact.estateIds)
+      || deliveryArtifact.estateIds.length !== 1
+      || deliveryArtifact.estateIds[0] !== requested.estateId
+      || !Number.isFinite(deliveryExpiresAt)
+      || deliveryExpiresAt <= Date.now()) {
+      return json({
+        ok: false,
+        error: "google_workspace_delivery_document_integrity_failed",
+        message: "The client-facing completed report does not match this exact estate, workflow, revision, and parent packet.",
+      }, { status: 409, headers: { "cache-control": "no-store" } });
+    }
+  }
   let pdf: Uint8Array;
   try {
-    pdf = await renderPacketPdf(artifact.model);
+    pdf = await renderPacketPdf(deliveryArtifact.model);
   } catch {
     return json({ ok: false, error: "packet_render_failed", message: "The approved packet could not be rendered safely. Google Drive was not contacted." }, { status: 422 });
   }
@@ -5079,11 +5189,11 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
   if (!access.ok) return json({ ok: false, error: "google_workspace_connection_expired", message: access.message }, { status: 428 });
   const pdfHash = await sha256ByteHex(pdf);
   const userHash = await sha256Hex(email);
-  const marker = await sha256Hex(`packet_export:${userHash}:${approval.estateId}:${approval.flow}:${approval.packetRevision}:${artifactId}:${connection.destinationId}:${artifact.contentHash}`);
+  const marker = await sha256Hex(`packet_export:${userHash}:${approval.estateId}:${approval.flow}:${approval.packetRevision}:${artifactId}:${deliveryArtifact.id}:${deliveryDocumentId || "full-packet"}:${connection.destinationId}:${deliveryArtifact.contentHash}`);
   const reserved = await reserveGoogleDriveOperation(env, marker);
   if (!reserved.ok) return reserved.response;
   const reservation = reserved.reservation;
-  const deliveryKey = googleWorkspaceDeliveryKey(artifactId, connection.destinationId);
+  const deliveryKey = googleWorkspaceDeliveryKey(artifactId, connection.destinationId, deliveryDocumentId);
   const loadedPrior = await loadGoogleWorkspaceDelivery(env, deliveryKey);
   if (!loadedPrior.ok) {
     await finalizeGoogleDriveOperation(env, reservation, "release");
@@ -5095,7 +5205,10 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
   }
   const prior = loadedPrior.record;
   if (prior) {
-    if (prior.artifactId !== artifactId || prior.destinationId !== connection.destinationId) {
+    if (prior.artifactId !== artifactId
+      || prior.deliveryArtifactId !== deliveryArtifact.id
+      || prior.deliveryDocumentId !== (deliveryDocumentId || null)
+      || prior.destinationId !== connection.destinationId) {
       await finalizeGoogleDriveOperation(env, reservation, "release");
       return json({
         ok: false,
@@ -5153,6 +5266,8 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
         version: 2,
         revision: crypto.randomUUID(),
         estateId: approval.estateId,
+        deliveryArtifactId: deliveryArtifact.id,
+        deliveryDocumentId: deliveryDocumentId || null,
         flow: approval.flow,
         packetRevision: approval.packetRevision,
         approvedAt: approval.approvedAt,
@@ -5271,6 +5386,8 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
       version: 2,
       revision: crypto.randomUUID(),
       artifactId,
+      deliveryArtifactId: deliveryArtifact.id,
+      deliveryDocumentId: deliveryDocumentId || null,
       estateId: approval.estateId,
       flow: approval.flow,
       packetRevision: approval.packetRevision,
@@ -5301,7 +5418,12 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     return googleWorkspaceDeliveryResponse(connection, recoveredDelivery, { reconciled: true });
   }
 
-  const fileName = `${artifact.model.flow === "closing-docs" ? "Closing Prep" : "Discovery"} - ${artifact.model.estateIds[0] || artifactId}.pdf`;
+  const estateLabel = stringValue(deliveryArtifact.model.estates?.[0]?.displayName)
+    || deliveryArtifact.model.estateIds[0]
+    || artifactId;
+  const fileName = deliveryDocumentId === "completed-report"
+    ? `${estateLabel} Family Tree.pdf`
+    : `${artifact.model.flow === "closing-docs" ? "Closing Prep" : "Discovery"} - ${estateLabel}.pdf`;
   const appProperties = googleDriveAppProperties("packet_export", marker, pdfHash, reservation.reservationId);
   const upload = googleMultipartPayload({
     name: fileName,
@@ -5364,6 +5486,8 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     version: 2,
     revision: crypto.randomUUID(),
     artifactId,
+    deliveryArtifactId: deliveryArtifact.id,
+    deliveryDocumentId: deliveryDocumentId || null,
     estateId: approval.estateId,
     flow: approval.flow,
     packetRevision: approval.packetRevision,
@@ -5817,11 +5941,14 @@ function canonicalIdiCandidate(
     id: candidate.id,
     name: candidate.name,
     relationship: candidate.relationship,
+    age: candidate.age,
+    interest: candidate.interest,
     group: candidate.group,
     phones: candidate.phones,
     emails: candidate.emails,
     currentAddress: candidate.currentAddress,
     addressHistory: candidate.addressHistory,
+    addressHistoryDetails: candidate.addressHistoryDetails,
     ownerLastNameMatch: candidate.ownerLastNameMatch,
     confidence: candidate.confidence,
     reviewStatus: review?.status || (candidate.reviewStatus === "auto_accepted_high_confidence" ? "accepted" : "imported"),
