@@ -1299,8 +1299,42 @@ function extractEmails(text = "") {
 }
 
 function extractAddresses(text = "") {
-  const matches = String(text).match(/\b\d{2,6}\s+[A-Z0-9 .'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}\b/gi) ?? [];
+  const matches = String(text).match(/\b\d{2,6}\s+[A-Z0-9 .#'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}\b/gi) ?? [];
   return Array.from(new Set(matches.map((item) => item.replace(/\s+/g, " ").trim())));
+}
+
+function extractIdiAge(text = "") {
+  const value = Number(String(text).match(/\bage\s*[:#-]?\s*(\d{1,3})\b/i)?.[1]);
+  return Number.isInteger(value) && value > 0 && value < 125 ? value : undefined;
+}
+
+function extractIdiInterest(text = "") {
+  const value = String(text).match(
+    /\b(?:interest|ownership share|heir share)\s*[:#-]\s*([^\n|;]{1,80}?)(?=\s+(?:age|likely current address|current address|address history|phone|email|relationship|review status|relative|associate|spouse|child|contact)\s*[:#-]|[\n|;]|$)/i,
+  )?.[1]
+    || String(text).match(/\b(?:\d+\/\d+(?:st|nd|rd|th)?|\d+(?:\.\d+)?%)\s*(?:interest|share)\b/i)?.[0]
+    || "";
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function extractIdiAddressHistory(text = "") {
+  const output = [];
+  const lines = String(text).split(/\r?\n/);
+  const addressPattern = /\b\d{2,6}\s+[A-Z0-9 .#'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}\b/gi;
+  const countyPattern = /\b([A-Z][A-Za-z .'-]+(?:County|Parish|Borough))\b/i;
+  const datePattern = /\b(?:(?:0?[1-9]|1[0-2])\/)?(?:19|20)\d{2}\b(?:\s*[-–—]\s*(?:(?:(?:0?[1-9]|1[0-2])\/)?(?:19|20)\d{2}|present|current))?/i;
+  lines.forEach((line, index) => {
+    const context = `${line} ${lines[index + 1] || ""}`;
+    for (const match of line.matchAll(addressPattern)) {
+      const address = match[0].replace(/\s+/g, " ").trim();
+      const county = context.match(countyPattern)?.[1]?.replace(/\s+/g, " ").trim() || "";
+      const dates = context.match(datePattern)?.[0]?.replace(/\s+/g, " ").trim() || "";
+      if (!output.some((entry) => entry.address.toLowerCase() === address.toLowerCase() && entry.dates === dates)) {
+        output.push({ address, ...(county ? { county } : {}), ...(dates ? { dates } : {}) });
+      }
+    }
+  });
+  return output;
 }
 
 function inferIdiRelationship(block = "") {
@@ -1331,6 +1365,7 @@ function parseIdiImportCandidates(row, importedText = "") {
   return blocks.map((block, index) => {
     const relationship = inferIdiRelationship(block);
     const addresses = extractAddresses(block);
+    const addressHistoryDetails = extractIdiAddressHistory(block);
     const name = inferIdiName(block);
     const primary = /^(spouse|wife|husband|child|son|daughter)$/i.test(relationship);
     const sameLast = Boolean(ownerLastName(row?.owner || row?.title) && ownerLastName(name) === ownerLastName(row?.owner || row?.title));
@@ -1338,11 +1373,14 @@ function parseIdiImportCandidates(row, importedText = "") {
       id: `${assetDiscoveryKey(row)}:idi:${index + 1}`,
       name,
       relationship,
+      ...(extractIdiAge(block) ? { age: extractIdiAge(block) } : {}),
+      ...(extractIdiInterest(block) ? { interest: extractIdiInterest(block) } : {}),
       group: primary ? "primary" : "alternative",
       phones: extractPhones(block),
       emails: extractEmails(block),
       currentAddress: addresses[0] || "",
       addressHistory: addresses,
+      addressHistoryDetails,
       ownerLastNameMatch: sameLast,
       confidence: primary ? 86 : sameLast ? 72 : 58,
       reviewStatus: "imported",
@@ -7810,11 +7848,13 @@ function idiImportPanelHtml(row = selectedRow()) {
 function contactCandidateMeta(candidate) {
   const pieces = [
     displayStatus(candidate.relationship, "Relative"),
+    candidate.interest || "",
+    candidate.age ? `age ${candidate.age}` : "",
     candidate.ownerLastNameMatch ? "last-name match" : "last-name unchecked",
     candidate.phones?.length ? `${candidate.phones.length} phone${candidate.phones.length === 1 ? "" : "s"}` : "no phone",
     candidate.emails?.length ? `${candidate.emails.length} email${candidate.emails.length === 1 ? "" : "s"}` : "no email",
   ];
-  return pieces.join(" · ");
+  return pieces.filter(Boolean).join(" · ");
 }
 
 function contactReviewRowsHtml(row, groupLabel, contacts) {
@@ -13953,6 +13993,7 @@ async function deliverPacketToGoogle(row = selectedRow(), packet = null) {
     estateId: assetDiscoveryKey(row),
     flow,
     packetRevision: approval.packetRevision,
+    ...(flow === "discovery" ? { deliveryDocumentId: "completed-report" } : {}),
     approvedAt: approval.approvedAt,
     approvedBy: approval.approvedBy,
   });
