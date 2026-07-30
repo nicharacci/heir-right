@@ -323,6 +323,7 @@ export function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholde
         role: claimText(profile.role, "heir"),
         name: claimText(profile.name, undefined as unknown as string),
         age: typeof profile.age === "number" ? profile.age : undefined,
+        interest: claimText(profile.interest, "") || undefined,
         likelyCurrentAddress,
         phones,
         emails,
@@ -350,16 +351,32 @@ export function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholde
       const historicalAddresses = Array.isArray(profile.addressHistory)
         ? profile.addressHistory.map((value) => displayAddress(claimText(value, ""))).filter(Boolean)
         : [];
+      const structuredHistory = Array.isArray(profile.addressHistoryDetails)
+        ? profile.addressHistoryDetails.flatMap((value) => {
+          if (!value || typeof value !== "object") return [];
+          const record = value as Record<string, unknown>;
+          const address = displayAddress(claimText(record.address, ""));
+          if (!address) return [];
+          return [{
+            address,
+            county: formatCountyName(record.county, ""),
+            dates: claimText(record.dates, ""),
+            sourceUrl: safeSourceLinkUrl(record.sourceUrl) ?? "",
+          }];
+        })
+        : [];
       const addresses = Array.from(new Set([currentAddress, ...historicalAddresses].filter(Boolean)));
       const reviewStatus = claimText(profile.reviewStatus, "accepted").toLowerCase();
       return {
         role: claimText(profile.relationship, "relative"),
         name: claimText(profile.name, undefined as unknown as string),
+        age: typeof profile.age === "number" ? profile.age : undefined,
+        interest: claimText(profile.interest, "") || undefined,
         likelyCurrentAddress: currentAddress || undefined,
         phones: Array.isArray(profile.phones) ? profile.phones.map((item) => claimText(item, "")).filter(Boolean) : [],
         emails: Array.isArray(profile.emails) ? profile.emails.map((item) => claimText(item, "")).filter(Boolean) : [],
         addresses,
-        addressHistory: historicalAddresses.map((address) => ({ address })),
+        addressHistory: structuredHistory.length ? structuredHistory : historicalAddresses.map((address) => ({ address })),
         note: `${reviewStatus === "promoted" ? "Promoted" : "Accepted"} from the reviewed IDI report. Relationship remains a research lead until heirship is confirmed.`,
         reviewFlags: [],
       };
@@ -440,42 +457,161 @@ function buildMissingData(dossier: RawDossier, offerMath: OfferProfitMath, inclu
 }
 
 function buildBackstory(dossier: RawDossier): string {
-  const enrichedContacts = dossier.audit.facts.filter((item) => item.factType === "enriched_contact_profile").length;
+  const known = (value: unknown): boolean => {
+    if (value === null || value === undefined || value === "") return false;
+    if (Array.isArray(value)) return value.length > 0;
+    return true;
+  };
+  const sentence = (value: unknown): string => String(value || "").trim().replace(/[.\s]+$/, "");
+  const statusText = (value: unknown): string => {
+    const text = sentence(value);
+    const status = text.toLowerCase().replace(/[\s-]+/g, "_");
+    if (status === "manual_or_browser_extraction_required") return "court-source details require direct review";
+    if (status === "manual_review_required") return "source details require direct review";
+    if (status === "not_run" || status === "not_started") return "not yet reviewed";
+    return /_/.test(text) ? humanStatus(text) : text;
+  };
+  const moneyAmount = (value: unknown): string => {
+    if (!value || typeof value !== "object") return "";
+    const record = value as Record<string, unknown>;
+    const amount = Number(record.amount);
+    if (!Number.isFinite(amount)) return "";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: claimText(record.currency, "USD"),
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+  const contactFacts = dossier.audit.facts.filter((item) => (
+    item.factType === "enriched_contact_profile"
+    || item.factType === "primary_contact_profile"
+    || item.factType === "alternative_contact_profile"
+  ));
   const familyNodes = dossier.familyTree.hypothesis.value?.nodes.filter((node) => node.name) ?? [];
   const reportedSpouse = familyNodes.find((node) => node.role === "spouse")?.name;
   const reportedChildren = familyNodes.filter((node) => node.role === "child").map((node) => node.name);
-  const publicEstateNarrative = safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value)
-    ? [
-      `The public record review concerns ${claimText(dossier.property.address.value)}. The Property Appraiser lists ${claimText(dossier.property.ownerName.value)} as owner of record and ${claimText(dossier.deedHistory.mailingAddressSignal.value)} as the mailing address.`,
-      dossier.deedHistory.orBookPage.value
-        ? `The latest sale is dated ${claimText(dossier.deedHistory.lastSaleDate.value)} and points to OR Book ${claimText(dossier.deedHistory.orBookPage.value.book)}, Page ${claimText(dossier.deedHistory.orBookPage.value.page)}.`
-        : `The latest deed and OR book/page still need confirmation.`,
-      `The published probate notice identifies case ${claimText(dossier.probateDocket.caseNumber.value)} and reports a date of death of ${claimText(dossier.marriageDeathIndicators.dateOfDeath.value)}.`,
-      `The published obituary reports a date of birth of ${claimText(dossier.marriageDeathIndicators.dateOfBirth.value)}${reportedSpouse ? ` and names ${reportedSpouse} as the spouse` : ""}${reportedChildren.length ? `, with ${reportedChildren.join(", ")} reported as children` : ""}. These relationship notes remain research hypotheses until the IDI report and probate records are reviewed.`,
-    ].join(" ")
-    : "";
-  const parts = [
-    enrichedContacts
-      ? `${dossier.summary.displayName} was prepared as a family-tree discovery packet from the current public-record lead run. The packet includes property identity, deed history, tax review, probate review, and ${enrichedContacts} enriched contact profile${enrichedContacts === 1 ? "" : "s"} for operator review.`
-      : publicEstateNarrative || dossier.narrative,
-    dossier.deedHistory.adversePossessionSignal.value === false
-      ? "No adverse possession signal is currently recorded."
-      : "Adverse possession status requires operator review.",
-    dossier.taxHistory.receiptStatus.value
-      ? `Tax receipt status: ${dossier.taxHistory.receiptStatus.value}.`
-      : "Tax receipt status is not yet captured.",
-    dossier.taxHistory.receiptLink.value
-      ? `Tax Collector receipt link captured: ${dossier.taxHistory.receiptLink.value}.`
-      : "Tax Collector listing-page receipt link still needs capture.",
-    dossier.deedHistory.mortgageSignal.value
-      ? `Mortgage signal: ${dossier.deedHistory.mortgageSignal.value}.`
-      : "Mortgage balance/details require operator confirmation.",
-    dossier.probateDocket.caseStatus.value
-      ? `Probate case status: ${String(dossier.probateDocket.caseStatus.value).replace(/[.]+$/, "")}.`
-      : "Probate case status is still open for research.",
-    "Family tree and heirship notes are hypotheses only and do not constitute legal heir determinations.",
+  const ownership: string[] = [
+    `The public-record review concerns ${claimText(dossier.property.address.value)} in ${formatCountyName(dossier.property.county.value, "the recorded county")}`,
+    `${claimText(dossier.property.ownerName.value)} is listed as owner of record`,
   ];
-  return parts.join("\n\n");
+  if (known(dossier.deedHistory.mailingAddressSignal.value)) {
+    ownership.push(`${claimText(dossier.deedHistory.mailingAddressSignal.value)} is the recorded mailing address`);
+  }
+  if (known(dossier.deedHistory.ownershipActivity.value)) {
+    ownership.push(sentence(dossier.deedHistory.ownershipActivity.value));
+  }
+  if (known(dossier.deedHistory.orBookPage.value)) {
+    ownership.push(
+      `the latest reviewed transfer is dated ${claimText(dossier.deedHistory.lastSaleDate.value)} and points to ${claimText(dossier.deedHistory.orBookPage.value)}`,
+    );
+  } else {
+    ownership.push("the latest deed and OR book/page remain unconfirmed");
+  }
+  ownership.push(dossier.deedHistory.adversePossessionSignal.value === false
+    ? "no adverse-possession signal is recorded"
+    : known(dossier.deedHistory.adversePossessionSignal.value)
+      ? `adverse-possession review returned ${claimText(dossier.deedHistory.adversePossessionSignal.value)}`
+      : "adverse-possession status still requires review");
+
+  const tax: string[] = [
+    known(dossier.taxHistory.sourceStatus.value)
+      ? `Tax Collector review is recorded as ${statusText(dossier.taxHistory.sourceStatus.value)}`
+      : "Tax Collector status still requires source review",
+  ];
+  if (Array.isArray(dossier.taxHistory.unpaidYears.value)) {
+    tax.push(dossier.taxHistory.unpaidYears.value.length
+      ? `unpaid years reported are ${dossier.taxHistory.unpaidYears.value.join(", ")}`
+      : "no unpaid years were returned by the reviewed source");
+  } else {
+    tax.push("unpaid tax years remain unconfirmed");
+  }
+  const due = moneyAmount(dossier.taxHistory.amountDue.value);
+  tax.push(due ? `the recorded amount due is ${due}` : "the amount due remains unconfirmed");
+  const lastPaidBy = dossier.taxHistory.lastPaidBy?.value;
+  if (known(lastPaidBy)) tax.push(`the last recorded payer is ${claimText(lastPaidBy)}`);
+  if (known(dossier.taxHistory.payerIdentity.value) && dossier.taxHistory.payerIdentity.value !== lastPaidBy) {
+    tax.push(`receipt payer identity is ${claimText(dossier.taxHistory.payerIdentity.value)}`);
+  }
+  if (known(dossier.taxHistory.paidDate?.value)) tax.push(`the reviewed paid date is ${claimText(dossier.taxHistory.paidDate.value)}`);
+  tax.push(known(dossier.taxHistory.receiptStatus.value)
+    ? `receipt status is ${sentence(dossier.taxHistory.receiptStatus.value)}`
+    : "receipt status is not yet captured");
+  tax.push(dossier.taxHistory.receiptLink?.value
+    ? "a Tax Collector receipt link is preserved in the evidence below"
+    : "the Tax Collector listing-page receipt link still needs capture");
+  tax.push(known(dossier.taxHistory.reassessment.value)
+    ? `reassessment review returned ${claimText(dossier.taxHistory.reassessment.value)}`
+    : "reassessment status remains unconfirmed");
+
+  const title: string[] = [
+    known(dossier.deedHistory.sourceStatus.value)
+      ? `Official Records review is recorded as ${statusText(dossier.deedHistory.sourceStatus.value)}`
+      : "Official Records status still requires review",
+    known(dossier.deedHistory.mortgageSignal.value)
+      ? `mortgage review returned ${claimText(dossier.deedHistory.mortgageSignal.value)}`
+      : "mortgage balance and details remain unconfirmed",
+    known(dossier.deedHistory.lienSignal.value)
+      ? `lien review returned ${claimText(dossier.deedHistory.lienSignal.value)}`
+      : "lien status remains unconfirmed",
+    known(dossier.deedHistory.lisPendensSignal.value)
+      ? `lis pendens review returned ${claimText(dossier.deedHistory.lisPendensSignal.value)}`
+      : "lis pendens status remains unconfirmed",
+    known(dossier.deedHistory.foreclosureSignal.value)
+      ? `foreclosure review returned ${claimText(dossier.deedHistory.foreclosureSignal.value)}`
+      : "foreclosure status remains unconfirmed",
+  ];
+
+  const probate: string[] = [
+    known(dossier.probateDocket.sourceStatus.value)
+      ? `Court review is recorded as ${statusText(dossier.probateDocket.sourceStatus.value)}`
+      : "Probate and related court review remains open",
+  ];
+  if (known(dossier.probateDocket.caseNumber.value)) probate.push(`the probate case is ${claimText(dossier.probateDocket.caseNumber.value)}`);
+  if (known(dossier.probateDocket.caseStatus.value)) probate.push(`case status is ${sentence(dossier.probateDocket.caseStatus.value)}`);
+  if (known(dossier.probateDocket.civilFamilyDocket.value)) probate.push(`the related civil or family docket is ${claimText(dossier.probateDocket.civilFamilyDocket.value)}`);
+  if (known(dossier.probateDocket.affidavitOfHeirs.value)) probate.push(`affidavit-of-heirs review returned ${claimText(dossier.probateDocket.affidavitOfHeirs.value)}`);
+  if (known(dossier.probateDocket.documentAvailability.value)) probate.push(`available-document review returned ${claimText(dossier.probateDocket.documentAvailability.value)}`);
+  if ((dossier.probateDocket.officialRecordCrossLinks.value || []).length) {
+    probate.push(`${dossier.probateDocket.officialRecordCrossLinks.value?.length} official-record cross-link${dossier.probateDocket.officialRecordCrossLinks.value?.length === 1 ? " is" : "s are"} preserved in the source evidence`);
+  }
+
+  const vital: string[] = [];
+  if (known(dossier.marriageDeathIndicators.dateOfBirth.value)) vital.push(`the reviewed date of birth is ${claimText(dossier.marriageDeathIndicators.dateOfBirth.value)}`);
+  else vital.push("date of birth remains unconfirmed");
+  if (known(dossier.marriageDeathIndicators.dateOfDeath.value)) vital.push(`the reviewed date of death is ${claimText(dossier.marriageDeathIndicators.dateOfDeath.value)}`);
+  else vital.push("date of death remains unconfirmed");
+  if (known(dossier.marriageDeathIndicators.marriageLicense.value)) vital.push(`marriage or spouse review returned ${claimText(dossier.marriageDeathIndicators.marriageLicense.value)}`);
+  else vital.push("marriage-license status remains unconfirmed");
+  vital.push(safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value)
+    ? "a reviewed obituary link is preserved below"
+    : "a source-verified obituary remains outstanding");
+  if (known(dossier.marriageDeathIndicators.deathCertificateStatus.value)) {
+    vital.push(`death-certificate review returned ${claimText(dossier.marriageDeathIndicators.deathCertificateStatus.value)}`);
+  }
+
+  const family: string[] = [];
+  if (reportedSpouse) family.push(`${reportedSpouse} is reported as the spouse`);
+  if (reportedChildren.length) family.push(`${reportedChildren.join(", ")} ${reportedChildren.length === 1 ? "is" : "are"} reported as ${reportedChildren.length === 1 ? "a child" : "children"}`);
+  if (contactFacts.length) {
+    family.push(`${contactFacts.length} reviewed contact profile${contactFacts.length === 1 ? " is" : "s are"} attached and summarized below`);
+  } else {
+    family.push("IDI contact evidence has not yet produced an accepted profile");
+  }
+  const sourceNarrative = sentence(dossier.narrative);
+  if (sourceNarrative
+    && !/no source-backed narrative|raw no-enrichment|approval-gated|\bcrm\b|\boutreach\b|not a skip-traced|human review/i.test(sourceNarrative)) {
+    family.push(`Source-run context: ${sourceNarrative}`);
+  }
+  family.push("relationship and inheritance notes remain research hypotheses until probate evidence establishes legal heirship");
+
+  return [
+    `${ownership.join("; ")}.`,
+    `${tax.join("; ")}.`,
+    `${title.join("; ")}.`,
+    `${probate.join("; ")}.`,
+    `${vital.join("; ")}.`,
+    `${family.join("; ")}.`,
+  ].join("\n\n");
 }
 
 function buildSummaries(dossier: RawDossier) {
@@ -496,8 +632,8 @@ function buildSummaries(dossier: RawDossier) {
       `Amount due: ${dossier.taxHistory.amountDue.value ? formatMoney({ ...dossier.taxHistory.amountDue, label: "Taxes due", currency: "USD" } as OfferProfitField) : "Needs review"}`,
       `Reassessment: ${claimText(dossier.taxHistory.reassessment.value)}`,
       `Receipt status: ${claimText(dossier.taxHistory.receiptStatus.value)}`,
-      `Receipt link: ${claimText(dossier.taxHistory.receiptLink.value)}`,
-      `Paid date: ${claimText(dossier.taxHistory.paidDate.value)}`,
+      `Receipt link: ${claimText(dossier.taxHistory.receiptLink?.value)}`,
+      `Paid date: ${claimText(dossier.taxHistory.paidDate?.value)}`,
       `Payer identity: ${claimText(dossier.taxHistory.payerIdentity.value)}`,
     ].join("\n"),
     deedSummary: [
@@ -576,7 +712,8 @@ function renderContactMatrix(contacts: ContactPlaceholderEntry[]): string[] {
       const phones = contact.phones.length ? contact.phones.join(", ") : "Needs approved enrichment";
       const emails = contact.emails.length ? contact.emails.join(", ") : "Needs approved enrichment";
       const addresses = contact.addresses.length ? contact.addresses.map(displayAddress).join("; ") : "Needs approved enrichment";
-      return `| ${name} | ${humanStatus(contact.role)} | ${phones} | ${emails} | ${addresses} | ${contact.note} |`;
+      const relationship = [humanStatus(contact.role), contact.interest].filter(Boolean).join(" - ");
+      return `| ${name} | ${relationship} | ${phones} | ${emails} | ${addresses} | ${contact.note} |`;
     }),
   ];
 }
@@ -633,6 +770,7 @@ function renderFamilyTreePacketHtml(input: {
   const contactBlocks = contacts.map((contact, index) => {
     const name = escapeHtml(contact.name ?? `Possible heir ${index + 1}`);
     const age = contact.age ? `<p>(${contact.age})</p>` : "";
+    const relationship = [humanStatus(contact.role), contact.interest].filter(Boolean).join(" - ");
     const history = contact.addressHistory?.length
       ? contact.addressHistory.map((item) => {
         const address = escapeHtml(displayAddress(item.address));
@@ -643,7 +781,7 @@ function renderFamilyTreePacketHtml(input: {
       : `<p><a href="#">${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "Address needs approved enrichment"))}</a></p>`;
     const phones = contact.phones.length ? contact.phones.map((phone) => `<p>${escapeHtml(phone)}</p>`).join("") : "<p>Needs approved enrichment</p>";
     const emails = contact.emails.length ? contact.emails.map((email) => `<p><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>`).join("") : "<p>Needs approved enrichment</p>";
-    return `<section class="person"><h3>${index + 1}. ${name}</h3>${age}<p>Likely Current Address: ${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "Needs approved enrichment"))}</p><h4>Address (County/Parish/Borough) History:</h4>${history}<h4>Phone number:</h4>${phones}<h4>Email Address:</h4>${emails}</section>`;
+    return `<section class="person"><h3>${index + 1}. ${name}${relationship ? ` (${escapeHtml(relationship)})` : ""}</h3>${age}<p>Likely Current Address: ${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "Needs approved enrichment"))}</p><h4>Address (County/Parish/Borough) History:</h4>${history}<h4>Phone number:</h4>${phones}<h4>Email Address:</h4>${emails}</section>`;
   }).join("");
   const packetSummaryRows: Array<[string, string]> = [
     ["Owner / estate", ownerName],
