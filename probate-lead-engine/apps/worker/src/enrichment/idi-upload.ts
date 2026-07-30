@@ -18,11 +18,14 @@ export interface IdiUploadCandidate {
   id: string;
   name: string;
   relationship: string;
+  age?: number;
+  interest?: string;
   group: "primary" | "alternative";
   phones: string[];
   emails: string[];
   currentAddress: string;
   addressHistory: string[];
+  addressHistoryDetails: Array<{ address: string; county?: string; dates?: string }>;
   ownerLastNameMatch: boolean;
   confidence: number;
   confidenceReason: string;
@@ -241,8 +244,46 @@ function emails(text: string): string[] {
 }
 
 function addresses(text: string): string[] {
-  const matches = text.match(/\b\d{2,6}\s+[A-Z0-9 .'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}\b/gi) || [];
+  const matches = text.match(/\b\d{2,6}\s+[A-Z0-9 .#'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}\b/gi) || [];
   return Array.from(new Set(matches.map(compact)));
+}
+
+function age(text: string): number | undefined {
+  const value = Number(text.match(/\bage\s*[:#-]?\s*(\d{1,3})\b/i)?.[1]);
+  return Number.isInteger(value) && value > 0 && value < 125 ? value : undefined;
+}
+
+function interest(text: string): string | undefined {
+  const labeled = text.match(
+    /\b(?:interest|ownership share|heir share)\s*[:#-]\s*([^\n|;]{1,80}?)(?=\s+(?:age|likely current address|current address|address history|phone|email|relationship|review status|relative|associate|spouse|child|contact)\s*[:#-]|[\n|;]|$)/i,
+  )?.[1];
+  if (labeled) return compact(labeled);
+  const fraction = text.match(/\b(?:\d+\/\d+(?:st|nd|rd|th)?|\d+(?:\.\d+)?%)\s*(?:interest|share)\b/i)?.[0];
+  return fraction ? compact(fraction) : undefined;
+}
+
+function addressHistoryDetails(text: string): Array<{ address: string; county?: string; dates?: string }> {
+  const output: Array<{ address: string; county?: string; dates?: string }> = [];
+  const lines = text.split(/\r?\n/);
+  const addressPattern = /\b\d{2,6}\s+[A-Z0-9 .#'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}\b/gi;
+  const countyPattern = /\b([A-Z][A-Za-z .'-]+(?:County|Parish|Borough))\b/i;
+  const datePattern = /\b(?:(?:0?[1-9]|1[0-2])\/)?(?:19|20)\d{2}\b(?:\s*[-–—]\s*(?:(?:(?:0?[1-9]|1[0-2])\/)?(?:19|20)\d{2}|present|current))?/i;
+  for (let index = 0; index < lines.length; index += 1) {
+    const context = `${lines[index]} ${lines[index + 1] || ""}`;
+    for (const match of lines[index].matchAll(addressPattern)) {
+      const address = compact(match[0]);
+      const county = compact(context.match(countyPattern)?.[1]);
+      const dates = compact(context.match(datePattern)?.[0]);
+      if (!output.some((entry) => entry.address.toLowerCase() === address.toLowerCase() && entry.dates === dates)) {
+        output.push({
+          address,
+          ...(county ? { county } : {}),
+          ...(dates ? { dates } : {}),
+        });
+      }
+    }
+  }
+  return output;
 }
 
 function relationship(text: string): string {
@@ -295,6 +336,10 @@ function candidateFromBlock(
   const foundPhones = phones(block);
   const foundEmails = emails(block);
   const foundAddresses = addresses(block);
+  const addressDetails = addressHistoryDetails(block);
+  const explicitCurrentAddress = addressDetails.find((entry) => (
+    new RegExp(`(?:current|likely current)[^\\n]{0,80}${entry.address.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(block)
+  ))?.address;
   const sameLastName = Boolean(ownerLastName(owner) && ownerLastName(name) === ownerLastName(owner));
   const specificRelationship = ["spouse", "daughter", "son", "child", "parent", "sibling", "representative"].includes(relation);
   const contactSignal = Boolean(foundPhones.length || foundEmails.length || foundAddresses.length);
@@ -317,11 +362,14 @@ function candidateFromBlock(
     id: `${assetKey}:idi:${ordinal}`,
     name,
     relationship: relation,
+    ...(age(block) ? { age: age(block) } : {}),
+    ...(interest(block) ? { interest: interest(block) } : {}),
     group: specificRelationship ? "primary" : "alternative",
     phones: foundPhones,
     emails: foundEmails,
-    currentAddress: foundAddresses[0] || "",
+    currentAddress: explicitCurrentAddress || foundAddresses[0] || "",
     addressHistory: foundAddresses,
+    addressHistoryDetails: addressDetails,
     ownerLastNameMatch: sameLastName,
     confidence: score,
     confidenceReason: reasons.join("; "),
