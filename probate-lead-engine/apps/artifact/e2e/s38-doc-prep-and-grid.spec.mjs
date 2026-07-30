@@ -503,14 +503,21 @@ test("Document Prep keeps the estate visible, rejects unsupported reports inline
 
   const workspace = page.locator('[data-feature="doc-prep"]');
   const run = workspace.locator("[data-run-discovery]");
+  const sources = workspace.locator("[data-run-public-sources]");
   const upload = workspace.locator("[data-idi-picker]");
   await expect(run).toBeVisible();
+  await expect(sources).toHaveText("Run Public Sources");
   await expect(upload).toHaveText("Upload IDI Report");
-  const [runBox, uploadBox] = await Promise.all([run.boundingBox(), upload.boundingBox()]);
+  const [runBox, sourceBox, uploadBox] = await Promise.all([run.boundingBox(), sources.boundingBox(), upload.boundingBox()]);
   expect(runBox).not.toBeNull();
+  expect(sourceBox).not.toBeNull();
   expect(uploadBox).not.toBeNull();
+  expect(Math.abs(runBox.y - sourceBox.y)).toBeLessThan(5);
   expect(Math.abs(runBox.y - uploadBox.y)).toBeLessThan(5);
+  expect(sourceBox.x).toBeLessThan(uploadBox.x);
   expect(uploadBox.x).toBeLessThan(runBox.x);
+  await expect(sources).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(sources).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
   await expect(upload).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(upload).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
   await expect(workspace.locator("[data-docprep-estate-select]")).toHaveValue(await workspace.getAttribute("data-estate-id"));
@@ -572,6 +579,30 @@ test("Document Prep keeps the estate visible, rejects unsupported reports inline
   const mobileRailBox = await page.locator("#s38UnifiedRail").boundingBox();
   expect(mobileRailBox.width).toBeGreaterThan(450);
   expect(mobileRailBox.height).toBeGreaterThan(760);
+  expect(browserFailures, browserFailures.join("\n")).toEqual([]);
+});
+
+test("the visible public-source action runs once for the selected estate from the keyboard", async ({ page }) => {
+  const browserFailures = watchBrowserFailures(page);
+  await isolateDocPrepWorkspaceState(page);
+  const pipeline = await installSuccessfulIdiPipeline(page);
+  await openWorkspace(page);
+  await openDocumentPrep(page);
+
+  const workspace = page.locator('[data-feature="doc-prep"]');
+  const estateId = await workspace.getAttribute("data-estate-id");
+  const sources = workspace.locator("[data-run-public-sources]");
+  await expect(sources).toBeVisible();
+  await expect(sources).toHaveAttribute("aria-label", /Run configured public sources for /);
+  await sources.focus();
+  await expect(sources).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect.poll(() => pipeline.sourceRequests.length).toBe(1);
+  expect(pipeline.sourceRequests[0]).toMatchObject({
+    operatorIntent: "run_external_source_search",
+    leadId: estateId,
+  });
+  await expect(workspace.locator("[data-run-public-sources]")).toBeEnabled();
   expect(browserFailures, browserFailures.join("\n")).toEqual([]);
 });
 

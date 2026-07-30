@@ -8269,6 +8269,48 @@ function rerenderAssetDiscoverySurface() {
   renderCurrentLoopView();
 }
 
+async function runExternalSourceSearchForRow(row = selectedRow(), payload = sourceCaptureForRow(row)) {
+  if (!row) throw new Error("Select an estate before running the public sources.");
+  const key = assetDiscoveryKey(row);
+  const previousCapture = cloneSourceCaptureRecord(state.sourceCaptures[key]);
+  try {
+    const result = await postJson("/api/discovery/external-source-run", externalSourceRunPayload(row, payload, key));
+    if (result.persistence?.readbackStatus !== "verified") {
+      throw new Error("Source evidence returned, but the shared Discovery File did not pass storage readback. Retry before continuing.");
+    }
+    applyExternalSourceRunResult(row, payload, result);
+    const summaries = Array.isArray(result.sourceSummaries) ? result.sourceSummaries : [];
+    const factSources = summaries.filter((summary) => Number(summary.factCount) > 0).length;
+    const blockers = Array.isArray(result.blockers) ? result.blockers.length : 0;
+    addShellEvent(
+      "Source search ran",
+      `${factSources} county/source check${factSources === 1 ? "" : "s"} returned evidence. ${blockers ? `${blockers} review item${blockers === 1 ? "" : "s"} remain visible in Doc Prep.` : "No source blockers returned."}`,
+      blockers ? "blocked" : "ready",
+      true,
+      { row, source: "Discovery source review" }
+    );
+    return result;
+  } catch (error) {
+    state.sourceCaptures[key] = {
+      ...(previousCapture ?? {}),
+      sourceApiRun: {
+        ok: false,
+        mode: "external_source_run",
+        runId: "",
+        generatedAt: new Date().toISOString(),
+        sourceSummaries: [],
+        blockers: [error instanceof Error ? error.message : "Source search could not run."],
+        message: "Source search could not run. Keep Discovery blocked until the county source checks are reviewed."
+      },
+      updatedAt: Date.now()
+    };
+    addShellEvent("Source search blocked", error instanceof Error ? error.message : "The source search could not run.", "blocked", true, { row, source: "Discovery source review" });
+    throw error;
+  } finally {
+    rerenderAssetDiscoverySurface();
+  }
+}
+
 function wireAssetDiscoveryControls(content, row = selectedRow()) {
   if (!content || !row) return;
   content.querySelector("[data-idi-user-api-key]")?.addEventListener("change", (event) => {
@@ -8307,45 +8349,16 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
     event.preventDefault();
     const button = event.currentTarget;
     const payload = collectSourceCapturePayload(content, row);
-    const key = assetDiscoveryKey(row);
-    const previousCapture = cloneSourceCaptureRecord(state.sourceCaptures[key]);
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
     try {
-      const result = await postJson("/api/discovery/external-source-run", externalSourceRunPayload(row, payload, key));
-      if (result.persistence?.readbackStatus !== "verified") {
-        throw new Error("Source evidence returned, but the shared Discovery File did not pass storage readback. Retry before continuing.");
-      }
-      applyExternalSourceRunResult(row, payload, result);
-      const summaries = Array.isArray(result.sourceSummaries) ? result.sourceSummaries : [];
-      const factSources = summaries.filter((summary) => Number(summary.factCount) > 0).length;
-      const blockers = Array.isArray(result.blockers) ? result.blockers.length : 0;
-      addShellEvent(
-        "Source search ran",
-        `${factSources} county/source check${factSources === 1 ? "" : "s"} returned evidence. ${blockers ? `${blockers} review item${blockers === 1 ? "" : "s"} remain visible in Doc Prep.` : "No source blockers returned."}`,
-        blockers ? "blocked" : "ready",
-        true,
-        { row, source: "Discovery source review" }
-      );
-    } catch (error) {
-      state.sourceCaptures[key] = {
-        ...(previousCapture ?? {}),
-        sourceApiRun: {
-          ok: false,
-          mode: "external_source_run",
-          runId: "",
-          generatedAt: new Date().toISOString(),
-          sourceSummaries: [],
-          blockers: [error instanceof Error ? error.message : "Source search could not run."],
-          message: "Source search could not run. Keep Discovery blocked until the county source checks are reviewed."
-        },
-        updatedAt: Date.now()
-      };
-      addShellEvent("Source search blocked", error instanceof Error ? error.message : "The source search could not run.", "blocked", true, { row, source: "Discovery source review" });
+      await runExternalSourceSearchForRow(row, payload);
+    } catch {
+      // The shared runner records the truthful source blocker and preserves
+      // the prior verified capture before this visible control is restored.
     } finally {
       button.disabled = false;
       button.removeAttribute("aria-busy");
-      rerenderAssetDiscoverySurface();
     }
   });
 
@@ -16012,6 +16025,10 @@ async function dispatchLegacyCommand(command, payload = {}) {
       await runFullDiscovery(row, payload.source || null, payload.flowId || "discovery", {
         correctionNote: payload.correctionNote,
       });
+    } else if (id === "run-source-search") {
+      const row = estateForLegacyCommand(payload);
+      if (!row) throw new Error("Select an available estate.");
+      await runExternalSourceSearchForRow(row);
     } else if (id === "upload-idi-report") {
       const row = estateForLegacyCommand(payload);
       if (!row) throw new Error("Select an available estate.");
