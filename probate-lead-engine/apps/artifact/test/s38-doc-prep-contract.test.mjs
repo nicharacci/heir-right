@@ -1056,6 +1056,10 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.doesNotMatch(estatesGrid, /class="hr-grid-meta"/, "the Estates view must not render an idle result and selection strip");
   assert.match(estatesGrid, /data-estates-selection-assist \$\{selectedCount \? "" : "hidden"\}/, "the existing Queue action must stay absent until a real estate selection exists");
   assert.match(estatesGrid, /assist\.hidden = selectedCount === 0/, "selection changes must reveal and dismiss the contextual Queue action");
+  assert.match(estatesGrid, /data-estates-archive/, "the Estates grid must expose archive for a selected imported estate");
+  assert.match(estatesGrid, /data-estates-delete/, "the Estates grid must expose delete for a selected imported estate");
+  assert.match(estatesGrid, /bridge\.dispatch\("estate-lifecycle"/, "estate lifecycle actions must cross the authorized bridge");
+  assert.match(legacy, /id === "estate-lifecycle"[\s\S]*payload\.confirmed !== true[\s\S]*runEstateLifecycleForRows/, "delete must require explicit confirmation before the lifecycle mutation");
   assert.match(estatesGrid, /selectedCount === 1 \? "Add estate to Queue" : `Add \$\{selectedCount\} estates to Queue`/, "the contextual action must describe the exact selected-estate scope");
   assert.match(estatesGrid, /bridge\.dispatch\("export", \{ route: "queue", estateIds \}\)/);
   assert.match(estatesGrid, /data-estate-filter="county"[\s\S]*data-estate-filter="status"[\s\S]*data-estate-filter="minimumEvidence"[\s\S]*data-estate-filter="missing"[\s\S]*data-estate-filter="priorityOnly"/, "approved operational filters must remain visible in the Estates migration");

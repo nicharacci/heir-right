@@ -64,6 +64,8 @@ function renderEstatesGrid({ bridge }) {
           <button type="button" class="hr-grid-filter-toggle beui-popover-trigger" data-estate-filters-toggle aria-expanded="${estateFiltersOpen}" aria-controls="hrEstateFilters">Filters <span data-estate-filter-count data-active="${filterCount > 0}">${filterCount}</span></button>
           <span class="hr-estate-selection-assist" data-estates-selection-assist ${selectedCount ? "" : "hidden"}>
             <button type="button" class="hr-grid-primary-action" data-estates-add-queue ${selectedCount ? "" : "disabled"}>${selectedCount === 1 ? "Add estate to Queue" : `Add ${selectedCount} estates to Queue`}</button>
+            <button type="button" class="hr-grid-lifecycle-action" data-estates-archive ${selectedCount ? "" : "disabled"}>${selectedCount === 1 ? "Archive estate" : `Archive ${selectedCount} estates`}</button>
+            <button type="button" class="hr-grid-lifecycle-action is-danger" data-estates-delete ${selectedCount ? "" : "disabled"}>${selectedCount === 1 ? "Delete estate" : `Delete ${selectedCount} estates`}</button>
           </span>
           <span class="hr-grid-action-status" data-grid-status aria-live="polite"></span>
         </div>
@@ -102,6 +104,8 @@ function mountEstatesGrid(root, bridge) {
   const rows = snapshot.estates.map((estate) => ({ ...estate, evidenceLabel: evidenceLabel(estate) }));
   const action = root.querySelector("[data-estates-add-queue]");
   const assist = root.querySelector("[data-estates-selection-assist]");
+  const archiveAction = root.querySelector("[data-estates-archive]");
+  const deleteAction = root.querySelector("[data-estates-delete]");
   const status = root.querySelector("[data-grid-status]");
   const statusRoot = () => root.isConnected
     ? root
@@ -120,6 +124,14 @@ function mountEstatesGrid(root, bridge) {
     if (action) {
       action.disabled = selectedCount === 0;
       action.textContent = selectedCount === 1 ? "Add estate to Queue" : `Add ${selectedCount} estates to Queue`;
+    }
+    if (archiveAction) {
+      archiveAction.disabled = selectedCount === 0;
+      archiveAction.textContent = selectedCount === 1 ? "Archive estate" : `Archive ${selectedCount} estates`;
+    }
+    if (deleteAction) {
+      deleteAction.disabled = selectedCount === 0;
+      deleteAction.textContent = selectedCount === 1 ? "Delete estate" : `Delete ${selectedCount} estates`;
     }
   };
   const api = createCommunityGrid(container, {
@@ -214,6 +226,51 @@ function mountEstatesGrid(root, bridge) {
       }
     }
   });
+  const runLifecycleAction = async (lifecycleAction, source) => {
+    const estateIds = [...estateSelection];
+    if (!estateIds.length) return;
+    if (
+      lifecycleAction === "delete"
+      && !globalThis.confirm(`Delete ${estateIds.length} imported estate${estateIds.length === 1 ? "" : "s"} from the shared HeirRight workspace?`)
+    ) {
+      gridStatus(statusRoot(), "Deletion canceled.", "neutral");
+      return;
+    }
+    const selectedBeforeDispatch = new Set(estateIds);
+    estateSelection = new Set();
+    [action, archiveAction, deleteAction].forEach((control) => {
+      if (!control) return;
+      control.disabled = true;
+      control.setAttribute("aria-busy", "true");
+    });
+    try {
+      await bridge.dispatch("estate-lifecycle", {
+        estateIds,
+        action: lifecycleAction,
+        confirmed: lifecycleAction === "delete",
+      });
+      gridStatus(
+        statusRoot(),
+        `${estateIds.length} estate${estateIds.length === 1 ? "" : "s"} ${lifecycleAction === "delete" ? "deleted" : "archived"}.`,
+        "ready",
+      );
+    } catch {
+      estateSelection = selectedBeforeDispatch;
+      gridStatus(
+        statusRoot(),
+        `The selected estate${estateIds.length === 1 ? "" : "s"} could not be ${lifecycleAction === "delete" ? "deleted" : "archived"}.`,
+        "blocked",
+      );
+    } finally {
+      [action, archiveAction, deleteAction].forEach((control) => {
+        if (!control?.isConnected) return;
+        control.removeAttribute("aria-busy");
+      });
+      source?.blur?.();
+    }
+  };
+  archiveAction?.addEventListener("click", () => runLifecycleAction("archive", archiveAction));
+  deleteAction?.addEventListener("click", () => runLifecycleAction("delete", deleteAction));
   return api;
 }
 
