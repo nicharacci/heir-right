@@ -6,7 +6,10 @@ import { createHash } from "node:crypto";
 import { PDFDocument } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import workerModule, { WorkspaceState } from "../../worker/dist/cloudflare.js";
-import { buildContactPlaceholders } from "../../worker/dist/documents/completed-lead-report.js";
+import {
+  buildContactPlaceholders,
+  generateCompletedLeadReport,
+} from "../../worker/dist/documents/completed-lead-report.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const worker = workerModule.default || workerModule;
@@ -75,11 +78,6 @@ reviewedDossier.marriageDeathIndicators.obituaryLink = {
   sourceRefs: [{ source: "clerk_of_courts", rawId: obituaryRawId, fetchedAt: reviewedDossier.generatedAt }],
   reviewFlags: [],
 };
-reviewedDossier.completedLeadReport.sourceLinks.push({
-  label: "Annie Hawkins obituary",
-  url: obituaryUrl,
-  source: "clerk_of_courts",
-});
 reviewedDossier.audit.facts.push({
   id: `${reviewedDossier.runId}:idi:reviewed-contact`,
   runId: reviewedDossier.runId,
@@ -93,11 +91,17 @@ reviewedDossier.audit.facts.push({
     id: `${reviewedDossier.runId}:idi:reviewed-contact`,
     name: "Sandra Hawkins",
     relationship: "child",
+    age: 58,
+    interest: "1/9th Interest",
     group: "alternative",
     phones: ["305-555-0101"],
     emails: ["sandra.hawkins@example.com"],
     currentAddress: "Miami, FL",
     addressHistory: ["Miami, FL", "Orlando, FL"],
+    addressHistoryDetails: [
+      { address: "Miami, FL", county: "Miami-Dade County", dates: "2018 - Present" },
+      { address: "Orlando, FL", county: "Orange County", dates: "2012 - 2018" },
+    ],
     ownerLastNameMatch: true,
     confidence: 0.86,
     sourceRefs: [],
@@ -108,7 +112,22 @@ reviewedDossier.audit.facts.push({
   sourceUrl: "https://source.example.test/reviewed-idi-report",
   reviewFlags: [],
 });
+reviewedDossier.completedLeadReport = await generateCompletedLeadReport(reviewedDossier);
 reviewedDossier.completedLeadReport.contactPlaceholders = buildContactPlaceholders(reviewedDossier);
+Object.assign(reviewedDossier.completedLeadReport.offerMath.asIsValue, { value: 300000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.taxesDue, { value: 5000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.liens, { value: 1000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.mortgages, { value: 50000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.sellingCosts, { value: 10000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.probateCosts, { value: 5000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.partitionCosts, { value: 0 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.postEquityValue, { value: 229000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.heirCount, { value: 8 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.equityPerHeir, { value: 28625 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.buyPercentage, { value: 50 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.offerAmount, { value: 14312.5 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.profit, { value: 14312.5 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.minimumNetProfit, { value: 15000 });
 assert.deepEqual(
   reviewedDossier.completedLeadReport.contactPlaceholders.map((contact) => ({ name: contact.name, role: contact.role, reviewFlags: contact.reviewFlags })),
   [{ name: "Sandra Hawkins", role: "child", reviewFlags: [] }],
@@ -217,6 +236,9 @@ assert.ok(Math.abs(firstPageItem("Offer/Profit")?.transform?.[4] - 208.7) < 1, "
 assert.ok(Math.abs(firstPageItem("Description")?.transform?.[4] - 94.6) < 1, "the approved first offer-table column geometry must not drift");
 assert.equal(firstPageItem("Owner:")?.transform?.[4], 72, "the owner block must align with the approved HeirRight example");
 assert.equal(firstPageItem("Obituary")?.transform?.[4], 72, "the source-linked obituary must remain present in the approved first-page position");
+for (const value of ["$300,000.00", "8", "50%", "$14,312.50", "$15,000.00"]) {
+  assert.ok(firstPageItem(value), `the client-format Offer/Profit table must render ${value} from the report model`);
+}
 const familyTreeText = [];
 for (let pageNumber = 2; pageNumber <= Math.min(3, renderedDiscovery.numPages); pageNumber += 1) {
   const textContent = await (await renderedDiscovery.getPage(pageNumber)).getTextContent();
@@ -229,6 +251,10 @@ for (const required of [
   "Heirs:",
   "Address (County/Parish/Borough) History:",
   "Miami, FL",
+  "1/9th Interest",
+  "(58)",
+  "Miami-Dade County",
+  "2018 - Present",
   "Orlando, FL",
   "Phone number:",
   "305-555-0101",
@@ -236,16 +262,53 @@ for (const required of [
   "sandra.hawkins@example.com",
 ]) assert.match(familyTreeCopy, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
+let completedReportPdfBytes;
 for (const document of single.body.documentArtifacts) {
   const documentResponse = await worker.fetch(new Request(`https://worker.test${document.artifactUrl}`), env);
   assert.equal(documentResponse.status, 200);
   assert.equal(documentResponse.headers.get("x-heirright-artifact-id"), document.artifactId);
   assert.equal(documentResponse.headers.get("x-heirright-content-hash"), document.contentHash);
   const documentBytes = new Uint8Array(await documentResponse.arrayBuffer());
+  if (document.documentId === "completed-report") completedReportPdfBytes = documentBytes;
   assert.ok(documentBytes.byteLength > 700);
   const documentPdf = await PDFDocument.load(documentBytes);
   assert.ok(documentPdf.getPageCount() >= 1);
   assert.match(documentPdf.getTitle() || "", new RegExp(document.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+}
+const completedReportPdf = await PDFDocument.load(completedReportPdfBytes);
+assert.ok(
+  completedReportPdf.getPageCount() >= 2 && completedReportPdf.getPageCount() <= 12,
+  "the client-facing completed report must stay within the reviewed family-tree packet range",
+);
+const completedReportRender = await getDocument({ data: completedReportPdfBytes.slice(), disableWorker: true }).promise;
+const completedReportPages = [];
+for (let pageNumber = 1; pageNumber <= completedReportRender.numPages; pageNumber += 1) {
+  const textContent = await (await completedReportRender.getPage(pageNumber)).getTextContent();
+  const pageCopy = textContent.items.map((item) => item.str).filter(Boolean).join(" ");
+  assert.ok(
+    pageCopy.length > 200,
+    `completed report page ${pageNumber} must contain substantial client-facing content; received: ${pageCopy}`,
+  );
+  completedReportPages.push(pageCopy);
+}
+const completedReportCopy = completedReportPages.join(" ");
+for (const internalTerm of [
+  "Raw no-enrichment",
+  "approval-gated",
+  "CRM",
+  "outreach action",
+  "skip-traced",
+  "human review",
+  "browser extraction",
+  "operator contact review",
+  "manual_review_required",
+  "Review gate:",
+]) {
+  assert.doesNotMatch(
+    completedReportCopy,
+    new RegExp(internalTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+    `the client-facing completed report must not expose internal term: ${internalTerm}`,
+  );
 }
 
 const secondDossier = structuredClone(reviewedDossier);
@@ -269,6 +332,7 @@ if (process.env.S37_PDF_OUTPUT_DIR) {
   fs.mkdirSync(process.env.S37_PDF_OUTPUT_DIR, { recursive: true });
   fs.writeFileSync(path.join(process.env.S37_PDF_OUTPUT_DIR, "discovery-single.pdf"), singlePdfBytes);
   fs.writeFileSync(path.join(process.env.S37_PDF_OUTPUT_DIR, "discovery-batch.pdf"), batchPdfBytes);
+  fs.writeFileSync(path.join(process.env.S37_PDF_OUTPUT_DIR, "discovery-completed-report.pdf"), completedReportPdfBytes);
 }
 
 const oldQuery = await worker.fetch(new Request("https://worker.test/api/reports/pdf?title=Fake+Packet"), env);

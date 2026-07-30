@@ -175,7 +175,12 @@ const bypassResponse = await call(workspaceExport, { method: "POST", body: { art
 assert.equal(bypassResponse.statusCode, 400, "An artifact ID alone must never bypass exact packet approval");
 const exportResponse = await call(workspaceExport, {
   method: "POST",
-  body: { ...approval, actorEmail: "other@heirright.com", approvedBy: "other@heirright.com" },
+  body: {
+    ...approval,
+    deliveryDocumentId: "completed-report",
+    actorEmail: "other@heirright.com",
+    approvedBy: "other@heirright.com",
+  },
   headers: authHeaders,
 });
 assert.equal(exportResponse.statusCode, 200, "Verified packet delivery must reach the server-side Drive route");
@@ -186,7 +191,8 @@ assert.deepEqual(JSON.parse(workspaceRequest.options.body), {
   email: "operator@heirright.com",
   actorEmail: "operator@heirright.com",
   ...approval,
-}, "The server must derive the approving actor from the signed session and forward the exact estate, flow, revision, and artifact binding");
+  deliveryDocumentId: "completed-report",
+}, "The server must derive the approving actor from the signed session and forward the exact estate, flow, revision, parent artifact, and client-report binding");
 
 globalThis.fetch = originalFetch;
 console.log(JSON.stringify({ ok: true, checks: [

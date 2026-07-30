@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { overComplexIdiDocx, searchableIdiDocx, searchableIdiPdf } from "./helpers/idi-report-fixtures.mjs";
 import workerModule, { WorkspaceState } from "../../worker/dist/cloudflare.js";
-import { matchIdiReportSubject } from "../../worker/dist/enrichment/idi-upload.js";
+import { buildIdiUploadCandidates, matchIdiReportSubject } from "../../worker/dist/enrichment/idi-upload.js";
 
 const require = createRequire(import.meta.url);
 const extractIdiReport = require("../api/discovery/idi-asset-search/extract.js");
@@ -82,6 +82,57 @@ try {
   delete process.env.WORKER_API_URL;
   delete process.env.WORKER_BASE_URL;
   process.env.HEIRRIGHT_API_TOKEN = "real-extraction-transport-token";
+
+  const detailedContactText = [
+    "Relative: Mara Rivera - Relationship: cousin - Interest: 1/9th Interest",
+    "Age: 63",
+    "Likely Current Address: 123 Palm Avenue, Miami, FL 33101",
+    "Address History:",
+    "456 Bay Street, Miami, FL 33102 (Miami-Dade County)",
+    "(05/1990 - 09/2017)",
+    "Phone: 305-555-0199",
+    "Email: mara.rivera@example.test",
+  ].join("\n");
+  const detailedCandidates = buildIdiUploadCandidates({
+    assetKey: "estate:detailed-contact",
+    ownerName: "Estate of Rivera",
+    extraction: {
+      status: "extracted",
+      method: "pdf_text",
+      fileKind: "pdf",
+      text: detailedContactText,
+      sourceLocators: [{ kind: "page", index: 1, label: "PDF page 1", text: detailedContactText }],
+      extractedAt: "2026-07-30T12:00:00.000Z",
+    },
+  });
+  assert.equal(detailedCandidates.length, 1);
+  assert.equal(detailedCandidates[0].age, 63);
+  assert.equal(detailedCandidates[0].interest, "1/9th Interest");
+  assert.equal(detailedCandidates[0].currentAddress, "123 Palm Avenue, Miami, FL 33101");
+  assert.deepEqual(detailedCandidates[0].addressHistoryDetails[1], {
+    address: "456 Bay Street, Miami, FL 33102",
+    county: "Miami-Dade County",
+    dates: "05/1990 - 09/2017",
+  });
+  const flattenedCandidates = buildIdiUploadCandidates({
+    assetKey: "estate:flattened-contact",
+    ownerName: "Estate of Rivera",
+    extraction: {
+      status: "extracted",
+      method: "pdf_text",
+      fileKind: "pdf",
+      text: detailedContactText.replace(/\n/g, " "),
+      sourceLocators: [{
+        kind: "page",
+        index: 1,
+        label: "PDF page 1",
+        text: detailedContactText.replace(/\n/g, " "),
+      }],
+      extractedAt: "2026-07-30T12:00:00.000Z",
+    },
+  });
+  assert.equal(flattenedCandidates[0].interest, "1/9th Interest");
+  assert.equal(flattenedCandidates[0].age, 63);
 
   const pdfBytes = await searchableIdiPdf();
   const docxBytes = searchableIdiDocx();
@@ -295,6 +346,7 @@ try {
       "rejected_docx_attachment_cleaned_up",
       "real_pdf_and_docx_extraction_bind_through_worker_import_readback",
       "pdf_and_docx_candidate_names_stop_before_following_field_labels",
+      "age_interest_county_and_dated_address_history_preserved",
     ],
   }, null, 2));
 } finally {

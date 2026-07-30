@@ -262,6 +262,11 @@ assert.equal(generated.response.status, 200, JSON.stringify(generated.body));
 const artifactId = generated.body.artifact.artifactId;
 const packetValue = await templateHarness.kv.get(`packet:${artifactId}`);
 assert.ok(packetValue);
+const completedReportReference = generated.body.documentArtifacts.find((document) => document.documentId === "completed-report");
+assert.ok(completedReportReference, "Discovery generation must return a separated client-facing completed report");
+const completedReportArtifactId = completedReportReference.artifactId;
+const completedReportPacketValue = await templateHarness.kv.get(`packet:${completedReportArtifactId}`);
+assert.ok(completedReportPacketValue, "The client-facing completed report must pass durable packet storage");
 const canonicalValue = [...templateHarness.kv.values.entries()]
   .filter(([key]) => String(key).startsWith(canonicalKey))
   .map(([, value]) => value)
@@ -321,6 +326,7 @@ function exportApprovalBody(overrides = {}) {
     estateId: ESTATE_ID,
     flow: "discovery",
     packetRevision: 1,
+    deliveryDocumentId: "completed-report",
     approvedAt: APPROVED_AT,
     approvedBy: EMAIL,
     ...overrides,
@@ -358,6 +364,7 @@ function exportApprovalBody(overrides = {}) {
 async function prepareHarness({ attestApproval = true } = {}) {
   const harness = makeEnv();
   await harness.kv.put(`packet:${artifactId}`, packetValue);
+  await harness.kv.put(`packet:${completedReportArtifactId}`, completedReportPacketValue);
   await harness.kv.put(canonicalKey, canonicalValue);
   await harness.storage.put("state:heirright:docprep-estate-state", {
     value: JSON.stringify({
@@ -637,6 +644,28 @@ for (const wrongReadback of ["folder", "size"]) {
 
 {
   const harness = await prepareHarness();
+  const drive = new DriveMock();
+  const result = await withDriveMock(drive, () => call(harness.env, "/api/google-workspace/export", exportApprovalBody()));
+  assert.equal(result.response.status, 200, JSON.stringify(result.body));
+  assert.equal(result.body.artifactId, artifactId, "Drive delivery must remain approval-bound to the parent packet");
+  assert.equal(result.body.deliveryArtifactId, completedReportArtifactId, "Drive delivery must use the separated client-facing report");
+  assert.equal(result.body.deliveryDocumentId, "completed-report");
+  assert.equal(drive.createdRecords[0].name, `${reviewedDossier.summary.displayName} Family Tree.pdf`);
+  const uploaded = [...drive.files.values()][0];
+  const completedReportResponse = await worker.fetch(new Request(
+    `https://worker.test/api/reports/pdf?artifactId=${completedReportArtifactId}`,
+    { headers: { authorization: `Bearer ${API_TOKEN}` } },
+  ), harness.env);
+  assert.equal(completedReportResponse.status, 200);
+  assert.deepEqual(
+    uploaded.bytes,
+    Buffer.from(await completedReportResponse.arrayBuffer()),
+    "The bytes read back from Drive must be the exact completed-report artifact, not the internal Discovery packet",
+  );
+}
+
+{
+  const harness = await prepareHarness();
   harness.kv.failDeliveryReadback = true;
   const drive = new DriveMock();
   const result = await withDriveMock(drive, () => call(harness.env, "/api/google-workspace/export", exportApprovalBody()));
@@ -698,6 +727,7 @@ console.log(JSON.stringify({
     "expired_packet_export_stops_before_google_access",
     "stale_revision_other_actor_and_other_estate_rejected",
     "wrong_folder_and_size_cleanup_verified",
+    "drive_upload_is_exact_client_facing_completed_report_artifact",
     "export_cleanup_failure_blocks_second_upload",
     "internal_receipt_failure_rolls_back_drive_file",
     "stale_reservation_recovers_attempt_marker_without_duplicate_create",
