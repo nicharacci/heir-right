@@ -138,6 +138,7 @@ const railRuntime = await importRailRuntime();
   assert.match(message.textContent, /current verified packet could not be downloaded/i);
   assert.doesNotMatch(message.textContent, /secret|endpoint|stack/i, "the visible operator alert must not expose raw rejection details");
   assert.match(railRuntime.operatorRailError("review-contact-candidate"), /IDI contact decision could not be saved/i);
+  assert.match(railRuntime.operatorRailError("save-source-capture"), /source evidence could not be saved/i);
 
   feedback.clear();
   assert.equal(region.hidden, true, "retry and content changes must be able to clear the alert before another attempt");

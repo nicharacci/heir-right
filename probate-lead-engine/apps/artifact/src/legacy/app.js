@@ -8007,6 +8007,53 @@ function collectSourceCapturePayload(root, row) {
   return payload;
 }
 
+function canonicalSourceCapturePayload(row, input = {}) {
+  const capture = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  return {
+    assetKey: assetDiscoveryKey(row),
+    leadId: row?.id,
+    owner: row?.owner || row?.title,
+    address: row?.address,
+    capturedAt: new Date().toISOString(),
+    capturedBy: state.session?.user?.email || state.session?.email || "team",
+    ...Object.fromEntries(
+      ["taxReceipt", "deed", "propertyAppraiser", "probate", "obituary"]
+        .filter((section) => capture[section] && typeof capture[section] === "object" && !Array.isArray(capture[section]))
+        .map((section) => [section, cloneSourceCaptureRecord(capture[section])]),
+    ),
+  };
+}
+
+async function saveSourceCaptureForRow(row, input = {}) {
+  const payload = canonicalSourceCapturePayload(row, input);
+  const key = assetDiscoveryKey(row);
+  const previousCapture = cloneSourceCaptureRecord(state.sourceCaptures[key]);
+  try {
+    const result = await postJson("/api/discovery/source-capture", payload);
+    if (result.ok !== true || result.readbackStatus !== "verified" || result.persistence?.readbackStatus !== "verified") {
+      throw new Error("The source capture did not pass canonical Discovery File readback.");
+    }
+    state.sourceCaptures[key] = {
+      ...(previousCapture ?? {}),
+      ...(result.capture && typeof result.capture === "object" ? result.capture : payload),
+      sourceFacts: Array.isArray(result.sourceFacts) ? result.sourceFacts : [],
+      updatedAt: Date.now()
+    };
+    const receiptLinkFact = result.sourceFacts?.find?.((fact) => fact.factType === "tax_receipt_link" && fact.value);
+    if (receiptLinkFact?.value) setNestedValue(state.sourceCaptures[key], "taxReceipt.receiptLink", receiptLinkFact.value);
+    persistAssetDiscoveryState();
+    addShellEvent("Source capture saved", "Tax, deed/title, property appraiser, probate, and obituary/vital evidence were saved to the dossier review trail.", "ready", false, { row, source: "Discovery source review" });
+    return result;
+  } catch (error) {
+    if (previousCapture) state.sourceCaptures[key] = previousCapture;
+    else delete state.sourceCaptures[key];
+    addShellEvent("Source capture not saved", error instanceof Error ? error.message : "The canonical Discovery File did not save this capture.", "blocked", true, { row, source: "Discovery source review" });
+    throw error;
+  } finally {
+    rerenderAssetDiscoverySurface();
+  }
+}
+
 function externalSourceRunPayload(row, capture, key) {
   const idiImport = idiImportForRow(row);
   const contactReviews = contactReviewsForRow(row);
@@ -8353,28 +8400,9 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
   content.querySelector("[data-save-source-capture]")?.addEventListener("click", async (event) => {
     event.preventDefault();
     const payload = collectSourceCapturePayload(content, row);
-    const key = assetDiscoveryKey(row);
-    const previousCapture = cloneSourceCaptureRecord(state.sourceCaptures[key]);
     try {
-      const result = await postJson("/api/discovery/source-capture", payload);
-      if (result.ok !== true || result.readbackStatus !== "verified" || result.persistence?.readbackStatus !== "verified") {
-        throw new Error("The source capture did not pass canonical Discovery File readback.");
-      }
-      state.sourceCaptures[key] = {
-        ...(previousCapture ?? {}),
-        ...(result.capture && typeof result.capture === "object" ? result.capture : payload),
-        sourceFacts: Array.isArray(result.sourceFacts) ? result.sourceFacts : [],
-        updatedAt: Date.now()
-      };
-      const receiptLinkFact = result.sourceFacts?.find?.((fact) => fact.factType === "tax_receipt_link" && fact.value);
-      if (receiptLinkFact?.value) setNestedValue(state.sourceCaptures[key], "taxReceipt.receiptLink", receiptLinkFact.value);
-      addShellEvent("Source capture saved", "Tax, deed/title, property appraiser, probate, and obituary/vital evidence were saved to the dossier review trail.", "ready", false, { row, source: "Discovery source review" });
-    } catch (error) {
-      if (previousCapture) state.sourceCaptures[key] = previousCapture;
-      else delete state.sourceCaptures[key];
-      addShellEvent("Source capture not saved", error instanceof Error ? error.message : "The canonical Discovery File did not save this capture.", "blocked", true, { row, source: "Discovery source review" });
-    }
-    rerenderAssetDiscoverySurface();
+      await saveSourceCaptureForRow(row, payload);
+    } catch {}
   });
 
   content.querySelector("[data-run-source-search]")?.addEventListener("click", async (event) => {
@@ -15852,6 +15880,9 @@ function legacyPublicSnapshot() {
       googleHandoffReady: googleWorkspaceDeliveryReady(),
       googleHandoffDestination: cleanDisplayValue(state.googleWorkspace?.destinationName || ""),
       contactReview: publicContactReview(row),
+      sourceCapture: row
+        ? cloneSourceCaptureRecord(sourceCapturePersistenceSnapshot({ [assetDiscoveryKey(row)]: sourceCaptureForRow(row) })[assetDiscoveryKey(row)]) || {}
+        : {},
       automation: stream ? {
         status: cleanDisplayValue(stream.status || "pending"),
         updatedAt: Number(stream.updatedAt || 0),
@@ -16089,6 +16120,13 @@ async function dispatchLegacyCommand(command, payload = {}) {
         throw new Error("The selected estate changed before this contact decision could be saved.");
       }
       await saveContactCandidateReview(row, payload.candidateId, payload.status, payload.reportRevision);
+    } else if (id === "save-source-capture") {
+      const row = estateForLegacyCommand(payload);
+      if (!row) throw new Error("Select an available estate.");
+      if (String(payload.estateId || "") !== String(state.selectedId || "")) {
+        throw new Error("The selected estate changed before this source evidence could be saved.");
+      }
+      await saveSourceCaptureForRow(row, payload.capture);
     } else if (id === "remove-from-queue") {
       const row = estateForLegacyCommand(payload);
       if (!row) throw new Error("Select an available estate.");
