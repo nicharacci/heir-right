@@ -239,9 +239,13 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   const snapshot = snapshotFor();
   const html = viewModule.renderDocPrepView({ bridge: bridgeFor(snapshot) });
   const runIndex = html.indexOf("data-run-discovery");
+  const sourceIndex = html.indexOf("data-run-public-sources");
   const uploadIndex = html.indexOf("data-idi-picker");
+  assert.ok(sourceIndex > -1 && uploadIndex > sourceIndex, "Public source review must be available before the optional IDI upload");
   assert.ok(uploadIndex > -1 && runIndex > uploadIndex, "Replace IDI Report must precede the Discovery rerun action");
   assert.match(html, /data-feature="doc-prep" data-estate-id="estate-contract"/);
+  assert.match(html, /aria-label="Run configured public sources for Estate of Morgan Reyes"/);
+  assert.match(html, />Run Public Sources<\/span>/);
   assert.match(html, /class="hr-upload-command hr-idi-report-command"/);
   assert.match(html, /aria-label="Replace IDI Report for Estate of Morgan Reyes"/);
   assert.match(html, /Replace IDI Report/);
@@ -269,7 +273,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   const moveOnHtml = viewModule.renderDocPrepView({ bridge: bridgeFor(moveOnSnapshot) });
   assert.match(moveOnHtml, /Move On[\s\S]*data-open-estates[\s\S]*Review Next Estate/);
   assert.doesNotMatch(moveOnHtml, />Disposition</, "the retired Document Prep eyebrow header must not return");
-  assert.doesNotMatch(moveOnHtml, /data-run-discovery|data-idi-picker|data-idi-file-input|data-open-completion-actions/, "Move On must hide Discovery, IDI upload, and completion work controls");
+  assert.doesNotMatch(moveOnHtml, /data-run-public-sources|data-run-discovery|data-idi-picker|data-idi-file-input|data-open-completion-actions/, "Move On must hide source review, Discovery, IDI upload, and completion work controls");
   assert.match(moveOnHtml, /class="hr-document-row"[\s\S]*role="button"[\s\S]*tabindex="0"/, "stopped estate documents must remain keyboard-selectable for truthful context");
 
   const stoppedRailMarkup = [
@@ -286,6 +290,47 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
     bridge: bridgeFor(moveOnSnapshot, { navigate: (view) => { stoppedNavigation = view; } }),
   });
   assert.equal(stoppedNavigation, "find-estates", "the stopped rail must retain one safe route to the next estate");
+}
+
+{
+  const estateId = `estate-source-run-${Date.now()}`;
+  const snapshot = snapshotFor(estateId);
+  const calls = [];
+  const events = [];
+  let refreshes = 0;
+  const result = await viewModule.startPublicSourceSearch({
+    bridge: bridgeFor(snapshot, {
+      dispatch: async (command, payload) => {
+        calls.push({ command, payload });
+        return { persistence: { readbackStatus: "verified" } };
+      },
+      emit: (...args) => events.push(args),
+    }),
+    snapshot,
+    refresh: () => { refreshes += 1; },
+  });
+  assert.deepEqual(calls, [{
+    command: "run-source-search",
+    payload: { estateId },
+  }]);
+  assert.equal(result.persistence.readbackStatus, "verified");
+  assert.equal(events[0][0], "Public source review finished");
+  assert.equal(refreshes, 1);
+
+  await assert.rejects(
+    viewModule.startPublicSourceSearch({
+      bridge: bridgeFor(snapshot, {
+        dispatch: async () => { throw new Error("County source unavailable."); },
+        emit: (...args) => events.push(args),
+      }),
+      snapshot,
+      refresh: () => { refreshes += 1; },
+    }),
+    /County source unavailable/,
+  );
+  assert.equal(events.at(-1)[0], "Public source review needs attention");
+  assert.equal(events.at(-1)[2], "blocked");
+  assert.equal(refreshes, 2, "the source control must refresh after success and failure");
 }
 
 {
@@ -1031,7 +1076,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.doesNotMatch(gridsCss, /@keyframes hr-grid-enter[\s\S]*?from\s*\{[^}]*opacity:\s*0/, "grid content must remain visible if its entrance motion never runs");
   assert.doesNotMatch(gridsCss, /\.hr-grid-primary-action:hover[^}]*\{[^}]*transform:/, "primary grid actions must not jump on hover");
   assert.doesNotMatch(gridTree, /AllCommunityModule|AllEnterpriseModule|ag-grid-enterprise/i);
-  assert.match(docPrepCss, /\.hr-upload-command\.hr-idi-report-command\s*\{[^}]*background:\s*transparent[^}]*border-color:\s*transparent[^}]*box-shadow:\s*none/, "the IDI replacement action must remain a bare control");
+  assert.match(docPrepCss, /\.hr-upload-command\.hr-public-sources-command,[\s\S]*\.hr-upload-command\.hr-idi-report-command\s*\{[^}]*background:\s*transparent[^}]*border-color:\s*transparent[^}]*box-shadow:\s*none/, "source review and IDI replacement must remain bare secondary controls");
   assert.match(docPrepCss, /@media \(max-width:\s*620px\)[\s\S]*\.hr-discovery-actions\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/, "mobile Discovery actions must stack so their labels remain fully readable");
   assert.match(tokensCss, /--hr-divider-line:\s*linear-gradient\([\s\S]*transparent 0%[\s\S]*var\(--hr-ruler\) 10%[\s\S]*var\(--hr-ruler\) 90%[\s\S]*transparent 100%/, "horizontal divider edges must share one theme-aware fade token");
   assert.match(tokensCss, /--hr-divider-line-vertical:\s*linear-gradient\([\s\S]*180deg/, "vertical divider edges must share the matching fade token");

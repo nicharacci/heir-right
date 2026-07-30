@@ -162,6 +162,13 @@ function renderDocPrepView({ bridge }) {
             ${buttonStartIcon(bridge, "estates", 17)}<span>${escape(disposition.next.label)}</span>
           </wa-button>
           ` : `${flow.isDiscovery ? `<button
+            class="hr-upload-command hr-public-sources-command"
+            type="button"
+            data-run-public-sources
+            data-beui-component="button"
+            aria-label="Run configured public sources for ${escape(estate.title)}"
+          >${icon(bridge, "search-estate", 17)}<span>Run Public Sources</span></button>
+          <button
             class="hr-upload-command hr-idi-report-command"
             type="button"
             data-idi-picker
@@ -226,6 +233,29 @@ async function openDocumentContext({ bridge, estateId, documentId }) {
   }
   await bridge.dispatch("document-action", { estateId, documentId, action: "select" });
   runtime.rails.activate("doc-prep-context", { tab: "document", open: true });
+}
+
+async function startPublicSourceSearch({ bridge, snapshot, refresh }) {
+  const estateId = snapshot?.selectedEstateId;
+  if (!estateId) throw new Error("Select an estate before running the public sources.");
+  try {
+    const result = await bridge.dispatch("run-source-search", { estateId });
+    bridge.emit(
+      "Public source review finished",
+      "The current estate now shows the returned evidence and any truthful source blockers.",
+      "ready",
+    );
+    return result;
+  } catch (error) {
+    bridge.emit(
+      "Public source review needs attention",
+      error instanceof Error ? error.message : "The configured public sources could not run.",
+      "blocked",
+    );
+    throw error;
+  } finally {
+    refresh?.();
+  }
 }
 
 function mountDocPrepView(mount, bridge) {
@@ -334,6 +364,19 @@ function mountDocPrepView(mount, bridge) {
       },
     },
   );
+  mount.querySelector("[data-run-public-sources]")?.addEventListener("click", (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    void startPublicSourceSearch({
+      bridge,
+      snapshot,
+      refresh: () => refreshDocPrepView(bridge),
+    }).catch(() => {
+      // The shared runner and the bridge event retain the blocker. The refreshed
+      // view restores a usable control without losing the prior verified capture.
+    });
+  });
   mountIdiUploadControl(mount, {
     bridge,
     snapshot,
@@ -346,4 +389,4 @@ function unmountDocPrepView(mount) {
   if (activeDocPrepMount === mount) activeDocPrepMount = null;
 }
 
-export { displayedProgress, docPrepFlowMeta, mountDocPrepView, nextDocPrepFlowIndex, refreshDocPrepView, renderDocPrepView, unmountDocPrepView };
+export { displayedProgress, docPrepFlowMeta, mountDocPrepView, nextDocPrepFlowIndex, refreshDocPrepView, renderDocPrepView, startPublicSourceSearch, unmountDocPrepView };
