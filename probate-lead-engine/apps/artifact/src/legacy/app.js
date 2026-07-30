@@ -2826,8 +2826,8 @@ function selectVisibleLeadsFromControls(source = null) {
   source?.blur?.();
 }
 
-function runSelectedEstateLifecycle(action, source = null) {
-  const rows = checkedRows().filter((row) => row.sourceKind === "crm-import");
+function runEstateLifecycleForRows(candidateRows, action, source = null, { confirmDelete = true } = {}) {
+  const rows = candidateRows.filter((row) => row.sourceKind === "crm-import");
   if (!rows.length) {
     nudgeDeniedAction(
       source,
@@ -2837,7 +2837,7 @@ function runSelectedEstateLifecycle(action, source = null) {
     );
     return;
   }
-  if (action === "delete") {
+  if (action === "delete" && confirmDelete) {
     const label = `${rows.length} imported estate${rows.length === 1 ? "" : "s"}`;
     if (!window.confirm(`Delete ${label} from the shared HeirRight workspace?`)) {
       source?.blur?.();
@@ -2858,6 +2858,11 @@ function runSelectedEstateLifecycle(action, source = null) {
     false
   );
   source?.blur?.();
+  return changed;
+}
+
+function runSelectedEstateLifecycle(action, source = null) {
+  return runEstateLifecycleForRows(checkedRows(), action, source);
 }
 
 function runFloatingListControl(action, source = null) {
@@ -16074,6 +16079,17 @@ async function dispatchLegacyCommand(command, payload = {}) {
       const rows = estateIds.map(rowById).filter(Boolean);
       if (rows.length !== new Set(estateIds).size) throw new Error("One or more requested estates are unavailable.");
       await chooseExportRoute(payload.route, payload.source || null, rows);
+    } else if (id === "estate-lifecycle") {
+      const action = String(payload.action || "");
+      if (!["archive", "delete"].includes(action)) throw new Error("Choose Archive or Delete for the selected estates.");
+      const estateIds = Array.isArray(payload.estateIds) ? payload.estateIds.map(String) : [];
+      if (!estateIds.length) throw new Error("Select at least one imported estate.");
+      const rows = estateIds.map(rowById).filter(Boolean);
+      if (rows.length !== new Set(estateIds).size) throw new Error("One or more selected estates are unavailable.");
+      if (rows.some((row) => row.sourceKind !== "crm-import")) throw new Error("Archive and delete are available only for imported estate records.");
+      if (action === "delete" && payload.confirmed !== true) throw new Error("Confirm deletion before removing imported estates.");
+      const changed = runEstateLifecycleForRows(rows, action, null, { confirmDelete: false });
+      if (changed !== rows.length) throw new Error("One or more selected estates could not be updated.");
     } else if (id === "open-chatgpt-work") {
       const row = estateForLegacyCommand(payload);
       if (!row) throw new Error("Select an available estate.");

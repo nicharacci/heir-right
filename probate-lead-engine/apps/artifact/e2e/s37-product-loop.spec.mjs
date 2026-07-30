@@ -135,6 +135,20 @@ test("estate identity, Queue handoff, removal, and primary navigation stay coher
   await expect(queue.getByText("No estates are queued yet.", { exact: true })).toBeVisible();
   await expect(queue.locator("[data-queue-export]")).toBeDisabled();
 
+  await page.locator('[data-shell-nav="find-estates"]').click();
+  await estatesGrid.locator('.ag-row[row-id="demo-estate-003"] .ag-cell').first().focus();
+  await page.keyboard.press("Space");
+  const removableEstate = page.locator('[data-community-grid="estates"] .ag-row[row-id="demo-estate-006"]');
+  await removableEstate.locator(".ag-cell").first().focus();
+  await page.keyboard.press("Space");
+  const deleteEstate = page.locator("[data-estates-delete]");
+  await expect(deleteEstate).toBeVisible();
+  await expect(deleteEstate).toHaveText("Delete estate");
+  page.once("dialog", (dialog) => dialog.accept());
+  await deleteEstate.click();
+  await expect(removableEstate).toHaveCount(0);
+  await expect(page.locator('[data-operational-grid-view="estates"] [data-grid-status]')).toContainText("1 estate deleted");
+
   const panels = {
     dashboard: "#dashboardView",
     dossiers: '[data-feature="doc-prep"]',
