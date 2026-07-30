@@ -14,6 +14,7 @@ module.exports = async function handler(request, response) {
     const estateId = String(body.estateId || "").trim();
     const flow = String(body.flow || "").trim();
     const packetRevision = Number(body.packetRevision);
+    const deliveryDocumentId = String(body.deliveryDocumentId || "").trim();
     if (!/^packet-[0-9]+-[a-f0-9]{16}$/.test(artifactId)) {
       sendJson(response, 400, { ok: false, error: "invalid_artifact_id", message: "A verified packet is required before Google Drive delivery." });
       return;
@@ -23,9 +24,28 @@ module.exports = async function handler(request, response) {
       sendJson(response, 400, { ok: false, error: "packet_approval_binding_required", message: "Google Drive delivery needs the exact estate, workflow, and current packet revision." });
       return;
     }
+    if ((flow === "discovery" && deliveryDocumentId !== "completed-report")
+      || (flow === "closing-docs" && deliveryDocumentId)) {
+      sendJson(response, 400, {
+        ok: false,
+        error: "google_workspace_delivery_document_invalid",
+        message: flow === "discovery"
+          ? "Discovery delivery requires the verified client-facing completed report."
+          : "Closing Prep delivery does not accept a Discovery document selection.",
+      });
+      return;
+    }
     sendWorkspaceResult(response, await workspaceWorkerRequest(request, "/api/google-workspace/export", {
       method: "POST",
-      body: { email: session.email, actorEmail: session.email, artifactId, estateId, flow, packetRevision },
+      body: {
+        email: session.email,
+        actorEmail: session.email,
+        artifactId,
+        estateId,
+        flow,
+        packetRevision,
+        ...(deliveryDocumentId ? { deliveryDocumentId } : {}),
+      },
     }));
   } catch (error) {
     sendJson(response, error.statusCode || 502, { ok: false, error: "google_workspace_export_failed", message: error.message || "Google Drive delivery is unavailable." });
