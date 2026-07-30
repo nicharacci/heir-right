@@ -794,15 +794,25 @@ export interface SourceAttachmentRef {
 
 export type ContactCandidateGroup = "primary" | "alternative";
 
+export interface ContactAddressHistoryEntry {
+  address: string;
+  county?: string;
+  dates?: string;
+  sourceUrl?: string;
+}
+
 export interface ContactCandidate {
   id: string;
   name: string;
   relationship: string;
+  age?: number;
+  interest?: string;
   group: ContactCandidateGroup;
   phones: string[];
   emails: string[];
   currentAddress?: string;
   addressHistory: string[];
+  addressHistoryDetails?: ContactAddressHistoryEntry[];
   ownerLastNameMatch: boolean;
   confidence: number;
   sourceRefs: SourceRef[];
@@ -1229,11 +1239,12 @@ export interface ContactPlaceholderEntry {
   role: string;
   name?: string;
   age?: number;
+  interest?: string;
   likelyCurrentAddress?: string;
   phones: string[];
   emails: string[];
   addresses: string[];
-  addressHistory?: Array<{ address: string; county?: string; dates?: string; sourceUrl?: string }>;
+  addressHistory?: ContactAddressHistoryEntry[];
   note: string;
   reviewFlags: ReviewFlag[];
 }
