@@ -217,7 +217,14 @@ function drawOfferProfitTable(
     "",
     "",
   ];
-  const values = new Map((section?.lines || []).map((line) => [String(line.label || "").toLowerCase(), packetValue(line.value)]));
+  const normalizedLabel = (value: string): string => value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const values = new Map((section?.lines || []).map((line) => [normalizedLabel(String(line.label || "")), packetValue(line.value)]));
+  const valueFor = (...labels: string[]): string => labels
+    .map((label) => values.get(normalizedLabel(label)) || "")
+    .find(Boolean) || "";
   let y = startY;
   page.drawRectangle({ x: left, y: y - rowHeight, width, height: rowHeight, color: rgb(0.25, 0.66, 0.84), borderWidth: 0.7, borderColor: rgb(0.05, 0.05, 0.05) });
   const heading = "Offer/Profit";
@@ -253,9 +260,21 @@ function drawOfferProfitTable(
     if (label) {
       const labelFont = ["As-Is Value", "Post Equity Value", "Profit", "Min Profit"].includes(label) ? bold : regular;
       drawCenteredCellText(page, label, left, columns[0], y - 11.8, labelFont, 11);
-      const value = values.get(label.toLowerCase()) || "";
-      const percentage = label === "Offer per heir" && /%/.test(value) ? value.match(/[0-9.]+%/)?.[0] || "" : "";
-      const total = percentage ? value.replace(percentage, "").trim() : value;
+      const value = label === "Post Equity Value"
+        ? valueFor("Post-equity value", "Post equity value")
+        : label === "Amount per heir $$"
+          ? valueFor("Equity per heir", "Amount per heir")
+          : label === "# of heirs on board"
+            ? valueFor("Number of heirs", "Heir count")
+            : label === "Profit"
+              ? valueFor("Estimated profit", "Profit")
+              : label === "Offer per heir"
+                ? valueFor("Offer amount", "Offer per heir")
+                : label === "Min Profit"
+                  ? valueFor("Minimum net profit", "Min profit")
+                  : valueFor(label);
+      const percentage = label === "Offer per heir" ? valueFor("Buy percentage") : "";
+      const total = value;
       if (percentage) drawCenteredCellText(page, percentage, left + columns[0], columns[1], y - 11.8, regular, 10);
       if (total && total !== "Not confirmed") drawCenteredCellText(page, total.slice(0, 24), left + columns[0] + columns[1], columns[2], y - 11.8, regular, 10);
     }
@@ -460,7 +479,8 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
         }
 
         if (contacts) {
-          ensureFamilySpace(52);
+          // Keep the section heading with at least one normal contact block.
+          ensureFamilySpace(262);
           page.drawText("Heirs:", { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
           cursor -= familyLineHeight;
           for (const line of contacts.lines) {
@@ -469,12 +489,18 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
             const contactMatch = label.match(/^Contact\s+(\d+)/i);
             if (contactMatch) {
               cursor -= 5;
-              ensureFamilySpace(48);
+              // Keep the opening identity, address history, phone, and email
+              // together for the common one-to-two-address contact profile.
+              // Longer profiles can still paginate within the block, but a
+              // normal contact must never strand phone/email on its own page.
+              ensureFamilySpace(210);
               const parts = value.split(/\s+\|\s+/);
               const name = parts[0] || `Possible heir ${contactMatch[1]}`;
               const relationship = parts.find((part) => /^relationship\s+/i.test(part))?.replace(/^relationship\s+/i, "");
+              const interest = parts.find((part) => /^interest\s+/i.test(part))?.replace(/^interest\s+/i, "");
               const age = parts.find((part) => /^age\s+/i.test(part))?.replace(/^age\s+/i, "");
-              drawFamilyText(`${contactMatch[1]}. ${name.toUpperCase()}${relationship ? ` (${relationship})` : ""}`, { font: bold });
+              const relationshipCopy = [relationship, interest].filter(Boolean).join(" - ");
+              drawFamilyText(`${contactMatch[1]}. ${name.toUpperCase()}${relationshipCopy ? ` (${relationshipCopy})` : ""}`, { font: bold });
               if (age) drawFamilyText(`(${age})`);
               continue;
             }
@@ -511,8 +537,10 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
               continue;
             }
             if (/^Review$/i.test(label)) {
-              drawFamilyText(`Review: ${value}`, { size: 9.5, color: rgb(0.25, 0.25, 0.25) });
-              cursor -= 10;
+              // Review gates remain in the operator packet. The separated
+              // completed report is a client-facing family-tree document and
+              // must not leak internal workflow language or create an orphaned
+              // review-only page.
               continue;
             }
             drawFamilyText(`${label ? `${label}: ` : ""}${value}`);
