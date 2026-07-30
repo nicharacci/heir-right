@@ -14,6 +14,7 @@ const RAIL_ACTION_ERRORS = Object.freeze({
   "chatgpt-work": "The ChatGPT Work handoff could not continue. Confirm the current packet and try again.",
   "open-chatgpt-work": "The ChatGPT Work handoff could not continue. Confirm the current packet and try again.",
   "review-contact-candidate": "The IDI contact decision could not be saved. Confirm this estate's current report and try again.",
+  "save-source-capture": "The source evidence could not be saved. Confirm the selected estate and try again.",
 });
 
 function reducedMotion() {
@@ -427,6 +428,9 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
       state: appState,
       view: dataset.nextView,
       documentId: dataset.documentId,
+      formData: button.form
+        ? Object.fromEntries(new FormData(button.form).entries())
+        : undefined,
     };
     const result = await executeRailAction({
       controls: [button],

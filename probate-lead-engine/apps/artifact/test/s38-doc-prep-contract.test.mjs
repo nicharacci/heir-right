@@ -107,6 +107,24 @@ function snapshotFor(estateId = "estate-contract") {
       googleDestination: "",
       googleHandoffReady: true,
       googleHandoffDestination: "Discovery Packets / Estate of Morgan Reyes",
+      sourceCapture: {
+        propertyAppraiser: {
+          owner: "Morgan Reyes",
+          folio: "01-0000-000-0000",
+          address: "121 Probate Way",
+          mailingAddress: "PO Box 121",
+          sourceUrl: "https://county.example.test/property/01-0000-000-0000",
+        },
+        taxReceipt: {
+          status: "browser_workflow_required",
+          sourceBlockedReason: "The county receipt needs an interactive browser review.",
+        },
+        sourceApiRun: {
+          generatedAt: new Date(now - 45_000).toISOString(),
+          blockers: ["The county receipt needs an interactive browser review."],
+          persistence: { stored: true, readbackStatus: "verified" },
+        },
+      },
       packet: {
         artifactId: "packet-contract-1",
         artifactUrl: "/api/reports/pdf?artifactId=packet-contract-1",
@@ -619,7 +637,56 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(fullPacketRail, /iframe[\s\S]*packet-contract-1/);
   assert.deepEqual(railActionNames(fullPacketRail), ["open-packet", "download-packet"]);
 
-  assert.deepEqual(railModule.docPrepRail.tabs.map((tab) => tab.id), ["automation", "document", "attachments", "completion"]);
+  assert.deepEqual(railModule.docPrepRail.tabs.map((tab) => tab.id), ["automation", "evidence", "document", "attachments", "completion"]);
+  const evidenceRail = railModule.renderSourceEvidenceRail({ bridge: bridgeFor(snapshot), snapshot });
+  assert.match(evidenceRail, /data-docprep-rail-panel="evidence"[\s\S]*Shared source run verified/);
+  assert.match(evidenceRail, /name="propertyAppraiser\.owner" value="Morgan Reyes"/);
+  assert.match(evidenceRail, /name="propertyAppraiser\.sourceUrl" value="https:\/\/county\.example\.test\/property\/01-0000-000-0000"/);
+  assert.match(evidenceRail, /name="taxReceipt\.status"[\s\S]*value="browser_workflow_required" selected/);
+  assert.match(evidenceRail, /data-rail-action="save-source-capture"/);
+  assert.doesNotMatch(evidenceRail, /researchRail/, "source evidence must be editable in the unified rail");
+  assert.ok(actionHandlers.has("save-source-capture"));
+
+  const capture = railModule.sourceCaptureFromFormData({
+    "propertyAppraiser.owner": " Morgan Reyes ",
+    "propertyAppraiser.folio": " 01-0000-000-0000 ",
+    "unknown.private": "must be dropped",
+  });
+  assert.deepEqual(capture, {
+    propertyAppraiser: {
+      owner: "Morgan Reyes",
+      folio: "01-0000-000-0000",
+    },
+  });
+
+  const evidenceDispatches = [];
+  const evidenceBridge = bridgeFor(snapshot, {
+    dispatch: async (command, payload) => {
+      evidenceDispatches.push({ command, payload });
+      return snapshot;
+    },
+  });
+  await railModule.runSourceCaptureAction({
+    bridge: evidenceBridge,
+    estateId: snapshot.selectedEstateId,
+    formData: {
+      "propertyAppraiser.owner": "Morgan Reyes",
+      "propertyAppraiser.folio": "01-0000-000-0000",
+    },
+  });
+  assert.deepEqual(evidenceDispatches, [{
+    command: "save-source-capture",
+    payload: {
+      estateId: snapshot.selectedEstateId,
+      capture: {
+        propertyAppraiser: {
+          owner: "Morgan Reyes",
+          folio: "01-0000-000-0000",
+        },
+      },
+    },
+  }]);
+
   const attachmentsRail = railModule.renderAttachmentsRail({ bridge: bridgeFor(snapshot), snapshot });
   assert.match(attachmentsRail, /data-docprep-rail-panel="attachments"[\s\S]*Obituary[\s\S]*Back Story · Public obituary/);
   assert.match(attachmentsRail, /data-rail-action="open-attachment"/);
@@ -1060,8 +1127,11 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.doesNotMatch(docPrepTree, /ag-grid/i, "Document Prep rows must remain editorial, not a data grid");
   assert.doesNotMatch(docPrepRailSource, /researchRail|querySelector\([^)]*data-contact-review/, "the unified contact review must use its own snapshot/action contract, not the hidden legacy rail DOM");
   assert.match(legacy, /contactReview:\s*publicContactReview\(row\)/, "the unified rail snapshot must carry the current estate's sanitized contact review state");
+  assert.match(legacy, /sourceCapture:\s*row[\s\S]*sourceCapturePersistenceSnapshot/, "the unified rail snapshot must carry a privacy-filtered source capture");
   assert.match(legacy, /id === "review-contact-candidate"[\s\S]*saveContactCandidateReview\(row, payload\.candidateId, payload\.status, payload\.reportRevision\)/, "the unified action must reuse the verified canonical review write");
+  assert.match(legacy, /id === "save-source-capture"[\s\S]*saveSourceCaptureForRow\(row, payload\.capture\)/, "the unified evidence action must reuse canonical Discovery File readback");
   assert.match(unifiedRailHost, /"review-contact-candidate":\s*"The IDI contact decision could not be saved[\s\S]*data-unified-rail-retry/, "contact review failures must stay visible and retryable in the unified rail");
+  assert.match(unifiedRailHost, /"save-source-capture":\s*"The source evidence could not be saved[\s\S]*new FormData\(button\.form\)/, "source evidence failures must stay visible and form values must flow through the unified rail action");
   assert.match(gridCommunity, /from "ag-grid-community"/);
   assert.match(gridCommunity, /ClientSideRowModelModule/);
   assert.match(gridCommunity, /PaginationModule/);

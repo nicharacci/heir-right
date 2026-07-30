@@ -774,6 +774,109 @@ body[data-theme] #dossiersView.hr-docprep-mount {
   min-width: 0;
 }
 
+.hr-source-evidence-form {
+  display: grid;
+  gap: var(--hr-space-5);
+}
+
+.hr-source-evidence-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: var(--hr-space-4);
+  background: var(--hr-surface-raised);
+  border: 0;
+  border-radius: var(--hr-radius-control);
+}
+
+.hr-source-evidence-form legend {
+  padding: 0;
+  color: var(--hr-text);
+  font-size: var(--hr-type-sm);
+  font-weight: 700;
+}
+
+.hr-source-evidence-form fieldset > p,
+.hr-source-readback > span,
+.hr-source-readback li {
+  margin: var(--hr-space-1) 0 var(--hr-space-4);
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+  line-height: var(--hr-leading-copy);
+}
+
+.hr-source-readback {
+  display: grid;
+  gap: var(--hr-space-2);
+  padding: var(--hr-space-4);
+  background: var(--hr-surface-raised);
+  border-radius: var(--hr-radius-control);
+}
+
+.hr-source-readback strong {
+  color: var(--hr-warning);
+  font-size: var(--hr-type-sm);
+}
+
+.hr-source-readback[data-state="verified"] strong {
+  color: var(--hr-success);
+}
+
+.hr-source-readback > span {
+  margin: 0;
+}
+
+.hr-source-readback ul {
+  display: grid;
+  gap: var(--hr-space-2);
+  margin: var(--hr-space-2) 0 0;
+  padding-inline-start: 1.1rem;
+}
+
+.hr-source-readback li {
+  margin: 0;
+}
+
+.hr-source-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--hr-space-3);
+}
+
+.hr-source-field {
+  display: grid;
+  gap: var(--hr-space-2);
+  min-width: 0;
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+}
+
+.hr-source-field-full {
+  grid-column: 1 / -1;
+}
+
+.hr-source-field :is(input, select, textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: var(--hr-space-2) var(--hr-space-3);
+  color: var(--hr-text);
+  background: var(--hr-surface);
+  border: 1px solid var(--hr-ruler);
+  border-radius: var(--hr-radius-control);
+  font: inherit;
+}
+
+.hr-source-field textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.hr-source-field :is(input, select, textarea):focus-visible {
+  border-color: var(--hr-accent-strong);
+  outline: var(--hr-focus-width) solid var(--hr-focus);
+  outline-offset: 2px;
+}
+
 .hr-document-facts {
   display: grid;
   margin: 0;
@@ -905,6 +1008,14 @@ body[data-theme] #dossiersView.hr-docprep-mount {
   .hr-document-row {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--hr-space-3);
+  }
+
+  .hr-source-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hr-source-field-full {
+    grid-column: auto;
   }
 
   .hr-document-meta {
