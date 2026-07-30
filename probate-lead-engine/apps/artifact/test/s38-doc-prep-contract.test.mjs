@@ -261,6 +261,27 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(html, /<button id="hrDocPrepFlowClosing"[^>]*tabindex="-1"[^>]*aria-selected="false"/);
   assert.match(html, /role="tablist"[^>]*aria-orientation="horizontal"/);
 
+  const productionSnapshot = structuredClone(snapshot);
+  productionSnapshot.estates.unshift({
+    id: "estate",
+    title: "Bundled dry-run fixture",
+    address: "Fixture address",
+  });
+  const productionHtml = viewModule.renderDocPrepView({ bridge: bridgeFor(productionSnapshot) });
+  assert.doesNotMatch(productionHtml, /<option value="estate"/, "the bundled dry-run fixture must not leak into Document Prep when imported estates exist");
+  assert.match(productionHtml, /<option value="estate-contract" selected>/, "the selected imported estate must remain available after fixture filtering");
+
+  const dryRunSnapshot = structuredClone(snapshot);
+  dryRunSnapshot.selectedEstateId = "estate";
+  dryRunSnapshot.selectedEstate = { ...dryRunSnapshot.selectedEstate, id: "estate" };
+  dryRunSnapshot.estates = [{
+    id: "estate",
+    title: "Bundled dry-run fixture",
+    address: "Fixture address",
+  }];
+  const dryRunHtml = viewModule.renderDocPrepView({ bridge: bridgeFor(dryRunSnapshot) });
+  assert.match(dryRunHtml, /<option value="estate" selected>/, "the bundled estate must remain available as the sole dry-run fallback");
+
   const firstImportSnapshot = structuredClone(snapshot);
   firstImportSnapshot.docPrep.documents = firstImportSnapshot.docPrep.documents.filter((document) => document.id !== "idi-asset-search");
   const firstImportHtml = viewModule.renderDocPrepView({ bridge: bridgeFor(firstImportSnapshot) });

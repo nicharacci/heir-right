@@ -82,7 +82,10 @@ function displayedProgress(snapshot, state) {
 
 function estateOptions(snapshot, bridge) {
   const escape = (value) => escapeFor(bridge, value);
-  return (snapshot.estates || []).map((estate) => `
+  const estates = Array.isArray(snapshot.estates) ? snapshot.estates : [];
+  const importedEstates = estates.filter((estate) => String(estate?.id || "") !== "estate");
+  const visibleEstates = importedEstates.length ? importedEstates : estates;
+  return visibleEstates.map((estate) => `
     <option value="${escape(estate.id)}" ${estate.id === snapshot.selectedEstateId ? "selected" : ""}>
       ${escape(estate.title)} - ${escape(estate.address)}
     </option>
