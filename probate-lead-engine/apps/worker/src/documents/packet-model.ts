@@ -261,6 +261,20 @@ function offerLine(field: OfferProfitField | undefined): PacketLine {
   };
 }
 
+function offerScalarLine(
+  field: OfferProfitField | undefined,
+  format: (value: number) => string,
+): PacketLine {
+  if (!field) return { value: "Not confirmed", tone: "warning" };
+  const value = field.value === null ? "Not confirmed" : format(field.value);
+  const confidence = Math.round(field.confidence * 100);
+  return {
+    label: field.label,
+    value: `${value} | confidence ${confidence}%${field.note ? ` | ${field.note}` : ""}`,
+    tone: field.value === null || field.reviewFlags.length ? "warning" : "normal",
+  };
+}
+
 function contactLines(contact: ContactPlaceholderEntry, index: number): PacketLine[] {
   const identity = contact.name || `${contact.role} contact`;
   const addressHistory = (contact.addressHistory || []).map((item) => [
@@ -269,7 +283,10 @@ function contactLines(contact: ContactPlaceholderEntry, index: number): PacketLi
     item.dates ? `\n(${item.dates})` : "",
   ].filter(Boolean).join(" ")).join("\n");
   return [
-    { label: `Contact ${index + 1}`, value: `${identity} | relationship ${contact.role}${contact.age ? ` | age ${contact.age}` : ""}` },
+    {
+      label: `Contact ${index + 1}`,
+      value: `${identity} | relationship ${contact.role}${contact.interest ? ` | interest ${contact.interest}` : ""}${contact.age ? ` | age ${contact.age}` : ""}`,
+    },
     { label: "Likely Current Address", value: contact.likelyCurrentAddress || "Not confirmed", tone: contact.likelyCurrentAddress ? "normal" : "warning" },
     { label: "Address (County/Parish/Borough) History", value: addressHistory || "None confirmed", tone: addressHistory ? "normal" : "warning" },
     { label: "Phone number", value: contact.phones.length ? contact.phones.join("\n") : "None confirmed", tone: contact.phones.length ? "normal" : "warning" },
@@ -372,8 +389,9 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         offerLine(offer.probateCosts),
         offerLine(offer.partitionCosts),
         offerLine(offer.postEquityValue),
-        offerLine(offer.heirCount),
         offerLine(offer.equityPerHeir),
+        offerScalarLine(offer.heirCount, (value) => String(value)),
+        offerScalarLine(offer.buyPercentage, (value) => `${value}%`),
         offerLine(offer.offerAmount),
         offerLine(offer.profit),
         offerLine(offer.minimumNetProfit),
