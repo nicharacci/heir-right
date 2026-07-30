@@ -92,11 +92,18 @@ for (const required of [
   "SILVIA ALVAREZ-RECIO",
   "EMILIO ALVAREZ-RECIO III",
   "CARLOS ALVAREZ-RECIO",
-  "IDI report pending",
-  "Public-source relationship hypothesis only",
+  "Not confirmed",
+  "relationship and inheritance notes remain research hypotheses",
 ]) assert.match(copy, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
-for (const forbidden of ["305-555", "@example.com", "IDI report imported", "legal heir confirmed"]) {
+for (const forbidden of [
+  "305-555",
+  "@example.com",
+  "IDI report imported",
+  "IDI report pending",
+  "Public-source relationship hypothesis only",
+  "legal heir confirmed",
+]) {
   assert.equal(copy.includes(forbidden), false);
 }
 
