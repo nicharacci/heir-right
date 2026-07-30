@@ -1249,6 +1249,31 @@ function sourceCaptureForRow(row = selectedRow()) {
   return state.sourceCaptures[assetDiscoveryKey(row)] ?? {};
 }
 
+function verifiedSourceCaptureResult(row = selectedRow()) {
+  if (!row) return null;
+  const capture = sourceCaptureForRow(row);
+  const sourceRun = capture.sourceApiRun;
+  if (
+    !sourceRun
+    || sourceRun.persistence?.stored !== true
+    || sourceRun.persistence?.readbackStatus !== "verified"
+    || !sourceRun.generatedAt
+    || !Array.isArray(capture.sourceFacts)
+  ) return null;
+  return {
+    ok: true,
+    mode: sourceRun.mode || "external_source_run",
+    runId: sourceRun.runId || "",
+    generatedAt: sourceRun.generatedAt,
+    sourceFacts: capture.sourceFacts,
+    sourceSummaries: Array.isArray(sourceRun.sourceSummaries) ? sourceRun.sourceSummaries : [],
+    sourceRunProof: sourceRun.sourceRunProof || null,
+    blockers: Array.isArray(sourceRun.blockers) ? sourceRun.blockers : [],
+    message: sourceRun.message || "",
+    persistence: sourceRun.persistence
+  };
+}
+
 function idiImportForRow(row = selectedRow()) {
   return state.idiImports[assetDiscoveryKey(row)] ?? null;
 }
@@ -5739,9 +5764,14 @@ async function runFullDiscovery(row = selectedRow(), source = null, flowId = sta
     { row, source: flow.title }
   );
   if (flow.id === "discovery") {
-    document.getElementById("topStatus").textContent = `Searching configured public sources for ${docPrepEstateLabel(row)}...`;
+    const savedSourceResult = verifiedSourceCaptureResult(row);
+    document.getElementById("topStatus").textContent = savedSourceResult
+      ? `Validating the saved public-source capture for ${docPrepEstateLabel(row)}...`
+      : `Searching configured public sources for ${docPrepEstateLabel(row)}...`;
     renderDocPrepRunSurfaces();
-    const sourceRun = await runAutonomousDiscoverySources(row);
+    const sourceRun = savedSourceResult
+      ? { ok: true, result: savedSourceResult, reused: true }
+      : await runAutonomousDiscoverySources(row);
     if (!docPrepMainRunActive(row, flow.id)) return;
     if (!sourceRun.ok) {
       setDocPrepRunState(row, flow.id, "");
@@ -5754,10 +5784,12 @@ async function runFullDiscovery(row = selectedRow(), source = null, flowId = sta
     }
     const blockerCount = Array.isArray(sourceRun.result?.blockers) ? sourceRun.result.blockers.length : 0;
     addShellEvent(
-      "Discovery sources checked",
-      blockerCount
-        ? `${blockerCount} source review item${blockerCount === 1 ? "" : "s"} remain visible in the packet workflow.`
-        : "Configured public sources returned evidence for the Discovery review.",
+      sourceRun.reused ? "Verified Discovery sources reused" : "Discovery sources checked",
+      sourceRun.reused
+        ? `The saved public-source capture passed shared Discovery File readback. ${blockerCount ? `${blockerCount} review item${blockerCount === 1 ? "" : "s"} remain visible in the packet workflow.` : "No source blockers remain."}`
+        : blockerCount
+          ? `${blockerCount} source review item${blockerCount === 1 ? "" : "s"} remain visible in the packet workflow.`
+          : "Configured public sources returned evidence for the Discovery review.",
       blockerCount ? "blocked" : "ready",
       true,
       { row, source: flow.title }
