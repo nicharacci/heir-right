@@ -97,6 +97,7 @@ function assertStaticContracts() {
   const shellCss = read("src/features/shell/shell.css");
   const gridsCss = read("src/features/data-grid/grids.css");
   const tokensCss = read("src/styles/tokens.css");
+  const baseCss = read("src/styles/base.css");
   const legacyCss = read("src/styles/legacy.css");
   const indexHtml = read("src/index.html");
   const dashboardSource = read("src/features/dashboard/dashboard-view.js");
@@ -330,6 +331,9 @@ function assertStaticContracts() {
   assert.match(mobileCss, /shell-theme-control button[\s\S]*width:\s*3rem[\s\S]*min-height:\s*2\.75rem[\s\S]*font-size:\s*var\(--hr-type-xs\)/, "mobile theme choices need readable 44px touch targets");
 
   assert.match(shellCss, /--s38-left-rail-collapsed:\s*3\.5rem/);
+  assert.match(baseCss, /\*\s*\{[\s\S]*scrollbar-color:\s*color-mix\(in srgb, var\(--hr-text-subtle\) 64%, transparent\) transparent;/, "all visible app scrollbars must pair a restrained thumb with a transparent gutter");
+  assert.match(baseCss, /\*::\-webkit-scrollbar-track,[\s\S]*\*::\-webkit-scrollbar-track-piece,[\s\S]*\*::\-webkit-scrollbar-corner\s*\{[\s\S]*background:\s*transparent;[\s\S]*border:\s*0;[\s\S]*box-shadow:\s*none;/, "WebKit scrollbar gutters and corners must have no background, border, or shadow");
+  assert.match(baseCss, /\*::\-webkit-scrollbar-thumb\s*\{[\s\S]*background:\s*color-mix\([\s\S]*border:\s*0;[\s\S]*border-radius:\s*999px;[\s\S]*box-shadow:\s*none;/, "the visible scrollbar thumb must remain borderless and rounded");
   assert.match(shellCss, /--s38-rail-min-width:\s*30rem[\s\S]*--s38-rail-max-width:\s*34\.5rem/, "the desktop contextual rail must promote the reviewed 480px width to its minimum and allow a 552px maximum");
   assert.match(shellCss, /\.shell-unified-rail-layer\[data-open="true"\]\s*\{[\s\S]*min-width:\s*var\(--s38-rail-min-width\)/, "an open desktop rail must enforce its shell-owned minimum width");
   assert.match(shellCss, /@media \(max-width: 819px\)[\s\S]*\.shell-unified-rail\s*\{[\s\S]*width:\s*min\(100vw, 30rem\);[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100vw;/, "the desktop minimum must not force overflow in the mobile sheet");
