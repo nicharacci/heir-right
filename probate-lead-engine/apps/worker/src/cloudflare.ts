@@ -5563,7 +5563,7 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
     return canonicalEstateReadbackFailure("Source capture", canonicalBeforeCapture.readbackStatus);
   }
   const priorRecord = await latestConfiguredDiscoveryRecord(env, estateId, canonicalBeforeCapture.record);
-  const configuredSourceRunVerified = Boolean(priorRecord?.dossier);
+  const configuredSourceRunVerified = Boolean(priorRecord);
   const ownedFactKeys = new Set<string>();
   const ownFacts = (
     section: string,
@@ -6616,12 +6616,16 @@ async function latestConfiguredDiscoveryRecord(
   estateId: string,
   activeRecord: Record<string, unknown> | null,
 ): Promise<Record<string, unknown> | null> {
-  if (activeRecord?.dossier
-    && (
-      activeRecord.configuredSourceRunVerified === true
-      || stringValue(activeRecord.mode) === "external_source_run"
-      || !stringValue(activeRecord.mode)
-    )) {
+  const isConfiguredRecord = (record: Record<string, unknown> | null): boolean => {
+    if (!record || !Array.isArray(record.sourceFacts) || !stringValue(record.generatedAt)) return false;
+    const mode = stringValue(record.mode);
+    if (mode === "external_source_run") {
+      return Boolean(record.sourceRunProof && typeof record.sourceRunProof === "object");
+    }
+    return Boolean(record.dossier)
+      && (record.configuredSourceRunVerified === true || !mode);
+  };
+  if (isConfiguredRecord(activeRecord)) {
     return activeRecord;
   }
   if (!env.PACKET_ARTIFACTS?.list) return null;
@@ -6638,10 +6642,8 @@ async function latestConfiguredDiscoveryRecord(
         if (name !== await discoveryFileRevisionKey(estateId, contentHash)) return null;
         try {
           const record = JSON.parse(serialized) as Record<string, unknown>;
-          const mode = stringValue(record.mode);
           return stringValue(record.estateId) === estateId
-            && record.dossier
-            && (record.configuredSourceRunVerified === true || mode === "external_source_run" || !mode)
+            && isConfiguredRecord(record)
             ? record
             : null;
         } catch {

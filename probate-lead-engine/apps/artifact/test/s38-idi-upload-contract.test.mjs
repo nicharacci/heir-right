@@ -1245,6 +1245,87 @@ assert.equal(reconciledDiscoveryReadback.body.mode, "source_capture_reconcile");
 assert.equal(reconciledDiscoveryReadback.body.configuredSourceRunVerified, true);
 assert.ok(reconciledDiscoveryReadback.body.dossier?.completedLeadReport);
 
+const blockedConfiguredEstateId = "estate:s38-configured-run-needs-correction";
+const blockedConfiguredRevision = {
+  version: 1,
+  flow: "discovery",
+  mode: "external_source_run",
+  estateId: blockedConfiguredEstateId,
+  revision: "configured-run-without-dossier",
+  generatedAt: "2026-07-30T23:58:00.000Z",
+  seed: {
+    estateName: "Estate of Source Correction",
+    ownerName: "Estate of Source Correction",
+    propertyAddress: "808 REVIEW RECORD WAY, MIAMI, FL 00000",
+    county: "miami-dade",
+  },
+  capture: { assetKey: blockedConfiguredEstateId },
+  sourceFacts: [],
+  sourceRunProof: { generatedAt: "2026-07-30T23:58:00.000Z", sources: [] },
+  blockers: ["Property Appraiser evidence needs operator review."],
+};
+const blockedConfiguredSerialized = JSON.stringify(blockedConfiguredRevision);
+const blockedConfiguredHash = createHash("sha256").update(blockedConfiguredSerialized).digest("hex");
+const blockedConfiguredStorageKey = `discovery-file:${createHash("sha256").update(blockedConfiguredEstateId).digest("hex")}:revision:${blockedConfiguredHash}`;
+await env.PACKET_ARTIFACTS.put(blockedConfiguredStorageKey, blockedConfiguredSerialized);
+const blockedConfiguredEstateHash = createHash("sha256").update(blockedConfiguredEstateId).digest("hex");
+const blockedConfiguredReservationId = "configured-run-without-dossier-reservation";
+const reserveBlockedConfigured = await paidRunState.fetch(new Request("https://workspace-state.internal/discovery-file-operation", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    action: "reserve",
+    estateHash: blockedConfiguredEstateHash,
+    reservationId: blockedConfiguredReservationId,
+  }),
+}));
+assert.equal(reserveBlockedConfigured.status, 200);
+const commitBlockedConfigured = await paidRunState.fetch(new Request("https://workspace-state.internal/discovery-file-operation", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    action: "commit",
+    estateHash: blockedConfiguredEstateHash,
+    reservationId: blockedConfiguredReservationId,
+    candidateStorageKey: blockedConfiguredStorageKey,
+    candidateContentHash: blockedConfiguredHash,
+    candidateRevision: blockedConfiguredRevision.revision,
+  }),
+}));
+assert.equal(commitBlockedConfigured.status, 200);
+
+const correctedBlockedConfigured = await workerRequest("/api/discovery/source-capture", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    assetKey: blockedConfiguredEstateId,
+    owner: "Estate of Source Correction",
+    address: "808 REVIEW RECORD WAY, MIAMI, FL 00000",
+    propertyAppraiser: {
+      owner: "Estate of Source Correction",
+      address: "808 REVIEW RECORD WAY, MIAMI, FL 00000",
+      folio: "00-0000-000-0008",
+      mailingAddress: "808 REVIEW RECORD WAY, MIAMI, FL 00000",
+      sourceUrl: "https://county.example.test/property/source-correction",
+    },
+    obituary: {
+      status: "reviewed-not-found",
+      sourceUrl: "https://search.example.test/?q=source-correction",
+      note: "Exact-name results were reviewed without inferring a match.",
+    },
+  }),
+});
+assert.equal(correctedBlockedConfigured.response.status, 200);
+assert.equal(correctedBlockedConfigured.body.mode, "source_capture_reconcile");
+assert.equal(correctedBlockedConfigured.body.configuredSourceRunVerified, true);
+assert.ok(correctedBlockedConfigured.body.dossier?.completedLeadReport);
+assert.ok(correctedBlockedConfigured.body.sourceFacts.some((fact) => (
+  fact.source === "property_appraiser"
+  && fact.factType === "property_owner"
+  && fact.value === "Estate of Source Correction"
+)));
+assert.match(correctedBlockedConfigured.body.message, /without another configured public-source search/);
+
 const canonicalCandidateId = imported.body.candidates[0].id;
 const missingReviewStatus = await workerRequest(`/api/discovery/contact-candidates/${encodeURIComponent(canonicalCandidateId)}/review`, {
   method: "POST",
