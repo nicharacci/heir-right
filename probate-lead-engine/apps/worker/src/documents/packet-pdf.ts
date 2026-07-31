@@ -1,6 +1,6 @@
 import {
   PDFDocument,
-  PDFHexString,
+  PDFString,
   StandardFonts,
   rgb,
   type PDFFont,
@@ -108,7 +108,9 @@ function annotationLink(
     A: {
       Type: "Action",
       S: "URI",
-      URI: PDFHexString.fromText(href),
+      // PDF URI actions are byte-oriented. A UTF-16 hex string leaves some
+      // viewers with a BOM and NUL bytes instead of an actionable URL.
+      URI: PDFString.of(href),
     },
   }));
   page.node.addAnnot(annotation);

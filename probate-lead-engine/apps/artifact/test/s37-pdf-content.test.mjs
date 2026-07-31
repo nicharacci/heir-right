@@ -293,16 +293,26 @@ assert.ok(
 );
 const completedReportRender = await getDocument({ data: completedReportPdfBytes.slice(), disableWorker: true }).promise;
 const completedReportPages = [];
+const completedReportLinkTargets = [];
 for (let pageNumber = 1; pageNumber <= completedReportRender.numPages; pageNumber += 1) {
-  const textContent = await (await completedReportRender.getPage(pageNumber)).getTextContent();
+  const page = await completedReportRender.getPage(pageNumber);
+  const textContent = await page.getTextContent();
   const pageCopy = textContent.items.map((item) => item.str).filter(Boolean).join(" ");
   assert.ok(
     pageCopy.length > 200,
     `completed report page ${pageNumber} must contain substantial client-facing content; received: ${pageCopy}`,
   );
   completedReportPages.push(pageCopy);
+  completedReportLinkTargets.push(...(await page.getAnnotations())
+    .filter((annotation) => annotation.subtype === "Link")
+    .map((annotation) => String(annotation.url || annotation.unsafeUrl || "")));
 }
 const completedReportCopy = completedReportPages.join(" ");
+assert.ok(completedReportLinkTargets.length > 0, "the completed report must retain clickable evidence links");
+assert.ok(
+  completedReportLinkTargets.every((target) => /^https?:\/\//i.test(target) || /^\/(?!\/)/.test(target)),
+  "clickable evidence links must remain usable web or app-relative URLs without encoded control bytes",
+);
 for (const internalTerm of [
   "Raw no-enrichment",
   "approval-gated",
