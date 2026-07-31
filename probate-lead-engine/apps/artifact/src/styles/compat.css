@@ -155,7 +155,7 @@ body[data-theme] .next-link,
 body[data-theme] .chip.solvys-liquid-glass,
 body[data-theme] .loop-tab[aria-pressed="true"] {
   color: var(--hr-text);
-  background: var(--hr-surface-raised);
+  background: var(--hr-pearl-selected);
   border-color: var(--hr-ruler);
   box-shadow: none;
   backdrop-filter: none;
@@ -165,12 +165,12 @@ body[data-theme] .loop-tab[aria-pressed="true"] {
 body[data-theme] .btn.primary,
 body[data-theme] .source-pull-button,
 body[data-theme] .command-form .btn.primary {
-  --solvys-lg-bg: var(--hr-accent);
-  --solvys-lg-border: var(--hr-accent);
+  --solvys-lg-bg: var(--hr-action-pearl);
+  --solvys-lg-border: var(--hr-action-border-strong);
   --solvys-lg-shadow: none;
   color: var(--hr-accent-ink);
-  background: var(--hr-accent);
-  border-color: var(--hr-accent);
+  background: var(--hr-action-pearl);
+  border-color: var(--hr-action-border-strong);
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -183,7 +183,7 @@ body[data-theme] .source-pull-button:focus-visible,
 body[data-theme] .command-form .btn.primary:hover,
 body[data-theme] .command-form .btn.primary:focus-visible {
   color: var(--hr-accent-ink);
-  background: var(--hr-accent-strong);
+  background: var(--hr-action-pearl-hover);
   border-color: var(--hr-accent-strong);
   box-shadow: none;
 }
