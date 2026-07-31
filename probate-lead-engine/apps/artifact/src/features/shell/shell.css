@@ -9,6 +9,8 @@
   --s38-command-row-height: 3.75rem;
   --s38-main-gutter: 0.625rem;
   --s38-action-row-offset-y: 0.25rem;
+  --s38-header-primary-offset-y: -0.125rem;
+  --s38-header-rail-offset-y: -0.0625rem;
   grid-template-columns: var(--s38-left-rail-width) minmax(0, 1fr) !important;
   height: 100dvh;
   min-height: 40rem;
@@ -145,6 +147,10 @@
   color: var(--hr-accent-strong);
 }
 
+#workspace[data-s38-shell="case-journey"] .nav-icon::before {
+  display: none !important;
+}
+
 #workspace[data-s38-shell="case-journey"] .nav-label {
   min-width: 0;
   overflow: hidden;
@@ -276,10 +282,18 @@
 }
 
 #workspace[data-s38-shell="case-journey"] .user-strip .avatar {
+  width: 2rem;
+  height: 2rem;
+  aspect-ratio: 1;
+  flex: 0 0 2rem;
+  overflow: hidden;
   color: var(--hr-accent-strong);
   background-color: transparent !important;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
   border: 0 !important;
-  border-radius: 0;
+  border-radius: 50%;
   box-shadow: none !important;
   filter: none;
   transition: color var(--hr-motion-feedback) var(--hr-ease-standard), filter var(--hr-motion-feedback) var(--hr-ease-standard);
@@ -482,6 +496,7 @@
 }
 
 #workspace[data-s38-shell="case-journey"] .shell-primary-command {
+  margin-block-start: var(--s38-header-primary-offset-y);
   min-height: 2.75rem;
   display: inline-flex;
   align-items: center;
@@ -496,6 +511,10 @@
   font-size: var(--hr-type-sm);
   font-weight: 760;
   transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard), opacity var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] #s38OpenRail {
+  margin-block-start: var(--s38-header-rail-offset-y);
 }
 
 #workspace[data-s38-shell="case-journey"] .shell-primary-command:is(:hover, :focus-visible) {
@@ -1822,7 +1841,7 @@ body[data-s38-shell="case-journey"] :is(
   .command-form button.btn.primary
 ):not(:disabled):is(:hover, :focus-visible, :active) :is(svg, .nucleo-icon, .linear-status-icon, .toggle-logo img),
 body[data-s38-shell="case-journey"] .nav-item:not(.is-active):not(:disabled):is(:hover, :focus-visible, :active) .nav-icon {
-  filter: drop-shadow(0 0 0.3rem var(--hr-icon-glow));
+  filter: drop-shadow(0 0.0625rem 0.125rem rgb(10 132 255 / 24%));
 }
 
 body[data-s38-shell="case-journey"] :is(
