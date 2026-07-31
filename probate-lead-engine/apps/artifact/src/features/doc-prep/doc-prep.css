@@ -105,13 +105,32 @@ body[data-theme] #dossiersView.hr-docprep-mount {
   cursor: pointer;
   transition:
     color var(--hr-motion-feedback) var(--hr-ease-standard),
-    background-color var(--hr-motion-feedback) var(--hr-ease-standard);
+    background-color var(--hr-motion-feedback) var(--hr-ease-standard),
+    border-color var(--hr-motion-feedback) var(--hr-ease-standard),
+    box-shadow var(--hr-motion-feedback) var(--hr-ease-standard);
 }
 
-.hr-docprep-flow-switch button:hover,
-.hr-docprep-flow-switch button[aria-selected="true"] {
+.hr-docprep-flow-switch button:hover {
   color: var(--hr-text);
   background: var(--hr-surface-selected);
+}
+
+.hr-docprep-flow-switch button[aria-selected="true"] {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-pearl);
+  border: 1px solid var(--hr-action-border);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+}
+
+.hr-docprep-flow-switch button[aria-selected="true"]:is(:hover, :focus-visible) {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-pearl-hover);
+  border-color: var(--hr-action-border-strong);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 22%);
+}
+
+.hr-docprep-flow-switch button[aria-selected="true"]:active {
+  background: var(--hr-action-pearl-active);
 }
 
 .hr-docprep-flow-switch button:focus-visible {
