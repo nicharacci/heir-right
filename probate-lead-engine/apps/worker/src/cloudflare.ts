@@ -3140,6 +3140,12 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
       if (stopCheck.reasons.length) return canonicalStopJson(stopCheck.reasons, "Packet generation");
     }
   }
+  if (flow === "discovery") {
+    await Promise.all(packetDossiers.map(async (dossier) => {
+      const reviewedOfferMath = dossier.completedLeadReport?.offerMath;
+      dossier.completedLeadReport = await generateCompletedLeadReport(dossier, { reviewedOfferMath });
+    }));
+  }
   const closingPacketOptions: ClosingPacketOptions = body?.closingPacketOptions ?? {
     default: {
       selectedTemplateIds: body?.selectedClosingTemplateIds,

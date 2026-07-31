@@ -479,15 +479,28 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
         }
 
         if (contacts) {
-          // Keep the section heading with at least one normal contact block.
-          ensureFamilySpace(262);
-          page.drawText("Heirs:", { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
-          cursor -= familyLineHeight;
+          const presentGroups = new Set(contacts.lines.map((line) => line.contactGroup).filter(Boolean));
+          if (!presentGroups.has("confirmed-heir")) {
+            ensureFamilySpace(42);
+            drawFamilyText("Heirs: None confirmed by the reviewed evidence.", { font: bold });
+            cursor -= 5;
+          }
+          let activeContactGroup = "";
           for (const line of contacts.lines) {
             const label = String(line.label || "");
             const value = packetValue(line.value);
             const contactMatch = label.match(/^Contact\s+(\d+)/i);
             if (contactMatch) {
+              if (line.contactGroup && line.contactGroup !== activeContactGroup) {
+                const heading = line.contactGroup === "confirmed-heir"
+                  ? "Heirs:"
+                  : line.contactGroup === "associate"
+                    ? "Associates:"
+                    : "Possible Heirs:";
+                ensureFamilySpace(262);
+                drawFamilyText(heading, { font: bold });
+                activeContactGroup = line.contactGroup;
+              }
               cursor -= 5;
               // Keep the opening identity, address history, phone, and email
               // together for the common one-to-two-address contact profile.
@@ -528,12 +541,13 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
               ensureFamilySpace(familyLineHeight * Math.max(1, emails.length));
               const emailHeading = "Email Address:";
               const emailHeadingWidth = bold.widthOfTextAtSize(emailHeading, 11);
+              const hasConfirmedEmail = emails.some((email) => !/^(?:none|not) confirmed$|^needs (?:approved )?enrichment$/i.test(email));
               page.drawText(emailHeading, { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
               if (emails[0]) {
-                page.drawText(emails[0], { x: familyLeft + emailHeadingWidth + 4, y: cursor, size: 11, font: regular, color: rgb(0, 0.35, 0.82) });
+                page.drawText(emails[0], { x: familyLeft + emailHeadingWidth + 4, y: cursor, size: 11, font: regular, color: hasConfirmedEmail ? rgb(0, 0.35, 0.82) : rgb(0, 0, 0) });
               }
               cursor -= familyLineHeight;
-              emails.slice(1).forEach((item) => drawFamilyText(item, { color: rgb(0, 0.35, 0.82) }));
+              emails.slice(1).forEach((item) => drawFamilyText(item, { color: hasConfirmedEmail ? rgb(0, 0.35, 0.82) : rgb(0, 0, 0) }));
               continue;
             }
             if (/^Review$/i.test(label)) {
@@ -544,6 +558,10 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
               continue;
             }
             drawFamilyText(`${label ? `${label}: ` : ""}${value}`);
+          }
+          if (!presentGroups.has("associate")) {
+            cursor -= 8;
+            drawFamilyText("Associates: None reviewed.", { font: bold });
           }
         }
       }
