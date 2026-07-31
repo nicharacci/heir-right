@@ -114,8 +114,8 @@ function validateIdiReport(file) {
 function operatorError(error, operationLabel = "") {
   const raw = String(error?.message || error || "").replace(/\s+/g, " ").trim();
   if (/3\s*MB|too large|size limit/i.test(raw)) return "Choose a report that is 3 MB or smaller.";
-  if (/Sample estates stay isolated|production source runs|production packet export/i.test(raw)) {
-    return "Sample estates cannot run production Discovery. Open an imported estate to build and verify its packet.";
+  if (/legacy placeholder estate|production source runs|production packet export/i.test(raw)) {
+    return "This legacy placeholder estate cannot run production Discovery. Remove it from the shared estate list, then open an imported estate.";
   }
   if (/packet|generated PDF|PDF verification/i.test(raw)) return "Discovery finished its research steps, but the new packet could not be verified. Review the blocker and retry the run.";
   if (/PDF|DOCX|content type|unsupported|legacy DOC|CSV/i.test(raw)) return "Choose a searchable PDF or DOCX report.";

@@ -22,7 +22,7 @@ const state = {
   packetApprovals: {},
   rows: [],
   filteredRows: [],
-  demoEstateLeadsActive: false,
+  legacyPlaceholderEstatesActive: false,
   resultsPage: 1,
   resultsPageSize: 10,
   selectedId: null,
@@ -97,7 +97,9 @@ const state = {
   crmImportModal: {
     open: false,
     mode: "single",
-    provider: "podio"
+    provider: "podio",
+    fileImports: [],
+    fileName: ""
   },
   columnOrder: {
     results: ["address", "lead", "score", "evidence"],
@@ -917,17 +919,17 @@ function loadCrmImports() {
   try {
     const storedValue = storageGetItem(crmImportStateKey);
     if (storedValue === null) {
-      state.crmImports = demoEstateLeadImports();
-      state.demoEstateLeadsActive = true;
+      state.crmImports = [];
+      state.legacyPlaceholderEstatesActive = false;
       return;
     }
     const canonicalValue = canonicalCrmImportStateText(storedValue || "[]");
     state.crmImports = JSON.parse(canonicalValue);
     if (canonicalValue !== storedValue) storageSetItem(crmImportStateKey, canonicalValue, { sync: false });
-    state.demoEstateLeadsActive = state.crmImports.some(isDemoEstateImport);
+    state.legacyPlaceholderEstatesActive = state.crmImports.some(isLegacyPlaceholderEstateImport);
   } catch {
-    state.crmImports = demoEstateLeadImports();
-    state.demoEstateLeadsActive = true;
+    state.crmImports = [];
+    state.legacyPlaceholderEstatesActive = false;
   }
 }
 
@@ -968,7 +970,7 @@ function persistDealStatusLabels() {
 
 function persistCrmImports(reason = "") {
   state.crmImports = state.crmImports.map(normalizeCrmImport);
-  state.demoEstateLeadsActive = state.crmImports.some(isDemoEstateImport);
+  state.legacyPlaceholderEstatesActive = state.crmImports.some(isLegacyPlaceholderEstateImport);
   const save = storageSetItem(crmImportStateKey, JSON.stringify(state.crmImports));
   if (reason) {
     addShellEvent(reason, "Saving the estate update to the shared HeirRight workspace. Live CRM writes and readback remain gated.", "review", false);
@@ -1112,7 +1114,7 @@ function applyServerBackedStateValue(key, value) {
   }
   if (key === crmImportStateKey) {
     state.crmImports = Array.isArray(parsed) ? parsed.map(normalizeCrmImport) : [];
-    state.demoEstateLeadsActive = state.crmImports.some(isDemoEstateImport);
+    state.legacyPlaceholderEstatesActive = state.crmImports.some(isLegacyPlaceholderEstateImport);
     return true;
   }
   if (key === docPrepEstateStateKey) {
@@ -1282,7 +1284,7 @@ function idiImportForRow(row = selectedRow()) {
 }
 
 async function hydrateCanonicalIdiImport(row = selectedRow()) {
-  if (!row || isDemoEstateImport(row)) return null;
+  if (!row || isLegacyPlaceholderEstateImport(row)) return null;
   const key = assetDiscoveryKey(row);
   try {
     const response = await fetch(`/api/discovery/idi-asset-search/import?assetKey=${encodeURIComponent(key)}`, { cache: "no-store" });
@@ -2215,158 +2217,31 @@ function crmProviderLabel(provider = "podio") {
   }[provider] ?? displayStatus(provider, "CRM");
 }
 
-const demoEstateLeadMeta = {
-  "demo-estate-001": {
-    score: 72,
-    evidence: 6,
-    status: "review",
-    classification: "Tax receipt needed",
-    next: "Capture Tax Collector receipt",
-    dealStatus: "pre-discovery",
-    facts: [
-      { factType: "date_of_passing", value: "2021-08-14" },
-      { factType: "last_sale_date", value: "2014-03-06" }
-    ]
-  },
-  "demo-estate-002": {
-    score: 58,
-    evidence: 5,
-    status: "review",
-    classification: "Deed review",
-    next: "Attach deed and OR book/page",
-    dealStatus: "pre-discovery",
-    facts: [
-      { factType: "date_of_passing", value: "2020-11-02" },
-      { factType: "last_sale_date", value: "2012-09-18" }
-    ]
-  },
-  "demo-estate-003": {
-    score: 86,
-    evidence: 8,
-    status: "review",
-    classification: "Discovery reviewed",
-    next: "Review heirs before outreach",
-    dealStatus: "post-discovery",
-    facts: [
-      { factType: "date_of_passing", value: "2019-05-27" },
-      { factType: "last_sale_date", value: "2006-01-20" }
-    ]
-  },
-  "demo-estate-004": {
-    score: 80,
-    evidence: 7,
-    status: "review",
-    classification: "Closing prep ready",
-    next: "Fill closing template fields",
-    dealStatus: "warm",
-    facts: [
-      { factType: "date_of_passing", value: "2022-02-09" },
-      { factType: "last_sale_date", value: "2010-10-15" }
-    ]
-  },
-  "demo-estate-005": {
-    score: 41,
-    evidence: 4,
-    status: "blocked",
-    classification: "Recent sale review",
-    next: "Review sale date before paid sources",
-    dealStatus: "cold",
-    facts: [
-      { factType: "date_of_passing", value: "2023-01-11" },
-      { factType: "last_sale_date", value: "2025-02-12" }
-    ]
-  },
-  "demo-estate-006": {
-    score: 67,
-    evidence: 6,
-    status: "review",
-    classification: "Probate docket needed",
-    next: "Check probate and family records",
-    dealStatus: "pre-discovery",
-    facts: [
-      { factType: "date_of_passing", value: "2018-07-31" },
-      { factType: "last_sale_date", value: "2001-04-03" }
-    ]
-  }
-};
+const legacyPlaceholderEstatePattern = /\b(?:sample|fixture|fictional|non[-\s]?deliverable|test\s+only|test\s+record|demo\s+estate)\b/i;
+const legacyPlaceholderEstateIds = /^demo-estate-\d+$/i;
+const placeholderCleanupAgeMs = 3 * 24 * 60 * 60 * 1000;
 
-function demoEstateLeadImports() {
-  return [
-    {
-      id: "demo-estate-001",
-      provider: "podio",
-      estateName: "Estate of Avery Example (Sample)",
-      ownerName: "AVERY EXAMPLE SAMPLE EST OF",
-      propertyAddress: "101 TEST RECORD WAY, Miami, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0001",
-      sourceRecordId: "SAMPLE-CRM-001",
-      notes: "Sample estate lead for table review only. Begin with owner, tax receipt, deed, and probate checks."
-    },
-    {
-      id: "demo-estate-002",
-      provider: "google-sheets",
-      estateName: "Estate of Jordan Sample (Sample)",
-      ownerName: "JORDAN SAMPLE RECORD EST OF",
-      propertyAddress: "202 DEMO ESTATE AVE, Miami, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0002",
-      sourceRecordId: "SAMPLE-SHEET-002",
-      notes: "Sample estate lead for document-prep table review. Deed and OR book/page still need evidence."
-    },
-    {
-      id: "demo-estate-003",
-      provider: "csv",
-      estateName: "Estate of Morgan Fixture (Sample)",
-      ownerName: "MORGAN FIXTURE SAMPLE EST OF",
-      propertyAddress: "303 FICTIONAL FILE TER, Miami, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0003",
-      sourceRecordId: "SAMPLE-CSV-003",
-      notes: "Sample post-discovery estate. Review heirs and contacts before any outreach."
-    },
-    {
-      id: "demo-estate-004",
-      provider: "podio",
-      estateName: "Estate of Riley Example (Sample)",
-      ownerName: "RILEY EXAMPLE SAMPLE EST OF",
-      propertyAddress: "404 NONDELIVERABLE CT, Miami Gardens, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0004",
-      sourceRecordId: "SAMPLE-CRM-004",
-      notes: "Sample warm estate for Closing Prep review. Fill buyer, signer, title, and bank-transfer fields before export."
-    },
-    {
-      id: "demo-estate-005",
-      provider: "google-sheets",
-      estateName: "Estate of Casey Sample (Sample)",
-      ownerName: "CASEY SAMPLE RECORD EST OF",
-      propertyAddress: "505 TEST ONLY ST, Miami, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0005",
-      sourceRecordId: "SAMPLE-SHEET-005",
-      notes: "Sample blocked estate. Recent sale review must clear before any paid source or outreach work."
-    },
-    {
-      id: "demo-estate-006",
-      provider: "csv",
-      estateName: "Estate of Taylor Fixture (Sample)",
-      ownerName: "TAYLOR FIXTURE SAMPLE EST OF",
-      propertyAddress: "606 DEMO PROBATE LN, North Miami, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0006",
-      sourceRecordId: "SAMPLE-CSV-006",
-      notes: "Sample probate-review estate. Check civil, family, probate, official records, and affidavit-of-heirs paths."
-    }
-  ].map(normalizeCrmImport);
+function isLegacyPlaceholderEstateImport(item = {}) {
+  const values = [
+    item?.id,
+    item?.estateName,
+    item?.ownerName,
+    item?.propertyAddress,
+    item?.sourceRecordId,
+    item?.notes,
+  ].map((value) => String(value || ""));
+  return legacyPlaceholderEstateIds.test(values[0]) || values.some((value) => legacyPlaceholderEstatePattern.test(value));
 }
 
-function isDemoEstateImport(item = {}) {
-  return /^demo-estate-\d+$/i.test(String(item?.id || ""));
-}
-
-function demoEstateMetaFor(rowOrImport = {}) {
-  return demoEstateLeadMeta[String(rowOrImport?.id || "")] || {};
+function legacyPlaceholderEstateImportsOlderThan(referenceAt = Date.now()) {
+  const cutoff = referenceAt - placeholderCleanupAgeMs;
+  return state.crmImports
+    .map(normalizeCrmImport)
+    .filter((item) => !item.deletedAt && isLegacyPlaceholderEstateImport(item))
+    .filter((item) => {
+      const importedAt = Date.parse(item.importedAt || "");
+      return Number.isFinite(importedAt) && importedAt < cutoff;
+    });
 }
 
 function generatedCrmEstateId() {
@@ -2378,11 +2253,11 @@ function generatedCrmEstateId() {
 
 function normalizeCrmImport(input = {}) {
   const provider = ["podio", "google-sheets", "csv"].includes(input.provider) ? input.provider : "podio";
-  const estateName = String(input.estateName || input.ownerName || "Imported estate").trim().slice(0, 120);
-  const propertyAddress = String(input.propertyAddress || "Address needs review").trim().slice(0, 180);
+  const estateName = String(input.estateName || input.ownerName || "").trim().slice(0, 120);
+  const propertyAddress = String(input.propertyAddress || "").trim().slice(0, 180);
   const ownerName = String(input.ownerName || estateName).trim().slice(0, 120);
-  const county = String(input.county || "miami-dade").trim().slice(0, 80);
-  const parcelId = String(input.parcelId || "Folio needs review").trim().slice(0, 80);
+  const county = String(input.county || "").trim().slice(0, 80);
+  const parcelId = String(input.parcelId || "").trim().slice(0, 80);
   const sourceRecordId = String(input.sourceRecordId || "").trim().slice(0, 120);
   const exactEstateId = String(input.id || (sourceRecordId ? `crm:${provider}:${sourceRecordId}` : "")).trim().slice(0, 240);
   return {
@@ -2481,9 +2356,7 @@ function crmImportRow(imported) {
   const dossier = minimalImportedDossier(normalized);
   const missing = buildMissingSections(dossier);
   const archived = Boolean(normalized.archivedAt);
-  const demoMeta = demoEstateMetaFor(normalized);
-  const baseEstateFileName = estateFileDisplayLabel(normalized.estateName, normalized.ownerName);
-  const estateFileName = isDemoEstateImport(normalized) ? `Sample: ${baseEstateFileName}` : baseEstateFileName;
+  const estateFileName = estateFileDisplayLabel(normalized.estateName, normalized.ownerName);
   const row = {
     id: normalized.id,
     kind: "CRM Import",
@@ -2498,14 +2371,14 @@ function crmImportRow(imported) {
     county: normalized.county,
     parcel: normalized.parcelId,
     owner: normalized.ownerName,
-    score: demoMeta.score ?? 44,
-    evidence: demoMeta.evidence ?? 3,
+    score: 44,
+    evidence: 3,
     evidenceTotal: 9,
-    status: archived ? "archived" : (demoMeta.status || "review"),
-    next: archived ? "Archived" : (demoMeta.next || "Begin Estate Discovery"),
-    classification: archived ? "Archived Import" : (demoMeta.classification || "CRM Import"),
+    status: archived ? "archived" : "review",
+    next: archived ? "Archived" : "Begin Estate Discovery",
+    classification: archived ? "Archived Import" : "CRM Import",
     missing,
-    search: `${normalized.estateName} ${normalized.ownerName} ${estateFileName} ${normalized.propertyAddress} ${normalized.parcelId} ${normalized.sourceRecordId} ${crmProviderLabel(normalized.provider)} imported crm closing docs discovery sample demo ${demoMeta.classification || ""}`,
+    search: `${normalized.estateName} ${normalized.ownerName} ${estateFileName} ${normalized.propertyAddress} ${normalized.parcelId} ${normalized.sourceRecordId} ${crmProviderLabel(normalized.provider)} imported crm closing docs discovery`,
     leadType: "probate",
     dossier,
     data: {
@@ -2517,7 +2390,7 @@ function crmImportRow(imported) {
         county: normalized.county,
         parcelId: normalized.parcelId
       },
-      facts: Array.isArray(demoMeta.facts) ? demoMeta.facts : []
+      facts: []
     }
   };
   return { ...row, tone: rowTone(row) };
@@ -2588,17 +2461,9 @@ function migrateUnambiguousLegacyEstateState(rows = state.rows) {
   return changed;
 }
 
-function seedDemoEstatePreviewState() {
-  const demoRows = state.rows.filter((row) => row.sourceKind === "crm-import" && isDemoEstateImport(row));
-  state.demoEstateLeadsActive = Boolean(demoRows.length && state.crmImports.some(isDemoEstateImport));
-  document.documentElement.dataset.demoEstateLeads = state.demoEstateLeadsActive ? "true" : "false";
-  if (!demoRows.length) return;
-  demoRows.forEach((row) => {
-    const status = demoEstateMetaFor(row).dealStatus || "pre-discovery";
-    const key = assetDiscoveryKey(row);
-    if (!state.dealStatuses[key]) state.dealStatuses[key] = status;
-  });
-  if (!state.selectedId || !rowById(state.selectedId)) state.selectedId = demoRows[0].id;
+function syncLegacyPlaceholderEstateState() {
+  state.legacyPlaceholderEstatesActive = state.crmImports.some(isLegacyPlaceholderEstateImport);
+  document.documentElement.dataset.legacyPlaceholderEstates = state.legacyPlaceholderEstatesActive ? "true" : "false";
 }
 
 function crmImportCounts() {
@@ -2611,7 +2476,8 @@ function rebuildRowsFromCurrentSources() {
   state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
   migrateUnambiguousLegacyEstateState(state.rows);
   pruneBatchSets();
-  seedDemoEstatePreviewState();
+  syncLegacyPlaceholderEstateState();
+  syncLegacyPlaceholderCleanupControl();
 }
 
 function syncEstateArchiveToggle() {
@@ -2622,6 +2488,15 @@ function syncEstateArchiveToggle() {
   toggle.textContent = state.showArchivedEstates ? `Active (${counts.active})` : `Archive (${counts.archived})`;
   toggle.setAttribute("aria-pressed", state.showArchivedEstates ? "true" : "false");
   toggle.title = state.showArchivedEstates ? "Show active imported estates" : "Show archived imported estates";
+}
+
+function syncLegacyPlaceholderCleanupControl() {
+  const button = document.getElementById("legacyPlaceholderCleanup");
+  if (!button) return;
+  const count = legacyPlaceholderEstateImportsOlderThan().length;
+  button.hidden = count === 0;
+  button.textContent = `Remove ${count} placeholder estate${count === 1 ? "" : "s"} older than 3 days`;
+  button.title = "Only placeholder estates older than three days are included. All newer and non-placeholder estates stay unchanged.";
 }
 
 function setEstateArchiveMode(showArchived) {
@@ -2663,6 +2538,46 @@ function updateImportedEstateLifecycle(id, action, { confirmDelete = true } = {}
     ? `${label} was restored to active estates.`
     : `${label} was moved to Archive.`;
   return true;
+}
+
+function deleteLegacyPlaceholderEstatesOlderThanThreeDays(source = null) {
+  const candidates = legacyPlaceholderEstateImportsOlderThan();
+  if (!candidates.length) {
+    document.getElementById("topStatus").textContent = "No placeholder estates older than three days are available for removal.";
+    source?.blur?.();
+    return 0;
+  }
+  const cutoff = new Date(Date.now() - placeholderCleanupAgeMs).toLocaleString();
+  const count = candidates.length;
+  const labels = candidates
+    .map((item) => item.estateName || item.ownerName || item.sourceRecordId || item.id)
+    .join("\n");
+  if (!window.confirm(`Remove ${count} placeholder estate${count === 1 ? "" : "s"} imported before ${cutoff}?\n\n${labels}\n\nNewer and non-placeholder estates will remain in the shared workspace.`)) {
+    source?.blur?.();
+    return 0;
+  }
+  const ids = new Set(candidates.map((item) => item.id));
+  const deletedAt = isoNow();
+  state.crmImports = state.crmImports.map((item) => ids.has(item.id)
+    ? { ...normalizeCrmImport(item), deletedAt }
+    : item);
+  state.selectedIds.forEach((id) => {
+    if (ids.has(id)) state.selectedIds.delete(id);
+  });
+  state.queueIds.forEach((id) => {
+    if (ids.has(id)) state.queueIds.delete(id);
+  });
+  if (ids.has(state.selectedId)) state.selectedId = null;
+  persistCrmImports(`${count} old placeholder estates deleted`);
+  rebuildRowsFromCurrentSources();
+  if (!state.selectedId || !rowById(state.selectedId)) state.selectedId = state.rows[0]?.id ?? null;
+  applyFilters();
+  updateFooterLeadContext(selectedRow());
+  syncLegacyPlaceholderCleanupControl();
+  document.getElementById("topStatus").textContent = `${count} placeholder estate${count === 1 ? "" : "s"} older than three days removed from the shared estate list.`;
+  addShellEvent("Old placeholder estates removed", `${count} legacy placeholder estate${count === 1 ? " was" : "s were"} removed after the three-day cutoff. Newer and non-placeholder estates were preserved.`, "review", false);
+  source?.blur?.();
+  return count;
 }
 
 function buildRows(data, dossier) {
@@ -5649,7 +5564,7 @@ async function runAutonomousDiscoverySources(row = selectedRow()) {
 }
 
 async function hydratePersistedDiscoveryFile(row = selectedRow()) {
-  if (!row || isDemoEstateImport(row)) return null;
+  if (!row || isLegacyPlaceholderEstateImport(row)) return null;
   const key = assetDiscoveryKey(row);
   await Promise.all([hydrateCanonicalIdiImport(row), hydrateSupportingDocuments(row)]);
   try {
@@ -5753,8 +5668,8 @@ async function runFullDiscovery(row = selectedRow(), source = null, flowId = sta
     addShellEvent(`${flow.shortTitle} rerun blocked`, "Add a short correction note before replacing the active verified packet.", "blocked", true, { row, source: flow.title });
     return;
   }
-  if (isDemoEstateImport(row)) {
-    nudgeDeniedAction(source, `${flow.shortTitle} blocked`, "Sample estates stay isolated from production source runs and packet export.", { pill: true, source: "docprep-run" });
+  if (isLegacyPlaceholderEstateImport(row)) {
+    nudgeDeniedAction(source, `${flow.shortTitle} blocked`, "A legacy placeholder estate stays isolated until it is removed from the shared workspace.", { pill: true, source: "docprep-run" });
     return;
   }
   state.discoveryOpen = false;
@@ -6614,7 +6529,7 @@ function uploadCleanupMessage(message, cleanup) {
 }
 
 async function hydrateSupportingDocuments(row = selectedRow()) {
-  if (!row || isDemoEstateImport(row)) return [];
+  if (!row || isLegacyPlaceholderEstateImport(row)) return [];
   try {
     const response = await fetch(`/api/documents/attachments?estateId=${encodeURIComponent(assetDiscoveryKey(row))}`, { cache: "no-store" });
     const result = await response.json().catch(() => ({}));
@@ -7018,11 +6933,15 @@ function openCrmImportModal(options = {}) {
   state.crmImportModal.open = true;
   state.crmImportModal.mode = mode;
   state.crmImportModal.provider = provider;
+  state.crmImportModal.fileImports = [];
+  state.crmImportModal.fileName = "";
   renderCrmImportModal();
 }
 
 function closeCrmImportModal() {
   state.crmImportModal.open = false;
+  state.crmImportModal.fileImports = [];
+  state.crmImportModal.fileName = "";
   renderCrmImportModal();
 }
 
@@ -7060,33 +6979,38 @@ function renderCrmImportModal() {
             ${isBatch ? `
               <div class="field full">
                 <label for="crmImportBatchRows">Estate rows</label>
-                <textarea id="crmImportBatchRows" name="batchRows" required placeholder="Estate name | Owner / seller | Property address | County | Folio / parcel | CRM row ID"></textarea>
+                <textarea id="crmImportBatchRows" name="batchRows"></textarea>
+              </div>
+              <div class="field full">
+                <label for="crmImportFile">CSV file</label>
+                <input id="crmImportFile" type="file" accept=".csv,text/csv,text/plain" data-crm-import-file aria-describedby="crmImportFileStatus">
+                <span id="crmImportFileStatus" class="copy" data-crm-import-file-status>Choose a CSV file, then review its import count before saving.</span>
               </div>
               <div class="field full">
                 <label for="crmImportUrl">Batch source URL</label>
-                <input id="crmImportUrl" name="sourceUrl" autocomplete="off" placeholder="Optional Podio view, Sheet URL, or CSV source">
+                <input id="crmImportUrl" name="sourceUrl" autocomplete="off">
               </div>
               <div class="field full">
                 <label for="crmImportNotes">Batch notes</label>
-                <textarea id="crmImportNotes" name="notes" placeholder="Add source context that should apply to each imported estate."></textarea>
+                <textarea id="crmImportNotes" name="notes"></textarea>
               </div>
-              <p class="field-note">Use one estate per line. Pipe-separated and tab-separated rows are safest; CSV rows are accepted for simple exports. No live CRM write or readback is attempted.</p>
+              <p class="field-note">The app accepts comma, semicolon, or tab-delimited files. Rows stay in this form until you choose Import Batch. No live CRM write is attempted.</p>
             ` : `
             <div class="field">
               <label for="crmImportSourceId">CRM row or item ID</label>
-              <input id="crmImportSourceId" name="sourceRecordId" autocomplete="off" placeholder="Lead item, row number, or sheet key">
+              <input id="crmImportSourceId" name="sourceRecordId" autocomplete="off">
             </div>
             <div class="field">
               <label for="crmImportEstate">Estate name</label>
-              <input id="crmImportEstate" name="estateName" required autocomplete="off" placeholder="Estate of Jamie Sample">
+              <input id="crmImportEstate" name="estateName" required autocomplete="off">
             </div>
             <div class="field">
               <label for="crmImportOwner">Owner / seller</label>
-              <input id="crmImportOwner" name="ownerName" autocomplete="off" placeholder="JAMIE SAMPLE EST OF">
+              <input id="crmImportOwner" name="ownerName" autocomplete="off">
             </div>
             <div class="field full">
               <label for="crmImportAddress">Property address</label>
-              <input id="crmImportAddress" name="propertyAddress" required autocomplete="off" placeholder="100 SAMPLE AVE, Miami, FL 33101">
+              <input id="crmImportAddress" name="propertyAddress" required autocomplete="off">
             </div>
             <div class="field">
               <label for="crmImportCounty">County</label>
@@ -7098,15 +7022,15 @@ function renderCrmImportModal() {
             </div>
             <div class="field">
               <label for="crmImportParcel">Folio / parcel</label>
-              <input id="crmImportParcel" name="parcelId" autocomplete="off" placeholder="0102020001080">
+              <input id="crmImportParcel" name="parcelId" autocomplete="off">
             </div>
             <div class="field full">
               <label for="crmImportUrl">Source URL</label>
-              <input id="crmImportUrl" name="sourceUrl" autocomplete="off" placeholder="Optional Podio item or Sheet URL">
+              <input id="crmImportUrl" name="sourceUrl" autocomplete="off">
             </div>
             <div class="field full">
               <label for="crmImportNotes">Import notes</label>
-              <textarea id="crmImportNotes" name="notes" placeholder="Paste any CRM context, title-company note, or closing-doc instruction that should travel with this estate."></textarea>
+              <textarea id="crmImportNotes" name="notes"></textarea>
             </div>
             <p class="field-note">The imported estate will appear in Estates, Document Prep, Queue, and the report rail. Podio/Sheets readback still requires approved access and a real connection check.</p>
             `}
@@ -7128,38 +7052,166 @@ function renderCrmImportModal() {
     event.preventDefault();
     submitCrmImport(new FormData(event.currentTarget));
   });
+  const fileStatus = mount.querySelector("[data-crm-import-file-status]");
+  mount.querySelector("[data-crm-import-file]")?.addEventListener("change", async (event) => {
+    const file = event.currentTarget.files?.[0] ?? null;
+    state.crmImportModal.fileImports = [];
+    state.crmImportModal.fileName = "";
+    if (!file) {
+      if (fileStatus) fileStatus.textContent = "Choose a CSV file, then review its import count before saving.";
+      return;
+    }
+    try {
+      const imports = csvFileImportItems(await file.text(), file.name);
+      state.crmImportModal.fileImports = imports;
+      state.crmImportModal.fileName = file.name;
+      state.crmImportModal.provider = "csv";
+      const providerInput = mount.querySelector("#crmImportProvider");
+      if (providerInput) providerInput.value = "csv";
+      syncAllEnhancedSelects();
+      if (fileStatus) fileStatus.textContent = `${imports.length} rows are ready from ${file.name}. Choose Import Batch to save them.`;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The selected CSV could not be read.";
+      if (fileStatus) fileStatus.textContent = message;
+    }
+  });
+  mount.querySelector("#crmImportBatchRows")?.addEventListener("input", () => {
+    if (!state.crmImportModal.fileImports.length) return;
+    state.crmImportModal.fileImports = [];
+    state.crmImportModal.fileName = "";
+    if (fileStatus) fileStatus.textContent = "Manual rows will be imported instead of the selected CSV.";
+  });
   requestAnimationFrame(() => mount.querySelector(isBatch ? "#crmImportBatchRows" : "#crmImportEstate")?.focus());
 }
+
+const crmBatchImportLimit = 250;
 
 function splitCrmBatchLine(line) {
   if (line.includes("|")) return line.split("|").map((part) => part.trim());
   if (line.includes("\t")) return line.split("\t").map((part) => part.trim());
+  if (line.includes(";")) return line.split(";").map((part) => part.trim());
   return line.split(",").map((part) => part.trim());
+}
+
+function parseDelimitedRows(text, delimiter) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (character === '"') {
+      if (quoted && text[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (character === delimiter && !quoted) {
+      row.push(cell.trim());
+      cell = "";
+    } else if ((character === "\n" || character === "\r") && !quoted) {
+      if (character === "\r" && text[index + 1] === "\n") index += 1;
+      row.push(cell.trim());
+      if (row.some(Boolean)) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += character;
+    }
+  }
+  row.push(cell.trim());
+  if (row.some(Boolean)) rows.push(row);
+  return rows;
+}
+
+function csvDelimiter(text) {
+  const firstLine = text.split(/\r?\n/, 1)[0] || "";
+  return [";", "\t", ","].reduce((selected, delimiter) => {
+    const occurrences = firstLine.split(delimiter).length - 1;
+    const selectedOccurrences = firstLine.split(selected).length - 1;
+    return occurrences > selectedOccurrences ? delimiter : selected;
+  }, ",");
+}
+
+function crmColumnKey(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function rowValueByColumn(row, headerIndex, names) {
+  const index = names.map(crmColumnKey).map((name) => headerIndex.get(name)).find(Number.isInteger);
+  return index === undefined ? "" : String(row[index] || "").trim();
+}
+
+function csvFileImportItems(text, fileName = "CSV file") {
+  const rows = parseDelimitedRows(String(text || ""), csvDelimiter(String(text || "")));
+  if (rows.length < 2) throw new Error("The CSV needs a header row and at least one estate row.");
+  const headerIndex = new Map(rows[0].map((header, index) => [crmColumnKey(header), index]));
+  const hasContactAddressHeaders = ["firstname", "lastname", "address"].every((column) => headerIndex.has(column));
+  const hasEstateHeaders = ["estatename", "ownername", "propertyaddress"].some((column) => headerIndex.has(column));
+  if (!hasContactAddressHeaders && !hasEstateHeaders) {
+    throw new Error("The CSV needs estate fields or First Name, Last Name, and Address columns.");
+  }
+  const imports = rows.slice(1).map((row, index) => {
+    const firstName = rowValueByColumn(row, headerIndex, ["first name", "first"]);
+    const lastName = rowValueByColumn(row, headerIndex, ["last name", "last"]);
+    const ownerName = rowValueByColumn(row, headerIndex, ["owner name", "owner", "seller"]) || [firstName, lastName].filter(Boolean).join(" ");
+    const estateName = rowValueByColumn(row, headerIndex, ["estate name", "estate"]) || ownerName;
+    const street = rowValueByColumn(row, headerIndex, ["property address", "address", "street address"]);
+    const city = rowValueByColumn(row, headerIndex, ["city"]);
+    const stateValue = rowValueByColumn(row, headerIndex, ["state"]);
+    const zip = rowValueByColumn(row, headerIndex, ["zip code", "zip", "postal code"]);
+    const cityLine = [city, stateValue, zip].filter(Boolean).join(" ");
+    const propertyAddress = [street, cityLine].filter(Boolean).join(", ");
+    if (!ownerName || !propertyAddress) {
+      throw new Error(`Row ${index + 2} needs an owner and property address before it can be imported.`);
+    }
+    return normalizeCrmImport({
+      provider: "csv",
+      estateName,
+      ownerName,
+      propertyAddress,
+      county: rowValueByColumn(row, headerIndex, ["county"]),
+      parcelId: rowValueByColumn(row, headerIndex, ["folio", "parcel", "parcel id"]),
+      sourceRecordId: `${fileName}:row-${index + 2}`,
+      notes: `Imported from ${fileName} row ${index + 2}.`,
+    });
+  });
+  if (!imports.length) throw new Error("The CSV did not contain any estate rows.");
+  if (imports.length > crmBatchImportLimit) throw new Error(`This import has ${imports.length} rows. Import up to ${crmBatchImportLimit} at a time.`);
+  return imports;
 }
 
 function batchImportItems(formData) {
   const provider = String(formData.get("provider") || "podio");
   const sourceUrl = String(formData.get("sourceUrl") || "");
   const notes = String(formData.get("notes") || "");
+  if (state.crmImportModal.fileImports.length) {
+    return state.crmImportModal.fileImports.map((item) => normalizeCrmImport({
+      ...item,
+      sourceUrl,
+      notes: [item.notes, notes].filter(Boolean).join(" "),
+    }));
+  }
   const lines = String(formData.get("batchRows") || "")
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .slice(0, 40);
+    .slice(0, crmBatchImportLimit);
   return lines.map((line, index) => {
     const [estateName, ownerName, propertyAddress, county, parcelId, sourceRecordId] = splitCrmBatchLine(line);
     return normalizeCrmImport({
       provider,
-      estateName: estateName || ownerName || `Imported estate ${index + 1}`,
-      ownerName: ownerName || estateName || `Imported estate ${index + 1}`,
-      propertyAddress: propertyAddress || "Address needs review",
-      county: county || "miami-dade",
-      parcelId: parcelId || "Folio needs review",
-      sourceRecordId: sourceRecordId || `batch-${index + 1}`,
+      estateName: estateName || ownerName,
+      ownerName: ownerName || estateName,
+      propertyAddress,
+      county,
+      parcelId,
+      sourceRecordId: sourceRecordId || `manual-row-${index + 1}`,
       sourceUrl,
       notes
     });
-  });
+  }).filter((item) => item.estateName && item.ownerName && item.propertyAddress);
 }
 
 function submitBatchCrmImport(formData) {
@@ -7172,7 +7224,7 @@ function submitBatchCrmImport(formData) {
   state.crmImports = [
     ...imports,
     ...state.crmImports.filter((item) => !ids.has(item.id))
-  ].slice(0, 40);
+  ].slice(0, crmBatchImportLimit);
   imports.map(crmImportRow).forEach(seedImportedDealStatus);
   persistDealStatuses();
   persistCrmImports(`${imports.length} CRM estates imported`);
@@ -7203,7 +7255,7 @@ function submitCrmImport(formData) {
     return;
   }
   const imported = normalizeCrmImport(Object.fromEntries(formData.entries()));
-  state.crmImports = [imported, ...state.crmImports.filter((item) => item.id !== imported.id)].slice(0, 40);
+  state.crmImports = [imported, ...state.crmImports.filter((item) => item.id !== imported.id)].slice(0, crmBatchImportLimit);
   const importedRow = crmImportRow(imported);
   seedImportedDealStatus(importedRow);
   persistDealStatuses();
@@ -9467,7 +9519,7 @@ function docPrepFileStatusItems(row = selectedRow()) {
 
 function docPrepEstateLabel(row) {
   if (!row) return "Current estate";
-  if (isDemoEstateImport(row) && row.leadName) return row.leadName;
+  if (isLegacyPlaceholderEstateImport(row) && row.leadName) return row.leadName;
   const dossier = dossierForRow(row);
   return estateFileDisplayLabel(
     row.leadName,
@@ -14035,8 +14087,8 @@ async function generatePacketPreview(row = selectedRow(), source = null, options
     addShellEvent("Packet generation blocked by stop rule", stopBlocker, "blocked", true, { row, source: flow.title });
     return null;
   }
-  if (isDemoEstateImport(row)) {
-    nudgeDeniedAction(source, "Preview blocked", "Sample estates stay isolated from production packet export.", { pill: true, source: "document-preview" });
+  if (isLegacyPlaceholderEstateImport(row)) {
+    nudgeDeniedAction(source, "Preview blocked", "A legacy placeholder estate stays isolated until it is removed from the shared workspace.", { pill: true, source: "document-preview" });
     return;
   }
   source?.setAttribute?.("aria-busy", "true");
@@ -14360,7 +14412,7 @@ function renderLoadedState(data, dossier) {
   state.rows = buildRows(data, dossier);
   migrateUnambiguousLegacyEstateState(state.rows);
   pruneBatchSets();
-  seedDemoEstatePreviewState();
+  syncLegacyPlaceholderEstateState();
   state.selectedId = state.selectedId ?? state.rows[0]?.id ?? null;
   document.getElementById("topStatus").textContent = `${data.facts?.length ?? 0} evidence items loaded from the latest lead review.`;
   updateFooterLeadContext(selectedRow());
@@ -14463,7 +14515,7 @@ async function loadRun() {
     state.selectedId = state.rows[0]?.id ?? null;
     state.selectedIds.clear();
     state.queueIds.clear();
-    seedDemoEstatePreviewState();
+    syncLegacyPlaceholderEstateState();
     document.getElementById("topStatus").textContent = error.message;
     document.getElementById("resultsBody").innerHTML = state.rows.length
       ? ""
@@ -14992,8 +15044,8 @@ async function chooseExportRoute(route, source = null, rowsOverride = null) {
     addShellEvent("Packet or handoff export blocked", message, "blocked", true);
     return;
   }
-  if (!isControlledTest && batchRows.some((row) => isDemoEstateImport(row))) {
-    nudgeDeniedAction(source, "Export blocked", "Sample estates stay isolated from production exports. Select an imported or fetched estate.", { pill: true, source: "packet-export" });
+  if (!isControlledTest && batchRows.some((row) => isLegacyPlaceholderEstateImport(row))) {
+    nudgeDeniedAction(source, "Export blocked", "A legacy placeholder estate stays isolated until it is removed from the shared workspace.", { pill: true, source: "packet-export" });
     return;
   }
   const packetDossiers = batchRows.map((row) => dossierForRow(row)).filter(Boolean);
@@ -15330,6 +15382,9 @@ function wireEvents() {
   });
   document.getElementById("estateArchiveToggle")?.addEventListener("click", () => {
     setEstateArchiveMode(!state.showArchivedEstates);
+  });
+  document.getElementById("legacyPlaceholderCleanup")?.addEventListener("click", (event) => {
+    deleteLegacyPlaceholderEstatesOlderThanThreeDays(event.currentTarget);
   });
   document.getElementById("exportToggle").addEventListener("click", (event) => {
     event.stopPropagation();

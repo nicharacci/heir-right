@@ -54,8 +54,7 @@ assert.deepEqual(topLevelEntries, ["assets", "index.html"], "the public artifact
 const publicShell = fs.readFileSync(path.join(distRoot, "index.html"), "utf8");
 const publicBundle = fs.readFileSync(path.join(distRoot, "assets", "app.js"), "utf8");
 assert.doesNotMatch(`${publicShell}\n${publicBundle}`, /Annie Hawkins|Catherine Etienne|Chusa Sylvestre|131\s+NW\s+67\s+ST|01-3113-008-0130|estate-of-annie-hawkins|Lucia Alvarez|Walter Green|Carmen Rosales|Harold Milton|Denise Parker|Samuel Baptiste|1840\s+NW\s+55|7230\s+NW\s+12|1551\s+SW\s+19|20215\s+NW\s+33|481\s+NW\s+102|930\s+NE\s+138/i);
-assert.match(publicBundle, /Estate of Avery Example \(Sample\)/, "public demo records must identify themselves as synthetic samples");
-assert.match(publicBundle, /TEST RECORD WAY[\s\S]*00000/, "public demo addresses must be unmistakably non-deliverable fixtures");
+assert.doesNotMatch(publicBundle, /Estate of Avery Example \(Sample\)|SAMPLE-CRM-001|TEST RECORD WAY[\s\S]*00000/, "the production browser bundle must not ship synthetic estate records or their placeholder addresses");
 
 const rootVercelPath = path.join(repoRoot, "vercel.json");
 const artifactVercelPath = path.join(artifactRoot, "vercel.json");
