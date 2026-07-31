@@ -69,7 +69,7 @@ function claimText(value: unknown, fallback = "Needs review"): string {
   return String(value);
 }
 
-function displayAddress(value: string | null | undefined): string {
+export function displayAddress(value: string | null | undefined): string {
   return (value ?? "Needs review").replace(/,?\s*FL\s+(\d{5})-0000\b/gi, ", FL $1");
 }
 
@@ -104,6 +104,22 @@ function humanStatus(value: string): string {
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export function clientEvidenceLabel(input: { source: SourceKey; factType: string }): string {
+  if (input.source === "idi") return "Reviewed IDI evidence";
+  if (/obituary|memorial/i.test(input.factType)) return "Obituary";
+  if (input.source === "property_appraiser") return "Property Appraiser record";
+  if (input.source === "tax_collector") return /receipt/i.test(input.factType)
+    ? "Tax Collector receipt"
+    : "Tax Collector record";
+  if (input.source === "official_records") return /cross_link/i.test(input.factType)
+    ? "Official Records cross-link"
+    : /deed|title|book|instrument/i.test(input.factType)
+      ? "Deed and title evidence"
+      : "Official Records evidence";
+  if (input.source === "probate_court") return "Probate Court record";
+  return humanStatus(input.factType);
 }
 
 function reviewNote(field: OfferProfitField, fallback = "Operator review required"): string {
@@ -427,7 +443,7 @@ function buildSourceLinks(dossier: RawDossier): Array<{ label: string; url?: str
     const key = `${fact.source}:${sourceUrl}`;
     if (!links.has(key)) {
       links.set(key, {
-        label: fact.attachment?.label || fact.factType.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        label: clientEvidenceLabel({ source: fact.source, factType: fact.factType }),
         url: sourceUrl,
         source: fact.source,
       });
@@ -468,6 +484,7 @@ function buildBackstory(dossier: RawDossier): string {
     const status = text.toLowerCase().replace(/[\s-]+/g, "_");
     if (status === "manual_or_browser_extraction_required") return "court-source details require direct review";
     if (status === "manual_review_required") return "source details require direct review";
+    if (status === "receipt_link_captured") return "captured and available for review";
     if (status === "not_run" || status === "not_started") return "not yet reviewed";
     return /_/.test(text) ? humanStatus(text) : text;
   };
@@ -482,20 +499,18 @@ function buildBackstory(dossier: RawDossier): string {
       maximumFractionDigits: 2,
     }).format(amount);
   };
-  const contactFacts = dossier.audit.facts.filter((item) => (
-    item.factType === "enriched_contact_profile"
-    || item.factType === "primary_contact_profile"
-    || item.factType === "alternative_contact_profile"
+  const reviewedContacts = buildContactPlaceholders(dossier).filter((contact) => (
+    !contact.reviewFlags.includes("NO_ENRICHMENT_RUN")
   ));
   const familyNodes = dossier.familyTree.hypothesis.value?.nodes.filter((node) => node.name) ?? [];
   const reportedSpouse = familyNodes.find((node) => node.role === "spouse")?.name;
   const reportedChildren = familyNodes.filter((node) => node.role === "child").map((node) => node.name);
   const ownership: string[] = [
-    `The public-record review concerns ${claimText(dossier.property.address.value)} in ${formatCountyName(dossier.property.county.value, "the recorded county")}`,
+    `The public-record review concerns ${displayAddress(dossier.property.address.value)} in ${formatCountyName(dossier.property.county.value, "the recorded county")}`,
     `${claimText(dossier.property.ownerName.value)} is listed as owner of record`,
   ];
   if (known(dossier.deedHistory.mailingAddressSignal.value)) {
-    ownership.push(`${claimText(dossier.deedHistory.mailingAddressSignal.value)} is the recorded mailing address`);
+    ownership.push(`${displayAddress(claimText(dossier.deedHistory.mailingAddressSignal.value))} is the recorded mailing address`);
   }
   if (known(dossier.deedHistory.ownershipActivity.value)) {
     ownership.push(sentence(dossier.deedHistory.ownershipActivity.value));
@@ -528,13 +543,17 @@ function buildBackstory(dossier: RawDossier): string {
   const due = moneyAmount(dossier.taxHistory.amountDue.value);
   tax.push(due ? `the recorded amount due is ${due}` : "the amount due remains unconfirmed");
   const lastPaidBy = dossier.taxHistory.lastPaidBy?.value;
-  if (known(lastPaidBy)) tax.push(`the last recorded payer is ${claimText(lastPaidBy)}`);
+  if (known(lastPaidBy) && !/payment details|needs review|not confirmed/i.test(claimText(lastPaidBy))) {
+    tax.push(`the last recorded payer is ${claimText(lastPaidBy)}`);
+  } else {
+    tax.push("the last recorded payer remains unconfirmed");
+  }
   if (known(dossier.taxHistory.payerIdentity.value) && dossier.taxHistory.payerIdentity.value !== lastPaidBy) {
     tax.push(`receipt payer identity is ${claimText(dossier.taxHistory.payerIdentity.value)}`);
   }
   if (known(dossier.taxHistory.paidDate?.value)) tax.push(`the reviewed paid date is ${claimText(dossier.taxHistory.paidDate.value)}`);
   tax.push(known(dossier.taxHistory.receiptStatus.value)
-    ? `receipt status is ${sentence(dossier.taxHistory.receiptStatus.value)}`
+    ? `receipt status is ${statusText(dossier.taxHistory.receiptStatus.value)}`
     : "receipt status is not yet captured");
   tax.push(dossier.taxHistory.receiptLink?.value
     ? "a Tax Collector receipt link is preserved in the evidence below"
@@ -592,8 +611,8 @@ function buildBackstory(dossier: RawDossier): string {
   const family: string[] = [];
   if (reportedSpouse) family.push(`${reportedSpouse} is reported as the spouse`);
   if (reportedChildren.length) family.push(`${reportedChildren.join(", ")} ${reportedChildren.length === 1 ? "is" : "are"} reported as ${reportedChildren.length === 1 ? "a child" : "children"}`);
-  if (contactFacts.length) {
-    family.push(`${contactFacts.length} reviewed contact profile${contactFacts.length === 1 ? " is" : "s are"} attached and summarized below`);
+  if (reviewedContacts.length) {
+    family.push(`${reviewedContacts.length} unique reviewed contact profile${reviewedContacts.length === 1 ? " is" : "s are"} attached and summarized below`);
   } else {
     family.push("IDI contact evidence has not yet produced an accepted profile");
   }
@@ -1052,9 +1071,12 @@ function renderOutreachSection(dossier: RawDossier, includeDealSection: boolean)
   ];
 }
 
-export async function generateCompletedLeadReport(dossier: RawDossier): Promise<CompletedLeadReport> {
-  const offerMath = buildOfferProfitMath(dossier);
-  const includeDealSection = hasDealInput(dossier);
+export async function generateCompletedLeadReport(
+  dossier: RawDossier,
+  options: { reviewedOfferMath?: OfferProfitMath } = {},
+): Promise<CompletedLeadReport> {
+  const offerMath = options.reviewedOfferMath ?? buildOfferProfitMath(dossier);
+  const includeDealSection = hasDealInput(dossier) || Boolean(options.reviewedOfferMath);
   const leadQualityProfile = buildLeadQualityProfile(dossier);
   const reviewGate = buildReviewGate(dossier, offerMath.reviewFlags, includeDealSection);
   const researchChecklist = buildResearchChecklist(dossier, includeDealSection);
