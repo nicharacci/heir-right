@@ -67,6 +67,11 @@ interface CloudflareEnv {
     get(key: string): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number; metadata?: unknown }): Promise<void>;
     delete(key: string): Promise<void>;
+    list?(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
+      keys: Array<{ name: string }>;
+      list_complete: boolean;
+      cursor?: string;
+    }>;
   };
   WORKSPACE_STATE?: {
     idFromName(name: string): unknown;
@@ -5540,7 +5545,7 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
     ...captureInput
   } = withoutClientIdiProof(body);
   const signedActor = await signedSessionEmail(request, env);
-  const capture = {
+  const capture: Record<string, unknown> = {
     ...captureInput,
     assetKey: estateId,
     capturedAt: nowIso(),
@@ -5551,19 +5556,116 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
   }
   const runId = `source-capture-${Date.now()}-${crypto.randomUUID()}`;
   const generatedAt = nowIso();
-  const sourceFacts = sourceFactsFromCapture(runId, seed, { ...capture, seed });
+  const capturedSourceFacts = sourceFactsFromCapture(runId, seed, { ...capture, seed });
+  const canonicalBeforeCapture = await loadCanonicalDiscoveryFile(env, estateId);
+  if (canonicalBeforeCapture.exists
+    && !["verified", "verified_recovered_previous"].includes(canonicalBeforeCapture.readbackStatus)) {
+    return canonicalEstateReadbackFailure("Source capture", canonicalBeforeCapture.readbackStatus);
+  }
+  const priorRecord = await latestConfiguredDiscoveryRecord(env, estateId, canonicalBeforeCapture.record);
+  const configuredSourceRunVerified = Boolean(priorRecord?.dossier);
+  const ownedFactKeys = new Set<string>();
+  const ownFacts = (
+    section: string,
+    source: SourceFact["source"],
+    factTypes: SourceFact["factType"][],
+  ) => {
+    if (!capture[section] || typeof capture[section] !== "object" || Array.isArray(capture[section])) return;
+    factTypes.forEach((factType) => ownedFactKeys.add(`${source}:${factType}`));
+  };
+  ownFacts("taxReceipt", "tax_collector", [
+    "source_status",
+    "tax_last_paid_by",
+    "tax_payer_identity",
+    "tax_paid_date",
+    "tax_receipt_status",
+    "tax_receipt_link",
+    "tax_receipt_attachment",
+    "tax_amount_due",
+    "unpaid_tax_years",
+    "tax_reassessment_signal",
+  ]);
+  ownFacts("deed", "official_records", [
+    "official_records_status",
+    "deed_history_status",
+    "or_book_page",
+    "latest_deed",
+    "deed_attachment",
+    "last_sale_date",
+    "ownership_activity_note",
+    "mortgage_signal",
+    "lien_signal",
+    "lis_pendens_signal",
+    "foreclosure_signal",
+    "adverse_possession_signal",
+    "title_signal",
+  ]);
+  ownFacts("propertyAppraiser", "property_appraiser", [
+    "property_owner",
+    "owner_type",
+    "property_address",
+    "property_folio",
+    "mailing_address_signal",
+  ]);
+  ownFacts("probate", "probate_court", [
+    "probate_docket_status",
+    "case_number",
+    "probate_case_status",
+    "civil_family_docket_ref",
+    "affidavit_of_heirs_status",
+    "probate_document_availability",
+  ]);
+  ownFacts("probate", "official_records", ["official_record_cross_link"]);
+  ownFacts("obituary", "clerk_of_courts", [
+    "marriage_death_status",
+    "marriage_license_signal",
+    "date_of_birth",
+    "date_of_death",
+    "obituary_link",
+    "obituary_snapshot",
+    "memorial_search_tasks",
+    "death_certificate_status",
+    "incarceration_status_signal",
+  ]);
+  const priorSourceFacts = configuredSourceRunVerified && Array.isArray(priorRecord?.sourceFacts)
+    ? priorRecord.sourceFacts as SourceFact[]
+    : [];
+  const inheritedSourceFacts = priorSourceFacts.filter((factItem) => (
+    factItem?.source !== "idi"
+      && !ownedFactKeys.has(`${factItem?.source}:${factItem?.factType}`)
+  ));
+  const canonicalIdiFacts = configuredSourceRunVerified
+    ? await storedIdiImportFacts(env, runId, seed, estateId)
+    : [];
+  const sourceFacts = configuredSourceRunVerified
+    ? [...inheritedSourceFacts, ...capturedSourceFacts, ...canonicalIdiFacts]
+    : capturedSourceFacts;
+  const dossier = configuredSourceRunVerified
+    ? await rebuildDiscoveryDossier(runId, sourceFacts)
+    : null;
   const sourceSummaries = summarizeSourceRunFacts(sourceFacts);
   const sourceRunProof = sourceRunProofLedger(sourceSummaries, sourceFacts);
   const reviewFlags = [...new Set(sourceFacts.flatMap((item) => item.reviewFlags))];
-  const blockers = [
-    sourceFacts.length
-      ? "Run Discovery again to reconcile the saved source capture with configured sources before generating a packet."
-      : "The saved capture contains no structured source facts. Review the fields and run Discovery before generating a packet.",
-  ];
+  const blockers = dossier
+    ? Array.from(new Set([
+        ...canonicalStopReasons({ seed, capture, sourceFacts, dossier }).map((reason) => reason.message),
+        ...sourceSummaries
+          .filter((summary) => summary.status === "blocked" || summary.status === "needs_review")
+          .map((summary) => String(summary.nextAction)),
+        ...(dossier.audit.reviewFlags.includes("SOURCE_BLOCKED")
+          ? ["One or more Discovery sources are blocked; keep the packet in review."]
+          : []),
+      ]))
+    : [
+        sourceFacts.length
+          ? "Run Discovery once to reconcile the saved source capture with configured sources before generating a packet."
+          : "The saved capture contains no structured source facts. Review the fields and run Discovery before generating a packet.",
+      ];
   const record = {
     version: 1,
     flow: "discovery",
-    mode: "source_capture",
+    mode: dossier ? "source_capture_reconcile" : "source_capture",
+    configuredSourceRunVerified,
     estateId,
     revision: runId,
     generatedAt,
@@ -5573,6 +5675,7 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
     sourceRunProof,
     sourceFacts,
     blockers,
+    ...(dossier ? { dossier } : {}),
   };
   let persistence: Record<string, unknown>;
   try {
@@ -5594,7 +5697,8 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
   }
   return json({
     ok: true,
-    mode: "source_capture",
+    mode: record.mode,
+    configuredSourceRunVerified,
     id: runId,
     estateId,
     runId,
@@ -5607,11 +5711,14 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
     sourceFacts,
     blockers,
     reviewFlags,
+    ...(dossier ? { dossier } : {}),
     persistence,
     readbackStatus: "verified",
-    message: sourceFacts.length
-      ? "Source capture passed canonical Discovery File readback. Run Discovery to reconcile it with configured sources."
-      : "Source capture passed canonical readback, but no structured source facts were detected.",
+    message: dossier
+      ? "Source capture passed canonical readback and refreshed the reviewed dossier without another configured public-source search."
+      : sourceFacts.length
+        ? "Source capture passed canonical Discovery File readback. Run Discovery once to reconcile it with configured sources."
+        : "Source capture passed canonical readback, but no structured source facts were detected.",
   }, { headers: { "cache-control": "no-store" } });
 }
 
@@ -6504,6 +6611,55 @@ async function loadCanonicalDiscoveryFile(env: CloudflareEnv, estateId: string):
   return { record: previousRecord, exists: true, readbackStatus: "verified_recovered_previous", pointer: previous };
 }
 
+async function latestConfiguredDiscoveryRecord(
+  env: CloudflareEnv,
+  estateId: string,
+  activeRecord: Record<string, unknown> | null,
+): Promise<Record<string, unknown> | null> {
+  if (activeRecord?.dossier
+    && (
+      activeRecord.configuredSourceRunVerified === true
+      || stringValue(activeRecord.mode) === "external_source_run"
+      || !stringValue(activeRecord.mode)
+    )) {
+    return activeRecord;
+  }
+  if (!env.PACKET_ARTIFACTS?.list) return null;
+  const prefix = `${await discoveryFileKey(estateId)}:revision:`;
+  const candidates: Record<string, unknown>[] = [];
+  let cursor: string | undefined;
+  try {
+    for (let page = 0; page < 3; page += 1) {
+      const listing = await env.PACKET_ARTIFACTS.list({ prefix, cursor, limit: 50 });
+      const records = await Promise.all(listing.keys.map(async ({ name }) => {
+        const serialized = await env.PACKET_ARTIFACTS?.get(name);
+        if (!serialized) return null;
+        const contentHash = await sha256Hex(serialized);
+        if (name !== await discoveryFileRevisionKey(estateId, contentHash)) return null;
+        try {
+          const record = JSON.parse(serialized) as Record<string, unknown>;
+          const mode = stringValue(record.mode);
+          return stringValue(record.estateId) === estateId
+            && record.dossier
+            && (record.configuredSourceRunVerified === true || mode === "external_source_run" || !mode)
+            ? record
+            : null;
+        } catch {
+          return null;
+        }
+      }));
+      candidates.push(...records.filter((record): record is Record<string, unknown> => Boolean(record)));
+      if (listing.list_complete || !listing.cursor) break;
+      cursor = listing.cursor;
+    }
+  } catch {
+    return null;
+  }
+  return candidates.sort((a, b) => (
+    (Date.parse(stringValue(b.generatedAt)) || 0) - (Date.parse(stringValue(a.generatedAt)) || 0)
+  ))[0] || null;
+}
+
 async function persistDiscoveryFile(env: CloudflareEnv, record: Record<string, unknown>): Promise<Record<string, unknown>> {
   const estateId = stringValue(record.estateId);
   const revision = stringValue(record.revision);
@@ -6757,6 +6913,8 @@ async function externalSourceRunResponse(request: Request, url: URL, env: Cloudf
   const discoveryFile = {
     version: 1,
     flow: "discovery",
+    mode: "external_source_run",
+    configuredSourceRunVerified: true,
     estateId,
     revision: pipeline.runId,
     generatedAt,

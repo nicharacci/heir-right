@@ -216,6 +216,12 @@ class MemoryKv {
     this.options.set(key, options);
   }
   async delete(key) { this.values.delete(key); }
+  async list({ prefix = "" } = {}) {
+    return {
+      keys: [...this.values.keys()].filter((key) => key.startsWith(prefix)).map((name) => ({ name })),
+      list_complete: true,
+    };
+  }
 }
 
 class MemoryDurableStorage {
@@ -1154,6 +1160,90 @@ const canonicalDiscoveryReadback = JSON.parse(env.PACKET_ARTIFACTS.values.get(di
 assert.equal("idiImport" in canonicalDiscoveryReadback.capture, false);
 assert.equal("idiAssetImport" in canonicalDiscoveryReadback.capture, false);
 assert.equal("contactReviews" in canonicalDiscoveryReadback.capture, false);
+
+const legacySourceCaptureRevision = {
+  version: 1,
+  flow: "discovery",
+  mode: "source_capture",
+  estateId,
+  revision: "legacy-source-capture-after-configured-run",
+  generatedAt: "2026-07-30T23:59:59.000Z",
+  seed: canonicalSourceRun.body.seed,
+  capture: {
+    assetKey: estateId,
+    owner: "Estate of Rowan QA Fixture",
+    address: "707 TEST RECORD WAY, MIAMI, FL 00000",
+  },
+  sourceFacts: [],
+  blockers: ["Run Discovery again to reconcile the saved source capture."],
+};
+const legacySourceCaptureSerialized = JSON.stringify(legacySourceCaptureRevision);
+const legacySourceCaptureHash = createHash("sha256").update(legacySourceCaptureSerialized).digest("hex");
+const legacySourceCaptureStorageKey = `discovery-file:${createHash("sha256").update(estateId).digest("hex")}:revision:${legacySourceCaptureHash}`;
+await env.PACKET_ARTIFACTS.put(legacySourceCaptureStorageKey, legacySourceCaptureSerialized);
+const legacyReservationId = "legacy-source-capture-reservation";
+const estateHash = createHash("sha256").update(estateId).digest("hex");
+const reserveLegacySourceCapture = await paidRunState.fetch(new Request("https://workspace-state.internal/discovery-file-operation", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ action: "reserve", estateHash, reservationId: legacyReservationId }),
+}));
+assert.equal(reserveLegacySourceCapture.status, 200);
+const commitLegacySourceCapture = await paidRunState.fetch(new Request("https://workspace-state.internal/discovery-file-operation", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    action: "commit",
+    estateHash,
+    reservationId: legacyReservationId,
+    candidateStorageKey: legacySourceCaptureStorageKey,
+    candidateContentHash: legacySourceCaptureHash,
+    candidateRevision: legacySourceCaptureRevision.revision,
+  }),
+}));
+assert.equal(commitLegacySourceCapture.status, 200);
+
+const canonicalDiscoveryApiReadback = await workerRequest(`/api/discovery/file?estateId=${encodeURIComponent(estateId)}`);
+assert.equal(canonicalDiscoveryApiReadback.body.mode, "source_capture");
+assert.equal("dossier" in canonicalDiscoveryApiReadback.body, false);
+
+const reconciledSourceCapture = await workerRequest("/api/discovery/source-capture", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    assetKey: estateId,
+    owner: "Estate of Rowan QA Fixture",
+    address: "707 TEST RECORD WAY, MIAMI, FL 00000",
+    propertyAppraiser: {
+      owner: "Estate of Rowan QA Fixture",
+      address: "707 TEST RECORD WAY, MIAMI, FL 00000",
+      folio: "00-0000-000-0000",
+      sourceUrl: "https://county.example.test/property/rowan",
+    },
+    obituary: {
+      status: "reviewed-not-found",
+      sourceUrl: "https://search.example.test/?q=rowan",
+      note: "Exact-name results were reviewed without inferring a match.",
+    },
+  }),
+});
+assert.equal(reconciledSourceCapture.response.status, 200);
+assert.equal(reconciledSourceCapture.body.ok, true);
+assert.equal(reconciledSourceCapture.body.mode, "source_capture_reconcile");
+assert.equal(reconciledSourceCapture.body.configuredSourceRunVerified, true);
+assert.ok(reconciledSourceCapture.body.dossier?.completedLeadReport);
+assert.ok(reconciledSourceCapture.body.sourceFacts.some((fact) => fact.source === "idi" && fact.factType === "primary_contact_profile"));
+assert.match(reconciledSourceCapture.body.message, /without another configured public-source search/);
+assert.notEqual(
+  reconciledSourceCapture.body.dossier.id,
+  canonicalSourceRun.body.dossier.id,
+  "reconciliation must rebuild a new dossier from immutable configured-source history and the current saved capture",
+);
+const reconciledDiscoveryReadback = await workerRequest(`/api/discovery/file?estateId=${encodeURIComponent(estateId)}`);
+assert.equal(reconciledDiscoveryReadback.response.status, 200);
+assert.equal(reconciledDiscoveryReadback.body.mode, "source_capture_reconcile");
+assert.equal(reconciledDiscoveryReadback.body.configuredSourceRunVerified, true);
+assert.ok(reconciledDiscoveryReadback.body.dossier?.completedLeadReport);
 
 const canonicalCandidateId = imported.body.candidates[0].id;
 const missingReviewStatus = await workerRequest(`/api/discovery/contact-candidates/${encodeURIComponent(canonicalCandidateId)}/review`, {

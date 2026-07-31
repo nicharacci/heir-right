@@ -1255,6 +1255,8 @@ function verifiedSourceCaptureResult(row = selectedRow()) {
   const sourceRun = capture.sourceApiRun;
   if (
     !sourceRun
+    || !capture.dossier
+    || (sourceRun.mode !== "external_source_run" && sourceRun.configuredSourceRunVerified !== true)
     || sourceRun.persistence?.stored !== true
     || sourceRun.persistence?.readbackStatus !== "verified"
     || !sourceRun.generatedAt
@@ -1270,7 +1272,8 @@ function verifiedSourceCaptureResult(row = selectedRow()) {
     sourceRunProof: sourceRun.sourceRunProof || null,
     blockers: Array.isArray(sourceRun.blockers) ? sourceRun.blockers : [],
     message: sourceRun.message || "",
-    persistence: sourceRun.persistence
+    persistence: sourceRun.persistence,
+    dossier: capture.dossier
   };
 }
 
@@ -5484,23 +5487,27 @@ async function finishFullDiscoveryRun(row = selectedRow(), flowId = "discovery",
   let packet;
   try {
     packet = await generatePacketPreview(row, null, { flowId, render: false });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The packet export or readback did not complete.";
     restoreFullDiscoveryOutput(previousOutput);
     if (!docPrepMainRunActive(row, flowId)) return;
     setDocPrepRunState(row, flowId, "");
-    if (finalPhase) setDocPrepStreamPhase(row, flowId, finalPhase, "blocked", "The packet export or readback did not complete.");
-    document.getElementById("topStatus").textContent = `${flow.shortTitle} packet verification blocked. Retry when the packet service is available.`;
-    addShellEvent(`${flow.shortTitle} packet blocked`, "The packet export or readback did not complete, so the prior active output remains unchanged.", "blocked", true, { row, source: flow.title });
+    if (finalPhase) setDocPrepStreamPhase(row, flowId, finalPhase, "blocked", message);
+    document.getElementById("topStatus").textContent = `${flow.shortTitle} packet verification blocked. ${message}`;
+    addShellEvent(`${flow.shortTitle} packet blocked`, `${message} The prior active output remains unchanged.`, "blocked", true, { row, source: flow.title });
     renderDocPrepRunSurfaces();
     return;
   }
   if (!packet?.verification?.verified || !docPrepMainRunActive(row, flowId)) {
+    const message = Array.isArray(state.exportResult?.blockers) && state.exportResult.blockers.length
+      ? state.exportResult.blockers.join(" ")
+      : "The packet did not pass artifact and storage readback verification.";
     restoreFullDiscoveryOutput(previousOutput);
     if (!docPrepMainRunActive(row, flowId)) return;
     setDocPrepRunState(row, flowId, "");
-    if (finalPhase) setDocPrepStreamPhase(row, flowId, finalPhase, "blocked", "The packet did not pass artifact and storage readback verification.");
-    document.getElementById("topStatus").textContent = `${flow.shortTitle} packet verification blocked. Review the packet blocker and retry.`;
-    addShellEvent(`${flow.shortTitle} packet blocked`, "The generated PDF did not pass artifact and storage readback verification, so no document was marked complete.", "blocked", true, { row, source: flow.title });
+    if (finalPhase) setDocPrepStreamPhase(row, flowId, finalPhase, "blocked", message);
+    document.getElementById("topStatus").textContent = `${flow.shortTitle} packet verification blocked. ${message}`;
+    addShellEvent(`${flow.shortTitle} packet blocked`, `${message} No document was marked complete.`, "blocked", true, { row, source: flow.title });
     renderDocPrepRunSurfaces();
     return;
   }
@@ -5673,6 +5680,7 @@ async function hydratePersistedDiscoveryFile(row = selectedRow()) {
         sourceRunProof: record.sourceRunProof && typeof record.sourceRunProof === "object" ? record.sourceRunProof : null,
         blockers: Array.isArray(record.blockers) ? record.blockers : [],
         persistence: { stored: true, readbackStatus: record.readbackStatus },
+        configuredSourceRunVerified: record.configuredSourceRunVerified === true || record.mode === "external_source_run",
         message: record.dossier
           ? "Shared Discovery File loaded with verified storage readback."
           : "Saved source capture loaded with verified Discovery File readback."
@@ -8037,8 +8045,22 @@ async function saveSourceCaptureForRow(row, input = {}) {
       ...(previousCapture ?? {}),
       ...(result.capture && typeof result.capture === "object" ? result.capture : payload),
       sourceFacts: Array.isArray(result.sourceFacts) ? result.sourceFacts : [],
+      ...(result.dossier && typeof result.dossier === "object" ? { dossier: result.dossier } : {}),
+      sourceApiRun: {
+        ok: result.ok === true,
+        mode: result.mode || "source_capture",
+        runId: result.runId || result.id || "",
+        generatedAt: result.generatedAt || new Date().toISOString(),
+        sourceSummaries: Array.isArray(result.sourceSummaries) ? result.sourceSummaries : [],
+        sourceRunProof: result.sourceRunProof && typeof result.sourceRunProof === "object" ? result.sourceRunProof : null,
+        blockers: Array.isArray(result.blockers) ? result.blockers : [],
+        message: result.message || "",
+        persistence: result.persistence && typeof result.persistence === "object" ? result.persistence : null,
+        configuredSourceRunVerified: result.configuredSourceRunVerified === true
+      },
       updatedAt: Date.now()
     };
+    if (!result.dossier || typeof result.dossier !== "object") delete state.sourceCaptures[key].dossier;
     const receiptLinkFact = result.sourceFacts?.find?.((fact) => fact.factType === "tax_receipt_link" && fact.value);
     if (receiptLinkFact?.value) setNestedValue(state.sourceCaptures[key], "taxReceipt.receiptLink", receiptLinkFact.value);
     persistAssetDiscoveryState();
@@ -8142,7 +8164,8 @@ function applyExternalSourceRunResult(row, capture, result) {
       sourceRunProof: result.sourceRunProof && typeof result.sourceRunProof === "object" ? result.sourceRunProof : null,
       blockers: Array.isArray(result.blockers) ? result.blockers : [],
       message: result.message || "",
-      persistence: result.persistence && typeof result.persistence === "object" ? result.persistence : null
+      persistence: result.persistence && typeof result.persistence === "object" ? result.persistence : null,
+      configuredSourceRunVerified: true
     }
   };
   const taxStatus = sourceFactByType(sourceFacts, "tax_collector", ["source_status"]);
