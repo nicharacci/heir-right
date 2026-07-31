@@ -214,9 +214,9 @@ function caseJourneyRailDefinition() {
   return {
     id: "case-journey",
     label: "Case Journey",
-    minWidth: 392,
+    minWidth: 480,
     maxWidth: 552,
-    defaultWidth: 392,
+    defaultWidth: 480,
     defaultTab: "overview",
     mobileSheet: true,
     tabs: [

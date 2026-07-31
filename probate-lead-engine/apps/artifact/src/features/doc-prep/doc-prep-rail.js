@@ -604,8 +604,8 @@ const docPrepRail = Object.freeze({
   id: "doc-prep-context",
   label: "Document Prep",
   defaultTab: "automation",
-  minWidth: 392,
-  defaultWidth: 392,
+  minWidth: 480,
+  defaultWidth: 480,
   maxWidth: 552,
   mobileSheet: true,
   actions: Object.freeze({

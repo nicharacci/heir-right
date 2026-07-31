@@ -232,9 +232,9 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
 
   function setRailGeometry(state) {
     const descriptor = state.active;
-    const width = Number(state.width || descriptor?.defaultWidth || 392);
+    const width = Number(state.width || descriptor?.defaultWidth || 480);
     layer.style.setProperty("--s38-active-rail-width", `${width}px`);
-    resizer.setAttribute("aria-valuemin", String(descriptor?.minWidth || 392));
+    resizer.setAttribute("aria-valuemin", String(descriptor?.minWidth || 480));
     resizer.setAttribute("aria-valuemax", String(descriptor?.maxWidth || 552));
     resizer.setAttribute("aria-valuenow", String(width));
     resizer.setAttribute("aria-valuetext", `${state.active?.label || "Context"} ${width} pixels wide`);
@@ -550,7 +550,7 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
   function onPointerDown(event) {
     if (mobileQuery.matches) return;
     event.preventDefault();
-    resizing = { x: event.clientX, width: Number(railState.width || 392) };
+    resizing = { x: event.clientX, width: Number(railState.width || 480) };
     document.body.classList.add("s38-rail-resizing");
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", stopResize, { once: true });
@@ -558,8 +558,8 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
   }
 
   function onResizeKeyDown(event) {
-    const width = Number(railState.width || 392);
-    const min = Number(railState.active?.minWidth || 392);
+    const width = Number(railState.width || 480);
+    const min = Number(railState.active?.minWidth || 480);
     const max = Number(railState.active?.maxWidth || 552);
     const commands = {
       ArrowLeft: Math.min(max, width + RAIL_WIDTH_STEP),
@@ -590,7 +590,7 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
   document.addEventListener("focusin", onFocusIn, true);
   resizer.addEventListener("pointerdown", onPointerDown);
   resizer.addEventListener("keydown", onResizeKeyDown);
-  resizer.addEventListener("dblclick", () => runtime.rails.setWidth(392));
+  resizer.addEventListener("dblclick", () => runtime.rails.setWidth(480));
   mobileQuery.addEventListener?.("change", onMobileChange);
   syncRailTriggerSemantics({ ...railState, mobileSheet: mobileQuery.matches });
   runtime.rails.setMobileSheet(mobileQuery.matches);
