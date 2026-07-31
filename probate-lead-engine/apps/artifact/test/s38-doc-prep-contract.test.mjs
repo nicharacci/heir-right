@@ -799,9 +799,9 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(uploadModule.validateIdiReport({ name: "report.pdf", size: 3_000_001 }), /3 MB or smaller/);
   assert.match(uploadModule.operatorError("The generated PDF did not pass packet verification."), /new packet could not be verified/i);
   assert.doesNotMatch(uploadModule.operatorError("The generated PDF did not pass packet verification."), /choose a searchable/i);
-  const sampleEstateBlocker = uploadModule.operatorError("Sample estates stay isolated from production source runs and packet export.");
-  assert.match(sampleEstateBlocker, /Sample estates cannot run production Discovery/i);
-  assert.doesNotMatch(sampleEstateBlocker, /new packet could not be verified/i, "sample isolation must not be misreported as a packet-verification failure");
+  const placeholderEstateBlocker = uploadModule.operatorError("A legacy placeholder estate stays isolated until it is removed from the shared workspace.");
+  assert.match(placeholderEstateBlocker, /legacy placeholder estate cannot run production Discovery/i);
+  assert.doesNotMatch(placeholderEstateBlocker, /new packet could not be verified/i, "legacy placeholder isolation must not be misreported as a packet-verification failure");
   const ownerEvidenceBlocker = uploadModule.operatorError("Owner Details needs review. Owner Details needs verified Property Appraiser readback with the source URL, owner, property address, folio, and mailing address before Discovery can continue.");
   assert.match(ownerEvidenceBlocker, /Owner Details still needs verified Property Appraiser evidence/i);
   assert.doesNotMatch(ownerEvidenceBlocker, /could not confirm the saved report/i, "a source-evidence blocker must not blame an already verified IDI upload");
@@ -1207,7 +1207,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   const acceptedContacts = legacy.slice(legacy.indexOf("function acceptedContactCandidates"), legacy.indexOf("function primaryContactCandidates"));
   const sourceHydration = legacy.slice(legacy.indexOf("function applyExternalSourceRunResult"), legacy.indexOf("function idiCoreCredentialStatus"));
   const estateIdentityBoundary = legacy.slice(legacy.indexOf("function normalizedAssetAddress"), legacy.indexOf("const entityOwnerPattern"));
-  const estateMigrationBoundary = legacy.slice(legacy.indexOf("function migrateUnambiguousLegacyEstateState"), legacy.indexOf("function seedDemoEstatePreviewState"));
+  const estateMigrationBoundary = legacy.slice(legacy.indexOf("function migrateUnambiguousLegacyEstateState"), legacy.indexOf("function syncLegacyPlaceholderEstateState"));
   const migrationState = {
     crmImports: [],
     sourceCaptures: {}, idiImports: {}, contactReviews: {}, dealStatuses: {}, docPrepEstateState: {},

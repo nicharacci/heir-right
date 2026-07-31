@@ -69,7 +69,7 @@ assert.match(fullDiscoveryRun, /const savedSourceResult = verifiedSourceCaptureR
 assert.match(fullDiscoveryRun, /savedSourceResult[\s\S]*\? \{ ok: true, result: savedSourceResult, reused: true \}[\s\S]*: await runAutonomousDiscoverySources\(row\)/, "Packet streaming must reuse verified saved source evidence instead of running the public sources twice.");
 assert.match(source, /function verifiedSourceCaptureResult\(row = selectedRow\(\)\)[\s\S]*!capture\.dossier[\s\S]*configuredSourceRunVerified !== true[\s\S]*sourceRun\.persistence\?\.stored !== true[\s\S]*sourceRun\.persistence\?\.readbackStatus !== "verified"[\s\S]*!Array\.isArray\(capture\.sourceFacts\)/, "Only a dossier refreshed from a verified configured run and shared readback may bypass another public-source search.");
 assert.match(fullDiscoveryRun, /Verified Discovery sources reused[\s\S]*saved public-source capture passed shared Discovery File readback/, "The operator audit stream must disclose source reuse.");
-assert.match(fullDiscoveryRun, /Sample estates stay isolated from production source runs and packet export/, "Sample estates must not invoke production source runs.");
+assert.match(fullDiscoveryRun, /legacy placeholder estate stays isolated until it is removed from the shared workspace/, "Legacy placeholder estates must not invoke production source runs.");
 assert.match(fullDiscoveryRun, /result\.persistence\?\.readbackStatus !== "verified"/, "Discovery must stop when shared storage readback is not verified.");
 assert.match(fullDiscoveryRun, /fetch\(`\/api\/discovery\/file\?estateId=/, "Opening Doc Prep must hydrate the team-persisted Discovery File.");
 assert.match(source, /browserbase\\b\.\*\\b\(\?:billing\|payment\|402\)/, "A Browserbase billing response must remain visible to the operator instead of being masked by a generic tax-receipt instruction.");
@@ -122,7 +122,7 @@ console.log(JSON.stringify({
     "fresh_estate_reruns_are_deduplicated",
     "latest_run_renders_one_estate_row",
     "full_discovery_invokes_source_orchestrator",
-    "sample_estates_cannot_run_sources",
+    "legacy_placeholder_estates_cannot_run_sources",
     "discovery_requires_shared_storage_readback",
     "docprep_hydrates_team_discovery_file",
     "browserbase_billing_blocker_is_operator_visible",
