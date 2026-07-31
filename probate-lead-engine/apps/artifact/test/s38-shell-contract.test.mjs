@@ -342,6 +342,7 @@ function assertStaticContracts() {
   assert.match(baseCss, /\*::\-webkit-scrollbar-thumb\s*\{[\s\S]*background:\s*color-mix\([\s\S]*border:\s*0;[\s\S]*border-radius:\s*999px;[\s\S]*box-shadow:\s*none;/, "the visible scrollbar thumb must remain borderless and rounded");
   assert.match(shellCss, /--s38-rail-min-width:\s*30rem[\s\S]*--s38-rail-max-width:\s*34\.5rem/, "the desktop contextual rail must promote the reviewed 480px width to its minimum and allow a 552px maximum");
   assert.match(shellCss, /\.shell-unified-rail-layer\[data-open="true"\]\s*\{[\s\S]*min-width:\s*var\(--s38-rail-min-width\)/, "an open desktop rail must enforce its shell-owned minimum width");
+  assert.match(shellCss, /@media \(max-width: 819px\)[\s\S]*\.shell-unified-rail-layer\[data-open="false"\]\s*\{[\s\S]*width:\s*100vw;[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100vw;/, "the mobile rail layer must reset the desktop minimum so the sheet anchors to the actual viewport");
   assert.match(shellCss, /@media \(max-width: 819px\)[\s\S]*\.shell-unified-rail\s*\{[\s\S]*width:\s*min\(100vw, 30rem\);[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100vw;/, "the desktop minimum must not force overflow in the mobile sheet");
   assert.match(shellCss, /--s38-main-radius:\s*var\(--hr-radius-main\)/);
   assert.match(shellCss, /border-radius:\s*var\(--s38-main-radius\)/);
