@@ -350,6 +350,11 @@ function assertStaticContracts() {
   assert.doesNotMatch(shellCss, /\.statusbar::before/, "the status footer must not draw a fading top ruler");
   assert.match(shellCss, /@media \(min-width: 820px\)[\s\S]*\.shell-kpi-strip,\s*[\s\S]*\.connection-statuses\s*\{[^}]*align-self:\s*end[^}]*margin-block-end:\s*0\.3125rem/, "both desktop footer status clusters must share the same bottom alignment");
   assert.match(shellCss, /@media \(min-width: 820px\)[\s\S]*\.shell-kpi-strip\s*\{[^}]*margin-inline-start:\s*0\.9375rem/, "the selected-estate indicators must keep the approved 15px desktop inset");
+  assert.match(shellCss, /\.shell-kpi-strip small\s*\{[^}]*font-size:\s*0\.625rem[^}]*font-weight:\s*650[^}]*letter-spacing:\s*0\.075em[^}]*text-transform:\s*uppercase/, "footer labels must retain the refined micro-label hierarchy");
+  assert.match(shellCss, /\.shell-kpi-strip strong\s*\{[^}]*font-size:\s*var\(--hr-type-sm\)[^}]*font-weight:\s*760[^}]*font-variant-numeric:\s*lining-nums tabular-nums/, "footer values must remain stronger and numerically stable");
+  assert.match(shellCss, /\.shell-kpi-strip > span \+ span::before\s*\{[^}]*content:\s*"\/"[^}]*color:\s*color-mix/, "desktop footer groups must keep the restrained editorial separator");
+  assert.match(shellCss, /@media \(max-width: 819px\)[\s\S]*\.shell-kpi-strip > span \+ span::before\s*\{[^}]*content:\s*none/, "the editorial separator must disappear when footer groups stack");
+  assert.match(shellCss, /\.connection-statuses\s*\{[^}]*font-size:\s*0\.6875rem[^}]*font-weight:\s*620[^}]*letter-spacing:\s*0\.015em/, "connection labels must share the footer's refined typographic finish");
   assert.match(shellCss, /@media \(min-width: 820px\)[\s\S]*data-shell-sidebar-collapsed="true"\] \.user-strip \.avatar\s*\{[^}]*margin-inline-start:\s*0\.125rem[^}]*margin-block-end:\s*-0\.8125rem/, "the collapsed account mark must retain its approved desktop optical alignment");
   assert.doesNotMatch(source, /#0077ed|<svg|https?:\/\//i);
   assert.doesNotMatch(source, /ag-grid/i, "small dashboard and document surfaces must stay editorial");

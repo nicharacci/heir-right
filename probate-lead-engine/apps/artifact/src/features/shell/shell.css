@@ -935,25 +935,42 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--hr-space-5);
+  gap: var(--hr-space-6);
 }
 
 #workspace[data-s38-shell="case-journey"] .shell-kpi-strip > span {
   min-width: 0;
   display: inline-flex;
   align-items: baseline;
-  gap: var(--hr-space-2);
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-kpi-strip > span + span::before {
+  content: "/";
+  margin-inline: calc(var(--hr-space-3) * -1) 0.375rem;
+  color: color-mix(in srgb, var(--hr-text-subtle) 42%, transparent);
+  font-size: 0.625rem;
+  font-weight: 500;
+  line-height: 1;
 }
 
 #workspace[data-s38-shell="case-journey"] .shell-kpi-strip small {
   color: var(--hr-text-subtle);
-  font-size: var(--hr-type-xs);
+  font-size: 0.625rem;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
 }
 
 #workspace[data-s38-shell="case-journey"] .shell-kpi-strip strong {
   color: var(--hr-text);
-  font-size: var(--hr-type-xs);
-  font-weight: 720;
+  font-size: var(--hr-type-sm);
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: -0.012em;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 #workspace[data-s38-shell="case-journey"] .connection-statuses {
@@ -964,12 +981,17 @@
   color: var(--hr-text-muted);
   background: transparent;
   border: 0;
+  font-size: 0.6875rem;
+  font-weight: 620;
+  line-height: 1;
+  letter-spacing: 0.015em;
 }
 
 #workspace[data-s38-shell="case-journey"] .connection-chip {
   color: var(--hr-text-muted);
   background: transparent;
   border: 0;
+  white-space: nowrap;
 }
 
 @media (min-width: 820px) {
@@ -1486,11 +1508,16 @@ body.s38-rail-resizing {
 
   #workspace[data-s38-shell="case-journey"] .shell-kpi-strip > span {
     display: grid;
-    gap: 0;
+    gap: 0.1875rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip > span + span::before {
+    content: none;
   }
 
   #workspace[data-s38-shell="case-journey"] .shell-kpi-strip small {
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
   }
 
   #workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer,
