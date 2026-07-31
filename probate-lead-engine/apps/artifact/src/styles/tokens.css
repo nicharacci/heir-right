@@ -1,20 +1,20 @@
 :root {
   color-scheme: dark;
 
-  /* Graphite stays HeirRight's base; iOS blue owns interaction in both themes. */
-  --hr-canvas: #17181b;
-  --hr-chrome: #1c1d21;
-  --hr-surface: #22242a;
-  --hr-surface-raised: #292c33;
-  --hr-surface-selected: #273244;
-  --hr-text: #f5faff;
-  --hr-text-muted: #b5bfcc;
-  --hr-text-subtle: #8793a3;
-  --hr-accent: #0a84ff;
-  --hr-accent-strong: #64b5ff;
+  /* Near-black graphite carries the workspace; deep navy owns interaction. */
+  --hr-canvas: #05070a;
+  --hr-chrome: #080a0e;
+  --hr-surface: #0d1015;
+  --hr-surface-raised: #121720;
+  --hr-surface-selected: #0b1a2e;
+  --hr-text: #f2f6fb;
+  --hr-text-muted: #aab4c2;
+  --hr-text-subtle: #758292;
+  --hr-accent: #1d4f85;
+  --hr-accent-strong: #5f87b2;
   --hr-accent-ink: #ffffff;
-  --hr-focus: #64b5ff;
-  --hr-ruler: rgb(100 181 255 / 17%);
+  --hr-focus: #6e97c2;
+  --hr-ruler: rgb(64 98 140 / 18%);
   --hr-divider-line: linear-gradient(
     90deg,
     transparent 0%,
@@ -29,16 +29,44 @@
     var(--hr-ruler) 90%,
     transparent 100%
   );
-  --hr-control-boundary: #5d6f85;
-  --hr-action-surface: #191d24;
-  --hr-action-surface-hover: #202a37;
-  --hr-action-surface-active: #17263a;
-  --hr-action-ink: #f5faff;
-  --hr-action-border: rgb(10 132 255 / 42%);
-  --hr-action-border-strong: rgb(100 181 255 / 64%);
-  --hr-action-highlight: rgb(255 255 255 / 10%);
-  --hr-icon-glow: rgb(10 132 255 / 58%);
-  --hr-shadow: rgb(0 0 0 / 32%);
+  --hr-control-boundary: #476887;
+  --hr-action-surface: #080d14;
+  --hr-action-surface-hover: #0d1724;
+  --hr-action-surface-active: #0b1e36;
+  --hr-action-ink: #f4f8fd;
+  --hr-action-border: rgb(37 82 133 / 55%);
+  --hr-action-border-strong: rgb(91 135 182 / 62%);
+  --hr-action-highlight: rgb(174 206 235 / 13%);
+  --hr-action-pearl: radial-gradient(
+    ellipse 90% 180% at 50% -72%,
+    rgb(91 135 182 / 54%) 0%,
+    rgb(28 69 113 / 76%) 36%,
+    rgb(8 24 43 / 96%) 70%,
+    #060a10 100%
+  );
+  --hr-action-pearl-hover: radial-gradient(
+    ellipse 92% 190% at 50% -68%,
+    rgb(105 149 194 / 64%) 0%,
+    rgb(34 79 126 / 82%) 38%,
+    rgb(9 28 49 / 98%) 72%,
+    #060a10 100%
+  );
+  --hr-action-pearl-active: radial-gradient(
+    ellipse 88% 170% at 50% -78%,
+    rgb(64 103 148 / 48%) 0%,
+    rgb(20 55 94 / 82%) 40%,
+    #071321 74%,
+    #05080d 100%
+  );
+  --hr-pearl-selected: radial-gradient(
+    ellipse 95% 185% at 50% -82%,
+    rgb(58 96 142 / 38%) 0%,
+    rgb(18 45 78 / 58%) 42%,
+    #0a1320 78%,
+    #080c12 100%
+  );
+  --hr-icon-glow: rgb(44 91 141 / 42%);
+  --hr-shadow: rgb(0 0 0 / 46%);
   --hr-success: #7fd29a;
   --hr-warning: #e3bd65;
   --hr-danger: #f08b82;
@@ -110,20 +138,48 @@
   --hr-text: #292720;
   --hr-text-muted: #625d51;
   --hr-text-subtle: #696254;
-  --hr-accent: #007aff;
-  --hr-accent-strong: #005ecb;
+  --hr-accent: #194c80;
+  --hr-accent-strong: #123a65;
   --hr-accent-ink: #ffffff;
-  --hr-focus: #007aff;
+  --hr-focus: #245e96;
   --hr-ruler: rgb(41 39 32 / 18%);
-  --hr-control-boundary: #817868;
-  --hr-action-surface: #162132;
-  --hr-action-surface-hover: #1c2d45;
-  --hr-action-surface-active: #102746;
+  --hr-control-boundary: #645f56;
+  --hr-action-surface: #080d14;
+  --hr-action-surface-hover: #0d1724;
+  --hr-action-surface-active: #0b1e36;
   --hr-action-ink: #ffffff;
-  --hr-action-border: rgb(0 122 255 / 55%);
-  --hr-action-border-strong: rgb(0 94 203 / 72%);
-  --hr-action-highlight: rgb(255 255 255 / 12%);
-  --hr-icon-glow: rgb(0 122 255 / 52%);
+  --hr-action-border: rgb(25 76 128 / 62%);
+  --hr-action-border-strong: rgb(54 103 151 / 76%);
+  --hr-action-highlight: rgb(184 211 237 / 15%);
+  --hr-action-pearl: radial-gradient(
+    ellipse 90% 180% at 50% -72%,
+    rgb(98 143 188 / 62%) 0%,
+    rgb(30 74 119 / 82%) 36%,
+    #0a1b2f 70%,
+    #060a10 100%
+  );
+  --hr-action-pearl-hover: radial-gradient(
+    ellipse 92% 190% at 50% -68%,
+    rgb(116 158 199 / 70%) 0%,
+    rgb(38 86 134 / 88%) 38%,
+    #0b2038 72%,
+    #060a10 100%
+  );
+  --hr-action-pearl-active: radial-gradient(
+    ellipse 88% 170% at 50% -78%,
+    rgb(70 112 154 / 56%) 0%,
+    rgb(22 61 101 / 86%) 40%,
+    #08172a 74%,
+    #05080d 100%
+  );
+  --hr-pearl-selected: radial-gradient(
+    ellipse 95% 185% at 50% -82%,
+    rgb(51 91 136 / 30%) 0%,
+    rgb(22 57 94 / 44%) 42%,
+    #132033 78%,
+    #101720 100%
+  );
+  --hr-icon-glow: rgb(25 76 128 / 38%);
   --hr-shadow: rgb(50 43 31 / 16%);
   --hr-success: #2f7147;
   --hr-warning: #805d13;
