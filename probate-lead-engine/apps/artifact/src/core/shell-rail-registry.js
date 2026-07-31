@@ -1,7 +1,7 @@
 const rails = new Map();
 const subscribers = new Set();
 const storageKey = "heirright:contextual-rail:v1";
-const defaults = Object.freeze({ open: false, activeId: null, activeTab: null, width: 392, mobileSheet: false });
+const defaults = Object.freeze({ open: false, activeId: null, activeTab: null, width: 480, mobileSheet: false });
 let state = { ...defaults };
 let runtimeActive = false;
 
@@ -91,7 +91,7 @@ function normalizeRail(definition) {
   })) : [];
   if (!tabs.length || tabs.some((tab) => !tab.id)) throw new TypeError(`Rail ${id} requires named tabs.`);
   if (new Set(tabs.map((tab) => tab.id)).size !== tabs.length) throw new Error(`Rail ${id} contains duplicate tab ids.`);
-  const minWidth = clamp(definition.minWidth || 392, 280, 520);
+  const minWidth = clamp(definition.minWidth || 480, 280, 520);
   const maxWidth = clamp(definition.maxWidth || 552, minWidth, 640);
   return Object.freeze({
     id,
@@ -100,7 +100,7 @@ function normalizeRail(definition) {
     defaultTab: tabs.some((tab) => tab.id === definition.defaultTab) ? definition.defaultTab : tabs[0].id,
     minWidth,
     maxWidth,
-    defaultWidth: clamp(definition.defaultWidth || 392, minWidth, maxWidth),
+    defaultWidth: clamp(definition.defaultWidth || 480, minWidth, maxWidth),
     mobileSheet: definition.mobileSheet !== false,
     render: typeof definition.render === "function" ? definition.render : null,
     actions: definition.actions && typeof definition.actions === "object" ? Object.freeze({ ...definition.actions }) : Object.freeze({}),
@@ -173,7 +173,7 @@ function selectRailTab(tabId) {
 function setRailWidth(width) {
   requireActiveRuntime();
   const descriptor = descriptorFor();
-  const min = descriptor?.minWidth || 392;
+  const min = descriptor?.minWidth || 480;
   const max = descriptor?.maxWidth || 552;
   state = { ...state, width: clamp(width, min, max) };
   return emit();
