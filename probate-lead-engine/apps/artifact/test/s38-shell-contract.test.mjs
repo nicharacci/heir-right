@@ -269,8 +269,10 @@ function assertStaticContracts() {
   assert.match(railHost, /const RAIL_EXIT_MS = 320/);
   assert.match(railHost, /const RAIL_WIDTH_STEP = 16/);
   assert.match(railHost, /defaultWidth \|\| 392/);
-  assert.match(railHost, /minWidth \|\| 340/);
-  assert.match(railHost, /maxWidth \|\| 480/);
+  assert.match(railHost, /minWidth \|\| 392/);
+  assert.match(railHost, /maxWidth \|\| 552/);
+  assert.match(journeyRailSource, /minWidth:\s*392,[\s\S]*maxWidth:\s*552,[\s\S]*defaultWidth:\s*392/, "Case Journey must share the reviewed desktop rail bounds");
+  assert.match(docPrepRailSource, /minWidth:\s*392,[\s\S]*defaultWidth:\s*392,[\s\S]*maxWidth:\s*552/, "Document Prep must share the reviewed desktop rail bounds");
   assert.match(railHost, /matchMedia\("\(max-width: 819px\)"\)/);
   assert.match(railHost, /function syncRailTriggerSemantics\(state\)[\s\S]*aria-controls", "s38UnifiedRail"[\s\S]*aria-expanded", String\(Boolean\(state\.open\)\)[\s\S]*state\.mobileSheet[\s\S]*aria-haspopup", "dialog"[\s\S]*removeAttribute\("aria-haspopup"\)/, "the stable trigger must match desktop disclosure and mobile dialog semantics");
   assert.match(railHost, /railState = next;\s*syncRailTriggerSemantics\(next\);/, "rail state changes must keep the stable trigger's expanded semantics current");
@@ -328,6 +330,9 @@ function assertStaticContracts() {
   assert.match(mobileCss, /shell-theme-control button[\s\S]*width:\s*3rem[\s\S]*min-height:\s*2\.75rem[\s\S]*font-size:\s*var\(--hr-type-xs\)/, "mobile theme choices need readable 44px touch targets");
 
   assert.match(shellCss, /--s38-left-rail-collapsed:\s*3\.5rem/);
+  assert.match(shellCss, /--s38-rail-min-width:\s*24\.5rem[\s\S]*--s38-rail-max-width:\s*34\.5rem/, "the desktop contextual rail must keep the reviewed 392px minimum and allow a 552px maximum");
+  assert.match(shellCss, /\.shell-unified-rail-layer\[data-open="true"\]\s*\{[\s\S]*min-width:\s*var\(--s38-rail-min-width\)/, "an open desktop rail must enforce its shell-owned minimum width");
+  assert.match(shellCss, /@media \(max-width: 819px\)[\s\S]*\.shell-unified-rail\s*\{[\s\S]*width:\s*min\(100vw, 30rem\);[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100vw;/, "the desktop minimum must not force overflow in the mobile sheet");
   assert.match(shellCss, /--s38-main-radius:\s*var\(--hr-radius-main\)/);
   assert.match(shellCss, /border-radius:\s*var\(--s38-main-radius\)/);
   assert.match(shellCss, /var\(--hr-motion-feedback\)/);
