@@ -234,8 +234,8 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
     const descriptor = state.active;
     const width = Number(state.width || descriptor?.defaultWidth || 392);
     layer.style.setProperty("--s38-active-rail-width", `${width}px`);
-    resizer.setAttribute("aria-valuemin", String(descriptor?.minWidth || 340));
-    resizer.setAttribute("aria-valuemax", String(descriptor?.maxWidth || 480));
+    resizer.setAttribute("aria-valuemin", String(descriptor?.minWidth || 392));
+    resizer.setAttribute("aria-valuemax", String(descriptor?.maxWidth || 552));
     resizer.setAttribute("aria-valuenow", String(width));
     resizer.setAttribute("aria-valuetext", `${state.active?.label || "Context"} ${width} pixels wide`);
   }
@@ -559,8 +559,8 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
 
   function onResizeKeyDown(event) {
     const width = Number(railState.width || 392);
-    const min = Number(railState.active?.minWidth || 340);
-    const max = Number(railState.active?.maxWidth || 480);
+    const min = Number(railState.active?.minWidth || 392);
+    const max = Number(railState.active?.maxWidth || 552);
     const commands = {
       ArrowLeft: Math.min(max, width + RAIL_WIDTH_STEP),
       ArrowRight: Math.max(min, width - RAIL_WIDTH_STEP),
