@@ -51,6 +51,12 @@
   text-align: center;
 }
 
+.s40-docprep-empty > .s40-workbench {
+  width: 100%;
+  max-width: none;
+  text-align: initial;
+}
+
 .s40-docprep-empty h1,
 .s40-docprep-head h1,
 .s40-rail-head h2,
@@ -656,6 +662,11 @@
 
 .s40-docprep-type-strip span {
   padding: 0.45rem 0.6rem;
+}
+
+/* Doc Prep keeps its full canvas for the selector and artifact rail. */
+.app[data-active-view="dossiers"] .agent-drawer[data-drawer-mode="activity"] {
+  display: none !important;
 }
 
 .s40-docprep-type-strip [aria-current="true"] {

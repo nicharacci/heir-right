@@ -368,6 +368,24 @@
 #workspace[data-s38-shell="case-journey"] .shell-queue-table button span { color: var(--hr-text-muted); }
 #workspace[data-s38-shell="case-journey"] .shell-queue-empty { color: var(--hr-text-muted); text-align: center !important; }
 
+#workspace[data-s38-shell="case-journey"] .agent-drawer[data-drawer-mode="activity"] {
+  display: none !important;
+}
+
+#workspace[data-s38-shell="case-journey"] .app[data-active-view="admin"] .agent-drawer[data-drawer-mode="admin"] {
+  top: var(--s38-header-height);
+  right: 0;
+  bottom: calc(var(--s38-footer-height) + var(--s38-command-row-height));
+  width: min(30rem, 30vw);
+  max-height: none;
+  border-radius: var(--s38-main-radius) 0 0 var(--s38-main-radius);
+  transform: translate3d(18px, 0, 0);
+}
+
+#workspace[data-s38-shell="case-journey"] .app[data-active-view="admin"] .agent-drawer[data-drawer-mode="admin"][data-open="true"] {
+  transform: translate3d(0, 0, 0);
+}
+
 #workspace[data-s38-shell="case-journey"] .shell-route-title-line {
   min-width: 0;
   display: flex;
@@ -2025,4 +2043,21 @@ body[data-s38-shell="case-journey"] :is(
   color: var(--hr-text);
   background-color: var(--hr-surface-raised) !important;
   filter: none;
+}
+
+@media (max-width: 819px) {
+  #workspace[data-s38-shell="case-journey"] .app[data-active-view="admin"] .agent-drawer[data-drawer-mode="admin"] {
+    top: var(--s38-header-height);
+    right: 0;
+    bottom: var(--s38-footer-height);
+    left: 0;
+    width: auto;
+    max-height: none;
+    border-radius: 0;
+    transform: translate3d(100%, 0, 0);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .app[data-active-view="admin"] .agent-drawer[data-drawer-mode="admin"][data-open="true"] {
+    transform: translate3d(0, 0, 0);
+  }
 }

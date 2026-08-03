@@ -128,12 +128,19 @@ function createShellController() {
     const drawer = document.getElementById("agentDrawer");
     const list = document.getElementById("activityList");
     if (!drawer || !list || !bridge) return;
+    drawer.dataset.drawerMode = "queue";
+    drawer.setAttribute("aria-label", "Workflow queue");
     const snapshot = bridge.readState();
     const rows = queueRows(snapshot);
     const escape = (value) => bridge.escapeHtml(String(value ?? ""));
     const rowHtml = rows.length ? rows.map((row) => "<tr><td><button type=\"button\" data-shell-queue-estate=\"" + escape(row.id) + "\" data-shell-queue-view=\"" + (queueDrawerTab === "export" && row.workflowState === "exported" ? "export" : "dossiers") + "\"><strong>" + escape(row.title || "Estate file") + "<\/strong><span>" + escape(row.address || "Address unavailable") + "<\/span><\/button><\/td><td>" + escape(row.workflowLabel || ({ queued: "Queued for Doc Prep", processing: "Preparing packet", "completed-awaiting-export": "Ready for export", blocked: "Needs attention", exported: "Exported" }[row.workflowState] || "In review")) + "<\/td><td>" + escape(row.workflowBlocker || (row.workflowState === "completed-awaiting-export" ? "Verified report is ready for export." : "Workflow state updated.")) + "<\/td><\/tr>").join("") : "<tr><td colspan=\"3\" class=\"shell-queue-empty\">No estates are waiting in this queue.<\/td><\/tr>";
     drawer.querySelector(".drawer-title").textContent = "Workflow queue";
     drawer.querySelector(".drawer-head .eyebrow").textContent = "Queue";
+    const close = drawer.querySelector("#closeAgentDrawer");
+    if (close) {
+      close.setAttribute("aria-label", "Close workflow queue");
+      close.setAttribute("title", "Close workflow queue");
+    }
     list.innerHTML = "<div class=\"shell-queue-tabs hr-docprep-flow-switch beui-tabs\" role=\"tablist\" aria-label=\"Queue type\"><button class=\"beui-tabs-trigger\" type=\"button\" data-shell-queue-tab=\"docprep\" aria-selected=\"" + String(queueDrawerTab === "docprep") + "\">Doc Prep<\/button><button class=\"beui-tabs-trigger\" type=\"button\" data-shell-queue-tab=\"export\" aria-selected=\"" + String(queueDrawerTab === "export") + "\">Export<\/button><\/div><div class=\"shell-queue-table-wrap\"><table class=\"shell-queue-table\"><thead><tr><th>Estate<\/th><th>Status<\/th><th>Notification<\/th><\/tr><\/thead><tbody>" + rowHtml + "<\/tbody><\/table><\/div>";
   }
 

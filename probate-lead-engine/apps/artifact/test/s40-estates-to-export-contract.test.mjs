@@ -13,6 +13,8 @@ const estates = read("src/features/data-grid/estates-grid.js");
 const docPrepRegister = read("src/features/doc-prep/register.js");
 const docPrepView = read("src/features/doc-prep/s40-doc-prep-view.js");
 const docPrepCss = read("src/features/doc-prep/s40-doc-prep.css");
+const shellCss = read("src/features/shell/shell.css");
+const legacyCss = read("src/styles/legacy.css");
 const exportView = read("src/features/estate-export/export-view.js");
 const exportRegister = read("src/features/estate-export/register.js");
 
@@ -22,6 +24,11 @@ assert.doesNotMatch(nav.join(" "), /home|queue/i, "the primary loop must not exp
 assert.equal(nav[0], "find-estates");
 assert.match(html, /<section class="app" data-active-view="find-estates"/);
 assert.match(html, /data-view-panel="export"/);
+assert.match(html, /data-drawer-mode="activity"/);
+assert.match(shellCss, /agent-drawer\[data-drawer-mode="activity"\]/);
+assert.match(shellCss, /agent-drawer\[data-drawer-mode="admin"\]/);
+assert.ok(legacyCss.includes("grid-template-columns: minmax(0, 7fr) minmax(18rem, 3fr)"));
+assert.ok(legacyCss.includes("#adminView .admin-tall-grid > .loop-panel:nth-child(1) { display: none; }"));
 
 for (const state of ["active", "queued", "processing", "completed-awaiting-export", "exported", "blocked"]) {
   assert.match(legacy, new RegExp(`"${state}"`), `missing persisted lifecycle state: ${state}`);
@@ -60,6 +67,8 @@ assert.match(docPrepView, /iframe/);
 assert.match(docPrepView, /Verified internal PDF/);
 assert.match(docPrepView, /s40-stage-issue/);
 assert.match(docPrepCss, /grid-template-columns: minmax\(0, 30%\) minmax\(0, 70%\)/);
+assert.match(docPrepCss, /\.s40-docprep-empty > \.s40-workbench/);
+assert.match(docPrepCss, /max-width: none/);
 assert.match(docPrepCss, /@media \(max-width: 700px\)/);
 assert.match(docPrepCss, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(docPrepCss, /#researchRail/);

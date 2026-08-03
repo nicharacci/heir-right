@@ -3951,8 +3951,18 @@ function renderActivityDrawer() {
   list.querySelectorAll("[data-drawer-file-ticket]").forEach((button) => button.addEventListener("click", () => { const item = adminErrorItems().find((entry) => entry.id === button.dataset.drawerFileTicket); if (item) fileAdminLinearTicket({ title: `[HeirRight] ${item.title}`, message: item.copy, severity: item.severity === "blocked" ? "high" : "medium", source: "HeirRight Admin Error Log", actor: currentActorEmail(), context: item.payload }); }));
   const drawer = document.getElementById("agentDrawer");
   if (drawer) {
-    drawer.querySelector(".drawer-title").textContent = adminErrors ? "Error log" : "Review trail";
-    drawer.querySelector(".drawer-head .eyebrow").textContent = adminErrors ? "Admin" : "Activity";
+    const queueOpen = drawer.dataset.drawerMode === "queue" && drawer.dataset.open === "true";
+    if (!queueOpen) {
+      drawer.dataset.drawerMode = adminErrors ? "admin" : "activity";
+      drawer.setAttribute("aria-label", adminErrors ? "Admin error log" : "Workflow updates");
+      drawer.querySelector(".drawer-title").textContent = adminErrors ? "Error log" : "Workflow updates";
+      drawer.querySelector(".drawer-head .eyebrow").textContent = adminErrors ? "Admin" : "Workflow";
+      const close = drawer.querySelector("#closeAgentDrawer");
+      if (close) {
+        close.setAttribute("aria-label", adminErrors ? "Close error log" : "Close workflow updates");
+        close.setAttribute("title", adminErrors ? "Close error log" : "Close workflow updates");
+      }
+    }
   }
 }
 
@@ -4080,7 +4090,10 @@ function setActivityOpen(open) {
   state.activityOpen = open;
   const drawer = document.getElementById("agentDrawer");
   const toggle = document.getElementById("agentDrawerToggle");
-  if (drawer) drawer.dataset.open = open ? "true" : "false";
+  if (drawer) {
+    drawer.dataset.open = open ? "true" : "false";
+    drawer.setAttribute("aria-hidden", open ? "false" : "true");
+  }
   if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
   renderShellPanels();
 }
