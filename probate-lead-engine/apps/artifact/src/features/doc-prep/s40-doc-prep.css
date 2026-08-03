@@ -414,7 +414,166 @@
   margin-top: var(--hr-space-5);
   overflow: hidden;
   border: 1px solid var(--hr-ruler);
+  border-radius: var(--hr-radius-panel);
   background: var(--hr-chrome);
+}
+
+.s40-preview-viewport {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--hr-space-4);
+  background: rgb(48 48 48);
+  scrollbar-gutter: stable;
+}
+
+.s40-discovery-paper {
+  width: min(100%, 8.5in);
+  margin: 0 auto;
+  color: rgb(0 0 0);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11pt;
+  line-height: 1.45;
+}
+
+.s40-discovery-template-page {
+  box-sizing: border-box;
+  min-height: 11in;
+  padding: 0.82in 1in;
+  background: rgb(255 255 255);
+}
+
+.s40-discovery-title,
+.s40-discovery-subtitle {
+  margin: 0;
+  color: rgb(0 0 0);
+  font-size: 26pt;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.s40-discovery-date {
+  margin: 0 0 40pt;
+  font-size: 10pt;
+  text-align: center;
+}
+
+.s40-discovery-property {
+  width: 468pt;
+  max-width: 100%;
+  margin: 0 0 7pt;
+}
+
+.s40-discovery-value {
+  color: inherit;
+}
+
+.s40-discovery-pending {
+  color: rgb(110 118 129);
+}
+
+.s40-discovery-offer {
+  width: 332pt;
+  max-width: 100%;
+  margin: 0 0 25pt;
+  border-collapse: collapse;
+  font-size: 11pt;
+}
+
+.s40-discovery-offer th,
+.s40-discovery-offer td {
+  height: 16.5pt;
+  padding: 0 4pt;
+  border: 0.7pt solid rgb(17 17 17);
+  font-weight: 400;
+  text-align: center;
+}
+
+.s40-discovery-offer th,
+.s40-discovery-strong {
+  font-weight: 700 !important;
+}
+
+.s40-discovery-offer th:first-child,
+.s40-discovery-offer td:first-child {
+  width: 106pt;
+}
+
+.s40-discovery-offer th:nth-child(2),
+.s40-discovery-offer td:nth-child(2) {
+  width: 115pt;
+}
+
+.s40-discovery-offer th:nth-child(3),
+.s40-discovery-offer td:nth-child(3) {
+  width: 111pt;
+}
+
+.s40-discovery-offer-bar th {
+  background: rgb(67 171 214);
+  font-weight: 700;
+}
+
+.s40-discovery-offer-row.blue td:first-child {
+  background: rgb(19 163 216);
+}
+
+.s40-discovery-offer-row.yellow td:first-child {
+  background: rgb(255 192 0);
+}
+
+.s40-discovery-summary {
+  width: 468pt;
+  max-width: 100%;
+  margin: 0 0 28pt;
+}
+
+.s40-discovery-summary p,
+.s40-discovery-story p {
+  margin: 0 0 4pt;
+}
+
+.s40-discovery-story {
+  margin-top: 10px;
+}
+
+.s40-discovery-evidence {
+  margin-top: 18px !important;
+  line-height: 1.7 !important;
+}
+
+.s40-discovery-heirs h2 {
+  margin: 0.83em 0;
+  color: rgb(0 0 0);
+  font-size: 1.5em;
+  line-height: 1.2;
+}
+
+.s40-discovery-person {
+  margin-top: 28px;
+  page-break-inside: avoid;
+}
+
+.s40-discovery-person h3 {
+  margin: 0 0 4px;
+  color: rgb(0 0 0);
+  font-size: 16px;
+}
+
+.s40-discovery-person h4 {
+  margin: 24px 0 4px;
+  color: rgb(0 0 0);
+  font-size: 14px;
+}
+
+.s40-discovery-person p {
+  margin: 2px 0;
+}
+
+.s40-discovery-placeholder-person p {
+  color: rgb(110 118 129);
 }
 
 .s40-artifact-topline,
@@ -593,6 +752,21 @@
   .s40-artifact-empty,
   .s40-rail-empty {
     min-height: 21rem;
+  }
+
+  .s40-preview-viewport {
+    padding: var(--hr-space-3);
+  }
+
+  .s40-discovery-template-page {
+    min-height: auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .s40-discovery-title,
+  .s40-discovery-subtitle {
+    font-size: 1.6rem;
+    line-height: 1.25;
   }
 }
 

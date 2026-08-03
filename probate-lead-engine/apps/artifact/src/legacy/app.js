@@ -15722,6 +15722,112 @@ function publicEstateEvidenceGroups(row) {
   };
 }
 
+function publicDiscoveryPreview(row, dossier, workflow) {
+  if (!row || state.activeView !== "dossiers" || row.id !== state.selectedId) return null;
+  const report = dossier?.completedLeadReport ?? {};
+  const math = report?.offerMath ?? {};
+  const live = workflow?.state !== "queued";
+  const claim = (value, fallback = "") => live ? claimValue(value, fallback) : fallback;
+  const money = (value) => live ? moneyClaimValue(value, "") : "";
+  const percent = (value) => live ? percentClaimValue(value, "") : "";
+  const count = (value) => live ? countClaimValue(value, "Needs review") : "";
+  const title = cleanDisplayValue(
+    dossier?.summary?.estateName
+      || dossier?.property?.estateName?.value
+      || row.leadName
+      || row.title
+      || row.owner
+      || "Estate file",
+  );
+  const offerValues = {
+    "As-Is Value": ["", money(math.asIsValue)],
+    "Taxes Due": ["", money(math.taxesDue)],
+    "Liens": ["", money(math.liens)],
+    "Mortgages": ["", money(math.mortgages)],
+    "Selling Costs": ["", money(math.sellingCosts)],
+    "Probate Costs": ["", money(math.probateCosts)],
+    "Partition Costs": ["", money(math.partitionCosts)],
+    "Post Equity Value": ["", money(math.postEquityValue)],
+    "Amount per heir $$": ["", money(math.equityPerHeir)],
+    "# of heirs on board": ["", count(math.heirCount)],
+    "Profit": ["", money(math.profit)],
+    "Offer per heir": [percent(math.buyPercentage), money(math.offerAmount)],
+    "Min Profit": ["", money(math.minimumNetProfit)],
+  };
+  const offerRow = (label, tone = "normal") => {
+    const values = offerValues[label] ?? ["", ""];
+    return { label, percentage: values[0], total: values[1], tone };
+  };
+  const offerRows = [
+    offerRow("As-Is Value"),
+    offerRow("Taxes Due"),
+    offerRow("Liens"),
+    offerRow("Mortgages"),
+    offerRow("Selling Costs"),
+    offerRow("Probate Costs"),
+    offerRow("Partition Costs"),
+    offerRow("Post Equity Value"),
+    offerRow("Amount per heir $$"),
+    offerRow("# of heirs on board"),
+    offerRow("Profit"),
+    offerRow("Offer per heir"),
+    offerRow(""),
+    offerRow(""),
+    offerRow(""),
+    offerRow("Min Profit", "blue"),
+    offerRow("$100,000 Net", "yellow"),
+    offerRow("", "yellow"),
+    offerRow("", "yellow"),
+  ];
+  const rawContacts = live && Array.isArray(report.contactPlaceholders) && report.contactPlaceholders.length
+    ? report.contactPlaceholders
+    : live && Array.isArray(dossier?.familyTree?.hypothesis?.value?.nodes)
+      ? dossier.familyTree.hypothesis.value.nodes
+      : [];
+  const contacts = rawContacts.slice(0, 18).map((contact, index) => {
+    const addressHistory = Array.isArray(contact?.addressHistory)
+      ? contact.addressHistory
+      : Array.isArray(contact?.addresses)
+        ? contact.addresses.map((address) => ({ address }))
+        : [];
+    return {
+      name: cleanDisplayValue(contact?.name || "Possible heir " + (index + 1)),
+      relationship: cleanDisplayValue([displayStatus(contact?.role, "Heir/contact review"), contact?.interest].filter(Boolean).join(" - ")),
+      age: cleanDisplayValue(contact?.age || ""),
+      likelyCurrentAddress: cleanDisplayValue(contact?.likelyCurrentAddress || contact?.address || "Needs approved enrichment"),
+      addressHistory: addressHistory.slice(0, 4).map((item) => ({
+        address: cleanDisplayValue(item?.address || item?.value || "Needs approved enrichment"),
+        dates: cleanDisplayValue(item?.dates || item?.dateRange || "Dates need review"),
+      })),
+      phones: (Array.isArray(contact?.phones) ? contact.phones : []).slice(0, 4).map(cleanDisplayValue),
+      emails: (Array.isArray(contact?.emails) ? contact.emails : []).slice(0, 4).map(cleanDisplayValue),
+    };
+  });
+  return {
+    state: live ? "live" : "template",
+    title,
+    dateAdded: live ? formatPacketDate(dossier?.generatedAt || row.importedAt || row.updatedAt) : "",
+    propertyAddress: cleanDisplayValue(row.address || claim(dossier?.property?.address, "Needs review")),
+    sourceLink: live
+      ? cleanDisplayValue(dossier?.property?.officialParcelUrl?.value || dossier?.property?.officialParcelUrl || dossier?.property?.parcelUrl?.value || dossier?.property?.parcelUrl || "Needs review")
+      : "",
+    owner: claim(dossier?.property?.ownerName, "Needs review"),
+    folio: claim(dossier?.property?.parcelId, "Needs review"),
+    deedOrBookPage: claim(dossier?.deedHistory?.orBookPage, "Needs review"),
+    taxReview: claim(dossier?.taxHistory?.sourceStatus, "Needs review"),
+    probateReview: claim(dossier?.probateDocket?.sourceStatus, "Needs review"),
+    contactEnrichment: live
+      ? contacts.length ? contacts.length + " contact review row" + (contacts.length === 1 ? "" : "s") : "Contact enrichment still needs review."
+      : "",
+    dateOfBirth: claim(dossier?.marriageDeathIndicators?.dateOfBirth, "Needs review"),
+    dateOfDeath: claim(dossier?.marriageDeathIndicators?.dateOfDeath, "Needs review"),
+    obituary: live && dossier?.marriageDeathIndicators?.obituaryLink?.value ? "View source" : "Needs review",
+    backStory: live ? cleanDisplayValue(report.backstory || dossier?.narrative || "") : "",
+    contacts,
+    offerRows,
+  };
+}
+
 function publicEstateRow(row) {
   if (!row) return null;
   const dossier = dossierForRow(row);
@@ -15778,6 +15884,7 @@ function publicEstateRow(row) {
     exportedAt: workflow.exportedAt,
     updatedAt: row.updatedAt || dossier?.updatedAt || workflow.updatedAt || "",
     packetApproved: Boolean(workflow.artifact && s40EnsurePacketArtifact(row) && currentPacketApproval(row, "discovery")),
+    discoveryPreview: publicDiscoveryPreview(row, dossier, workflow),
   };
 }
 
@@ -16450,6 +16557,7 @@ async function runS40DocPrep(estateIds = []) {
       await s40PersistWorkflowOrThrow();
       s40StageUpdate(row, "source-review", "active");
       await hydratePersistedDiscoveryFile(row);
+      renderCurrentLoopView();
       if (!s40SourceEvidenceReady(row)) {
         throw new Error("Source evidence needs verified readback before Doc Prep can continue.");
       }
