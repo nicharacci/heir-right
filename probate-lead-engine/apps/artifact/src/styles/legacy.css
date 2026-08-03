@@ -4255,6 +4255,7 @@
 
     .help-demo-section-head h3 {
       margin: 0;
+      padding-bottom: 10px;
       color: var(--text);
       font-size: 14px;
       line-height: 1.2;
