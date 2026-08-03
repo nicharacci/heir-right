@@ -66,6 +66,26 @@ function discoveryPreviewParagraphs(bridge, value, fallback) {
   return (lines.length ? lines : [fallback]).map((line) => "<p>" + escape(bridge, line) + "</p>").join("");
 }
 
+function discoveryPreviewLink(bridge, label, url, fallback = "Needs review") {
+  const candidate = String(url || "").trim();
+  if (!candidate) return discoveryPreviewValue(bridge, "", fallback);
+  return "<a class=\"s40-discovery-source-link\" href=\"" + escape(bridge, candidate) + "\" target=\"_blank\" rel=\"noopener noreferrer\">" + escape(bridge, label) + "</a>";
+}
+
+function renderPossibleHeirsTable(preview, bridge) {
+  const contacts = Array.isArray(preview.contacts) ? preview.contacts : [];
+  const rowCount = Math.max(3, contacts.length);
+  return "<section class=\"s40-discovery-heirs\"><h2>Possible Heirs</h2><table class=\"s40-discovery-heirs-table\"><thead><tr><th>Name</th><th>Relationship</th><th>Age</th><th>Likely current address</th></tr></thead><tbody>"
+    + Array.from({ length: rowCount }, (_, index) => {
+      const contact = contacts[index] || {};
+      return "<tr><td>" + discoveryPreviewValue(bridge, contact.name, "") + "</td><td>"
+        + discoveryPreviewValue(bridge, contact.relationship, "") + "</td><td>"
+        + discoveryPreviewValue(bridge, contact.age, "") + "</td><td>"
+        + discoveryPreviewValue(bridge, contact.likelyCurrentAddress, "") + "</td></tr>";
+    }).join("")
+    + "</tbody></table></section>";
+}
+
 function renderDiscoveryOfferTable(preview, bridge) {
   const rows = (Array.isArray(preview.offerRows) && preview.offerRows.length
     ? preview.offerRows
@@ -126,9 +146,7 @@ function renderDiscoveryTemplatePreview(row, bridge) {
   const contacts = Array.isArray(preview.contacts) ? preview.contacts : [];
   const contactMarkup = contacts.length
     ? contacts.map((contact, index) => renderDiscoveryContact(contact, bridge, index)).join("")
-    : "<section class=\"s40-discovery-person s40-discovery-placeholder-person\"><h3>1. "
-      + discoveryPreviewValue(bridge, "", "Possible heir")
-      + "</h3><p>Family-tree contact review will appear here after Discovery evidence is accepted.</p></section>";
+    : "";
   return "<div class=\"s40-preview-viewport\" data-preview-state=\"" + (live ? "live" : "template") + "\" aria-label=\"" + escape(bridge, live ? "Live Discovery packet preview" : "Discovery packet template") + "\">"
     + "<div class=\"s40-discovery-paper\">"
     + "<main class=\"s40-discovery-template-page\">"
@@ -146,8 +164,11 @@ function renderDiscoveryTemplatePreview(row, bridge) {
     + "</section>"
     + "<section class=\"s40-discovery-story\"><p><strong>Back Story:</strong></p>"
     + discoveryPreviewParagraphs(bridge, preview.backStory, live ? "Back Story is filling from reviewed evidence." : "Back Story will fill after Discovery starts.")
-    + "<p class=\"s40-discovery-evidence\"><strong>Source evidence:</strong> " + discoveryPreviewValue(bridge, preview.sourceLink, "Needs review") + "</p></section>"
-    + "<section class=\"s40-discovery-heirs\"><h2>Heirs:</h2>" + contactMarkup + "</section>"
+    + "<p class=\"s40-discovery-evidence\"><strong>Property tax website:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.propertyTaxUrl || preview.sourceLink) + "</p>"
+    + "<p class=\"s40-discovery-evidence\"><strong>Tax receipt copy:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.taxReceiptUrl) + "</p>"
+    + "<p class=\"s40-discovery-evidence\"><strong>Obituary:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.obituaryUrl) + "</p></section>"
+    + renderPossibleHeirsTable(preview, bridge)
+    + (contactMarkup ? "<section class=\"s40-discovery-contact-detail\"><h2>Heir detail review</h2>" + contactMarkup + "</section>" : "")
     + "</main></div></div>";
 }
 function stageMaterial(row) {
@@ -170,6 +191,16 @@ function verifiedArtifactHref(artifact) {
   }
 }
 
+function verifiedArtifactDownloadName(row) {
+  const sourceName = String(row?.workflowArtifact?.fileName || "").trim();
+  if (sourceName) return sourceName.toLowerCase().endsWith(".pdf") ? sourceName : `${sourceName}.pdf`;
+  const title = String(row?.title || "estate-file")
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase() || "estate-file";
+  return `${title}-discovery-packet.pdf`;
+}
+
 function renderStageStrip(row, bridge) {
   if (!stageMaterial(row)) return "";
   const stages = Array.isArray(row?.workflowStages) ? row.workflowStages : [];
@@ -189,13 +220,47 @@ function renderStageStrip(row, bridge) {
   `;
 }
 
+function streamStatusLabel(row) {
+  const state = workflowState(row);
+  if (state === "processing") {
+    const activeStage = (Array.isArray(row?.workflowStages) ? row.workflowStages : [])
+      .find((stage) => stage.status === "active");
+    const label = stageLabels[activeStage?.id] || activeStage?.label || "Packet stream";
+    return "Live - " + label;
+  }
+  if (state === "completed-awaiting-export") return "Ready for export";
+  if (state === "blocked") return "Blocked - retry available";
+  if (state === "exported") return "Exported";
+  return "Queued";
+}
+
+function renderArtifactStreamSwitcher(rows, current, bridge) {
+  if (!Array.isArray(rows) || rows.length < 2) return "";
+  return "<nav class=\"s40-stream-switcher\" aria-label=\"Live report streams\">"
+    + "<span class=\"s40-stream-switcher-label\">Live report streams</span>"
+    + "<div class=\"s40-stream-switcher-list\">"
+    + rows.map((row) => {
+      const active = String(row.id) === String(current?.id || "");
+      const title = row.title || "Estate file";
+      const status = streamStatusLabel(row);
+      return "<button type=\"button\" class=\"s40-stream-switch\" data-s40-stream-estate=\""
+        + escape(bridge, row.id)
+        + "\" data-s40-stream-action=\"select-estate"
+        + "\" aria-pressed=\"" + (active ? "true" : "false")
+        + "\" aria-label=\"Switch to " + escape(bridge, title) + " report stream\">"
+        + "<strong>" + escape(bridge, title) + "</strong>"
+        + "<span>" + escape(bridge, status) + "</span></button>";
+    }).join("")
+    + "</div></nav>";
+}
+
 function renderEstateSelector(rows) {
   return rows.length
     ? `<div class="s40-selector-grid hr-community-grid" data-community-grid="docprep" data-grid-label="Queued estates" aria-label="Queued estates"></div>`
     : `<div class="s40-empty-selector"><strong>No estates are queued.</strong><span>Return to Estates to choose the next files for Doc Prep.</span><button type="button" class="s40-link-button" data-open-estates>Open Estates</button></div>`;
 }
 
-function renderArtifactRail(row, bridge) {
+function renderArtifactRail(row, bridge, rows = []) {
   if (!row) {
     return `<div class="s40-rail-empty"><strong>Select a queued estate</strong><span>The selected packet and its stage evidence will appear here.</span></div>`;
   }
@@ -208,7 +273,7 @@ function renderArtifactRail(row, bridge) {
   const previewStateLabel = hasVerifiedArtifact ? "Verified internal PDF" : preview.state === "live" ? "Live Discovery packet" : "Discovery packet template";
   const packet = hasVerifiedArtifact
     ? `<div class="s40-pdf-frame"><iframe src="${escape(bridge, artifactHref)}" title="Verified internal PDF for ${escape(bridge, row.title)}" loading="lazy"></iframe></div>
-       <div class="s40-artifact-meta"><span>Verified internal PDF</span><a href="${escape(bridge, artifactHref)}" target="_blank" rel="noopener noreferrer">Open PDF</a></div>`
+       <div class="s40-artifact-meta"><span>Verified internal PDF</span><span class="s40-artifact-actions"><a href="${escape(bridge, artifactHref)}" target="_blank" rel="noopener noreferrer">Open PDF</a><a href="${escape(bridge, artifactHref)}" download="${escape(bridge, verifiedArtifactDownloadName(row))}" data-s40-download>Download PDF</a></span></div>`
     : renderDiscoveryTemplatePreview({ ...row, discoveryPreview: preview }, bridge);
   const approvalControl = hasVerifiedArtifact && workflow !== "exported"
     ? `<div class="s40-approval-bar" data-state="${packetApproved ? "approved" : "pending"}">
@@ -216,14 +281,18 @@ function renderArtifactRail(row, bridge) {
         ${packetApproved ? "" : `<button type="button" class="s40-primary-button" data-s40-approve data-approve-packet data-estate-id="${escape(bridge, row.id)}">Approve packet for export</button>`}
       </div>`
     : "";
-  return `
+  return renderArtifactStreamSwitcher(rows, row, bridge) + `
     <header class="s40-rail-head">
       <div><p class="s40-rail-kicker">Current estate</p><h2>${escape(bridge, row.title || "Estate file")}</h2><p>${escape(bridge, row.address || "Address unavailable")}</p></div>
-      <span class="s40-state-label" data-state="${escape(bridge, workflow)}">${escape(bridge, workflowLabel(row))}</span>
+      <div class="s40-rail-head-commands">
+        <button type="button" class="s40-secondary-button" data-s40-idi-upload aria-label="Upload IDI Report PDF for ${escape(bridge, row.title || "this estate")}">Upload IDI Report PDF</button>
+        <input type="file" hidden data-s40-idi-file accept=".pdf,application/pdf" aria-label="Choose an IDI Report PDF">
+        <span class="s40-state-label" data-state="${escape(bridge, workflow)}">${escape(bridge, workflowLabel(row))}</span>
+      </div>
     </header>
     ${blocker ? `<p class="s40-blocker" role="alert">${escape(bridge, blocker)}</p>` : ""}
     ${renderStageStrip(row, bridge)}
-    <section class="s40-artifact-surface" data-preview-state="${escape(bridge, hasVerifiedArtifact ? "verified" : preview.state || "template")}" aria-label="${escape(bridge, hasVerifiedArtifact ? "Verified packet preview" : previewStateLabel)}">
+    <section class="s40-artifact-surface" data-s40-stream-window="${escape(bridge, row.id)}" data-preview-state="${escape(bridge, hasVerifiedArtifact ? "verified" : preview.state || "template")}" aria-live="polite" aria-label="${escape(bridge, hasVerifiedArtifact ? "Verified packet preview" : previewStateLabel)}">
       <div class="s40-artifact-topline"><span>Artifact rail</span><span>${escape(bridge, hasVerifiedArtifact ? row.workflowArtifact?.fileName || "Internal packet" : previewStateLabel)}</span></div>
       ${packet}
       ${hasVerifiedArtifact ? "" : `<div class="s40-artifact-meta"><span>${escape(bridge, previewStateLabel)}</span><span>Review-only until verified PDF readback</span></div>`}
@@ -287,7 +356,7 @@ function renderS40DocPrepView({ bridge }) {
   const runnable = selected.filter(runEligible);
   const countLabel = selected.length === 1 ? "1 estate selected" : `${selected.length} estates selected`;
   return `
-    <section class="s40-docprep" data-feature="s40-doc-prep">
+    <section class="s40-docprep" data-feature="s40-doc-prep" data-estate-id="${escape(bridge, current?.id || "")}">
       <header class="s40-docprep-head">
         <div><p class="s40-rail-kicker">Doc Prep workbench</p><h1>Review packets, then hand off</h1><p>${escape(bridge, `${rows.length} estate${rows.length === 1 ? "" : "s"} in the shared workflow.`)}</p></div>
         <div class="s40-docprep-command"><span aria-live="polite" data-s40-selected-count>${escape(bridge, countLabel)}</span><button type="button" class="s40-primary-button" data-s40-run data-run-docprep ${runnable.length ? "" : "disabled"}>${runnable.length > 1 ? `Run Doc Prep for ${runnable.length}` : "Run Doc Prep"}</button></div>
@@ -298,7 +367,7 @@ function renderS40DocPrepView({ bridge }) {
           ${renderEstateSelector(rows)}
         </aside>
         <article class="s40-artifact-rail" aria-label="Doc Prep artifact rail">
-          ${renderArtifactRail(current, bridge)}
+          ${renderArtifactRail(current, bridge, rows)}
         </article>
       </div>
       ${renderExportQueue(snapshot, bridge)}
@@ -377,8 +446,29 @@ function mountS40DocPrepView(root, bridge) {
     });
   }
   updateRunControl(rows);
+  const idiUpload = root?.querySelector?.("[data-s40-idi-upload]");
+  const idiFile = root?.querySelector?.("[data-s40-idi-file]");
+  idiUpload?.addEventListener("click", () => idiFile?.click());
+  idiFile?.addEventListener("change", () => {
+    const file = idiFile.files?.[0] || null;
+    if (!file) return;
+    if (file.type !== "application/pdf" && !String(file.name || "").toLowerCase().endsWith(".pdf")) {
+      bridge.emit("IDI Report upload blocked", "Choose a PDF exported from the approved IDI report workflow.", "blocked");
+      idiFile.value = "";
+      return;
+    }
+    void dispatchAction(bridge, "s40-upload-idi-report", { estateId: root.dataset.estateId, file }, idiUpload)
+      .finally(() => {
+        if (idiFile.isConnected) idiFile.value = "";
+      });
+  });
   root?.querySelectorAll?.("[data-open-estates]").forEach((control) => {
     control.addEventListener("click", () => bridge.navigate("find-estates"));
+  });
+  root?.querySelectorAll?.("[data-s40-stream-action]").forEach((control) => {
+    control.addEventListener("click", (event) => {
+      void dispatchAction(bridge, "select-estate", { estateId: control.dataset.s40StreamEstate }, event.currentTarget);
+    });
   });
   root?.querySelector("[data-s40-run], [data-run-docprep]")?.addEventListener("click", (event) => {
     void dispatchAction(bridge, "s40-run-docprep", { estateIds: [...selectedEstateIds] }, event.currentTarget);

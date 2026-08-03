@@ -137,6 +137,8 @@ const state = {
   outreachNotification: null,
   outreachSideTab: "variables",
   settingsTab: "integrations",
+  agenticModelPreference: "dynamic-free-catalog",
+  agenticModelStatus: { loaded: false, available: false, provider: "nous", model: null, freeModels: [], route: "unavailable" },
   documentAutomationStates: {},
   docPrepRunStates: {},
   docPrepStreamStates: {},
@@ -193,6 +195,7 @@ const estateWorkflowStateKey = "heirright:estate-workflow-state";
 const columnOrderStateKey = "heirright:column-order-state";
 const searchHistoryStateKey = "heirright:search-history-state";
 const dripSettingsKey = "heirright:drip-settings";
+const agenticModelPreferenceKey = "heirright:agentic-model-preference";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
 const walkthroughStateKey = "heirright:guided-walkthrough-seen";
 let walkthroughAutoTimer = null;
@@ -6900,7 +6903,7 @@ async function saveDocumentFile(docId, file = null, source = "file") {
   closeDocumentActionModal();
 }
 
-async function importIdiReportFile(file, row = selectedRow(), { adminOverrideReason = "" } = {}) {
+async function importIdiReportFile(file, row = selectedRow(), { adminOverrideReason = "", startDiscovery = true } = {}) {
   if (!row || !file) return;
   const stopBlocker = canonicalStopBlocker(row, "IDI report upload");
   if (stopBlocker) {
@@ -6984,12 +6987,14 @@ async function importIdiReportFile(file, row = selectedRow(), { adminOverrideRea
     };
     persistDocumentFiles();
     const autoAccepted = state.idiImports[key].candidates.filter((candidate) => candidate.reviewStatus === "auto_accepted_high_confidence").length;
-    document.getElementById("topStatus").textContent = `IDI report verified. Starting Discovery for ${docPrepEstateLabel(row)}...`;
+    document.getElementById("topStatus").textContent = startDiscovery
+      ? `IDI report verified. Starting Discovery for ${docPrepEstateLabel(row)}...`
+      : `IDI report verified for ${docPrepEstateLabel(row)}. Ready to run Discovery.`;
     addShellEvent(
       "IDI report ready",
       autoAccepted
-        ? `${autoAccepted} high-confidence contact${autoAccepted === 1 ? " was" : "s were"} recorded with report locations. Discovery is running for this estate.`
-        : "The report passed artifact readback and source extraction. Discovery is running, while contact review stays visible.",
+        ? `${autoAccepted} high-confidence contact${autoAccepted === 1 ? " was" : "s were"} recorded with report locations. ${startDiscovery ? "Discovery is running for this estate." : "The estate is ready for Discovery."}`
+        : `The report passed artifact readback and source extraction. ${startDiscovery ? "Discovery is running, while contact review stays visible." : "The estate is ready for Discovery."}`,
       autoAccepted ? "ready" : "review",
       true,
       { row, source: "IDI report upload" }
@@ -7007,6 +7012,7 @@ async function importIdiReportFile(file, row = selectedRow(), { adminOverrideRea
     return;
   }
   rerenderAssetDiscoverySurface();
+  if (!startDiscovery) return;
   if (docPrepMainRunActive(row, "discovery")) stopFullDiscoveryRun(row, "discovery", { silent: true });
   await runFullDiscovery(row, null, "discovery", { correctionNote: replacementReason });
 }
@@ -7245,6 +7251,11 @@ function renderCrmImportModal() {
                 <textarea id="crmImportBatchRows" name="batchRows" required placeholder="Estate name | Owner / seller | Property address | County | Folio / parcel | CRM row ID"></textarea>
               </div>
               <div class="field full">
+                <label for="crmImportCsvFile">Load a CSV file</label>
+                <input id="crmImportCsvFile" type="file" accept=".csv,text/csv" aria-describedby="crmImportCsvFileNote">
+                <p id="crmImportCsvFileNote" class="field-note">Semicolon exports with First Name, Last Name, Address, City, State, and Zip Code are mapped into review-only estate records. Nothing is written back to the source.</p>
+              </div>
+              <div class="field full">
                 <label for="crmImportUrl">Batch source URL</label>
                 <input id="crmImportUrl" name="sourceUrl" autocomplete="off" placeholder="Optional Podio view, Sheet URL, or CSV source">
               </div>
@@ -7310,13 +7321,84 @@ function renderCrmImportModal() {
     event.preventDefault();
     submitCrmImport(new FormData(event.currentTarget));
   });
+  mount.querySelector("#crmImportCsvFile")?.addEventListener("change", async (event) => {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const rows = mount.querySelector("#crmImportBatchRows");
+      if (rows) {
+        rows.value = text;
+        rows.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      const sourceUrl = mount.querySelector("#crmImportUrl");
+      if (sourceUrl && !sourceUrl.value) sourceUrl.value = file.name;
+      document.getElementById("topStatus").textContent = `${file.name} loaded. Review the rows, then import the batch.`;
+    } catch {
+      document.getElementById("topStatus").textContent = "That CSV could not be read. Choose a UTF-8 CSV file and try again.";
+    }
+  });
   requestAnimationFrame(() => mount.querySelector(isBatch ? "#crmImportBatchRows" : "#crmImportEstate")?.focus());
 }
 
 function splitCrmBatchLine(line) {
-  if (line.includes("|")) return line.split("|").map((part) => part.trim());
-  if (line.includes("\t")) return line.split("\t").map((part) => part.trim());
-  return line.split(",").map((part) => part.trim());
+  const raw = String(line || "");
+  const delimiter = raw.includes("|") ? "|" : raw.includes("\t") ? "\t" : raw.includes(";") ? ";" : ",";
+  const parts = [];
+  let current = "";
+  let quoted = false;
+  for (let index = 0; index < raw.length; index += 1) {
+    const character = raw[index];
+    const next = raw[index + 1];
+    if (character === '"' && quoted && next === '"') {
+      current += '"';
+      index += 1;
+      continue;
+    }
+    if (character === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (character === delimiter && !quoted) {
+      parts.push(cleanCrmImportCell(current));
+      current = "";
+      continue;
+    }
+    current += character;
+  }
+  parts.push(cleanCrmImportCell(current));
+  return parts;
+}
+
+function cleanCrmImportCell(value) {
+  return String(value ?? "")
+    .replace(/\uFFFD/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function csvImportItem(line, index, sourceUrl, notes) {
+  const parts = splitCrmBatchLine(line);
+  const header = parts.slice(0, 2).join(" ").toLowerCase();
+  if (/first\s+name/.test(header) || /last\s+name/.test(header)) return null;
+  if (parts.length < 6 || !line.includes(";")) return undefined;
+  const [firstName, lastName, address, city, stateCode, zipCode] = parts;
+  const ownerName = cleanCrmImportCell([firstName, lastName].filter(Boolean).join(" ")) || `Imported estate ${index + 1}`;
+  const estateName = /^estate\s+of\b/i.test(ownerName) ? ownerName : `Estate of ${ownerName}`;
+  const locality = [city, stateCode].filter(Boolean).join(", ");
+  const propertyAddress = [address, locality, zipCode].filter(Boolean).join(", ").replace(/,\s*,/g, ",");
+  return {
+    provider: "csv",
+    estateName,
+    ownerName,
+    propertyAddress: propertyAddress || "Address needs review",
+    county: /^(fl|florida)$/i.test(stateCode) ? "miami-dade" : "County needs review",
+    parcelId: "Folio needs review",
+    sourceRecordId: `csv-${index + 1}`,
+    sourceUrl,
+    notes
+  };
 }
 
 function batchImportItems(formData) {
@@ -7327,8 +7409,11 @@ function batchImportItems(formData) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .slice(0, 40);
+    .slice(0, 200);
   return lines.map((line, index) => {
+    const importedCsvItem = provider === "csv" ? csvImportItem(line, index, sourceUrl, notes) : undefined;
+    if (importedCsvItem) return normalizeCrmImport(importedCsvItem);
+    if (importedCsvItem === null) return null;
     const [estateName, ownerName, propertyAddress, county, parcelId, sourceRecordId] = splitCrmBatchLine(line);
     return normalizeCrmImport({
       provider,
@@ -7341,7 +7426,7 @@ function batchImportItems(formData) {
       sourceUrl,
       notes
     });
-  });
+  }).filter(Boolean);
 }
 
 function submitBatchCrmImport(formData) {
@@ -7354,7 +7439,7 @@ function submitBatchCrmImport(formData) {
   state.crmImports = [
     ...imports,
     ...state.crmImports.filter((item) => !ids.has(item.id))
-  ].slice(0, 40);
+  ].slice(0, 200);
   imports.map(crmImportRow).forEach(seedImportedDealStatus);
   persistDealStatuses();
   persistCrmImports(`${imports.length} CRM estates imported`);
@@ -7385,7 +7470,7 @@ function submitCrmImport(formData) {
     return;
   }
   const imported = normalizeCrmImport(Object.fromEntries(formData.entries()));
-  state.crmImports = [imported, ...state.crmImports.filter((item) => item.id !== imported.id)].slice(0, 40);
+  state.crmImports = [imported, ...state.crmImports.filter((item) => item.id !== imported.id)].slice(0, 200);
   const importedRow = crmImportRow(imported);
   seedImportedDealStatus(importedRow);
   persistDealStatuses();
@@ -11777,6 +11862,10 @@ function renderAccessSettingsPanel() {
 }
 
 function renderIntegrationSettingsPanel() {
+  const modelStatus = state.agenticModelStatus || {};
+  const freeModels = Array.isArray(modelStatus.freeModels) ? modelStatus.freeModels : [];
+  const options = ["dynamic-free-catalog", ...freeModels.filter((model) => model !== "dynamic-free-catalog")];
+  const selectedModel = options.includes(state.agenticModelPreference) ? state.agenticModelPreference : "dynamic-free-catalog";
   return `
     ${settingsSectionShell("Integration status", "Workspace", "Reconnect / Review setup", `
       <p class="copy">Connector setup, approval, and readback status live here so Batch Queue and Outreach show only deal-work blockers.</p>
@@ -11793,6 +11882,22 @@ function renderIntegrationSettingsPanel() {
         ${integrationOnboardingCardHtml("leads")}
         ${integrationOnboardingCardHtml("resend")}
         ${integrationOnboardingCardHtml("sms")}
+      </div>
+    `)}
+    ${settingsSectionShell("Agentic writing", "Nous Portal", modelStatus.available ? "Automatic free route" : "Review only", `
+      <div class="settings-control-grid">
+        <article class="settings-control-card" data-agentic-model-card>
+          <strong>Back Story formatter</strong>
+          <span>HeirRight chooses the first verified zero-cost text model from the Nous catalog automatically. This setting stays in Settings; Doc Prep only receives the reviewed writing result.</span>
+          <div class="settings-field-grid">
+            <div class="settings-field"><label for="settingsAgenticModel">Free model</label><select id="settingsAgenticModel" data-agentic-model>${options.map((model) => `<option value="${escapeHtml(model)}" ${model === selectedModel ? "selected" : ""}>${escapeHtml(model === "dynamic-free-catalog" ? "Automatic free model" : model)}</option>`).join("")}</select></div>
+            <div class="settings-field"><label>Route</label><code>${escapeHtml(modelStatus.available ? "Nous Portal automatic selection" : "Reviewed report formatting")}</code></div>
+          </div>
+          <ul class="settings-control-list">
+            <li data-state="${modelStatus.available ? "ready" : "review"}">${escapeHtml(modelStatus.available ? `Automatic selection is ready${modelStatus.model ? `: ${modelStatus.model}` : ""}.` : "The catalog is not available in this environment; reviewed evidence synthesis remains available.")}</li>
+            <li data-state="review">Generated Back Story text remains review-required and cannot authorize export, outreach, or legal conclusions.</li>
+          </ul>
+        </article>
       </div>
     `)}
     ${integrationStatusRowsHtml()}
@@ -12029,6 +12134,7 @@ function renderSettingsView() {
   if (!target) return;
   const tab = normalizedSettingsTab();
   state.settingsTab = tab;
+  if (tab === "integrations" && !state.agenticModelStatus?.loaded) void loadAgenticModelStatus({ rerender: true });
   target.innerHTML = `
     <div class="settings-center-shell">
       <section class="loop-panel full settings-unified-card">
@@ -12088,6 +12194,14 @@ function renderSettingsView() {
       addShellEvent(refreshed ? "Integration status refreshed" : "Integration status needs retry", refreshed ? "The latest saved integration status is visible." : "The last saved integration status is still shown. Try again when the connection is available.", refreshed ? "review" : "blocked", false);
       renderSettingsView();
     });
+  });
+  target.querySelector("[data-agentic-model]")?.addEventListener("change", (event) => {
+    const value = String(event.target.value || "dynamic-free-catalog");
+    const available = value === "dynamic-free-catalog" || state.agenticModelStatus?.freeModels?.includes(value);
+    if (!available) return;
+    state.agenticModelPreference = value;
+    storageSetItem(agenticModelPreferenceKey, value, { sync: false });
+    addShellEvent("Agentic model preference saved", value === "dynamic-free-catalog" ? "Nous Portal will choose the first verified free text model automatically." : "The selected verified free text model will be used for review-only report formatting.", "review", false);
   });
   target.querySelectorAll("[data-settings-account-menu]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -12222,7 +12336,10 @@ function renderCurrentLoopView() {
     activeView: state.activeView,
     mount: document.querySelector(`[data-view-panel="${state.activeView}"]`),
   });
-  if (replacement !== null && replacement !== undefined) {
+  const hasReplacement = typeof replacement === "string"
+    ? replacement.trim().length > 0
+    : replacement !== null && replacement !== undefined;
+  if (hasReplacement) {
     const mount = document.querySelector(`[data-view-panel="${state.activeView}"]`);
     if (mount && typeof replacement === "string") mount.innerHTML = replacement;
     runLifecycle("afterRender", { activeView: state.activeView, mount });
@@ -12230,6 +12347,7 @@ function renderCurrentLoopView() {
     return;
   }
   if (state.activeView === "dashboard") renderDashboardView();
+  if (state.activeView === "find-estates") renderResults();
   if (state.activeView === "dossiers") renderDossiersView();
   if (state.activeView === "drips") renderDripsView();
   if (state.activeView === "queue") renderQueueView();
@@ -14407,6 +14525,33 @@ async function loadConnectionStatuses() {
   }
 }
 
+async function loadAgenticModelStatus({ rerender = false } = {}) {
+  try {
+    const response = await fetch("/api/agentic/models", { cache: "no-store" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || "Automatic model selection is unavailable.");
+    state.agenticModelStatus = {
+      loaded: true,
+      available: Boolean(result.available),
+      provider: "nous",
+      model: result.model || null,
+      freeModels: Array.isArray(result.freeModels) ? result.freeModels.map(String).filter(Boolean) : [],
+      route: result.route || "unavailable",
+    };
+    const stored = storageGetItem(agenticModelPreferenceKey);
+    if (stored && (stored === "dynamic-free-catalog" || state.agenticModelStatus.freeModels.includes(stored))) {
+      state.agenticModelPreference = stored;
+    } else {
+      state.agenticModelPreference = "dynamic-free-catalog";
+    }
+  } catch {
+    state.agenticModelStatus = { loaded: true, available: false, provider: "nous", model: null, freeModels: [], route: "unavailable" };
+    state.agenticModelPreference = "dynamic-free-catalog";
+  }
+  if (rerender && state.activeView === "settings" && state.settingsTab === "integrations") renderSettingsView();
+  return state.agenticModelStatus;
+}
+
 function googleWorkspaceDeliveryReady() {
   return Boolean(state.googleWorkspace?.connected && state.googleWorkspace?.destinationId);
 }
@@ -15350,6 +15495,14 @@ function wireEvents() {
       openCrmImportModal({ mode: "batch", provider: "podio" });
     });
   });
+  window.addEventListener("heirright:open-crm-import", (event) => {
+    const detail = event.detail || {};
+    setCrmImportMenuOpen(false);
+    openCrmImportModal({
+      mode: detail.mode === "single" ? "single" : "batch",
+      provider: detail.provider || "csv",
+    });
+  });
   document.getElementById("crmImportBatchToggle")?.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -15791,26 +15944,60 @@ function publicDiscoveryPreview(row, dossier, workflow) {
         ? contact.addresses.map((address) => ({ address }))
         : [];
     return {
-      name: cleanDisplayValue(contact?.name || "Possible heir " + (index + 1)),
+      name: cleanDisplayValue(contact?.name || ""),
       relationship: cleanDisplayValue([displayStatus(contact?.role, "Heir/contact review"), contact?.interest].filter(Boolean).join(" - ")),
       age: cleanDisplayValue(contact?.age || ""),
-      likelyCurrentAddress: cleanDisplayValue(contact?.likelyCurrentAddress || contact?.address || "Needs approved enrichment"),
+      likelyCurrentAddress: cleanDisplayValue(contact?.likelyCurrentAddress || contact?.address || ""),
       addressHistory: addressHistory.slice(0, 4).map((item) => ({
-        address: cleanDisplayValue(item?.address || item?.value || "Needs approved enrichment"),
-        dates: cleanDisplayValue(item?.dates || item?.dateRange || "Dates need review"),
+        address: cleanDisplayValue(item?.address || item?.value || ""),
+        dates: cleanDisplayValue(item?.dates || item?.dateRange || ""),
       })),
       phones: (Array.isArray(contact?.phones) ? contact.phones : []).slice(0, 4).map(cleanDisplayValue),
       emails: (Array.isArray(contact?.emails) ? contact.emails : []).slice(0, 4).map(cleanDisplayValue),
     };
   });
+  const previewUrl = (...values) => values.map((value) => {
+    const candidate = typeof value === "object" && value ? value.value : value;
+    const text = String(candidate || "").trim();
+    if (!text) return "";
+    if (text.startsWith("/") && !text.startsWith("//")) return text;
+    try {
+      const parsed = new URL(text, globalThis.location?.origin || window.location.origin);
+      return ["http:", "https:"].includes(parsed.protocol) ? parsed.href : "";
+    } catch {
+      return "";
+    }
+  }).find(Boolean) || "";
+  const sourceLinks = Array.isArray(report.sourceLinks) ? report.sourceLinks : [];
+  const linkFor = (pattern) => sourceLinks.find((link) => pattern.test(String(link?.label || "")))?.url || "";
+  const capture = sourceCaptureForRow(row) || {};
+  const propertyTaxUrl = previewUrl(
+    linkFor(/property tax|property appraiser|parcel/i),
+    dossier?.property?.officialParcelUrl,
+    dossier?.property?.parcelUrl,
+    capture.propertyAppraiser?.sourceUrl,
+    capture.propertyAppraiser?.officialParcelUrl,
+  );
+  const taxReceiptUrl = previewUrl(
+    linkFor(/tax receipt|receipt copy/i),
+    dossier?.taxHistory?.receiptLink,
+    capture.taxReceipt?.receiptLink,
+    capture.taxReceipt?.sourceUrl,
+  );
+  const obituaryUrl = previewUrl(
+    linkFor(/obituar/i),
+    dossier?.marriageDeathIndicators?.obituaryLink,
+    capture.obituary?.sourceUrl,
+  );
   return {
     state: live ? "live" : "template",
     title,
     dateAdded: live ? formatPacketDate(dossier?.generatedAt || row.importedAt || row.updatedAt) : "",
     propertyAddress: cleanDisplayValue(row.address || claim(dossier?.property?.address, "Needs review")),
-    sourceLink: live
-      ? cleanDisplayValue(dossier?.property?.officialParcelUrl?.value || dossier?.property?.officialParcelUrl || dossier?.property?.parcelUrl?.value || dossier?.property?.parcelUrl || "Needs review")
-      : "",
+    sourceLink: live ? propertyTaxUrl : "",
+    propertyTaxUrl: live ? propertyTaxUrl : "",
+    taxReceiptUrl: live ? taxReceiptUrl : "",
+    obituaryUrl: live ? obituaryUrl : "",
     owner: claim(dossier?.property?.ownerName, "Needs review"),
     folio: claim(dossier?.property?.parcelId, "Needs review"),
     deedOrBookPage: claim(dossier?.deedHistory?.orBookPage, "Needs review"),
@@ -15821,7 +16008,7 @@ function publicDiscoveryPreview(row, dossier, workflow) {
       : "",
     dateOfBirth: claim(dossier?.marriageDeathIndicators?.dateOfBirth, "Needs review"),
     dateOfDeath: claim(dossier?.marriageDeathIndicators?.dateOfDeath, "Needs review"),
-    obituary: live && dossier?.marriageDeathIndicators?.obituaryLink?.value ? "View source" : "Needs review",
+    obituary: live && obituaryUrl ? "View source" : "Needs review",
     backStory: live ? cleanDisplayValue(report.backstory || dossier?.narrative || "") : "",
     contacts,
     offerRows,
@@ -16716,6 +16903,20 @@ async function dispatchLegacyCommand(command, payload = {}) {
       const estateIds = Array.isArray(payload.estateIds) ? payload.estateIds : [];
       await runS40DocPrep(estateIds);
       setActiveShellView("dossiers", "Doc Prep");
+    } else if (id === "s40-upload-idi-report") {
+      const row = estateForLegacyCommand(payload);
+      if (!row) throw new Error("Select an available estate before uploading an IDI report.");
+      const file = payload.file;
+      if (!file || (file.type !== "application/pdf" && !String(file.name || "").toLowerCase().endsWith(".pdf"))) {
+        throw new Error("Choose a PDF exported from the approved IDI report workflow.");
+      }
+      state.selectedId = row.id;
+      await importIdiReportFile(file, row, { startDiscovery: false });
+      const verifiedReport = documentFileRecord("idi-asset-search", row);
+      if (!verifiedReport) throw new Error("The IDI report did not pass storage and readback verification.");
+      await hydratePersistedDiscoveryFile(row);
+      await runS40DocPrep([row.id]);
+      setActiveShellView("dossiers", "Doc Prep");
     } else if (id === "s40-approve-packet") {
       const row = estateForLegacyCommand(payload);
       if (!row) throw new Error("Select an available estate.");
@@ -16903,7 +17104,7 @@ function installAuthorizedLegacyBridge() {
 
 const initialUrlParams = new URLSearchParams(window.location.search);
 const initialViewParam = initialUrlParams.get("view");
-const initialView = productViews.includes(initialViewParam) ? initialViewParam : "find-estates";
+const initialView = productViews.includes(initialViewParam) ? initialViewParam : "dashboard";
 let workspaceBooted = false;
 let workspaceBooting = false;
 

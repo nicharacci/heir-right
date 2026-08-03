@@ -39,6 +39,7 @@ function fakeFetchResponse(payload, status = 200) {
 
 process.env.AUTH_REQUIRED = "true";
 process.env.AUTH_ALLOWED_DOMAINS = "heirright.com";
+process.env.HEIRRIGHT_ADMIN_EMAILS = "operator@heirright.com";
 process.env.AUTH_SESSION_SECRET = "s38-google-session-secret";
 process.env.GOOGLE_OAUTH_CLIENT_ID = "s38-google-client";
 process.env.GOOGLE_OAUTH_CLIENT_SECRET = "s38-google-secret";
@@ -83,6 +84,7 @@ const callbackResponse = await call(callback, {
 assert.equal(callbackResponse.statusCode, 302, "Workspace callback must complete after storage readback");
 assert.equal(callbackResponse.headers.location, "/?googleWorkspace=connected");
 assert.equal(storedConnection.email, "operator@heirright.com");
+assert.equal(storedConnection.organizationDomain, "heirright.com", "Workspace admin connection must be shared by organization domain");
 assert.equal(storedConnection.accessToken, "access-token-never-returned-to-browser", "Only the server-to-worker request receives the access token");
 assert.doesNotMatch(callbackResponse.text, /access-token|refresh-token/, "OAuth tokens must not be returned to the browser");
 

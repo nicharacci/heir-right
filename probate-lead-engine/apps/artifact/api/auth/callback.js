@@ -1,3 +1,5 @@
+const { adminEmails } = require("../admin/access-config");
+
 const {
   clearCookie,
   createSessionToken,
@@ -42,6 +44,16 @@ module.exports = async function handler(request, response) {
       return;
     }
     const connectWorkspace = parseCookies(request)[workspaceIntentCookie] === "google-workspace";
+    if (connectWorkspace && !adminEmails(process.env).includes(String(profile.email).trim().toLowerCase())) {
+      sendHtml(response, 403, loginPage(request, "Only an approved HeirRight administrator can connect Google Workspace for the organization."), {
+        "set-cookie": [
+          clearCookie(sessionCookie, request),
+          clearCookie(stateCookie, request),
+          clearCookie(workspaceIntentCookie, request),
+        ],
+      });
+      return;
+    }
     if (connectWorkspace) await storeGoogleWorkspaceConnection(request, profile, token);
     response.statusCode = 302;
     response.setHeader("set-cookie", [

@@ -259,11 +259,86 @@
 
 .s40-artifact-rail {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   padding: var(--hr-space-5);
   background: var(--hr-surface);
+}
+
+.s40-stream-switcher {
+  display: grid;
+  gap: var(--hr-space-2);
+  min-width: 0;
+  margin-block-end: var(--hr-space-4);
+  padding-block-end: var(--hr-space-3);
+  border-bottom: 1px solid var(--hr-ruler);
+}
+
+.s40-stream-switcher-label {
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.s40-stream-switcher-list {
+  display: flex;
+  gap: var(--hr-space-2);
+  min-width: 0;
+  overflow-x: auto;
+  padding-block-end: 0.1rem;
+}
+
+.s40-stream-switch {
+  display: grid;
+  flex: 0 1 16rem;
+  gap: 0.15rem;
+  min-width: 11rem;
+  min-height: var(--hr-control-min);
+  padding: 0.5rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: var(--hr-radius-control);
+  color: var(--hr-text-muted);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--hr-motion-feedback) var(--hr-ease-standard), color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+.s40-stream-switch strong,
+.s40-stream-switch span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.s40-stream-switch strong {
+  color: inherit;
+  font-size: var(--hr-type-xs);
+}
+
+.s40-stream-switch span {
+  color: var(--hr-text-subtle);
+  font-size: 0.68rem;
+}
+
+.s40-stream-switch:is(:hover, :focus-visible) {
+  color: var(--hr-text);
+  background: var(--hr-surface-selected);
+  border-color: var(--hr-action-border);
+}
+
+.s40-stream-switch[aria-pressed="true"] {
+  color: var(--hr-text);
+  background: var(--hr-surface-selected);
+  border-color: var(--hr-action-border-strong);
+}
+
+.s40-stream-switch[aria-pressed="true"] span {
+  color: var(--hr-accent-strong);
 }
 
 .s40-rail-head {
@@ -276,6 +351,14 @@
 
 .s40-rail-head > div {
   min-width: 0;
+}
+
+.s40-rail-head-commands {
+  display: flex;
+  gap: var(--hr-space-3);
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .s40-rail-head h2 {
@@ -544,6 +627,43 @@
   line-height: 1.7 !important;
 }
 
+.s40-discovery-source-link {
+  color: rgb(0 102 238);
+  text-decoration: underline;
+}
+
+.s40-discovery-heirs-table {
+  width: 100%;
+  margin: 18pt 0 24pt;
+  border-collapse: collapse;
+  font-size: 10.5pt;
+}
+
+.s40-discovery-heirs-table th,
+.s40-discovery-heirs-table td {
+  min-height: 21pt;
+  height: 21pt;
+  padding: 3pt 5pt;
+  border: 0.7pt solid rgb(17 17 17);
+  color: rgb(0 0 0);
+  text-align: left;
+  font-weight: 400;
+}
+
+.s40-discovery-heirs-table th {
+  background: rgb(67 171 214);
+  font-weight: 700;
+}
+
+.s40-discovery-heirs-table th:nth-child(1),
+.s40-discovery-heirs-table td:nth-child(1) { width: 36%; }
+.s40-discovery-heirs-table th:nth-child(2),
+.s40-discovery-heirs-table td:nth-child(2) { width: 28%; }
+.s40-discovery-heirs-table th:nth-child(3),
+.s40-discovery-heirs-table td:nth-child(3) { width: 10%; }
+.s40-discovery-heirs-table th:nth-child(4),
+.s40-discovery-heirs-table td:nth-child(4) { width: 26%; }
+
 .s40-discovery-heirs h2 {
   margin: 0.83em 0;
   color: rgb(0 0 0);
@@ -598,6 +718,14 @@
 .s40-artifact-meta a {
   color: var(--hr-accent-strong);
   font-weight: 750;
+}
+
+.s40-artifact-actions {
+  display: inline-flex;
+  gap: var(--hr-space-3);
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .s40-approval-bar {
@@ -739,6 +867,11 @@
     padding: var(--hr-space-4);
   }
 
+  .s40-stream-switcher-list {
+    margin-inline-end: calc(var(--hr-space-4) * -1);
+    padding-inline-end: var(--hr-space-4);
+  }
+
   .s40-stage-strip {
     grid-template-columns: 1fr;
   }
@@ -773,7 +906,8 @@
 @media (prefers-reduced-motion: reduce) {
   .s40-primary-button,
   .s40-secondary-button,
-  .s40-link-button {
+  .s40-link-button,
+  .s40-stream-switch {
     transition: none;
   }
 }

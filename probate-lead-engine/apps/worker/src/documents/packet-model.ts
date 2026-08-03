@@ -156,7 +156,7 @@ function sourceUrls(dossier: RawDossier, refs: SourceRef[] = []): string[] {
   const keys = new Set(refs.map(sourceKey));
   return [...new Set(dossier.audit.facts
     .filter((fact) => !keys.size || keys.has(sourceKey({ source: fact.source, rawId: fact.rawId, fetchedAt: fact.fetchedAt })))
-    .map((fact) => fact.sourceUrl)
+    .map((fact) => fact.attachment?.sourceUrl || fact.sourceUrl)
     .filter((url): url is string => Boolean(url)))]
     .sort();
 }
@@ -323,6 +323,9 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
   const offer = report?.offerMath;
   const sourceLinks = report?.sourceLinks ?? [];
   const allAttachments = evidenceAttachments(dossier);
+  const propertyTaxLinks = sourceLinks.filter((link) => /property tax|property appraiser|parcel/i.test(link.label));
+  const taxReceiptLinks = sourceLinks.filter((link) => /tax receipt|receipt copy/i.test(link.label));
+  const obituaryLinks = sourceLinks.filter((link) => /obituar/i.test(link.label));
   const backstoryAttachments = allAttachments.filter((attachment) => !attachment.reviewFlags.some((flag) => (
     flag === "SOURCE_EVIDENCE_REQUIRED"
     || flag === "SOURCE_HEALTH_ONLY"
@@ -359,12 +362,12 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         { label: "Dossier status", value: dossier.status },
         { label: "Next action", value: dossier.summary.nextBestAction, tone: dossier.status === "blocked" ? "warning" : "normal" },
       ],
-      sourceUrls: sourceUrls(dossier, [
+      sourceUrls: [...new Set([...sourceUrls(dossier, [
         ...dossier.property.ownerName.sourceRefs,
         ...dossier.property.address.sourceRefs,
         ...dossier.property.parcelId.sourceRefs,
-      ]),
-      attachments: [],
+      ]), ...propertyTaxLinks.map((link) => link.url).filter((url): url is string => Boolean(url))])],
+      attachments: attachmentsForUrls(allAttachments, propertyTaxLinks.map((link) => link.url).filter((url): url is string => Boolean(url))),
     },
     {
       id: "workflow-rules",
@@ -413,8 +416,8 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         claimLine("Receipt", safeClaim(dossier.taxHistory.receiptLink)),
         { label: "Operator task", value: dossier.taxHistory.manualReceiptTask.reason, tone: dossier.taxHistory.manualReceiptTask.required ? "warning" : "muted" },
       ],
-      sourceUrls: [...new Set([...sourceUrls(dossier, taxRefs), ...(safeClaim(dossier.taxHistory.receiptLink).value ? [String(safeClaim(dossier.taxHistory.receiptLink).value)] : [])])],
-      attachments: [],
+      sourceUrls: [...new Set([...sourceUrls(dossier, taxRefs), ...(safeClaim(dossier.taxHistory.receiptLink).value ? [String(safeClaim(dossier.taxHistory.receiptLink).value)] : []), ...taxReceiptLinks.map((link) => link.url).filter((url): url is string => Boolean(url))])],
+      attachments: attachmentsForUrls(allAttachments, taxReceiptLinks.map((link) => link.url).filter((url): url is string => Boolean(url))),
     },
     {
       id: "deed-title",
@@ -462,8 +465,8 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         claimLine("Death certificate", dossier.marriageDeathIndicators.deathCertificateStatus),
         claimLine("Incarceration indicator", dossier.marriageDeathIndicators.incarcerationStatus),
       ],
-      sourceUrls: [...new Set([...sourceUrls(dossier, dossier.marriageDeathIndicators.sourceStatus.sourceRefs), ...(dossier.marriageDeathIndicators.obituaryLink.value ? [dossier.marriageDeathIndicators.obituaryLink.value] : [])])],
-      attachments: [],
+      sourceUrls: [...new Set([...sourceUrls(dossier, dossier.marriageDeathIndicators.sourceStatus.sourceRefs), ...(dossier.marriageDeathIndicators.obituaryLink.value ? [dossier.marriageDeathIndicators.obituaryLink.value] : []), ...obituaryLinks.map((link) => link.url).filter((url): url is string => Boolean(url))])],
+      attachments: attachmentsForUrls(allAttachments, obituaryLinks.map((link) => link.url).filter((url): url is string => Boolean(url))),
     },
     {
       id: "backstory",
@@ -479,7 +482,7 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
         ? report.contactPlaceholders.flatMap(contactLines)
         : publicFamilyLines.length
           ? publicFamilyLines
-          : [{ value: "No reviewed family or contact candidates are attached to this dossier.", tone: "warning" }],
+          : [],
       sourceUrls: sourceUrls(dossier, dossier.familyTree.hypothesis.sourceRefs),
       attachments: [],
     },

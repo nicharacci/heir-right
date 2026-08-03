@@ -141,7 +141,7 @@ function createShellController() {
       close.setAttribute("aria-label", "Close workflow queue");
       close.setAttribute("title", "Close workflow queue");
     }
-    list.innerHTML = "<div class=\"shell-queue-tabs hr-docprep-flow-switch beui-tabs\" role=\"tablist\" aria-label=\"Queue type\"><button class=\"beui-tabs-trigger\" type=\"button\" data-shell-queue-tab=\"docprep\" aria-selected=\"" + String(queueDrawerTab === "docprep") + "\">Doc Prep<\/button><button class=\"beui-tabs-trigger\" type=\"button\" data-shell-queue-tab=\"export\" aria-selected=\"" + String(queueDrawerTab === "export") + "\">Export<\/button><\/div><div class=\"shell-queue-table-wrap\"><table class=\"shell-queue-table\"><thead><tr><th>Estate<\/th><th>Status<\/th><th>Notification<\/th><\/tr><\/thead><tbody>" + rowHtml + "<\/tbody><\/table><\/div>";
+    list.innerHTML = "<div class=\"shell-queue-tabs hr-docprep-flow-switch beui-tabs\" role=\"tablist\" aria-label=\"Queue type\"><button class=\"beui-tabs-trigger\" type=\"button\" data-shell-queue-tab=\"docprep\" aria-selected=\"" + String(queueDrawerTab === "docprep") + "\">Doc Prep<\/button><button class=\"beui-tabs-trigger\" type=\"button\" data-shell-queue-tab=\"export\" aria-selected=\"" + String(queueDrawerTab === "export") + "\">Export<\/button><\/div><div class=\"shell-queue-table-wrap\"><table class=\"shell-queue-table\" data-hr-table-edge-resize=\"guarded\"><thead><tr><th>Estate<\/th><th>Status<\/th><th>Notification<\/th><\/tr><\/thead><tbody>" + rowHtml + "<\/tbody><\/table><\/div>";
   }
 
   function openShellQueue() {

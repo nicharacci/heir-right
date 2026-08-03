@@ -254,7 +254,7 @@ function buildResearchChecklist(dossier: RawDossier, includeDealSection: boolean
     step({
       code: "MARRIAGE_DEATH",
       label: "Marriage + death indicators",
-      complete: dossier.marriageDeathIndicators.dateOfDeath.value !== null || dossier.marriageDeathIndicators.obituaryLink.value !== null,
+      complete: dossier.marriageDeathIndicators.dateOfDeath.value !== null || dossier.marriageDeathIndicators.obituaryLink?.value !== null,
       partial: dossier.marriageDeathIndicators.sourceStatus.value !== null,
       note: claimText(dossier.marriageDeathIndicators.sourceStatus.value, "Marriage/death research incomplete."),
       sourceRefs: dossier.marriageDeathIndicators.sourceStatus.sourceRefs,
@@ -385,14 +385,7 @@ export function buildContactPlaceholders(dossier: RawDossier): ContactPlaceholde
 
   const nodes = dossier.familyTree.hypothesis.value?.nodes ?? [];
   if (!nodes.length) {
-    return [{
-      role: "primary_heir",
-      phones: [],
-      emails: [],
-      addresses: [],
-      note: "No heir contact candidates yet. Build family tree hypothesis first.",
-      reviewFlags: ["NO_ENRICHMENT_RUN", "HUMAN_REVIEW_REQUIRED"],
-    }];
+    return [];
   }
 
   return nodes.map((node) => ({
@@ -421,6 +414,16 @@ function safeSourceLinkUrl(value: unknown): string | undefined {
 
 function buildSourceLinks(dossier: RawDossier): Array<{ label: string; url?: string; source: SourceKey }> {
   const links = new Map<string, { label: string; url?: string; source: SourceKey }>();
+  const add = (url: unknown, label: string, source: SourceKey): void => {
+    const sourceUrl = safeSourceLinkUrl(url);
+    if (!sourceUrl) return;
+    const existingKey = Array.from(links.entries()).find(([, link]) => link.url === sourceUrl)?.[0];
+    if (existingKey) {
+      links.set(existingKey, { ...links.get(existingKey)!, label });
+      return;
+    }
+    links.set(`${source}:${sourceUrl}`, { label, url: sourceUrl, source });
+  };
   for (const fact of dossier.audit.facts) {
     const sourceUrl = safeSourceLinkUrl(fact.attachment?.sourceUrl || fact.sourceUrl);
     if (!sourceUrl) continue;
@@ -438,6 +441,13 @@ function buildSourceLinks(dossier: RawDossier): Array<{ label: string; url?: str
     if (!sourceUrl) continue;
     links.set(sourceUrl, { label: link.label, url: sourceUrl, source: "official_records" });
   }
+  add(dossier.taxHistory.receiptLink?.value, "Tax receipt copy", "tax_collector");
+  add(dossier.marriageDeathIndicators.obituaryLink?.value, "Obituary", "skip_trace");
+  const propertyFact = dossier.audit.facts.find((fact) => (
+    fact.source === "property_appraiser"
+      && safeSourceLinkUrl(fact.attachment?.sourceUrl || fact.sourceUrl)
+  ));
+  add(propertyFact?.attachment?.sourceUrl || propertyFact?.sourceUrl, "Property tax website", "property_appraiser");
   return Array.from(links.values());
 }
 
@@ -449,7 +459,7 @@ function buildMissingData(dossier: RawDossier, offerMath: OfferProfitMath, inclu
   if (!dossier.deedHistory.latestDeed.value) missing.push("Latest deed record");
   if (!dossier.probateDocket.caseNumber.value) missing.push("Probate case number");
   if (!dossier.marriageDeathIndicators.dateOfDeath.value) missing.push("Date of death");
-  if (!safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value)) missing.push("Source-verified obituary");
+  if (!safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink?.value)) missing.push("Source-verified obituary");
   if (!dossier.familyTree.hypothesis.value?.nodes.length) missing.push("Family tree hypothesis nodes");
   if (includeDealSection && offerMath.asIsValue.value === null) missing.push("As-is value");
   if (includeDealSection && offerMath.heirCount.value === null) missing.push("Confirmed heir count");
@@ -582,7 +592,7 @@ function buildBackstory(dossier: RawDossier): string {
   else vital.push("date of death remains unconfirmed");
   if (known(dossier.marriageDeathIndicators.marriageLicense.value)) vital.push(`marriage or spouse review returned ${claimText(dossier.marriageDeathIndicators.marriageLicense.value)}`);
   else vital.push("marriage-license status remains unconfirmed");
-  vital.push(safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value)
+  vital.push(safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink?.value)
     ? "a reviewed obituary link is preserved below"
     : "a source-verified obituary remains outstanding");
   if (known(dossier.marriageDeathIndicators.deathCertificateStatus.value)) {
@@ -700,7 +710,7 @@ function renderContactMatrix(contacts: ContactPlaceholderEntry[]): string[] {
     return [
       "| Name | Relationship | Phone numbers | Email | Current / history address | Confidence / next action |",
       "| --- | --- | --- | --- | --- | --- |",
-      "| Needs review | Heir/contact research not started | Needs approved enrichment | Needs approved enrichment | Needs approved enrichment | Build the family-tree hypothesis before outreach. |",
+      "|  |  |  |  |  |  |",
     ];
   }
 
@@ -708,12 +718,12 @@ function renderContactMatrix(contacts: ContactPlaceholderEntry[]): string[] {
     "| Name | Relationship | Phone numbers | Email | Current / history address | Confidence / next action |",
     "| --- | --- | --- | --- | --- | --- |",
     ...contacts.map((contact, index) => {
-      const name = contact.name ?? `Potential ${humanStatus(contact.role)} ${index + 1}`;
-      const phones = contact.phones.length ? contact.phones.join(", ") : "Needs approved enrichment";
-      const emails = contact.emails.length ? contact.emails.join(", ") : "Needs approved enrichment";
-      const addresses = contact.addresses.length ? contact.addresses.map(displayAddress).join("; ") : "Needs approved enrichment";
+      const name = contact.name ?? "";
+      const phones = contact.phones.length ? contact.phones.join(", ") : "";
+      const emails = contact.emails.length ? contact.emails.join(", ") : "";
+      const addresses = contact.addresses.length ? contact.addresses.map(displayAddress).join("; ") : "";
       const relationship = [humanStatus(contact.role), contact.interest].filter(Boolean).join(" - ");
-      return `| ${name} | ${relationship} | ${phones} | ${emails} | ${addresses} | ${contact.note} |`;
+      return `| ${name} | ${relationship} | ${phones} | ${emails} | ${addresses} | ${contact.reviewFlags.length ? "Review required" : ""} |`;
     }),
   ];
 }
@@ -757,7 +767,9 @@ function renderFamilyTreePacketHtml(input: {
     sourceLinks.find((link) => link.source === "property_appraiser")?.url
     || sourceLinks.find((link) => link.url)?.url,
   ) ?? "#";
-  const obituaryLink = safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value);
+  const obituaryLink = safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink?.value);
+  const taxReceiptLink = sourceLinks.find((link) => /tax receipt|receipt copy/i.test(link.label) && link.url)?.url;
+  const propertyTaxLink = sourceLinks.find((link) => /property tax|property appraiser|parcel/i.test(link.label) && link.url)?.url;
   const contactChecklist = input.researchChecklist.find((step) => step.code === "CONTACTS");
   const backstoryEvidence = sourceLinks.length
     ? `<p class="evidence"><strong>Back Story evidence:</strong> ${sourceLinks.map((link) => {
@@ -778,7 +790,7 @@ function renderFamilyTreePacketHtml(input: {
         const source = sourceUrl ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noreferrer noopener">${address}</a>` : address;
         return `<p>${source} ${item.county ? `(${escapeHtml(formatCountyName(item.county, ""))})` : ""}<br><span>${escapeHtml(item.dates || "Dates need review")}</span></p>`;
       }).join("")
-      : `<p><a href="#">${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "Address needs approved enrichment"))}</a></p>`;
+      : `<p>${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? ""))}</p>`;
     const phones = contact.phones.length ? contact.phones.map((phone) => `<p>${escapeHtml(phone)}</p>`).join("") : "<p>Needs approved enrichment</p>";
     const emails = contact.emails.length ? contact.emails.map((email) => `<p><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>`).join("") : "<p>Needs approved enrichment</p>";
     return `<section class="person"><h3>${index + 1}. ${name}${relationship ? ` (${escapeHtml(relationship)})` : ""}</h3>${age}<p>Likely Current Address: ${escapeHtml(displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "Needs approved enrichment"))}</p><h4>Address (County/Parish/Borough) History:</h4>${history}<h4>Phone number:</h4>${phones}<h4>Email Address:</h4>${emails}</section>`;
@@ -814,12 +826,26 @@ function renderFamilyTreePacketHtml(input: {
   .offer .yellow td:first-child { background: #ffc000; }
   .packet-summary .bar th { background: #43abd6; font-weight: 700; }
   .packet-summary td:first-child { width: 36%; text-align: left; }
-  .packet-summary td:last-child { text-align: left; }`
+  .packet-summary td:last-child { text-align: left; }
+  table.possible-heirs { border-collapse: collapse; width: 468pt; margin: 18pt 0 24pt; font-size: 10.5pt; }
+  .possible-heirs th, .possible-heirs td { border: 0.7pt solid #111; min-height: 21pt; height: 21pt; padding: 3pt 5pt; text-align: left; font-weight: 400; }
+  .possible-heirs th { background: #43abd6; font-weight: 700; }
+  .possible-heirs th:nth-child(1), .possible-heirs td:nth-child(1) { width: 36%; }
+  .possible-heirs th:nth-child(2), .possible-heirs td:nth-child(2) { width: 28%; }
+  .possible-heirs th:nth-child(3), .possible-heirs td:nth-child(3) { width: 10%; }
+  .possible-heirs th:nth-child(4), .possible-heirs td:nth-child(4) { width: 26%; }`
     : `table.packet-summary { border-collapse: collapse; width: 332pt; margin: 0 0 25pt; font-size: 11pt; }
   .packet-summary th, .packet-summary td { border: 1px solid #111; height: 21px; padding: 1px 8px; text-align: center; }
   .packet-summary .bar th { background: #43abd6; font-weight: 700; }
   .packet-summary td:first-child { width: 36%; text-align: left; }
-  .packet-summary td:last-child { text-align: left; }`;
+  .packet-summary td:last-child { text-align: left; }
+  table.possible-heirs { border-collapse: collapse; width: 468pt; margin: 18pt 0 24pt; font-size: 10.5pt; }
+  .possible-heirs th, .possible-heirs td { border: 0.7pt solid #111; min-height: 21pt; height: 21pt; padding: 3pt 5pt; text-align: left; font-weight: 400; }
+  .possible-heirs th { background: #43abd6; font-weight: 700; }
+  .possible-heirs th:nth-child(1), .possible-heirs td:nth-child(1) { width: 36%; }
+  .possible-heirs th:nth-child(2), .possible-heirs td:nth-child(2) { width: 28%; }
+  .possible-heirs th:nth-child(3), .possible-heirs td:nth-child(3) { width: 10%; }
+  .possible-heirs th:nth-child(4), .possible-heirs td:nth-child(4) { width: 26%; }`;
 
   return `<!doctype html>
 <html lang="en">
@@ -862,9 +888,15 @@ function renderFamilyTreePacketHtml(input: {
     <p>DOB: ${escapeHtml(claimText(dossier.marriageDeathIndicators.dateOfBirth.value, "Needs review"))}</p>
     <p>DOD: ${escapeHtml(claimText(dossier.marriageDeathIndicators.dateOfDeath.value, "Needs review"))}</p>
     <p>${obituaryLink ? `<a href="${escapeHtml(obituaryLink)}" target="_blank" rel="noreferrer noopener">Obituary</a> - <a href="${escapeHtml(obituaryLink)}" target="_blank" rel="noreferrer noopener">View source</a>` : "Obituary - Needs review"}</p>
+    <p>${taxReceiptLink ? `<a href="${escapeHtml(taxReceiptLink)}" target="_blank" rel="noreferrer noopener">Tax receipt copy</a>` : "Tax receipt copy - Needs review"}</p>
+    <p>${propertyTaxLink ? `<a href="${escapeHtml(propertyTaxLink)}" target="_blank" rel="noreferrer noopener">Property tax website</a>` : "Property tax website - Needs review"}</p>
   </section>
   <section id="back-story" class="story"><p><strong>Back Story:</strong> ${escapeHtml(backstory).replace(/\n\n/g, "</p><p>")}</p>${backstoryEvidence}</section>
-  <section id="possible-heirs"><h2>Heirs:</h2>${contactBlocks}</section>
+  <section id="possible-heirs"><h2>Heirs:</h2><table class="possible-heirs"><thead><tr><th>Name</th><th>Relationship</th><th>Age</th><th>Likely current address</th></tr></thead><tbody>${Array.from({ length: Math.max(3, contacts.length) }, (_, index) => {
+    const contact = contacts[index];
+    const relationship = contact ? [humanStatus(contact.role), contact.interest].filter(Boolean).join(" - ") : "";
+    return `<tr><td>${escapeHtml(contact?.name || "")}</td><td>${escapeHtml(relationship)}</td><td>${escapeHtml(contact?.age ? String(contact.age) : "")}</td><td>${escapeHtml(contact ? displayAddress(contact.likelyCurrentAddress ?? contact.addresses[0] ?? "") : "")}</td></tr>`;
+  }).join("")}</tbody></table>${contactBlocks}</section>
 </main>
 </body>
 </html>`;
@@ -1094,7 +1126,7 @@ export async function generateCompletedLeadReport(dossier: RawDossier): Promise<
     `| Owner / estate | ${claimText(dossier.summary.estateName ?? dossier.property.ownerName.value)} |`,
     `| Owner DOB | ${claimText(dossier.marriageDeathIndicators.dateOfBirth.value)} |`,
     `| Owner DOD | ${claimText(dossier.marriageDeathIndicators.dateOfDeath.value)} |`,
-    `| Obituary status | ${safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink.value) ?? "Not found in the current public-source run; manual obituary search required."} |`,
+    `| Obituary status | ${safeSourceLinkUrl(dossier.marriageDeathIndicators.obituaryLink?.value) ?? "Not found in the current public-source run; manual obituary search required."} |`,
     `| County | ${formatCountyName(dossier.property.county.value)} |`,
     `| Folio / parcel | ${claimText(dossier.property.parcelId.value)} |`,
     `| Case / file | ${claimText(dossier.property.caseNumber.value, "Needs probate/court search")} |`,

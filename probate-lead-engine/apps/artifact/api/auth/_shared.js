@@ -326,6 +326,7 @@ async function storeGoogleWorkspaceConnection(req, profile, token) {
     },
     body: JSON.stringify({
       email: String(profile?.email || "").toLowerCase(),
+      organizationDomain: String(profile?.hd || profile?.domain || String(profile?.email || "").split("@").at(-1) || "").toLowerCase(),
       accessToken,
       refreshToken: String(token?.refresh_token || ""),
       expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),

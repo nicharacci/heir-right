@@ -1873,16 +1873,27 @@ async function handleCallback(req, res, url) {
 
   try {
     const { profile, token } = await exchangeGoogleCode(req, code);
+    const connectWorkspace = parseCookies(req)[workspaceIntentCookie] === "google-workspace";
     if (!profile.email || !emailAllowed(profile.email)) {
       sendHtml(res, 403, deniedAccessPage(req, profile.email), {
         "set-cookie": [
           clearCookie(sessionCookie, req),
           clearCookie(stateCookie, req),
+          clearCookie(workspaceIntentCookie, req),
         ],
       });
       return;
     }
-    const connectWorkspace = parseCookies(req)[workspaceIntentCookie] === "google-workspace";
+    if (connectWorkspace && !configuredAdminEmails(process.env).includes(String(profile.email).trim().toLowerCase())) {
+      sendHtml(res, 403, loginPage(req, "Only an approved HeirRight administrator can connect Google Workspace for the organization."), {
+        "set-cookie": [
+          clearCookie(sessionCookie, req),
+          clearCookie(stateCookie, req),
+          clearCookie(workspaceIntentCookie, req),
+        ],
+      });
+      return;
+    }
     if (connectWorkspace) await storeGoogleWorkspaceConnection(req, profile, token);
     const sessionToken = createSessionToken(profile);
     res.writeHead(302, {

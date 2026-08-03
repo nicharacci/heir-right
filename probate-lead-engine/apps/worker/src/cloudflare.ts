@@ -26,6 +26,7 @@ import { buildRawDossier } from "./dossier/build-raw-dossier";
 import { generateCompletedLeadReport } from "./documents/completed-lead-report";
 import { buildOutreachWorkflow } from "./outreach/build-outreach-workflow";
 import { buildQualificationDecision } from "./qualification/qualification-review";
+import { getServerNousCredential, publicNousFreeModelStatus } from "./agentic/nous-free-model";
 
 interface CloudflareEnv {
   DEPLOYMENT_KEY?: string;
@@ -88,6 +89,9 @@ interface CloudflareEnv {
   GOOGLE_WORKSPACE_WEBHOOK_SECRET?: string;
   GOOGLE_OAUTH_CLIENT_ID?: string;
   GOOGLE_OAUTH_CLIENT_SECRET?: string;
+  NOUS_API_KEY?: string;
+  NOUS_BASE_URL?: string;
+  NOUS_MODEL?: string;
   IDI_CORE_API_URL?: string;
   IDI_CORE_API_TOKEN?: string;
   HEIRRIGHT_IDI_CORE_API_TOKEN?: string;
@@ -189,6 +193,8 @@ function routeList(): string[] {
     "/api/closing-docs/export-google",
     "/api/google-workspace/connection",
     "/api/google-workspace/destinations",
+    "/api/agentic/models",
+    "/api/agentic/backstory",
     "/api/doc-prep/packet-approval",
     "/api/google-workspace/export",
     "/api/outreach/sync",
@@ -1701,6 +1707,7 @@ interface StoredIdiContactReview {
 interface StoredGoogleWorkspaceConnection {
   version: 1;
   email: string;
+  organizationDomain?: string;
   accessTokenCipher: string;
   refreshTokenCipher?: string;
   expiresAt: string;
@@ -1733,6 +1740,19 @@ async function idiContactReviewKey(assetKey: string, candidateId: string): Promi
 
 async function googleWorkspaceConnectionKey(email: string): Promise<string> {
   return `google-workspace-connection:${await sha256Hex(email.toLowerCase())}`;
+}
+
+function normalizedWorkspaceOrganization(value: string | undefined): string {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .replace(/[^a-z0-9.-]/g, "")
+    .replace(/^\.+|\.+$/g, "");
+}
+
+async function googleWorkspaceOrganizationKey(domain: string): Promise<string> {
+  return `google-workspace-connection:org:${await sha256Hex(domain)}`;
 }
 
 function googleWorkspaceDeliveryKey(artifactId: string, destinationId: string, documentId = ""): string {
@@ -3908,23 +3928,37 @@ function googleWorkspaceConnectionPublic(record: StoredGoogleWorkspaceConnection
 
 async function googleWorkspaceConnectionForEmail(env: CloudflareEnv, email: string): Promise<StoredGoogleWorkspaceConnection | null> {
   if (!env.PACKET_ARTIFACTS || !email) return null;
+  const domain = normalizedWorkspaceOrganization(email.split("@")[1]);
+  if (domain) {
+    const shared = storedGoogleWorkspaceConnection(await env.PACKET_ARTIFACTS.get(await googleWorkspaceOrganizationKey(domain)));
+    if (shared) return shared;
+  }
   return storedGoogleWorkspaceConnection(await env.PACKET_ARTIFACTS.get(await googleWorkspaceConnectionKey(email)));
 }
 
 async function storeGoogleWorkspaceConnection(env: CloudflareEnv, record: StoredGoogleWorkspaceConnection): Promise<boolean> {
   if (!env.PACKET_ARTIFACTS) return false;
-  await env.PACKET_ARTIFACTS.put(await googleWorkspaceConnectionKey(record.email), JSON.stringify(record), {
-    metadata: {
-      kind: "google_workspace_connection",
-      userHash: await sha256Hex(record.email.toLowerCase()),
-      connectedAt: record.connectedAt,
-      destinationId: record.destinationId || "",
-    },
-  });
-  const readback = storedGoogleWorkspaceConnection(await env.PACKET_ARTIFACTS.get(await googleWorkspaceConnectionKey(record.email)));
+  const organizationDomain = normalizedWorkspaceOrganization(record.organizationDomain);
+  const storedRecord = organizationDomain ? { ...record, organizationDomain } : record;
+  const keys = [await googleWorkspaceConnectionKey(record.email)];
+  if (organizationDomain) keys.push(await googleWorkspaceOrganizationKey(organizationDomain));
+  for (const key of [...new Set(keys)]) {
+    await env.PACKET_ARTIFACTS.put(key, JSON.stringify(storedRecord), {
+      metadata: {
+        kind: "google_workspace_connection",
+        userHash: await sha256Hex(record.email.toLowerCase()),
+        organizationDomain,
+        connectedAt: record.connectedAt,
+        destinationId: record.destinationId || "",
+      },
+    });
+  }
+  const readbackKey = organizationDomain
+    ? await googleWorkspaceOrganizationKey(organizationDomain)
+    : await googleWorkspaceConnectionKey(record.email);
+  const readback = storedGoogleWorkspaceConnection(await env.PACKET_ARTIFACTS.get(readbackKey));
   return Boolean(readback && readback.email === record.email && readback.accessTokenCipher === record.accessTokenCipher);
 }
-
 async function refreshGoogleWorkspaceAccessToken(
   record: StoredGoogleWorkspaceConnection,
   env: CloudflareEnv,
@@ -4473,6 +4507,7 @@ async function googleWorkspaceConnectionResponse(request: Request, url: URL, env
   if (request.method !== "POST") return methodNotAllowed("GET, POST");
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const userEmail = stringValue(body.email).toLowerCase();
+  const organizationDomain = normalizedWorkspaceOrganization(stringValue(body.organizationDomain));
   if (!userEmail || !emailAllowed(userEmail, env)) return json({ ok: false, error: "google_workspace_user_not_allowed", message: "Use an approved HeirRight Google Workspace account." }, { status: 403 });
   const action = stringValue(body.action);
   if (action === "select_destination") {
@@ -4504,6 +4539,7 @@ async function googleWorkspaceConnectionResponse(request: Request, url: URL, env
     scopes: Array.isArray(body.scopes) ? body.scopes.map(stringValue).filter(Boolean).slice(0, 30) : [],
     destinationId: previous?.destinationId,
     destinationName: previous?.destinationName,
+    organizationDomain: previous?.organizationDomain || organizationDomain || undefined,
     connectedAt: previous?.connectedAt || nowIso(),
     updatedAt: nowIso(),
   };
@@ -7386,6 +7422,135 @@ async function podioOAuthCallbackResponse(request: Request, url: URL, env: Cloud
   });
 }
 
+async function agenticNousCredential(env: CloudflareEnv) {
+  return getServerNousCredential({
+    fetcher: fetch,
+    apiKey: env.NOUS_API_KEY || "",
+    baseUrl: env.NOUS_BASE_URL || undefined,
+    configuredModel: env.NOUS_MODEL || null,
+  });
+}
+
+async function agenticModelsResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "GET") return methodNotAllowed("GET");
+  const credential = await agenticNousCredential(env);
+  const status = publicNousFreeModelStatus(credential);
+  return json({
+    ok: true,
+    ...status,
+    selectedModel: status.model,
+    automatic: true,
+  }, { headers: { "cache-control": "no-store" } });
+}
+
+function agenticEvidenceLines(body: Record<string, unknown>): string[] {
+  const evidence = Array.isArray(body.evidence) ? body.evidence : [];
+  return [
+    body.estateName,
+    body.propertyAddress,
+    body.ownerName,
+    ...evidence,
+  ]
+    .flatMap((value) => {
+      if (typeof value === "string") return [value];
+      if (!value || typeof value !== "object") return [];
+      const record = value as Record<string, unknown>;
+      const label = stringValue(record.label);
+      const content = stringValue(record.value || record.text || record.summary);
+      return content ? [`${label ? `${label}: ` : ""}${content}`] : [];
+    })
+    .map((value) => value.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(0, 80);
+}
+
+function agenticResponseText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (!Array.isArray(value)) return "";
+  return value.flatMap((item) => {
+    if (typeof item === "string") return [item];
+    if (!item || typeof item !== "object") return [];
+    const text = (item as Record<string, unknown>).text;
+    return typeof text === "string" ? [text] : [];
+  }).join(" ");
+}
+
+function cleanAgenticBackstory(value: unknown): string {
+  return agenticResponseText(value)
+    .replace(/```[a-z]*|```/gi, "")
+    .replace(/^\s*back\s*story\s*:\s*/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .slice(0, 8_000);
+}
+
+async function agenticBackstoryResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "POST") return methodNotAllowed("POST");
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const evidence = agenticEvidenceLines(body);
+  if (!evidence.length) {
+    return json({
+      ok: false,
+      fallback: "reviewed_report_formatting",
+      message: "Reviewed evidence is not sufficient to draft a Back Story yet.",
+    }, { status: 422, headers: { "cache-control": "no-store" } });
+  }
+  const credential = await agenticNousCredential(env);
+  if (!credential) {
+    return json({
+      ok: false,
+      fallback: "reviewed_report_formatting",
+      message: "The reviewed report formatting remains available.",
+    }, { headers: { "cache-control": "no-store" } });
+  }
+  const requested = stringValue(body.model);
+  const model = requested && credential.verifiedFreeModels.includes(requested)
+    ? requested
+    : credential.model;
+  const prompt = [
+    "Parse and format the supplied report contents for the Back Story section of an internal estate discovery packet.",
+    "Preserve every supplied name, date, relationship, address, status, and source link exactly as provided. Do not invent, infer, retrieve, reconcile, enrich, or complete missing information.",
+    "If a fact is missing, omit it or say that the record needs review. Write one readable paragraph followed by a short sentence describing the remaining review boundary.",
+    "Return plain text only.",
+    "Verified evidence:",
+    ...evidence.map((line) => `- ${line}`),
+  ].join("\n");
+  try {
+    const response = await fetch(`${credential.baseUrl.replace(/\/+$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${credential.credential}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "You are the HeirRight report-formatting assistant. Parse and format supplied report content only. Do not research, infer, synthesize new facts, or make workflow, legal, or export decisions." },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.2,
+        max_tokens: 700,
+      }),
+      redirect: "error",
+    });
+    if (!response.ok) {
+      return json({ ok: false, fallback: "reviewed_report_formatting", message: "Reviewed report formatting remains available." }, { headers: { "cache-control": "no-store" } });
+    }
+    const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+    const choices = Array.isArray(payload.choices) ? payload.choices : [];
+    const first = choices[0] && typeof choices[0] === "object" ? choices[0] as Record<string, unknown> : {};
+    const message = first.message && typeof first.message === "object" ? first.message as Record<string, unknown> : {};
+    const text = cleanAgenticBackstory(message.content);
+    if (!text) {
+      return json({ ok: false, fallback: "reviewed_report_formatting", message: "Reviewed report formatting remains available." }, { headers: { "cache-control": "no-store" } });
+    }
+    return json({ ok: true, backStory: text, reviewRequired: true }, { headers: { "cache-control": "no-store" } });
+  } catch {
+    return json({ ok: false, fallback: "reviewed_report_formatting", message: "Reviewed report formatting remains available." }, { headers: { "cache-control": "no-store" } });
+  }
+}
+
 async function readbackEvidenceResponse(url: URL, env: CloudflareEnv, markdown: boolean): Promise<Response> {
   if (url.searchParams.get("dry-run") === "false") {
     return json({
@@ -7535,6 +7700,18 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return googleWorkspaceDestinationsResponse(request, url, env);
+    }
+
+    if (url.pathname === "/api/agentic/models") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return agenticModelsResponse(request, env);
+    }
+
+    if (url.pathname === "/api/agentic/backstory") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return agenticBackstoryResponse(request, env);
     }
 
     if (url.pathname === "/api/doc-prep/packet-approval") {

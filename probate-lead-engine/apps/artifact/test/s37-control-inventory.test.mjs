@@ -12,12 +12,13 @@ const companionAttributes = new Set([
   "data-hover-description",
   "data-hover-label",
   "data-process-row",
+  "data-s40-stream-estate",
   "data-state",
 ]);
 
 const unwired = openings.filter((opening) => {
   const id = opening.match(/\bid=["']([^"']+)["']/i)?.[1];
-  const actionAttributes = [...opening.matchAll(/\b(data-[a-z-]+)(?=\s|=|>)/g)]
+  const actionAttributes = [...opening.matchAll(/\b(data-[a-z0-9-]+)(?=\s|=|>)/g)]
     .map((match) => match[1])
     .filter((attribute) => !companionAttributes.has(attribute));
   const idIsHandled = Boolean(id && sourceWithoutButtonOpenings.includes(id));

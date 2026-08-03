@@ -1,9 +1,9 @@
-.app[data-active-view="find-estates"] .content {
+.app[data-active-view="find-estates"] .content:has(.hr-grid-view) {
   grid-template-columns: minmax(0, 1fr) !important;
 }
 
-.app[data-active-view="find-estates"] .filters,
-.app[data-active-view="find-estates"] .workbench-body[data-view-panel="find-estates"] {
+.app[data-active-view="find-estates"] .content:has(.hr-grid-view) .filters,
+.app[data-active-view="find-estates"] .content:has(.hr-grid-view) .workbench-body[data-view-panel="find-estates"] {
   display: none !important;
 }
 
@@ -136,6 +136,27 @@
 
 .hr-grid-action-status:empty {
   display: none;
+}
+
+.hr-grid-import-action {
+  appearance: none;
+  min-height: var(--hr-control-min);
+  padding: 0.65rem 0.85rem;
+  color: var(--hr-text);
+  background: transparent;
+  border: 1px solid var(--hr-action-border);
+  border-radius: var(--hr-radius-control);
+  font: inherit;
+  font-size: var(--hr-type-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+.hr-grid-import-action:is(:hover, :focus-visible) {
+  color: var(--hr-accent-strong);
+  background: var(--hr-surface-selected);
+  border-color: var(--hr-action-border-strong);
 }
 
 .hr-grid-action-status[data-tone="ready"] {
@@ -722,4 +743,9 @@
   .hr-grid-view {
     animation: none;
   }
+}
+.hr-community-grid[data-hr-table-edge-resize="guarded"] .ag-header-row .ag-header-cell:first-child .ag-header-cell-resize,
+.hr-community-grid[data-hr-table-edge-resize="guarded"] .ag-header-row .ag-header-cell:last-child .ag-header-cell-resize {
+  display: none;
+  pointer-events: none;
 }

@@ -77,6 +77,15 @@ function interactiveGridTarget(event) {
   return Boolean(event?.target?.closest?.("button, a, input, select, textarea, [contenteditable='true'], .ag-selection-checkbox, [role='checkbox']"));
 }
 
+function edgeResizeGuardedColumnDefs(columns) {
+  const source = Array.isArray(columns) ? columns : [];
+  const lastIndex = source.length - 1;
+  return source.map((column, index) => ({
+    ...column,
+    resizable: column?.resizable === false ? false : index > 0 && index < lastIndex,
+  }));
+}
+
 function createCommunityGrid(container, {
   key,
   rows,
@@ -96,7 +105,7 @@ function createCommunityGrid(container, {
   const api = createGrid(container, {
     theme: heirRightGridTheme,
     rowData: Array.isArray(rows) ? rows : [],
-    columnDefs: columns,
+    columnDefs: edgeResizeGuardedColumnDefs(columns),
     defaultColDef: {
       sortable: true,
       filter: true,
@@ -110,6 +119,10 @@ function createCommunityGrid(container, {
         node.setSelected(!node.isSelected());
         return true;
       },
+    },
+    selectionColumnDef: {
+      resizable: false,
+      suppressHeaderMenuButton: true,
     },
     getRowId: ({ data }) => String(data.id),
     rowSelection: selectionConfig(selectionMode),
@@ -143,6 +156,7 @@ function createCommunityGrid(container, {
   });
   container.setAttribute("role", "region");
   container.setAttribute("aria-label", container.dataset.gridLabel || "Operational data grid");
+  container.setAttribute("data-hr-table-edge-resize", "guarded");
   mountedGrids.set(key, { api, container });
   return api;
 }
@@ -165,6 +179,7 @@ function gridStatus(root, message, tone = "neutral") {
 export {
   createCommunityGrid,
   destroyCommunityGrid,
+  edgeResizeGuardedColumnDefs,
   gridStatus,
   heirRightGridTheme,
   interactiveGridTarget,
