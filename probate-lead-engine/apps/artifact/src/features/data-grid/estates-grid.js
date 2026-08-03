@@ -29,6 +29,10 @@ function filteredEstateRows(rows, filters = estateFilters) {
   return rows.filter((row) => estateMatchesFilters(row, filters));
 }
 
+function activeEstateRows(rows) {
+  return rows.filter((row) => !row.workflowState || row.workflowState === "active");
+}
+
 function activeEstateFilterCount(filters = estateFilters) {
   return Number(filters.county !== "all")
     + Number(filters.status !== "all")
@@ -58,12 +62,12 @@ function renderEstatesGrid({ bridge }) {
   return `
     <section class="hr-grid-view hr-estates-grid-view" data-operational-grid-view="estates">
       <header class="hr-grid-header">
-        <div><p class="hr-grid-eyebrow">Estates</p><h1>Estate review</h1><p>Sort and filter the property files, then press Enter on a row to open Document Prep.</p></div>
+        <div><p class="hr-grid-eyebrow">Estates</p><h1>Ready for Doc Prep</h1><p>Select eligible estates, review their source state, then move them into the shared Doc Prep workbench.</p></div>
         <div class="hr-grid-controls">
           <label class="hr-grid-search"><span>Filter estates</span><input type="search" value="${escape(estateQuery)}" data-grid-quick-filter placeholder="Owner, address, county, or status"></label>
           <button type="button" class="hr-grid-filter-toggle beui-popover-trigger" data-estate-filters-toggle aria-expanded="${estateFiltersOpen}" aria-controls="hrEstateFilters">Filters <span data-estate-filter-count data-active="${filterCount > 0}">${filterCount}</span></button>
           <span class="hr-estate-selection-assist" data-estates-selection-assist ${selectedCount ? "" : "hidden"}>
-            <button type="button" class="hr-grid-primary-action" data-estates-add-queue ${selectedCount ? "" : "disabled"}>${selectedCount === 1 ? "Add estate to Queue" : `Add ${selectedCount} estates to Queue`}</button>
+            <button type="button" class="hr-grid-primary-action" data-estates-add-queue ${selectedCount ? "" : "disabled"}>${selectedCount === 1 ? "Queue for Doc Prep" : `Queue ${selectedCount} estates for Doc Prep`}</button>
             <button type="button" class="hr-grid-lifecycle-action" data-estates-archive ${selectedCount ? "" : "disabled"}>${selectedCount === 1 ? "Archive estate" : `Archive ${selectedCount} estates`}</button>
             <button type="button" class="hr-grid-lifecycle-action is-danger" data-estates-delete ${selectedCount ? "" : "disabled"}>${selectedCount === 1 ? "Delete estate" : `Delete ${selectedCount} estates`}</button>
           </span>
@@ -71,7 +75,7 @@ function renderEstatesGrid({ bridge }) {
         </div>
       </header>
       <section class="hr-estate-filters beui-popover" id="hrEstateFilters" data-beui-menu-surface aria-label="Estate list filters" ${estateFiltersOpen ? "" : "hidden"}>
-        <label><span>County</span><select data-estate-filter="county">${countyOptions(snapshot.estates, escape)}</select></label>
+        <label><span>County</span><select data-estate-filter="county">${countyOptions(activeEstateRows(snapshot.estates), escape)}</select></label>
         <label><span>Property status</span><select data-estate-filter="status">
           <option value="all">All statuses</option>
           <option value="review" ${estateFilters.status === "review" ? "selected" : ""}>Needs review</option>
@@ -101,7 +105,7 @@ function mountEstatesGrid(root, bridge) {
   const container = root?.querySelector?.('[data-community-grid="estates"]');
   if (!container) return null;
   const snapshot = bridge.readState();
-  const rows = snapshot.estates.map((estate) => ({ ...estate, evidenceLabel: evidenceLabel(estate) }));
+  const rows = activeEstateRows(snapshot.estates).map((estate) => ({ ...estate, evidenceLabel: evidenceLabel(estate) }));
   const action = root.querySelector("[data-estates-add-queue]");
   const assist = root.querySelector("[data-estates-selection-assist]");
   const archiveAction = root.querySelector("[data-estates-archive]");
@@ -123,7 +127,7 @@ function mountEstatesGrid(root, bridge) {
     }
     if (action) {
       action.disabled = selectedCount === 0;
-      action.textContent = selectedCount === 1 ? "Add estate to Queue" : `Add ${selectedCount} estates to Queue`;
+      action.textContent = selectedCount === 1 ? "Queue for Doc Prep" : `Queue ${selectedCount} estates for Doc Prep`;
     }
     if (archiveAction) {
       archiveAction.disabled = selectedCount === 0;
@@ -215,10 +219,10 @@ function mountEstatesGrid(root, bridge) {
     action.disabled = true;
     action.setAttribute("aria-busy", "true");
     try {
-      await bridge.dispatch("export", { route: "queue", estateIds });
-      gridStatus(statusRoot(), `${estateIds.length} estate${estateIds.length === 1 ? "" : "s"} added to Queue.`, "ready");
+      await bridge.dispatch("s40-queue-estates", { estateIds });
+      gridStatus(statusRoot(), `${estateIds.length} estate${estateIds.length === 1 ? "" : "s"} moved to Doc Prep.`, "ready");
     } catch {
-      gridStatus(statusRoot(), "The selected estates could not be added to Queue.", "blocked");
+      gridStatus(statusRoot(), "The selected estates could not be queued for Doc Prep.", "blocked");
     } finally {
       if (action.isConnected) {
         action.disabled = false;

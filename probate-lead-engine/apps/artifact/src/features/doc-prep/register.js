@@ -1,22 +1,20 @@
 import { registerFeature } from "../../core/feature-registry.js";
-import { docPrepRail } from "./doc-prep-rail.js";
-import { mountDocPrepView, renderDocPrepView, unmountDocPrepView } from "./doc-prep-view.js";
-import "./doc-prep.css";
+import { mountS40DocPrepView, renderS40DocPrepView, unmountS40DocPrepView } from "./s40-doc-prep-view.js";
+import "./s40-doc-prep.css";
 
 registerFeature({
-  id: "s38-doc-prep",
+  id: "s40-doc-prep",
   views: [
     {
       id: "dossiers",
-      render: renderDocPrepView,
-      mount: ({ mount, bridge }) => mountDocPrepView(mount, bridge),
-      unmount: ({ mount }) => unmountDocPrepView(mount),
+      render: renderS40DocPrepView,
+      mount: ({ mount, bridge }) => mountS40DocPrepView(mount, bridge),
+      unmount: ({ mount }) => unmountS40DocPrepView(mount),
     },
   ],
-  rails: [docPrepRail],
   lifecycle: {
     afterRender: ({ activeView, mount, bridge }) => {
-      if (activeView === "dossiers" && mount) mountDocPrepView(mount, bridge);
+      if (activeView === "dossiers" && mount) mountS40DocPrepView(mount, bridge);
     },
   },
 });

@@ -3,9 +3,16 @@ import { normalizePublicConnection } from "../core/public-connection.js";
 import { setTheme as setRuntimeTheme } from "../core/theme-store.js";
 import { verifiedArtifactHref } from "../core/verified-artifact-link.js";
 import { containModalKeydown } from "../ui/focus-containment.js";
+import {
+  estateWorkflowDocPrepStates,
+  estateWorkflowExportQueueStates,
+  estateWorkflowStateLabels,
+  estateWorkflowStates,
+  estateWorkflowTransitions,
+} from "../features/estate-export/workflow-model.js";
 
 const state = {
-  activeView: "dossiers",
+  activeView: "find-estates",
   data: null,
   dossier: null,
   dailyRun: null,
@@ -28,6 +35,7 @@ const state = {
   selectedId: null,
   selectedIds: new Set(),
   queueIds: new Set(),
+  estateWorkflow: {},
   summaryMetricsOpen: false,
   railOpen: false,
   railMode: "report",
@@ -181,6 +189,7 @@ const documentFilesStateKey = "heirright:document-files-state";
 const closingFieldValuesStateKey = "heirright:closing-field-values";
 const closingTemplateSelectionsStateKey = "heirright:closing-template-selections";
 const closingExportStateKey = "heirright:closing-export-state";
+const estateWorkflowStateKey = "heirright:estate-workflow-state";
 const columnOrderStateKey = "heirright:column-order-state";
 const searchHistoryStateKey = "heirright:search-history-state";
 const dripSettingsKey = "heirright:drip-settings";
@@ -202,6 +211,7 @@ const serverBackedStateKeys = new Set([
   closingFieldValuesStateKey,
   closingTemplateSelectionsStateKey,
   closingExportStateKey,
+  estateWorkflowStateKey,
   outreachWorkspaceKey
 ]);
 
@@ -313,7 +323,118 @@ function tableColumnLabel(scope, key) {
   return tableColumnLabels[key] ?? displayStatus(key);
 }
 
-const productViews = ["dashboard", "find-estates", "dossiers", "drips", "queue", "admin", "settings", "help-demos"];
+const productViews = ["find-estates", "dossiers", "export", "drips", "dashboard", "queue", "admin", "settings", "help-demos"];
+
+function normalizeEstateWorkflowStage(stage = {}) {
+  const source = stage && typeof stage === "object" && !Array.isArray(stage) ? stage : {};
+  const status = ["pending", "active", "complete", "blocked"].includes(String(source.status))
+    ? String(source.status)
+    : "pending";
+  return {
+    id: String(source.id || "stage").slice(0, 80),
+    label: cleanDisplayValue(source.label || "Doc Prep stage").slice(0, 120),
+    status,
+    blocker: status === "blocked" ? cleanDisplayValue(source.blocker || "Review this stage before retrying.").slice(0, 240) : "",
+    updatedAt: String(source.updatedAt || ""),
+  };
+}
+
+function normalizeEstateWorkflowRecord(record = {}) {
+  const source = record && typeof record === "object" && !Array.isArray(record) ? record : {};
+  const stateName = estateWorkflowStates.includes(String(source.state)) ? String(source.state) : "active";
+  const stages = Array.isArray(source.stages) ? source.stages.slice(0, 12).map(normalizeEstateWorkflowStage) : [];
+  const artifact = source.artifact && typeof source.artifact === "object" && !Array.isArray(source.artifact)
+    ? {
+        artifactId: cleanDisplayValue(source.artifact.artifactId || ""),
+        artifactUrl: String(source.artifact.artifactUrl || ""),
+        contentHash: cleanDisplayValue(source.artifact.contentHash || ""),
+        expiresAt: String(source.artifact.expiresAt || ""),
+        fileName: cleanDisplayValue(source.artifact.fileName || ""),
+        packetRevision: Number(source.artifact.packetRevision || 0),
+      }
+    : null;
+  const handoff = source.handoff && typeof source.handoff === "object" && !Array.isArray(source.handoff)
+    ? {
+        route: cleanDisplayValue(source.handoff.route || ""),
+        artifactId: cleanDisplayValue(source.handoff.artifactId || ""),
+        readbackStatus: source.handoff.readbackStatus === "verified" ? "verified" : "review",
+        completedAt: String(source.handoff.completedAt || ""),
+      }
+    : null;
+  return {
+    state: stateName,
+    label: estateWorkflowStateLabels[stateName],
+    exportEligible: Boolean(source.exportEligible),
+    blocker: cleanDisplayValue(source.blocker || "").slice(0, 300),
+    blockerStage: cleanDisplayValue(source.blockerStage || "").slice(0, 100),
+    stages,
+    artifact,
+    handoff,
+    updatedAt: String(source.updatedAt || ""),
+    queuedAt: String(source.queuedAt || ""),
+    processingAt: String(source.processingAt || ""),
+    completedAt: String(source.completedAt || ""),
+    exportedAt: String(source.exportedAt || ""),
+  };
+}
+
+function normalizeEstateWorkflowState(value = {}) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return Object.fromEntries(Object.entries(source)
+    .filter(([estateId, record]) => estateId && record && typeof record === "object" && !Array.isArray(record))
+    .map(([estateId, record]) => [String(estateId), normalizeEstateWorkflowRecord(record)]));
+}
+
+function estateWorkflowForRow(row = selectedRow()) {
+  if (!row?.id) return normalizeEstateWorkflowRecord();
+  return state.estateWorkflow[String(row.id)] || normalizeEstateWorkflowRecord();
+}
+
+function syncLegacyQueueIds() {
+  state.queueIds = new Set(state.rows
+    .filter((row) => estateWorkflowDocPrepStates.includes(estateWorkflowForRow(row).state))
+    .map((row) => row.id));
+}
+
+function persistEstateWorkflow({ syncWorkspace = true } = {}) {
+  const text = JSON.stringify(normalizeEstateWorkflowState(state.estateWorkflow));
+  storageSetItem(estateWorkflowStateKey, text, { sync: false });
+  return syncWorkspace ? persistServerState(estateWorkflowStateKey, text) : Promise.resolve(true);
+}
+
+function setEstateWorkflowState(row, nextState, patch = {}) {
+  if (!row?.id || !estateWorkflowStates.includes(nextState)) throw new Error("Estate workflow state is unavailable.");
+  const estateId = String(row.id);
+  const previous = estateWorkflowForRow(row);
+  if (previous.state !== nextState && !estateWorkflowTransitions[previous.state]?.includes(nextState)) {
+    throw new Error("That estate is already in a later workflow stage. Refresh the workspace before retrying.");
+  }
+  const next = normalizeEstateWorkflowRecord({
+    ...previous,
+    ...patch,
+    state: nextState,
+    updatedAt: new Date().toISOString(),
+  });
+  state.estateWorkflow[estateId] = next;
+  syncLegacyQueueIds();
+  return next;
+}
+
+function patchEstateWorkflowState(row, patch = {}) {
+  if (!row?.id) return null;
+  const previous = estateWorkflowForRow(row);
+  const requestedState = patch.state === undefined ? previous.state : String(patch.state);
+  guardEstateWorkflowTransition(previous.state, requestedState);
+  const next = normalizeEstateWorkflowRecord({
+    ...previous,
+    ...patch,
+    state: requestedState,
+    updatedAt: new Date().toISOString(),
+  });
+  state.estateWorkflow[String(row.id)] = next;
+  syncLegacyQueueIds();
+  return next;
+}
 
 const discoveryPhases = [
   {
@@ -1183,6 +1304,11 @@ function applyServerBackedStateValue(key, value) {
   }
   if (key === closingExportStateKey) {
     state.closingExportState = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    return true;
+  }
+  if (key === estateWorkflowStateKey) {
+    state.estateWorkflow = normalizeEstateWorkflowState(parsed);
+    syncLegacyQueueIds();
     return true;
   }
   if (key === discoveryStateKey && parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -2900,7 +3026,21 @@ function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
     addShellEvent("Queue handoff blocked", message, "blocked", true);
     return;
   }
-  validRows.forEach((row) => state.queueIds.add(row.id));
+  validRows.forEach((row) => {
+    const current = estateWorkflowForRow(row);
+    if (current.state === "active") {
+      setEstateWorkflowState(row, "queued", {
+        exportEligible: false,
+        blocker: "",
+        blockerStage: "",
+        stages: [],
+        artifact: null,
+        handoff: null,
+        queuedAt: isoNow(),
+      });
+    }
+  });
+  void persistEstateWorkflow();
   const count = validRows.length;
   state.railPreview = {
     title: `${count} lead${count === 1 ? "" : "s"} added to Queue`,
@@ -3125,6 +3265,7 @@ function loadSavedState() {
   }
   loadDiscoveryState();
   loadDocPrepEstateState();
+  loadEstateWorkflowState();
   loadDealStatusLabels();
   loadDealStatuses();
   loadCrmImports();
@@ -3239,6 +3380,11 @@ function loadDocPrepEstateState() {
   state.docPrepEstateState = Object.fromEntries(Object.entries(stored)
     .filter(([key, value]) => key && value && typeof value === "object" && !Array.isArray(value))
     .map(([key, value]) => [key, normalizeDocPrepEstateRecord(value)]));
+}
+
+function loadEstateWorkflowState() {
+  state.estateWorkflow = normalizeEstateWorkflowState(restoreObjectFromStorage(estateWorkflowStateKey, {}));
+  syncLegacyQueueIds();
 }
 
 function persistDocPrepEstateState() {
@@ -3938,15 +4084,16 @@ function nudgeDeniedAction(target, title, copy, options = {}) {
 
 function activeViewLabel(view = state.activeView) {
   return {
-    dashboard: "Dashboard",
     "find-estates": "Estates",
     dossiers: "Document Prep",
+    export: "Export",
     drips: "Outreach",
+    dashboard: "Dashboard",
     queue: "Queue",
     admin: "Admin",
     settings: "Settings",
     "help-demos": "Help & Demos"
-  }[view] ?? "Dashboard";
+  }[view] ?? "Estates";
 }
 
 function nucleoIcon(name = "check-circle", size = 19, extraClass = "") {
@@ -12435,13 +12582,13 @@ function setDetailRailOpen(open) {
   app?.classList.toggle("detail-rail-collapsed", !open);
 }
 
-function setActiveShellView(view = "dashboard", label = "") {
+function setActiveShellView(view = "find-estates", label = "") {
   if (walkthroughAutoTimer && !state.walkthrough.open) {
     window.clearTimeout(walkthroughAutoTimer);
     walkthroughAutoTimer = null;
   }
   const app = document.querySelector(".app");
-  const nextView = productViews.includes(view) ? view : "dashboard";
+  const nextView = productViews.includes(view) ? view : "find-estates";
   const detail = document.querySelector(".detail");
   const previousRailMode = state.railMode;
   state.activeView = nextView;
@@ -13970,8 +14117,9 @@ async function generatePacketPreview(row = selectedRow(), source = null, options
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    state.exportResult = { ok: false, blockers: [message], routes: [] };
-    document.getElementById("topStatus").textContent = `Packet preview blocked: ${message}`;
+    const safeMessage = options.s40 ? s40SafeBlocker(error, "The packet did not pass verified PDF readback. Retry the Doc Prep run.") : message;
+    state.exportResult = { ok: false, blockers: [safeMessage], routes: [] };
+    document.getElementById("topStatus").textContent = options.s40 ? safeMessage : `Packet preview blocked: ${message}`;
     if (options.render !== false) renderRail();
     return null;
   } finally {
@@ -15513,6 +15661,7 @@ function publicEstateRow(row) {
   const recentSaleWithinFiveYears = Number.isFinite(parsedLastSale)
     && parsedLastSale <= Date.now()
     && Date.now() - parsedLastSale <= 5 * 365.25 * 24 * 60 * 60 * 1000;
+  const workflow = estateWorkflowForRow(row);
   return {
     id: String(row.id || ""),
     title: cleanDisplayValue(row.leadName || row.title || row.owner || "Estate file"),
@@ -15539,6 +15688,16 @@ function publicEstateRow(row) {
     recentSaleWithinFiveYears,
     selected: row.id === state.selectedId,
     queued: state.queueIds.has(row.id),
+    workflowState: workflow.state,
+    workflowLabel: workflow.label,
+    workflowBlocker: workflow.blocker,
+    workflowBlockerStage: workflow.blockerStage,
+    workflowStages: workflow.stages,
+    exportEligible: workflow.exportEligible,
+    workflowArtifact: workflow.artifact,
+    handoff: workflow.handoff,
+    exportedAt: workflow.exportedAt,
+    packetApproved: Boolean(workflow.artifact && s40EnsurePacketArtifact(row) && currentPacketApproval(row, "discovery")),
   };
 }
 
@@ -15775,15 +15934,24 @@ function legacyPublicSnapshot() {
   const phase = currentDiscoveryPhase(flow.id, row);
   const stream = docPrepStreamForRow(row, flow.id);
   const packet = packetArtifactForRow(row, flow.id);
+  const workflow = estateWorkflowForRow(row);
+  const publicEstates = state.rows.map(publicEstateRow);
+  const docPrepEstates = publicEstates.filter((estate) => estateWorkflowDocPrepStates.includes(estate.workflowState));
+  const exportQueue = publicEstates.filter((estate) => estate.exportEligible && estateWorkflowExportQueueStates.includes(estate.workflowState));
   return freezePublicValue({
     activeView: state.activeView,
     selectedEstateId: row?.id || null,
     selectedEstate: publicEstateRow(row),
-    estates: state.rows.map(publicEstateRow),
+    estates: publicEstates,
+    docPrepEstates,
+    exportQueue,
     selectedIds: [...state.selectedIds],
     queueIds: [...state.queueIds],
     docPrep: {
       listOpen: state.docPrepListOpen,
+      workflowState: workflow.state,
+      workflowLabel: workflow.label,
+      workflowStages: workflow.stages,
       flow: { id: flow.id, label: flow.label, title: flow.title },
       progress: row ? discoveryProgress(flow.id, row) : 0,
       currentPhase: phase ? { id: phase.id, label: phase.label, source: phase.source } : null,
@@ -15976,12 +16144,382 @@ function runLegacyPacketAction(row, payload = {}) {
   link.remove();
   document.getElementById("topStatus").textContent = "The current verified packet download started.";
 }
+const s40StageTemplate = Object.freeze([
+  { id: "source-review", label: "Source evidence", status: "pending" },
+  { id: "packet-render", label: "Packet render", status: "pending" },
+  { id: "pdf-readback", label: "PDF readback", status: "pending" },
+  { id: "export-handoff", label: "Export handoff", status: "pending" },
+]);
+
+function s40StagesFor(row, reset = false) {
+  const existing = reset ? [] : estateWorkflowForRow(row).stages;
+  return s40StageTemplate.map((stage) => {
+    const saved = existing.find((candidate) => candidate.id === stage.id);
+    return normalizeEstateWorkflowStage(saved || stage);
+  });
+}
+
+function s40StageUpdate(row, stageId, status, blocker = "", { render = true } = {}) {
+  const stages = s40StagesFor(row).map((stage) => stage.id === stageId
+    ? normalizeEstateWorkflowStage({ ...stage, status, blocker, updatedAt: new Date().toISOString() })
+    : stage);
+  const next = patchEstateWorkflowState(row, {
+    stages,
+    blocker: status === "blocked" ? cleanDisplayValue(blocker) : "",
+    blockerStage: status === "blocked" ? stageId : estateWorkflowForRow(row).blockerStage,
+  });
+  queueS40WorkflowPersist();
+  if (render) renderCurrentLoopView();
+  return next;
+}
+
+function s40SafeBlocker(error, fallback = "This stage could not complete. Review the estate file and retry.") {
+  const raw = String(error?.message || error || "").replace(/\s+/g, " ").trim();
+  if (/workspace|shared.*save|reload|revision/i.test(raw)) return "The shared workflow state could not be saved. Reload the workspace, then retry.";
+  if (/source|discovery|evidence|idi|provider|public/i.test(raw)) return "Source evidence needs verified readback before Doc Prep can continue.";
+  if (/packet|pdf|artifact|render/i.test(raw)) return "The packet did not pass verified PDF readback. Retry the Doc Prep run.";
+  if (/approval|google|drive|destination|handoff|export/i.test(raw)) return "Export approval and readback are required before the file can leave Doc Prep.";
+  return fallback;
+}
+
+function s40SourceEvidenceReady(row) {
+  const capture = sourceCaptureForRow(row);
+  const persistence = capture?.sourceApiRun?.persistence;
+  const proof = capture?.sourceApiRun?.sourceRunProof;
+  return Boolean(
+    dossierForRow(row)
+    && (
+      persistence?.readbackStatus === "verified"
+      || (persistence?.stored === true && persistence?.readbackStatus === "verified")
+      || proof?.readbackStatus === "verified"
+    )
+  );
+}
+
+function s40ArtifactMetadata(result, row) {
+  const artifact = result?.artifact || {};
+  return {
+    artifactId: cleanDisplayValue(artifact.artifactId || result?.verification?.artifactId || ""),
+    artifactUrl: String(result?.artifactUrl || artifact.url || ""),
+    contentHash: cleanDisplayValue(artifact.contentHash || result?.verification?.contentHash || ""),
+    expiresAt: String(artifact.expiresAt || result?.expiresAt || ""),
+    fileName: docPrepFlow("discovery").title + " - " + docPrepOwnerLabel(row) + ".pdf",
+    packetRevision: Number(result?.packetRevision || artifact.packetRevision || currentPacketRevision(row, "discovery")),
+  };
+}
+function s40EnsurePacketArtifact(row) {
+  if (!row) return null;
+  const existing = packetArtifactForRow(row, "discovery");
+  if (existing?.verification?.verified && existing.verification.readbackStatus === "verified") return existing;
+  const workflowArtifact = estateWorkflowForRow(row).artifact;
+  if (!workflowArtifact?.artifactId || !workflowArtifact.artifactUrl || !workflowArtifact.contentHash || !workflowArtifact.expiresAt) return existing || null;
+  const packet = {
+    ok: true,
+    flow: "discovery",
+    estateId: assetDiscoveryKey(row),
+    estateIds: [assetDiscoveryKey(row)],
+    contentType: "application/pdf",
+    artifactUrl: workflowArtifact.artifactUrl,
+    packetRevision: workflowArtifact.packetRevision,
+    packetPersistence: [{ estateId: assetDiscoveryKey(row), stored: true, readbackStatus: "verified" }],
+    artifact: {
+      kind: "combined_and_separated_pdf",
+      artifactId: workflowArtifact.artifactId,
+      contentType: "application/pdf",
+      contentHash: workflowArtifact.contentHash,
+      expiresAt: workflowArtifact.expiresAt,
+      packetRevision: workflowArtifact.packetRevision,
+      url: workflowArtifact.artifactUrl,
+    },
+    verification: {
+      verified: true,
+      readbackStatus: "verified",
+      artifactId: workflowArtifact.artifactId,
+      contentHash: workflowArtifact.contentHash,
+      verifiedAt: workflowArtifact.updatedAt || estateWorkflowForRow(row).updatedAt || new Date().toISOString(),
+    },
+    routes: [],
+    documentArtifacts: [],
+  };
+  state.packetArtifacts[`discovery:${row.id}`] = packet;
+  return packet;
+}
+
+let s40WorkflowPersistChain = Promise.resolve(true);
+
+function queueS40WorkflowPersist() {
+  s40WorkflowPersistChain = s40WorkflowPersistChain
+    .catch(() => true)
+    .then(() => persistEstateWorkflow())
+    .catch(() => false);
+  return s40WorkflowPersistChain;
+}
+
+
+async function s40PersistWorkflowOrThrow() {
+  if (!await queueS40WorkflowPersist()) {
+    throw new Error("The shared workflow state could not be saved. Reload the workspace, then retry.");
+  }
+}
+
+async function queueEstatesForDocPrep(rows = []) {
+  const uniqueRows = [...new Map(rows.filter(Boolean).map((row) => [String(row.id), row])).values()];
+  if (!uniqueRows.length) throw new Error("Select at least one active estate before queueing Doc Prep.");
+  const previous = new Map(uniqueRows.map((row) => [String(row.id), normalizeEstateWorkflowRecord(estateWorkflowForRow(row))]));
+  const blocked = uniqueRows.find((row) => canonicalStopReasonsForRow(row).length > 0);
+  if (blocked) {
+    throw new Error("This estate is held by an existing review stop. Resolve the estate review before queueing Doc Prep.");
+  }
+  try {
+    uniqueRows.forEach((row) => {
+      const current = estateWorkflowForRow(row);
+      if (current.state === "active") {
+        setEstateWorkflowState(row, "queued", {
+          exportEligible: false,
+          blocker: "",
+          blockerStage: "",
+          stages: [],
+          artifact: null,
+          handoff: null,
+          queuedAt: isoNow(),
+        });
+      } else if (current.state !== "queued") {
+        throw new Error("One or more selected estates already left the active Estates worklist.");
+      }
+    });
+    uniqueRows.forEach((row) => state.selectedIds.delete(row.id));
+    await s40PersistWorkflowOrThrow();
+  } catch (error) {
+    uniqueRows.forEach((row) => {
+      const prior = previous.get(String(row.id));
+      if (prior) state.estateWorkflow[String(row.id)] = prior;
+    });
+    syncLegacyQueueIds();
+    throw error;
+  }
+  state.selectedId = uniqueRows[0]?.id || state.selectedId;
+  addShellEvent(
+    "Estates queued for Doc Prep",
+    uniqueRows.length + " estate" + (uniqueRows.length === 1 ? "" : "s") + " moved from Estates into the Doc Prep workbench.",
+    "ready",
+    true,
+  );
+  return uniqueRows;
+}
+
+async function runS40DocPrep(estateIds = []) {
+  const ids = [...new Set(estateIds.map(String).filter(Boolean))];
+  if (!ids.length) throw new Error("Select at least one queued estate before starting Doc Prep.");
+  const results = [];
+  for (const estateId of ids) {
+    const row = rowById(estateId);
+    if (!row) {
+      results.push({ estateId, state: "blocked", blocker: "That estate is no longer available in the workspace." });
+      continue;
+    }
+    const previous = normalizeEstateWorkflowRecord(estateWorkflowForRow(row));
+    const current = previous.state;
+    if (current === "exported" || current === "completed-awaiting-export") {
+      results.push({ estateId, state: current });
+      continue;
+    }
+    if (current === "processing") {
+      results.push({ estateId, state: "blocked", blocker: "This estate is already running in Doc Prep. Wait for the current run to finish." });
+      continue;
+    }
+    if (!["queued", "blocked"].includes(current)) {
+      results.push({ estateId, state: "blocked", blocker: "Queue this estate from Estates before starting Doc Prep." });
+      continue;
+    }
+    if (current === "blocked" && previous.blockerStage === "export-handoff" && previous.exportEligible) {
+      results.push({ estateId, state: "blocked", blocker: "This estate is waiting for export handoff retry." });
+      continue;
+    }
+    let stageId = "source-review";
+    try {
+      state.selectedId = row.id;
+      state.activeDocPrepFlow = "discovery";
+      setEstateWorkflowState(row, "processing", {
+        exportEligible: false,
+        blocker: "",
+        blockerStage: "",
+        stages: s40StagesFor(row, true),
+        processingAt: isoNow(),
+      });
+      await s40PersistWorkflowOrThrow();
+      s40StageUpdate(row, "source-review", "active");
+      await hydratePersistedDiscoveryFile(row);
+      if (!s40SourceEvidenceReady(row)) {
+        throw new Error("Source evidence needs verified readback before Doc Prep can continue.");
+      }
+      s40StageUpdate(row, "source-review", "complete");
+      stageId = "packet-render";
+      s40StageUpdate(row, stageId, "active");
+      const result = await generatePacketPreview(row, null, { flowId: "discovery", render: false, s40: true });
+      if (!result?.ok || result?.verification?.verified !== true || result?.verification?.readbackStatus !== "verified") {
+        throw new Error("The packet did not pass verified PDF readback.");
+      }
+      linkGeneratedDocPrepPackets(row, "discovery", { syncWorkspace: false });
+      await verifyGeneratedPacketAuditReadback(row, "discovery");
+      persistDiscoveryState({ syncWorkspace: false });
+      persistDocumentFiles();
+      s40StageUpdate(row, stageId, "complete");
+      stageId = "pdf-readback";
+      s40StageUpdate(row, stageId, "active");
+      const artifact = s40ArtifactMetadata(result, row);
+      if (!artifact.artifactId || !artifact.artifactUrl || !artifact.contentHash) {
+        throw new Error("The packet did not return a complete verified PDF record.");
+      }
+      s40StageUpdate(row, stageId, "complete");
+      patchEstateWorkflowState(row, {
+        state: "completed-awaiting-export",
+        label: estateWorkflowStateLabels["completed-awaiting-export"],
+        exportEligible: true,
+        blocker: "",
+        blockerStage: "",
+        artifact,
+      });
+      syncLegacyQueueIds();
+      await s40PersistWorkflowOrThrow();
+      addShellEvent(
+        "Doc Prep packet verified",
+        docPrepEstateLabel(row) + " passed PDF render and shared readback, and is waiting for export approval.",
+        "ready",
+        true,
+        { row, source: "Doc Prep" },
+      );
+      results.push({ estateId, state: "completed-awaiting-export" });
+    } catch (error) {
+      const blocker = s40SafeBlocker(error);
+      s40StageUpdate(row, stageId, "blocked", blocker, { render: false });
+      patchEstateWorkflowState(row, {
+        state: "blocked",
+        label: estateWorkflowStateLabels.blocked,
+        exportEligible: false,
+        blocker,
+        blockerStage: stageId,
+      });
+      try {
+        await s40PersistWorkflowOrThrow();
+      } catch {}
+      document.getElementById("topStatus").textContent = blocker;
+      addShellEvent("Doc Prep stage blocked", blocker, "blocked", true, { row, source: "Doc Prep" });
+      renderCurrentLoopView();
+      results.push({ estateId, state: "blocked", blocker });
+    }
+  }
+  state.selectedId = rowById(ids[0])?.id || state.selectedId;
+  return results;
+}
+
+async function exportS40Handoff(estateIds = []) {
+  const ids = [...new Set(estateIds.map(String).filter(Boolean))];
+  if (!ids.length) throw new Error("Select at least one completed report before export handoff.");
+  const results = [];
+  for (const estateId of ids) {
+    const row = rowById(estateId);
+    if (!row) {
+      results.push({ estateId, state: "blocked", blocker: "That estate is no longer available in the workspace." });
+      continue;
+    }
+    const previous = normalizeEstateWorkflowRecord(estateWorkflowForRow(row));
+    if (previous.state === "exported") {
+      results.push({ estateId, state: "exported" });
+      continue;
+    }
+    if (!previous.exportEligible || !estateWorkflowExportQueueStates.includes(previous.state)) {
+      results.push({ estateId, state: "blocked", blocker: "Only a verified completed report can enter export handoff." });
+      continue;
+    }
+    let stageId = "export-handoff";
+    try {
+      state.selectedId = row.id;
+      const packet = s40EnsurePacketArtifact(row);
+      if (!packet?.verification?.verified || packet?.verification?.readbackStatus !== "verified") {
+        throw new Error("The current packet did not pass verified PDF readback.");
+      }
+      if (!currentPacketApproval(row, "discovery")) {
+        throw new Error("Approve the current verified packet before export handoff.");
+      }
+      if (!googleWorkspaceDeliveryReady()) {
+        throw new Error("Export destination approval is required before handoff.");
+      }
+      s40StageUpdate(row, stageId, "active");
+      const delivery = await deliverPacketToGoogle(row, packet);
+      if (!delivery?.ok || delivery.readbackStatus !== "verified" || delivery.readbackOk !== true) {
+        throw new Error("Export handoff did not pass destination readback.");
+      }
+      s40StageUpdate(row, stageId, "complete");
+      setEstateWorkflowState(row, "exported", {
+        exportEligible: false,
+        blocker: "",
+        blockerStage: "",
+        handoff: {
+          route: "google-workspace",
+          artifactId: cleanDisplayValue(packet.artifact?.artifactId || ""),
+          readbackStatus: "verified",
+          completedAt: isoNow(),
+        },
+        exportedAt: isoNow(),
+      });
+      await s40PersistWorkflowOrThrow();
+      addShellEvent(
+        "Export handoff verified",
+        docPrepEstateLabel(row) + " passed destination readback and moved into Export.",
+        "ready",
+        true,
+        { row, source: "Export" },
+      );
+      results.push({ estateId, state: "exported" });
+    } catch (error) {
+      const blocker = s40SafeBlocker(error, "Export approval and readback are required before the file can leave Doc Prep.");
+      s40StageUpdate(row, stageId, "blocked", blocker, { render: false });
+      patchEstateWorkflowState(row, {
+        state: "blocked",
+        exportEligible: true,
+        blocker,
+        blockerStage: stageId,
+      });
+      try {
+        await s40PersistWorkflowOrThrow();
+      } catch {}
+      document.getElementById("topStatus").textContent = blocker;
+      addShellEvent("Export handoff blocked", blocker, "blocked", true, { row, source: "Export" });
+      renderCurrentLoopView();
+      results.push({ estateId, state: "blocked", blocker });
+    }
+  }
+  return results;
+}
 
 async function dispatchLegacyCommand(command, payload = {}) {
   const id = String(command || "");
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new TypeError("Command payload must be an object.");
   try {
-    if (id === "select-estate") {
+    if (id === "s40-queue-estates") {
+      const estateIds = Array.isArray(payload.estateIds) ? [...new Set(payload.estateIds.map(String).filter(Boolean))] : [];
+      if (!estateIds.length) throw new Error("Select at least one active estate before queueing Doc Prep.");
+      const rows = estateIds.map(rowById).filter(Boolean);
+      if (rows.length !== estateIds.length) throw new Error("One or more selected estates are unavailable.");
+      await queueEstatesForDocPrep(rows);
+      setActiveShellView("dossiers", "Doc Prep");
+    } else if (id === "s40-run-docprep") {
+      const estateIds = Array.isArray(payload.estateIds) ? payload.estateIds : [];
+      await runS40DocPrep(estateIds);
+      setActiveShellView("dossiers", "Doc Prep");
+    } else if (id === "s40-approve-packet") {
+      const row = estateForLegacyCommand(payload);
+      if (!row) throw new Error("Select an available estate.");
+      if (!s40EnsurePacketArtifact(row)) throw new Error("Run Doc Prep and verify the PDF before approving export.");
+      await hydrateCurrentPacketApproval(row, "discovery");
+      await approveCurrentPacket(row, "discovery");
+      setActiveShellView("dossiers", "Doc Prep");
+      renderCurrentLoopView();
+    } else if (id === "s40-export-handoff") {
+      const estateIds = Array.isArray(payload.estateIds) ? payload.estateIds : [];
+      await exportS40Handoff(estateIds);
+      setActiveShellView("dossiers", "Doc Prep");
+    } else if (id === "select-estate") {
       const row = estateForLegacyCommand(payload);
       if (!row) throw new Error("Select an available estate.");
       state.selectedId = row.id;
@@ -16043,7 +16581,20 @@ async function dispatchLegacyCommand(command, payload = {}) {
     } else if (id === "remove-from-queue") {
       const row = estateForLegacyCommand(payload);
       if (!row) throw new Error("Select an available estate.");
-      state.queueIds.delete(row.id);
+      const workflow = estateWorkflowForRow(row);
+      if (workflow.state === "queued") {
+        setEstateWorkflowState(row, "active", {
+          exportEligible: false,
+          blocker: "",
+          blockerStage: "",
+          stages: [],
+          artifact: null,
+          handoff: null,
+        });
+        void persistEstateWorkflow();
+      } else {
+        state.queueIds.delete(row.id);
+      }
       document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} was removed from Queue.`;
       renderCurrentLoopView();
       renderRail();
@@ -16143,7 +16694,7 @@ function installAuthorizedLegacyBridge() {
 
 const initialUrlParams = new URLSearchParams(window.location.search);
 const initialViewParam = initialUrlParams.get("view");
-const initialView = productViews.includes(initialViewParam) ? initialViewParam : "dashboard";
+const initialView = productViews.includes(initialViewParam) ? initialViewParam : "find-estates";
 let workspaceBooted = false;
 let workspaceBooting = false;
 

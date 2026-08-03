@@ -1060,8 +1060,8 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(estatesGrid, /data-estates-delete/, "the Estates grid must expose delete for a selected imported estate");
   assert.match(estatesGrid, /bridge\.dispatch\("estate-lifecycle"/, "estate lifecycle actions must cross the authorized bridge");
   assert.match(legacy, /id === "estate-lifecycle"[\s\S]*payload\.confirmed !== true[\s\S]*runEstateLifecycleForRows/, "delete must require explicit confirmation before the lifecycle mutation");
-  assert.match(estatesGrid, /selectedCount === 1 \? "Add estate to Queue" : `Add \$\{selectedCount\} estates to Queue`/, "the contextual action must describe the exact selected-estate scope");
-  assert.match(estatesGrid, /bridge\.dispatch\("export", \{ route: "queue", estateIds \}\)/);
+  assert.match(estatesGrid, /selectedCount === 1 \? "Queue for Doc Prep" : `Queue \$\{selectedCount\} estates for Doc Prep`/, "the contextual action must describe the exact selected-estate scope");
+  assert.match(estatesGrid, /bridge\.dispatch\("s40-queue-estates", \{ estateIds \}\)/);
   assert.match(estatesGrid, /data-estate-filter="county"[\s\S]*data-estate-filter="status"[\s\S]*data-estate-filter="minimumEvidence"[\s\S]*data-estate-filter="missing"[\s\S]*data-estate-filter="priorityOnly"/, "approved operational filters must remain visible in the Estates migration");
   assert.match(gridTree, /queueSelection\.delete\(String\(row\.id\)\)/, "Queue removal must prune the export selection immediately");
   assert.match(gridTree, /if \(exportButton\) exportButton\.disabled = queueSelection\.size === 0/, "Queue export must track explicit selection state");
@@ -1277,7 +1277,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.equal(packageJson.dependencies["ag-grid-enterprise"], undefined);
   assert.doesNotMatch(lock, /ag-grid-enterprise/i);
 
-  const allOwnedSource = `${docPrepTree}\n${gridTree}`;
+  const allOwnedSource = `${read("src/features/doc-prep/s40-doc-prep-view.js")}\n${read("src/features/doc-prep/s40-doc-prep.css")}\n${gridTree}`;
   assert.doesNotMatch(allOwnedSource, /https?:\/\/(?:cdn|unpkg|fonts\.|ka-[fp]\.)/i);
   assert.doesNotMatch(allOwnedSource, /rawReportText|extraction\.text|accessToken|refreshToken/i);
   assert.doesNotMatch(allOwnedSource, /<wa-(?:file-input|combobox|date-picker|toast|data-viz)/i);
