@@ -184,6 +184,10 @@
 }
 
 @media (min-width: 820px) {
+  #workspace[data-s38-shell="case-journey"] .nav-list {
+    margin-inline-end: 0.75rem;
+  }
+
   #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .brand {
     width: auto;
     overflow: visible;
