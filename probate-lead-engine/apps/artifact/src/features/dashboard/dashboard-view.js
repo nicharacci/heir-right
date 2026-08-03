@@ -4,6 +4,14 @@ import { timeLabel } from "../case-journey/case-journey-rail.js";
 
 let dashboardRange = "30d";
 
+function firstName(value) {
+  const text = String(value || "").trim();
+  if (!text) return "there";
+  const localPart = text.includes("@") ? text.split("@")[0] : text;
+  const normalized = localPart.replace(/[._-]+/g, " ").trim();
+  return normalized.split(/\s+/)[0] || "there";
+}
+
 function safe(bridge, value) {
   return bridge.escapeHtml(String(value ?? ""));
 }
@@ -201,13 +209,12 @@ function renderDashboardView({ bridge }) {
     else totals.withoutReports += 1;
     return totals;
   }, { withoutReports: 0, withReports: 0, exported: 0 });
-  const userName = String(state.session?.user?.name || state.session?.user?.email || "there").split("@")[0];
+  const userName = firstName(state.session?.user?.name || state.session?.user?.email);
   return `
     <div class="case-dashboard" aria-label="HeirRight Manage Estates workspace">
       <header class="dashboard-decision-band">
         <div class="dashboard-estate-context">
           <h2>Good to see you, ${safe(bridge, userName)}</h2>
-          <p>Previous file: ${safe(bridge, estate?.title || "Choose an estate file")} · ${safe(bridge, estate?.address || "Start in Estates to choose a file.")}</p>
         </div>
         <div class="dashboard-disposition" data-disposition="${safe(bridge, disposition.tone)}">
           <span>Last visited</span>
