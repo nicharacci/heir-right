@@ -80,6 +80,7 @@ interface CloudflareEnv {
   AUTH_ALLOWED_EMAILS?: string;
   SOLVYS_ADMIN_EMAILS?: string;
   HEIRRIGHT_API_TOKEN?: string;
+  HEIRRIGHT_ADMIN_SETTINGS_PASSWORD?: string;
   GOOGLE_WORKSPACE_ACCESS_TOKEN?: string;
   GOOGLE_TRACKING_SHEET_ID?: string;
   GOOGLE_DRIVE_PARENT_FOLDER_ID?: string;
@@ -195,6 +196,7 @@ function routeList(): string[] {
     "/api/google-workspace/destinations",
     "/api/agentic/models",
     "/api/agentic/backstory",
+    "/api/admin/settings",
     "/api/doc-prep/packet-approval",
     "/api/google-workspace/export",
     "/api/outreach/sync",
@@ -2219,6 +2221,13 @@ interface DiscoveryFileWriteRecord {
 
 const DISCOVERY_FILE_WRITE_STALE_MS = 15 * 60 * 1000;
 
+interface AdminSettingsPasswordRecord {
+  version: 1;
+  salt: string;
+  digest: string;
+  updatedAt: string;
+}
+
 export class WorkspaceState {
   private storage: WorkspaceStateStorage;
 
@@ -2847,6 +2856,68 @@ export class WorkspaceState {
     }
   }
 
+  private async adminSettingsResponse(body: Record<string, unknown>): Promise<Response> {
+    const action = stringValue(body.action);
+    const suppliedPassword = stringValue(body.password || body.currentPassword);
+    const newPassword = stringValue(body.newPassword);
+    const bootstrapPassword = stringValue(body.bootstrapPassword);
+    if (!['unlock', 'rotate'].includes(action)) {
+      return json({ ok: false, error: 'admin_settings_action_invalid', message: 'The admin settings action is invalid.' }, { status: 400 });
+    }
+    if (!suppliedPassword || (action === 'rotate' && newPassword.length < 12)) {
+      return json({ ok: false, error: 'admin_settings_password_invalid', message: 'The admin password request is incomplete.' }, { status: 422 });
+    }
+    if (!this.storage.transaction) {
+      return json({ ok: false, error: 'admin_settings_storage_unavailable', message: 'Admin settings storage is unavailable.' }, { status: 503 });
+    }
+
+    const storageKey = 'admin-settings-password';
+    const digestFor = (password: string, salt: string) => sha256Hex(`${salt}\u0000${password}`);
+    const matches = async (password: string, record: AdminSettingsPasswordRecord | undefined) => Boolean(
+      record?.version === 1
+      && record.salt
+      && /^[a-f0-9]{64}$/i.test(record.digest)
+      && timingSafeStringEqual(await digestFor(password, record.salt), record.digest),
+    );
+
+    try {
+      return await this.storage.transaction(async (storage) => {
+        const current = await storage.get<AdminSettingsPasswordRecord>(storageKey);
+        const currentMatches = await matches(suppliedPassword, current);
+        const bootstrapMatches = !current && bootstrapPassword && timingSafeStringEqual(suppliedPassword, bootstrapPassword);
+        if (!current && !bootstrapMatches) {
+          return json({ ok: false, error: bootstrapPassword ? 'admin_settings_password_incorrect' : 'admin_settings_password_not_configured', message: bootstrapPassword ? 'The admin password key is incorrect.' : 'Admin settings password storage is not configured.' }, { status: bootstrapPassword ? 401 : 503 });
+        }
+        if (!currentMatches && current) {
+          return json({ ok: false, error: 'admin_settings_password_incorrect', message: 'The admin password key is incorrect.' }, { status: 401 });
+        }
+        if (action === 'unlock') {
+          if (!current) {
+            const salt = crypto.randomUUID();
+            const record: AdminSettingsPasswordRecord = { version: 1, salt, digest: await digestFor(suppliedPassword, salt), updatedAt: nowIso() };
+            await storage.put(storageKey, record);
+            const readback = await storage.get<AdminSettingsPasswordRecord>(storageKey);
+            if (!readback || readback.version !== 1 || readback.digest !== record.digest) {
+              return json({ ok: false, error: 'admin_settings_readback_failed', message: 'Admin settings password setup did not pass storage readback.' }, { status: 503 });
+            }
+          }
+          return json({ ok: true, authorized: true, readbackStatus: 'verified' }, { headers: { 'cache-control': 'no-store' } });
+        }
+
+        const salt = crypto.randomUUID();
+        const record: AdminSettingsPasswordRecord = { version: 1, salt, digest: await digestFor(newPassword, salt), updatedAt: nowIso() };
+        await storage.put(storageKey, record);
+        const readback = await storage.get<AdminSettingsPasswordRecord>(storageKey);
+        if (!readback || readback.version !== 1 || readback.digest !== record.digest) {
+          return json({ ok: false, error: 'admin_settings_readback_failed', message: 'Admin password rotation did not pass storage readback.' }, { status: 503 });
+        }
+        return json({ ok: true, rotated: true, readbackStatus: 'verified' }, { headers: { 'cache-control': 'no-store' } });
+      });
+    } catch {
+      return json({ ok: false, error: 'admin_settings_storage_failed', message: 'Admin settings password storage failed safely. No password change was claimed.' }, { status: 503 });
+    }
+  }
+
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const body = request.method === "POST"
@@ -2871,6 +2942,10 @@ export class WorkspaceState {
     if (url.pathname === "/discovery-file-operation") {
       if (request.method !== "POST") return methodNotAllowed("POST");
       return this.discoveryFileOperationResponse(body);
+    }
+    if (url.pathname === "/admin-settings") {
+      if (request.method !== "POST") return methodNotAllowed("POST");
+      return this.adminSettingsResponse(body);
     }
     const key = stringValue(url.searchParams.get("key") || body.key);
     if (!sharedWorkspaceStateKeys.has(key)) {
@@ -2930,6 +3005,36 @@ async function workspaceStateResponse(request: Request, url: URL, env: Cloudflar
   const id = env.WORKSPACE_STATE.idFromName("heirright-team-workspace");
   const stub = env.WORKSPACE_STATE.get(id);
   return stub.fetch(new Request(`https://workspace-state.internal${url.pathname}${url.search}`, request));
+}
+
+async function adminSettingsResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  if (!internalBearerAuthorized(request, env)) {
+    return json({
+      ok: false,
+      error: "admin_settings_internal_only",
+      message: "Admin settings must be changed from the signed HeirRight app.",
+    }, { status: 403, headers: { "cache-control": "no-store" } });
+  }
+  if (!env.WORKSPACE_STATE) {
+    return json({ ok: false, error: "admin_settings_storage_unavailable", message: "Admin settings storage is unavailable." }, { status: 503 });
+  }
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const id = env.WORKSPACE_STATE.idFromName("heirright-team-workspace");
+  const stub = env.WORKSPACE_STATE.get(id);
+  const forwardedBody = JSON.stringify({
+    ...body,
+    bootstrapPassword: env.HEIRRIGHT_ADMIN_SETTINGS_PASSWORD || "",
+  });
+  const response = await stub.fetch(new Request("https://workspace-state.internal/admin-settings", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: forwardedBody,
+  }));
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
 }
 
 async function storePacketArtifact(
@@ -7712,6 +7817,13 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return agenticBackstoryResponse(request, env);
+    }
+
+    if (url.pathname === "/api/admin/settings") {
+      if (request.method !== "POST") return methodNotAllowed("POST");
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return adminSettingsResponse(request, env);
     }
 
     if (url.pathname === "/api/doc-prep/packet-approval") {

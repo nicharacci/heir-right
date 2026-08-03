@@ -23,7 +23,6 @@ const state = {
   googleWorkspace: null,
   googleWorkspaceFolders: [],
   googleWorkspaceLoading: false,
-  idiCoreUserApiKey: "",
   exportResult: null,
   packetArtifacts: {},
   packetApprovals: {},
@@ -35,6 +34,8 @@ const state = {
   selectedId: null,
   selectedIds: new Set(),
   queueIds: new Set(),
+  queueSelectionIds: new Set(),
+  queueTab: "doc-prep",
   estateWorkflow: {},
   summaryMetricsOpen: false,
   railOpen: false,
@@ -58,6 +59,7 @@ const state = {
   actionErrorLog: [],
   railRenaming: false,
   dashboardActivityTab: "activities",
+  dashboardRange: "7d",
   selectedDossierDocId: "",
   activeDocPrepFlow: "discovery",
   docPrepListOpen: true,
@@ -137,6 +139,8 @@ const state = {
   outreachNotification: null,
   outreachSideTab: "variables",
   settingsTab: "integrations",
+  adminSettingsUnlocked: false,
+  adminPasswordStatus: { state: "idle", message: "" },
   agenticModelPreference: "dynamic-free-catalog",
   agenticModelStatus: { loaded: false, available: false, provider: "nous", model: null, freeModels: [], route: "unavailable" },
   documentAutomationStates: {},
@@ -185,7 +189,6 @@ const dealStatusLabelStateKey = "heirright:deal-status-labels";
 const crmImportStateKey = "heirright:crm-imported-estates";
 const sourceCaptureStateKey = "heirright:source-capture-state";
 const idiImportStateKey = "heirright:idi-asset-imports";
-const idiCoreUserApiKeyKey = "heirright:idi-core-user-api-key";
 const contactReviewStateKey = "heirright:contact-review-state";
 const documentFilesStateKey = "heirright:document-files-state";
 const closingFieldValuesStateKey = "heirright:closing-field-values";
@@ -937,6 +940,12 @@ function storageRemoveItem(key) {
 }
 
 function purgeLegacyIdiBrowserState() {
+  const idiCoreUserApiKeyKey = "heirright:idi-core-user-api-key";
+  const state = typeof globalThis !== "undefined" && globalThis.state && typeof globalThis.state === "object"
+    ? globalThis.state
+    : {};
+  storageRemoveItem(idiCoreUserApiKeyKey);
+  state.idiCoreUserApiKey = "";
   volatileIdiBrowserStateKeys.forEach((key) => storageRemoveItem(key));
 }
 
@@ -967,30 +976,6 @@ function storageSetItem(key, value, options = {}) {
     setStorageNameRecord(record);
   } catch {}
   return options.sync === false ? Promise.resolve(true) : persistServerState(key, text);
-}
-
-function loadIdiCoreUserApiKey() {
-  // Personal vendor credentials are intentionally tab-memory only. Purge the
-  // legacy browser-stored value during startup so an old key cannot survive a
-  // sign-out, tab close, shared workstation handoff, or future hydration.
-  storageRemoveItem(idiCoreUserApiKeyKey);
-  state.idiCoreUserApiKey = "";
-}
-
-function persistIdiCoreUserApiKey(value = "", { announce = false } = {}) {
-  const previous = state.idiCoreUserApiKey;
-  const next = String(value || "").trim();
-  state.idiCoreUserApiKey = next;
-  if (announce && previous !== next) {
-    addShellEvent(
-      next ? "Personal IDI key ready for this tab" : "Personal IDI key cleared",
-      next
-        ? "Approved live IDI runs from this tab will use your key. It is cleared when the page closes or reloads."
-        : "Live IDI runs from this browser will use the team default when it is configured.",
-      next ? "review" : "ready",
-      false
-    );
-  }
 }
 
 function restoreObjectFromStorage(key, fallback = {}) {
@@ -2074,6 +2059,11 @@ function currentUserDisplayName() {
   const email = cleanDisplayValue(state.session?.user?.email || state.session?.email || "");
   if (email && email.includes("@")) return titleCasePhrase(email.split("@")[0].replace(/[._-]+/g, " "));
   return "User";
+}
+
+function currentUserFirstName() {
+  const displayName = currentUserDisplayName().trim();
+  return displayName.split(/\s+/)[0] || "there";
 }
 
 function formatSourceFactValue(value, fallback = "Needs review") {
@@ -3274,7 +3264,6 @@ function loadSavedState() {
   loadDealStatuses();
   loadCrmImports();
   loadAssetDiscoveryState();
-  loadIdiCoreUserApiKey();
   loadSearchHistory();
   loadShellSettings();
   loadDripSettings();
@@ -3941,7 +3930,7 @@ function eventTime(value) {
 function renderActivityDrawer() {
   const list = document.getElementById("activityList");
   if (!list) return;
-  const adminErrors = state.activeView === "admin" ? adminErrorItems() : null;
+  const adminErrors = state.activeView === "admin" || (state.activeView === "settings" && state.settingsTab === "admin") ? adminErrorItems() : null;
   const events = adminErrors || (state.shellEvents.length ? state.shellEvents : defaultShellEvents()).map(clientFacingEvent);
   list.innerHTML = events.map((event) => `
     <article class="activity-event ${escapeHtml(event.tone ?? "review")}">
@@ -4448,10 +4437,12 @@ function queueItems() {
   const sourceRows = queued.length ? queued : checked;
   return sourceRows.map((row, index) => ({
     id: row.id,
+    estate: row.leadName || row.title,
     title: row.leadName || row.title,
     copy: `${row.address || "Address needs review"} - ${row.next || "Review next action"}`,
     route: index % 2 === 0 ? "Podio batch prep" : "Google + Podio prep",
-    status: queued.length ? "Queued for batch" : row.tone === "ready" ? "Ready for review" : row.tone === "blocked" ? "Blocked" : "Selected, not queued"
+    type: ["completed-awaiting-export", "exported"].includes(estateWorkflowForRow(row).state) ? "export" : "doc-prep",
+    status: queued.length ? estateWorkflowForRow(row).state === "exported" ? "Exported" : "Queued" : row.tone === "ready" ? "Ready for review" : row.tone === "blocked" ? "Blocked" : "Selected, not queued"
   }));
 }
 
@@ -5107,7 +5098,7 @@ function docPrepStreamPhaseLines(row = selectedRow(), dossier = dossierForRow(ro
     "idi-asset-search": [
       `IDI search: ${idi?.mode === "live_idi_core" ? "Completed through approved team access" : idi ? "Approved report imported" : "Needs approved access or report import"}`,
       `Paid search: ${idi?.paidRun ? "Completed with approval" : "Not run"}`,
-      `Access: ${idi?.apiKeySource === "user_override" ? "Personal approved key" : idi ? "Team account" : "Needs approved access"}`,
+      `Access: ${idi ? "Team account" : "Needs approved access"}`,
       `Duplicate paid-search protection: ${idi?.lockKey ? "On" : "Waiting for the first approved search"}`,
       `Contacts found: ${Array.isArray(idi?.candidates) ? idi.candidates.length : 0}`,
       `Evidence saved: ${idi?.readbackStatus === "verified" || idi?.sourceEvidence?.readbackStatus === "verified" ? "Yes" : "Not yet"}`,
@@ -6301,26 +6292,6 @@ function recordLeadOpened(row, context = "Estate file") {
   if (!row) return;
   const target = row.leadName || row.title || "estate file";
   addShellEvent(`${currentUserDisplayName()} opened ${target}`, row.address || context, "route", false);
-}
-
-function processCardHtml(process) {
-  return `
-    <button class="process-folder-card" type="button" data-process-card="${escapeHtml(process.id)}" data-process-row="${escapeHtml(process.rowId || "")}">
-      <span class="folder-doc-stack" aria-hidden="true"><span></span><span></span><span></span></span>
-      <span class="process-folder-body">
-        <span class="process-folder-title">
-          <strong>${escapeHtml(process.title)}</strong>
-          <span class="attention-dot" aria-hidden="true"></span>
-        </span>
-        <span class="process-folder-estate">${escapeHtml(process.estate || "Estate file")}</span>
-        ${processProgressDots(process.done, process.total)}
-        <span class="process-folder-meta">
-          <span>${escapeHtml(process.status)}</span>
-          ${process.tag ? `<span class="process-tag ${process.ready ? "ready" : ""}">${escapeHtml(process.tag)}</span>` : ""}
-        </span>
-      </span>
-    </button>
-  `;
 }
 
 function documentRequirementStatus(doc, row = selectedRow()) {
@@ -8138,9 +8109,8 @@ function idiImportPanelHtml(row = selectedRow()) {
         <div class="field"><label>Report label</label><input data-idi-report-label value="${escapeHtml(stored?.attachment?.label ?? "IDI expanded asset search")}"></div>
         <div class="field"><label>Source link / file</label><input data-idi-report-source value="${escapeHtml(stored?.attachment?.sourceUrl ?? stored?.attachment?.fileName ?? "")}" placeholder="IDI report PDF, CSV, or source note"></div>
         <div class="field full">
-          <label>Personal IDI access key</label>
-          <input data-idi-user-api-key type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(state.idiCoreUserApiKey)}" placeholder="Leave blank to use team default">
-          <span class="copy">${escapeHtml(idiCredential.copy)}</span>
+          <label>IDI access</label>
+          <span class="copy">${escapeHtml(idiCredential.copy)} Personal API-key entry is disabled; approved runs use the server-side team connection.</span>
         </div>
         <div class="field full"><label>IDI report text</label><textarea data-idi-import-text placeholder="Paste likely relatives and associates from the expanded asset report.">${escapeHtml(stored?.importedText ?? "")}</textarea></div>
         <div class="field full"><label>Admin override reason</label><input data-idi-admin-reason value="" placeholder="Only required if replacing an existing imported IDI asset search"></div>
@@ -8493,13 +8463,6 @@ function applyExternalSourceRunResult(row, capture, result) {
 
 function idiCoreCredentialStatus(connection = connectionByName("IDI Core")) {
   const api = connection?.api || {};
-  if (state.idiCoreUserApiKey) {
-    return {
-      tone: "review",
-      label: "Approved run override",
-      copy: "This browser has an approved run override. Team-managed access remains the shared default."
-    };
-  }
   if (api.sharedDefaultConfigured || api.accessConfigured) {
     return {
       tone: "ready",
@@ -8578,11 +8541,6 @@ function rerenderAssetDiscoverySurface() {
 
 function wireAssetDiscoveryControls(content, row = selectedRow()) {
   if (!content || !row) return;
-  content.querySelector("[data-idi-user-api-key]")?.addEventListener("change", (event) => {
-    persistIdiCoreUserApiKey(event.target.value, { announce: true });
-    if (state.activeView === "settings") renderSettingsView();
-  });
-
   content.querySelector("[data-save-source-capture]")?.addEventListener("click", async (event) => {
     event.preventDefault();
     const payload = collectSourceCapturePayload(content, row);
@@ -8710,8 +8668,6 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
     event.preventDefault();
     const key = assetDiscoveryKey(row);
     const overrideReason = content.querySelector("[data-idi-admin-reason]")?.value.trim() ?? "";
-    const personalIdiKey = content.querySelector("[data-idi-user-api-key]")?.value.trim() ?? state.idiCoreUserApiKey;
-    persistIdiCoreUserApiKey(personalIdiKey);
     if (state.idiImports[key] && !overrideReason) {
       addShellEvent("Duplicate IDI run blocked", "This estate already has one IDI asset-search record. Add an admin override reason before spending another paid lookup.", "blocked", true, { row, source: "IDI Core" });
       return;
@@ -8727,8 +8683,7 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
       provider: "idi",
       runMode: "live_idi_core",
       paidRun: true,
-      idiCoreApiKey: personalIdiKey || undefined,
-      apiKeySource: personalIdiKey ? "user_override" : "shared_default",
+      apiKeySource: "shared_default",
       adminOverrideReason: overrideReason,
       reason: "S29 controlled Discovery proof from Doc Prep",
       attachment: {
@@ -9408,103 +9363,69 @@ function selectedDossierDocument(row = selectedRow()) {
 function renderDashboardView() {
   const target = document.getElementById("dashboardView");
   if (!target) return;
-  const row = selectedRow();
-  const dossier = dossierForRow(row);
-  const attention = attentionItems(row, dossier);
-  const processes = processSummaries(row, dossier);
-  const activities = dashboardActivityRows(row);
-  const stats = documentPrepStats(row, dossier);
-  const activeProcessEstate = dashboardActiveProcessEstateLabel(row);
+  const activeRows = state.rows.filter((estate) => !estate.isArchived);
+  const hasReport = (estate) => Boolean(
+    packetArtifactForRow(estate, "discovery")?.verification?.verified
+      || docPrepFlowHasWork(estate, "discovery")
+  );
+  const withoutReports = activeRows.filter((estate) => !hasReport(estate)).length;
+  const withReports = activeRows.filter(hasReport).length;
+  const exported = activeRows.filter((estate) => estateWorkflowForRow(estate).state === "exported").length;
+  const history = state.searchHistory.map(normalizeSearchHistoryItem).filter((item) => item.prospects.length).slice(0, 6);
+  const previous = history[0] || null;
+  const fileHistory = activeRows
+    .filter((estate) => hasReport(estate) || estate.id === state.selectedId)
+    .slice(0, 6);
   target.innerHTML = `
-    <div class="arsip-dashboard" aria-label="HeirRight Manage Estates workspace">
-      <div class="arsip-topline">
-        <h2>Manage Estates</h2>
-        <span class="arsip-date">${escapeHtml(todayLongLabel())}</span>
-      </div>
-      <section class="arsip-section" aria-label="Needs attention">
-        <div class="arsip-section-head">
-          <div class="arsip-section-title">
-            <h3>Needs attention</h3>
-            <span>${attention.length} item${attention.length === 1 ? "" : "s"} blocking the current estate loop</span>
-          </div>
-          <button class="btn" type="button" data-shell-nav-shortcut="dossiers">View all</button>
-        </div>
-        <div class="attention-grid">
-          ${attention.map((item) => `
-            <article class="attention-card ${item.urgent ? "is-urgent" : ""}">
-              <span class="attention-dot" aria-hidden="true"></span>
-              <span>
-                <strong>${escapeHtml(item.title)}</strong>
-                <span>${escapeHtml(item.copy)}</span>
-              </span>
-              <button class="btn" type="button" data-shell-nav-shortcut="${escapeHtml(item.view)}">${escapeHtml(item.action)}</button>
-            </article>
-          `).join("")}
-        </div>
+    <div class="manage-estates-dashboard" aria-label="HeirRight Manage Estates workspace">
+      <header class="dashboard-heading">
+        <div><p class="eyebrow">Manage Estates</p><h2>Good to see you, ${escapeHtml(currentUserFirstName())}</h2></div>
+        <span class="dashboard-date">${escapeHtml(todayLongLabel())}</span>
+      </header>
+      <nav class="dashboard-range-tabs beui-tabs" role="tablist" aria-label="Dashboard time range">
+        ${["7d", "14d", "30d"].map((range) => `<button class="beui-tabs-trigger" type="button" role="tab" data-dashboard-range="${range}" aria-selected="${state.dashboardRange === range}">${range}</button>`).join("")}
+      </nav>
+      <section class="dashboard-kpi-strip" aria-label="Estate report counters">
+        <article><span>Estates without Reports</span><strong>${escapeHtml(withoutReports)}</strong></article>
+        <article><span>Estates with Reports</span><strong>${escapeHtml(withReports)}</strong></article>
+        <article><span>Estates Exported</span><strong>${escapeHtml(exported)}</strong></article>
       </section>
-      <section class="arsip-section" aria-label="Active processes">
-        <div class="arsip-section-head">
-          <div class="arsip-section-title">
-            <h3>Active processes</h3>
-            <span>${escapeHtml(activeProcessEstate)}</span>
-          </div>
+      <section class="dashboard-decision-band" aria-label="Next decision">
+        <div><p class="eyebrow">Next decision</p><h3>Keep the estate loop moving</h3><p class="copy">Search Estates for new files, or reopen the last file you visited before continuing review.</p></div>
+        <div class="dashboard-decision-actions">
+          <button class="btn primary solvys-liquid-glass" type="button" data-dashboard-estate-search>Estate Search</button>
+          <button class="btn quick" type="button" data-dashboard-previous-file ${previous ? "" : "disabled"}>${previous ? "Open previous file" : "No previous file"}</button>
         </div>
-        <div class="process-card-grid">
-          ${processes.map((process) => processCardHtml(process)).join("")}
-        </div>
+        <div class="dashboard-last-visited"><span>Last Visited</span><strong>${escapeHtml(previous?.label || "No previous file")}</strong><small>${escapeHtml(previous?.createdAt ? historyDateLabel(previous.createdAt) : "Open an estate to start history")}</small></div>
       </section>
-      <section class="dashboard-lower-grid" aria-label="Recent activity and library">
-        <div class="arsip-section">
-          <div class="arsip-section-title">
-            <h3>Recent activity</h3>
-          </div>
-          <ul class="activity-list">
-            ${activities.map((event) => `
-              <li class="activity-row">
-                ${trackerIcon(event.tone === "blocked" ? "flag" : event.tone === "ready" ? "check" : "route")}
-                <span><strong>${escapeHtml(event.title)}</strong> <span>${escapeHtml(event.copy)}</span></span>
-                <span class="activity-time">${escapeHtml(eventTime(event.at))}</span>
-              </li>
-            `).join("")}
-          </ul>
+      <section class="dashboard-file-history" aria-label="File history">
+        <div class="dashboard-section-head"><div><p class="eyebrow">History</p><h3>File history</h3></div><button class="btn quick" type="button" data-dashboard-estate-search>Estate Search</button></div>
+        <div class="dashboard-history-list">
+          ${fileHistory.map((estate) => `<button class="dashboard-history-row" type="button" data-dashboard-history-estate="${escapeHtml(estate.id)}"><span><strong>${escapeHtml(estate.leadName || estate.title)}</strong><small>${escapeHtml(estate.address || "Address needs review")}</small></span><span>${escapeHtml(estateWorkflowForRow(estate).state === "exported" ? "Exported" : hasReport(estate) ? "Report ready" : "Needs report")}</span></button>`).join("") || `<p class="copy">No files have been visited yet. Start in Estate Search.</p>`}
         </div>
-        <aside>
-          <div class="arsip-section-title">
-            <h3>Library</h3>
-          </div>
-          <div class="library-summary">
-            <div class="library-row"><span>Documents</span><strong>${escapeHtml(stats.total)}</strong></div>
-            <div class="library-row"><span>Links across processes</span><strong>${escapeHtml(stats.linked)}</strong></div>
-            <div class="library-row"><span>Documents with versions</span><strong>${escapeHtml(stats.versions)}</strong></div>
-            <div class="library-row"><span>Storage staged</span><strong>${escapeHtml(humanFileSize(stats.size))}</strong></div>
-          </div>
-        </aside>
       </section>
     </div>
   `;
-  target.querySelectorAll("[data-shell-nav-shortcut]").forEach((button) => {
-    button.addEventListener("click", () => document.querySelector(`[data-shell-nav="${button.dataset.shellNavShortcut}"]`)?.click());
-  });
-  target.querySelectorAll("[data-open-crm-import]").forEach((button) => {
-    button.addEventListener("click", openCrmImportModal);
-  });
-  target.querySelectorAll("[data-process-card]").forEach((button) => {
+  target.querySelectorAll("[data-dashboard-range]").forEach((button) => {
     button.addEventListener("click", () => {
-      const routes = {
-        "estate-discovery": { view: "dossiers", flow: "discovery" },
-        "closing-docs": { view: "dossiers", flow: "closing-docs" },
-        "handoff-review": { view: "queue" }
-      };
-      const route = routes[button.dataset.processCard] ?? routes["estate-discovery"];
-      const rowId = button.dataset.processRow;
-      if (rowId && rowById(rowId)) state.selectedId = rowId;
+      state.dashboardRange = button.dataset.dashboardRange || "7d";
+      renderDashboardView();
+    });
+  });
+  target.querySelectorAll("[data-dashboard-estate-search]").forEach((button) => {
+    button.addEventListener("click", () => document.querySelector('[data-shell-nav="find-estates"]')?.click());
+  });
+  target.querySelector("[data-dashboard-previous-file]")?.addEventListener("click", () => {
+    if (previous) openHistoryItem(previous.id);
+  });
+  target.querySelectorAll("[data-dashboard-history-estate]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const rowId = button.dataset.dashboardHistoryEstate;
+      if (!rowId || !rowById(rowId)) return;
+      state.selectedId = rowId;
       state.docPrepListOpen = false;
-      if (route.flow) setActiveDocPrepFlow(route.flow, { persist: true, rerender: false });
       updateFooterLeadContext(selectedRow());
-      button.classList.add("is-routing");
-      window.setTimeout(() => {
-        document.querySelector(`[data-shell-nav="${route.view}"]`)?.click();
-      }, 120);
+      document.querySelector('[data-shell-nav="dossiers"]')?.click();
     });
   });
 }
@@ -11159,15 +11080,34 @@ function renderQueueView() {
   const target = document.getElementById("queueView");
   if (!target) return;
   const items = queueItems();
+  const visibleItems = items.filter((item) => item.type === (state.queueTab === "export" ? "export" : "doc-prep"));
   const readiness = queueReadinessItems();
   target.innerHTML = `
     <div class="queue-layout">
       <section class="loop-panel queue-panel">
         <div class="loop-panel-head"><div><p class="eyebrow">Queue</p><h2 class="loop-title">Batch Queue export</h2></div><button class="btn primary solvys-liquid-glass" type="button" data-queue-export ${items.length ? "" : "disabled"}>${nucleoIcon("batch-tray", 15)}<span>Export combined PDF</span></button></div>
         <p class="copy">Use this queue after Discovery review to stage documents, CRM fields, and spreadsheet rows as one batch. Exports produce one combined PDF per selected flow; nothing here creates a live Podio card, Google Doc, Google Sheet row, email, or SMS.</p>
-        <ul class="queue-list">
-          ${items.map((item, index) => `<li class="queue-item"><span class="queue-item-main"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span><span>${escapeHtml(item.route)} - ${escapeHtml(item.status)}</span></span><span class="queue-item-actions"><span class="queue-count">#${String(index + 1).padStart(2, "0")}</span><button class="icon-button" type="button" data-queue-remove="${escapeHtml(item.id)}" aria-label="Remove ${escapeHtml(item.title)} from Queue" title="Remove from Queue">${nucleoIcon("trash", 15)}</button></span></li>`).join("") || `<li class="queue-item"><strong>No leads queued</strong><span>Open Estate Search and select leads before exporting a combined PDF.</span></li>`}
-        </ul>
+        <div class="beui-tabs queue-tabs" role="tablist" aria-label="Queue type">
+          <button class="beui-tabs-trigger" type="button" role="tab" data-queue-tab="doc-prep" aria-selected="${state.queueTab !== "export"}">Doc Prep</button>
+          <button class="beui-tabs-trigger" type="button" role="tab" data-queue-tab="export" aria-selected="${state.queueTab === "export"}">Export</button>
+        </div>
+        <div class="queue-table-wrap">
+          <table class="queue-table">
+            <thead><tr><th scope="col" class="queue-check-col"><span class="sr-only">Select</span></th><th scope="col">Estate</th><th scope="col">Status</th><th scope="col" class="queue-actions-col"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              ${visibleItems.map((item) => `<tr class="queue-row" data-queue-row="${escapeHtml(item.id)}">
+                <td class="queue-check-col"><input type="checkbox" data-queue-select="${escapeHtml(item.id)}" aria-label="Select ${escapeHtml(item.estate)}" ${state.queueSelectionIds.has(item.id) ? "checked" : ""}></td>
+                <td><strong>${escapeHtml(item.estate)}</strong><span class="queue-row-copy">${escapeHtml(item.copy)}</span></td>
+                <td><span class="queue-row-status" data-queue-row-status>${escapeHtml(item.status)}</span></td>
+                <td class="queue-actions-col"><span class="queue-row-actions" aria-label="Actions for ${escapeHtml(item.estate)}">
+                  <span class="queue-row-spinner" data-queue-spinner hidden aria-hidden="true"></span>
+                  <button class="plain-action" type="button" data-queue-run="${escapeHtml(item.id)}">Run individually</button>
+                  <button class="plain-action is-danger" type="button" data-queue-remove="${escapeHtml(item.id)}">Remove</button>
+                </span></td>
+              </tr>`).join("") || `<tr class="queue-empty-row"><td colspan="4"><strong>No ${state.queueTab === "export" ? "export" : "Doc Prep"} items queued</strong><span>Open Estate Search and select estates before staging a batch.</span></td></tr>`}
+            </tbody>
+          </table>
+        </div>
       </section>
       <aside class="queue-side" aria-label="Queue review">
         <section class="loop-panel">
@@ -11180,6 +11120,18 @@ function renderQueueView() {
       </aside>
     </div>
   `;
+  target.querySelectorAll("[data-queue-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.queueTab = button.dataset.queueTab === "export" ? "export" : "doc-prep";
+      renderQueueView();
+    });
+  });
+  target.querySelectorAll("[data-queue-select]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) state.queueSelectionIds.add(checkbox.dataset.queueSelect);
+      else state.queueSelectionIds.delete(checkbox.dataset.queueSelect);
+    });
+  });
   target.querySelector("[data-queue-export]")?.addEventListener("click", (event) => {
     const actionRows = queuedRows().length ? queuedRows() : checkedRows();
     if (!actionRows.length) {
@@ -11195,11 +11147,47 @@ function renderQueueView() {
     chooseExportRoute("pdf", event.currentTarget, actionRows);
   });
   target.querySelectorAll("[data-queue-remove]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.queueIds.delete(button.dataset.queueRemove);
-      document.getElementById("topStatus").textContent = "Estate removed from Queue.";
-      renderQueueView();
-      syncBatchExportControls();
+    button.addEventListener("click", async () => {
+      const estateId = button.dataset.queueRemove;
+      if (!estateId || button.disabled) return;
+      const row = rowById(estateId);
+      if (!row) return;
+      button.disabled = true;
+      const spinner = button.closest(".queue-row-actions")?.querySelector("[data-queue-spinner]");
+      if (spinner) spinner.hidden = false;
+      try {
+        await dispatchLegacyCommand("remove-from-queue", { estateId });
+        state.queueIds.delete(estateId);
+        state.queueSelectionIds.delete(estateId);
+        document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} was removed from Queue.`;
+        renderQueueView();
+        syncBatchExportControls();
+      } catch (error) {
+        button.disabled = false;
+        if (spinner) spinner.hidden = true;
+        nudgeDeniedAction(button, "Queue removal blocked", error instanceof Error ? error.message : "The estate could not be removed safely.", { source: "queue-remove" });
+      }
+    });
+  });
+  target.querySelectorAll("[data-queue-run]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const estateId = button.dataset.queueRun;
+      const row = rowById(estateId);
+      if (!row || button.disabled) return;
+      button.disabled = true;
+      const actionRoot = button.closest(".queue-row-actions");
+      const spinner = actionRoot?.querySelector("[data-queue-spinner]");
+      if (spinner) spinner.hidden = false;
+      try {
+        state.selectedId = row.id;
+        state.docPrepListOpen = false;
+        await runS40DocPrep([row.id]);
+        setActiveShellView("dossiers", "Doc Prep");
+      } catch (error) {
+        button.disabled = false;
+        if (spinner) spinner.hidden = true;
+        nudgeDeniedAction(button, "Doc Prep run blocked", error instanceof Error ? error.message : "The individual run could not start safely.", { source: "queue-run" });
+      }
     });
   });
 }
@@ -11273,18 +11261,22 @@ function teamActivityRows() {
     {
       title: "Document Prep Completion",
       counter: `${docs.linked}/${docs.total || 0}`,
+      actor: currentUserDisplayName(),
     },
     {
       title: "Outreach Readiness",
       counter: `${activeTemplates}/${templates.length}`,
+      actor: currentUserDisplayName(),
     },
     {
       title: "Integration Blockers",
       counter: blockers,
+      actor: currentUserDisplayName(),
     },
     {
       title: "Team Activity",
       counter: state.shellEvents.length,
+      actor: currentUserDisplayName(),
     }
   ];
 }
@@ -11415,29 +11407,40 @@ function renderAdminLoopView() {
   target.innerHTML = `
     <div class="admin-tall-grid">
       <section class="loop-panel is-tall">
-        <div class="loop-panel-head"><div><h2 class="loop-title">Error log</h2></div><span class="pill ${errors.some((item) => !item.ready) ? "blocked" : "ready"}">${errors.filter((item) => !item.ready).length} open</span></div>
-        <div class="admin-log-layout">
-          <ul class="admin-error-list">
-            ${errors.map((item) => `
-              <li class="admin-error-row">
-                <span><strong>${adminErrorStatusIconHtml(item)} ${escapeHtml(item.title)}</strong><span class="copy">${escapeHtml(item.copy)}</span></span>
-                ${item.ready ? "" : `<button class="btn quick solvys-liquid-glass" type="button" data-admin-file-ticket="${escapeHtml(item.id)}">File Linear</button>`}
-              </li>
+        <div class="loop-panel-head"><div><p class="eyebrow">Team activity</p><h2 class="loop-title">Team Activity</h2></div><span class="pill ready">${state.shellEvents.length} events</span></div>
+        <div class="team-activity-layout">
+          <div class="admin-error-list">
+            ${activities.map((item) => `
+              <article class="team-kpi-row">
+                <span><strong>${escapeHtml(item.title)}</strong><small class="team-activity-actor">${escapeHtml(item.actor || currentUserDisplayName())}</small></span>
+                <span class="team-kpi-count">${escapeHtml(item.counter)}</span>
+              </article>
             `).join("")}
-          </ul>
+            ${recentEvents.map((event) => `
+              <article class="team-kpi-row">
+                <span><strong>${escapeHtml(event.title)}</strong><small class="team-activity-actor">${escapeHtml(event.actor || currentUserDisplayName())}</small></span>
+                <span class="tracker-date">${escapeHtml(eventTime(event.at))}</span>
+              </article>
+            `).join("") || `<p class="copy">No team activity has been recorded yet.</p>`}
+          </div>
+          <div class="admin-grid">
+            <div class="admin-metric"><span>Commands</span><strong>${escapeHtml(state.shellCommandCount)}</strong></div>
+            <div class="admin-metric"><span>Blockers</span><strong>${escapeHtml(errors.filter((item) => !item.ready).length)}</strong></div>
+            <div class="admin-metric"><span>Events</span><strong>${escapeHtml(state.shellEvents.length)}</strong></div>
+          </div>
           <form class="admin-ticket-form" data-admin-support-form>
-            <label><span class="eyebrow">Manual support ticket</span><input name="ticketTitle" type="text" placeholder="Short title"></label>
-            <textarea name="ticketMessage" rows="5" placeholder="What should Solvys fix or review?"></textarea>
+            <label><span class="eyebrow">Support</span><input name="ticketTitle" type="text" placeholder="Short support title"></label>
+            <textarea name="ticketMessage" rows="3" placeholder="What should the team review?"></textarea>
             <input name="ticketPdf" type="file" accept="application/pdf,.pdf">
             <div class="loop-panel-head">
               ${adminStatusHtml(state.adminTicketStatus)}
-              <button class="btn primary solvys-liquid-glass" type="submit">File Support Ticket</button>
+              <button class="btn quick" type="submit">File support ticket</button>
             </div>
           </form>
         </div>
       </section>
       <section class="loop-panel is-tall">
-        <div class="loop-panel-head"><div><h2 class="loop-title">Members</h2></div></div>
+        <div class="loop-panel-head"><div><p class="eyebrow">Access</p><h2 class="loop-title">Members</h2></div></div>
         <div class="admin-access-layout">
           <div>
             <p class="copy">Review active business domains and exact email approvals. Production changes remain pending until the approved environment allowlist is deployed.</p>
@@ -11448,54 +11451,15 @@ function renderAdminLoopView() {
           <form class="admin-access-form" data-admin-access-form>
             <div class="admin-inline-form">
               <input name="accessValue" type="text" placeholder="company.com or user@company.com" autocomplete="off">
-              <select name="accessAction"><option value="add">Add</option><option value="remove">Remove</option></select>
+              <select class="admin-role-combobox" name="accessAction" aria-label="Member role"><option value="add">Add role</option><option value="remove">Remove</option></select>
               <button class="btn primary solvys-liquid-glass" type="submit">Add</button>
             </div>
             ${adminStatusHtml(state.adminAccessStatus)}
           </form>
         </div>
       </section>
-      <section class="loop-panel is-tall">
-        <div class="loop-panel-head"><div><h2 class="loop-title">Team Activity</h2></div><span><button class="btn icon-only" type="button" data-admin-open-errors aria-label="Open error log" title="Open error log">${nucleoIcon("caution", 16)}</button><span class="pill ready">${state.shellEvents.length} events</span></span></div>
-        <div class="team-activity-layout">
-          <div class="admin-error-list">
-            ${activities.map((item) => `
-              <article class="team-kpi-row">
-                <span><strong>${escapeHtml(item.title)}</strong></span>
-                <span class="team-kpi-count">${escapeHtml(item.counter)}</span>
-              </article>
-            `).join("")}
-            ${recentEvents.map((event) => `
-              <article class="team-kpi-row">
-                <span><strong>${escapeHtml(event.title)}</strong></span>
-                <span class="tracker-date">${escapeHtml(eventTime(event.at))}</span>
-              </article>
-            `).join("")}
-          </div>
-          <div class="admin-grid">
-            <div class="admin-metric"><span>Commands</span><strong>${escapeHtml(state.shellCommandCount)}</strong></div>
-            <div class="admin-metric"><span>Blockers</span><strong>${escapeHtml(errors.filter((item) => !item.ready).length)}</strong></div>
-            <div class="admin-metric"><span>Events</span><strong>${escapeHtml(state.shellEvents.length)}</strong></div>
-          </div>
-        </div>
-      </section>
     </div>
   `;
-  target.querySelector("[data-admin-open-errors]")?.addEventListener("click", () => setActivityOpen(true));
-  target.querySelectorAll("[data-admin-file-ticket]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const item = errors.find((entry) => entry.id === button.dataset.adminFileTicket);
-      if (!item) return;
-      fileAdminLinearTicket({
-        title: `[HeirRight] ${item.title}`,
-        message: item.copy,
-        severity: item.severity === "blocked" ? "high" : "medium",
-        source: "HeirRight Admin Error Log",
-        actor: currentActorEmail(),
-        context: item.payload
-      });
-    });
-  });
   target.querySelector("[data-admin-support-form]")?.addEventListener("submit", (event) => {
     event.preventDefault();
     submitAdminTicketForm(event.currentTarget);
@@ -11647,7 +11611,7 @@ function integrationOnboardingCardHtml(kind) {
           <p class="eyebrow">Integration</p>
           <h3>${escapeHtml(meta.title)}</h3>
         </div>
-        <div class="integration-card-status"><button class="integration-refresh" type="button" data-settings-refresh-integration="${escapeHtml(kind)}" aria-label="Refresh ${escapeHtml(meta.title)} status" title="Refresh status">↻</button><span class="pill ${statusTone}">${escapeHtml(statusLabel)}</span></div>
+        <div class="integration-card-status"><span class="pill ${statusTone}">${escapeHtml(statusLabel)}</span><button class="integration-refresh" type="button" data-settings-refresh-integration="${escapeHtml(kind)}" aria-label="Refresh ${escapeHtml(meta.title)} status" title="Refresh status">↻</button></div>
       </div>
       <p class="copy">${escapeHtml(isGoogle && workspaceConnected
         ? workspace.destinationName ? `Drive folder selected: ${workspace.destinationName}. An operator can explicitly send an approved Discovery PDF here from Completion.` : "Google Workspace is connected. Choose a Drive folder for optional approved-packet handoff."
@@ -11718,23 +11682,23 @@ function integrationStatusRowsHtml() {
     };
   });
   return `
-    <div class="settings-status-list">
+    <aside class="settings-status-list" aria-label="Connection status">
       <div class="settings-section-head">
         <div><p class="eyebrow">Readiness</p><h3>Connection status</h3></div>
-        <span class="pill review">Integrations</span>
+        <span class="copy">${items.filter((item) => item.state === "complete").length}/${items.length} ready</span>
       </div>
       <ul class="settings-connection-list">
         ${items.map((item) => `
           <li class="settings-connection-row" data-state="${escapeHtml(item.state)}">
             <span class="settings-connection-icon" data-state="${escapeHtml(item.state)}" aria-label="${escapeHtml(item.status)}"></span>
-            <span class="settings-connection-body">
-              <strong>${escapeHtml(item.title)}</strong>
-              <span>${escapeHtml(item.status)} - ${escapeHtml(operatorConnectionMessage(connectionByName(item.connectionName), item.connectionName))}</span>
-            </span>
+            <details class="settings-connection-body">
+              <summary><strong>${escapeHtml(item.title)}</strong><span class="settings-connection-status">${escapeHtml(item.status)}</span></summary>
+              <span>${escapeHtml(operatorConnectionMessage(connectionByName(item.connectionName), item.connectionName))}</span>
+            </details>
           </li>
         `).join("")}
       </ul>
-    </div>
+    </aside>
   `;
 }
 
@@ -11746,6 +11710,7 @@ const settingsTabs = [
   { id: "outreach", label: "Outreach" },
   { id: "audit", label: "Audit" },
   { id: "preferences", label: "Preferences" },
+  { id: "admin", label: "Admin" },
 ];
 
 function normalizedSettingsTab(value = state.settingsTab) {
@@ -11869,19 +11834,22 @@ function renderIntegrationSettingsPanel() {
   return `
     ${settingsSectionShell("Integration status", "Workspace", "Reconnect / Review setup", `
       <p class="copy">Connector setup, approval, and readback status live here so Batch Queue and Outreach show only deal-work blockers.</p>
-      <div class="integration-onboarding settings-integrations-list">
-        ${integrationOnboardingCardHtml("podio")}
-        ${integrationOnboardingCardHtml("google")}
-        ${integrationOnboardingCardHtml("idi")}
-        ${integrationOnboardingCardHtml("tax")}
-        ${integrationOnboardingCardHtml("clerk")}
-        ${integrationOnboardingCardHtml("vital")}
-        ${integrationOnboardingCardHtml("browserbase")}
-        ${integrationOnboardingCardHtml("activepieces")}
-        ${integrationOnboardingCardHtml("web")}
-        ${integrationOnboardingCardHtml("leads")}
-        ${integrationOnboardingCardHtml("resend")}
-        ${integrationOnboardingCardHtml("sms")}
+      <div class="settings-integrations-layout">
+        <div class="integration-onboarding settings-integrations-list">
+          ${integrationOnboardingCardHtml("podio")}
+          ${integrationOnboardingCardHtml("google")}
+          ${integrationOnboardingCardHtml("idi")}
+          ${integrationOnboardingCardHtml("tax")}
+          ${integrationOnboardingCardHtml("clerk")}
+          ${integrationOnboardingCardHtml("vital")}
+          ${integrationOnboardingCardHtml("browserbase")}
+          ${integrationOnboardingCardHtml("activepieces")}
+          ${integrationOnboardingCardHtml("web")}
+          ${integrationOnboardingCardHtml("leads")}
+          ${integrationOnboardingCardHtml("resend")}
+          ${integrationOnboardingCardHtml("sms")}
+        </div>
+        ${integrationStatusRowsHtml()}
       </div>
     `)}
     ${settingsSectionShell("Agentic writing", "Nous Portal", modelStatus.available ? "Automatic free route" : "Review only", `
@@ -11894,13 +11862,12 @@ function renderIntegrationSettingsPanel() {
             <div class="settings-field"><label>Route</label><code>${escapeHtml(modelStatus.available ? "Nous Portal automatic selection" : "Reviewed report formatting")}</code></div>
           </div>
           <ul class="settings-control-list">
-            <li data-state="${modelStatus.available ? "ready" : "review"}">${escapeHtml(modelStatus.available ? `Automatic selection is ready${modelStatus.model ? `: ${modelStatus.model}` : ""}.` : "The catalog is not available in this environment; reviewed evidence synthesis remains available.")}</li>
+            <li data-state="${modelStatus.available ? "ready" : "review"}">${escapeHtml(modelStatus.available ? `Automatic selection is ready${modelStatus.model ? `: ${modelStatus.model}` : ""}.` : "The catalog is not available in this environment; reviewed report formatting remains available.")}</li>
             <li data-state="review">Generated Back Story text remains review-required and cannot authorize export, outreach, or legal conclusions.</li>
           </ul>
         </article>
       </div>
     `)}
-    ${integrationStatusRowsHtml()}
   `;
 }
 
@@ -12030,7 +11997,6 @@ function renderSourceSettingsPanel() {
       </div>
       <div class="settings-action-row">
         <button class="btn primary solvys-liquid-glass" type="button" data-settings-open-view="dossiers">Open Doc Prep</button>
-        <button class="btn quick solvys-liquid-glass" type="button" data-settings-refresh-connections>Refresh source readiness</button>
       </div>
     `)}
   `;
@@ -12115,6 +12081,39 @@ function renderPreferencesSettingsPanel() {
         <div class="setting-card"><label class="toggle-line"><strong>Require deed proof</strong><input id="settingsDeedProofRequired" type="checkbox" ${state.shellSettings.deedProofRequired ? "checked" : ""}></label><span>OR book/page evidence stays required before promotion.</span></div>
         <div class="setting-card"><label class="toggle-line"><strong>Manual paid-source approval</strong><input id="settingsPaidSourceApproval" type="checkbox" ${state.shellSettings.paidSourceApproval ? "checked" : ""}></label><span>IDI, Intelius, Ancestry, ForeWarn, VitalChek, and PI work stay gated.</span></div>
       </div>
+  `)}
+  `;
+}
+
+function adminPasswordStatusHtml() {
+  const status = state.adminPasswordStatus || {};
+  if (!status.message) return "";
+  return `<p class="settings-admin-status" data-state="${escapeHtml(status.state || "review")}" role="status">${escapeHtml(status.message)}</p>`;
+}
+
+function renderAdminSettingsPanel() {
+  if (!state.adminSettingsUnlocked) {
+    return `
+      ${settingsSectionShell("Admin settings", "Admin", "Locked", `
+        <p class="copy">Admin settings require the server-side admin password key. The initial setup credential is supplied out of band, is never displayed in this surface or logs, and must be rotated before normal use.</p>
+        <form class="settings-admin-lock-form" data-admin-settings-unlock>
+          <label><span>Admin password key</span><input name="adminPassword" type="password" autocomplete="current-password" required></label>
+          <button class="btn primary solvys-liquid-glass" type="submit">Unlock Admin settings</button>
+        </form>
+        ${adminPasswordStatusHtml()}
+      `)}
+    `;
+  }
+  return `
+    ${settingsSectionShell("Admin settings", "Admin", "Unlocked for this session", `
+      <p class="copy">Rotate the server-side admin password key now. The new key is accepted only by the protected server endpoint and is never echoed into the UI, browser storage, or activity logs.</p>
+      <form class="settings-admin-password-form" data-admin-settings-password>
+        <label><span>Current password key</span><input name="currentPassword" type="password" autocomplete="current-password" required></label>
+        <label><span>New password key</span><input name="newPassword" type="password" autocomplete="new-password" minlength="12" required></label>
+        <label><span>Confirm new password key</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" required></label>
+        <div class="settings-action-row"><button class="btn primary solvys-liquid-glass" type="submit">Change password key</button><button class="btn quick" type="button" data-settings-open-view="admin">Open Admin workspace</button><button class="btn quick" type="button" data-admin-settings-lock>Lock Admin settings</button></div>
+      </form>
+      ${adminPasswordStatusHtml()}
     `)}
   `;
 }
@@ -12126,6 +12125,7 @@ function settingsTabPanelHtml(tab) {
   if (tab === "outreach") return renderOutreachSettingsPanel();
   if (tab === "audit") return renderAuditSettingsPanel();
   if (tab === "preferences") return renderPreferencesSettingsPanel();
+  if (tab === "admin") return renderAdminSettingsPanel();
   return renderAccessSettingsPanel();
 }
 
@@ -12137,16 +12137,21 @@ function renderSettingsView() {
   if (tab === "integrations" && !state.agenticModelStatus?.loaded) void loadAgenticModelStatus({ rerender: true });
   target.innerHTML = `
     <div class="settings-center-shell">
-      <section class="loop-panel full settings-unified-card">
+      <div class="settings-main-layout">
+        <aside class="settings-gutter" aria-label="Settings navigation">
+          <p class="eyebrow">Settings</p>
+          <nav class="settings-tabs" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
+            ${settingsTabs.map((item) => `<button class="beui-tabs-trigger" type="button" role="tab" data-settings-tab="${escapeHtml(item.id)}" aria-controls="settingsTabPanel" aria-selected="${item.id === tab}" tabindex="${item.id === tab ? "0" : "-1"}">${escapeHtml(item.label)}</button>`).join("")}
+          </nav>
+        </aside>
+        <section class="loop-panel full settings-unified-card">
         <div class="loop-panel-head">
           <div><p class="eyebrow">Settings</p><h2 class="loop-title">${escapeHtml(settingsTabs.find((item) => item.id === tab)?.label || "Access")} readiness</h2></div>
-          <div class="hr-docprep-flow-switch beui-tabs settings-tabs" role="tablist" aria-label="Settings tabs" aria-orientation="horizontal">
-            ${settingsTabs.map((item) => `<button class="beui-tabs-trigger" type="button" role="tab" data-settings-tab="${escapeHtml(item.id)}" aria-controls="settingsTabPanel" aria-selected="${item.id === tab}" tabindex="${item.id === tab ? "0" : "-1"}">${escapeHtml(item.label)}</button>`).join("")}
-          </div>
         </div>
         ${settingsReadinessBandHtml()}
         <div id="settingsTabPanel" role="tabpanel">${settingsTabPanelHtml(tab)}</div>
-      </section>
+        </section>
+      </div>
     </div>
   `;
   const tax = target.querySelector("#settingsTaxThreshold");
@@ -12161,12 +12166,13 @@ function renderSettingsView() {
     });
   });
   target.querySelector(".settings-tabs")?.addEventListener("keydown", (event) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     const tabs = [...target.querySelectorAll("[data-settings-tab]")];
     const current = tabs.indexOf(document.activeElement);
     if (current < 0) return;
     event.preventDefault();
-    const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    const forward = ["ArrowDown", "ArrowRight"].includes(event.key);
+    const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (current + (forward ? 1 : -1) + tabs.length) % tabs.length;
     tabs[next]?.focus();
     tabs[next]?.click();
   });
@@ -12175,6 +12181,51 @@ function renderSettingsView() {
       const view = button.dataset.settingsOpenView || "dashboard";
       setActiveShellView(view, activeViewLabel(view));
     });
+  });
+  target.querySelector("[data-admin-settings-unlock]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const password = form.querySelector("[name='adminPassword']")?.value || "";
+    if (!password) return;
+    const submit = form.querySelector("button[type='submit']");
+    if (submit) submit.disabled = true;
+    try {
+      const result = await postJson("/api/admin/settings/unlock", { password });
+      if (result?.ok !== true || result?.authorized !== true) throw new Error(result?.message || "Admin settings remain locked.");
+      state.adminSettingsUnlocked = true;
+      state.adminPasswordStatus = { state: "ready", message: "Admin settings unlocked for this session. Rotate the setup key before continuing." };
+    } catch (error) {
+      state.adminPasswordStatus = { state: "blocked", message: error instanceof Error ? error.message : "Admin settings remain locked." };
+    }
+    renderSettingsView();
+  });
+  target.querySelector("[data-admin-settings-password]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const currentPassword = form.querySelector("[name='currentPassword']")?.value || "";
+    const newPassword = form.querySelector("[name='newPassword']")?.value || "";
+    const confirmPassword = form.querySelector("[name='confirmPassword']")?.value || "";
+    if (newPassword !== confirmPassword) {
+      state.adminPasswordStatus = { state: "blocked", message: "The new password keys do not match." };
+      renderSettingsView();
+      return;
+    }
+    const submit = form.querySelector("button[type='submit']");
+    if (submit) submit.disabled = true;
+    try {
+      const result = await postJson("/api/admin/settings/password", { currentPassword, newPassword });
+      if (result?.ok !== true || result?.rotated !== true) throw new Error(result?.message || "The password key was not rotated.");
+      state.adminSettingsUnlocked = false;
+      state.adminPasswordStatus = { state: "ready", message: "Admin password key rotated. Unlock again with the new server-side key." };
+    } catch (error) {
+      state.adminPasswordStatus = { state: "blocked", message: error instanceof Error ? error.message : "The password key was not rotated." };
+    }
+    renderSettingsView();
+  });
+  target.querySelector("[data-admin-settings-lock]")?.addEventListener("click", () => {
+    state.adminSettingsUnlocked = false;
+    state.adminPasswordStatus = { state: "review", message: "Admin settings locked for this session." };
+    renderSettingsView();
   });
   target.querySelectorAll("[data-settings-refresh-connections]").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -12201,7 +12252,7 @@ function renderSettingsView() {
     if (!available) return;
     state.agenticModelPreference = value;
     storageSetItem(agenticModelPreferenceKey, value, { sync: false });
-    addShellEvent("Agentic model preference saved", value === "dynamic-free-catalog" ? "Nous Portal will choose the first verified free text model automatically." : "The selected verified free text model will be used for review-only report formatting.", "review", false);
+    addShellEvent("Agentic model preference saved", value === "dynamic-free-catalog" ? "Nous Portal will choose the first verified free text model automatically." : "The selected verified free text model will be used for review-only Back Story drafting.", "review", false);
   });
   target.querySelectorAll("[data-settings-account-menu]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -12787,6 +12838,13 @@ function setActiveShellView(view = "find-estates", label = "") {
   }
   const app = document.querySelector(".app");
   const nextView = productViews.includes(view) ? view : "find-estates";
+  if (nextView === "admin" && !state.adminSettingsUnlocked) {
+    state.settingsTab = "admin";
+    state.activeView = "settings";
+    if (app) app.dataset.activeView = "settings";
+    renderCurrentLoopView();
+    return;
+  }
   const detail = document.querySelector(".detail");
   const previousRailMode = state.railMode;
   state.activeView = nextView;

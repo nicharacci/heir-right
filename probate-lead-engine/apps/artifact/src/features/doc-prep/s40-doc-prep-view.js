@@ -43,7 +43,8 @@ function runEligible(row) {
 }
 
 function workflowLabel(row) {
-  return row?.workflowLabel || estateWorkflowStateLabels[workflowState(row)] || "Queued for Doc Prep";
+  const label = row?.workflowLabel || estateWorkflowStateLabels[workflowState(row)] || "";
+  return label === "Queued for Doc Prep" ? "" : label;
 }
 
 function stageStatusLabel(status) {
@@ -287,7 +288,7 @@ function renderArtifactRail(row, bridge, rows = []) {
       <div class="s40-rail-head-commands">
         <button type="button" class="s40-secondary-button" data-s40-idi-upload aria-label="Upload IDI Report PDF for ${escape(bridge, row.title || "this estate")}">Upload IDI Report PDF</button>
         <input type="file" hidden data-s40-idi-file accept=".pdf,application/pdf" aria-label="Choose an IDI Report PDF">
-        <span class="s40-state-label" data-state="${escape(bridge, workflow)}">${escape(bridge, workflowLabel(row))}</span>
+        ${workflowLabel(row) ? `<span class="s40-state-label" data-state="${escape(bridge, workflow)}">${escape(bridge, workflowLabel(row))}</span>` : ""}
       </div>
     </header>
     ${blocker ? `<p class="s40-blocker" role="alert">${escape(bridge, blocker)}</p>` : ""}
