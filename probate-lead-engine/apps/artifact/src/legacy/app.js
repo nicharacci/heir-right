@@ -1858,6 +1858,7 @@ function renderSession(session) {
   document.getElementById("accountName").textContent = user?.email ? name : authGateBlocking(session) ? "Sign in" : "Beta access";
   document.getElementById("accountDomain").textContent = user?.email ? domain : authGateBlocking(session) ? "Google required" : "Local review";
   accountChip.title = user?.email ? `Signed in as ${user.email}. Click to sign out.` : "Beta access session";
+  accountChip.setAttribute("aria-label", "Open account menu");
   renderAuthGate(session);
   if (authGateBlocking(session)) state.accountMenuOpen = false;
   renderAccountMenu();

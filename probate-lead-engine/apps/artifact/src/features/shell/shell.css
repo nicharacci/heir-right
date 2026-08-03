@@ -1970,3 +1970,55 @@ body[data-s38-shell="case-journey"] :is(
     transform: none;
   }
 }
+
+/* S40 account anchor: matches the compact sidebar and footer grid. */
+#workspace[data-s38-shell="case-journey"] .sidebar-footer {
+  min-height: var(--s38-footer-height);
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+#workspace[data-s38-shell="case-journey"] .user-strip,
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip {
+  width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
+  justify-self: center;
+  margin: 0;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 50%;
+  background: transparent !important;
+}
+
+#workspace[data-s38-shell="case-journey"] .user-strip .avatar,
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip .avatar {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  border: 0 !important;
+  border-radius: 50%;
+  color: var(--hr-text);
+  background-color: var(--hr-surface-raised) !important;
+  background-size: cover;
+  background-position: center;
+  box-shadow: none !important;
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+#workspace[data-s38-shell="case-journey"] .user-strip > span:not(.avatar) {
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .user-strip:is(:hover, :focus-visible, :active, [aria-expanded="true"]) .avatar {
+  color: var(--hr-text);
+  background-color: var(--hr-surface-raised) !important;
+  filter: none;
+}
