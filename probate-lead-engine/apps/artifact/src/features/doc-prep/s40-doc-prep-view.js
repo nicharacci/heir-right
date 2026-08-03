@@ -67,8 +67,15 @@ function discoveryPreviewFallback(preview, completed = discoveryMissingLabel) {
   return discoveryFetchLabel;
 }
 
-function discoveryPreviewValue(bridge, value, fallback = discoveryFetchLabel) {
+function cleanDiscoveryPreviewText(value) {
   const text = String(value ?? "").trim();
+  if (!text) return "";
+  if (/^(?:needs review|needs source review|needs approved enrichment|address needs review|dates need review|obituary needs review|folio needs review|county needs review)(?:[.:]|$)/i.test(text)) return "";
+  return text;
+}
+
+function discoveryPreviewValue(bridge, value, fallback = discoveryFetchLabel) {
+  const text = cleanDiscoveryPreviewText(value);
   const shown = text || fallback;
   return "<span class=\"s40-discovery-value" + (text ? "" : " s40-discovery-pending") + "\">"
     + escape(bridge, shown)
@@ -76,12 +83,12 @@ function discoveryPreviewValue(bridge, value, fallback = discoveryFetchLabel) {
 }
 
 function discoveryPreviewParagraphs(bridge, value, fallback) {
-  const lines = String(value || "").split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const lines = String(value || "").split(/\n+/).map(cleanDiscoveryPreviewText).filter(Boolean);
   return (lines.length ? lines : [fallback]).map((line) => "<p>" + escape(bridge, line) + "</p>").join("");
 }
 
 function discoveryPreviewLink(bridge, label, url, fallback = discoveryFetchLabel) {
-  const candidate = String(url || "").trim();
+  const candidate = cleanDiscoveryPreviewText(url);
   if (!candidate) return discoveryPreviewValue(bridge, "", fallback);
   return "<a class=\"s40-discovery-source-link\" href=\"" + escape(bridge, candidate) + "\" target=\"_blank\" rel=\"noopener noreferrer\">" + escape(bridge, label) + "</a>";
 }
@@ -159,7 +166,7 @@ function renderDiscoveryTemplatePreview(row, bridge) {
   const live = preview.state === "live";
   const missing = discoveryPreviewFallback(preview);
   const missingLink = discoveryPreviewFallback(preview, "Source link not returned");
-  const title = preview.title || row.title || "Estate file";
+  const title = cleanDiscoveryPreviewText(preview.title || row.title) || "Estate file";
   const contacts = Array.isArray(preview.contacts) ? preview.contacts : [];
   const contactMarkup = contacts.length
     ? contacts.map((contact, index) => renderDiscoveryContact(contact, bridge, index, preview)).join("")

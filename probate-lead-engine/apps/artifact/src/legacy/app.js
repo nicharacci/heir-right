@@ -15934,6 +15934,7 @@ function publicDiscoveryPreview(row, dossier, workflow) {
   const money = (value) => live ? moneyClaimValue(value, "") : "";
   const percent = (value) => live ? percentClaimValue(value, "") : "";
   const count = (value) => live ? countClaimValue(value, "") : "";
+  const dateAdded = live ? formatPacketDate(dossier?.generatedAt || row.importedAt || row.updatedAt) : "";
   const title = cleanDisplayValue(
     dossier?.summary?.estateName
       || dossier?.property?.estateName?.value
@@ -16043,7 +16044,7 @@ function publicDiscoveryPreview(row, dossier, workflow) {
     state: live ? "live" : "template",
     workflowState: workflow?.state || "queued",
     title,
-    dateAdded: live ? formatPacketDate(dossier?.generatedAt || row.importedAt || row.updatedAt) : "",
+    dateAdded: dateAdded === "Needs review" ? "" : dateAdded,
     propertyAddress: cleanDisplayValue(row.address || claim(dossier?.property?.address)),
     sourceLink: live ? propertyTaxUrl : "",
     propertyTaxUrl: live ? propertyTaxUrl : "",
