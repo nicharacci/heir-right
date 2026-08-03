@@ -113,7 +113,6 @@ function createShellView() {
   routeContext.innerHTML = `
     <div class="shell-route-title-line">
       <h1 id="s38RouteTitle">Dashboard</h1>
-      <span id="s38RouteDisposition" class="shell-route-disposition">Review</span>
     </div>
     <p id="s38RouteMeta">Choose an estate file to begin.</p>
   `;
@@ -179,9 +178,6 @@ function createShellView() {
         || lifecycle.at(-1);
       const routeTitle = ROUTE_LABELS[state.activeView] || "Dashboard";
       routeContext.querySelector("#s38RouteTitle").textContent = routeTitle;
-      const routeDisposition = routeContext.querySelector("#s38RouteDisposition");
-      routeDisposition.textContent = disposition.label;
-      routeDisposition.dataset.disposition = disposition.tone;
       routeContext.querySelector("#s38RouteMeta").textContent = state.selectedEstate
         ? `${state.selectedEstate.title} · ${state.selectedEstate.address}`
         : "Choose an estate file to begin.";
