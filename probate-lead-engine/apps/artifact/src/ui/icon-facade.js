@@ -10,7 +10,7 @@ const semanticIcons = Object.freeze({
   settings: "gear",
   help: "open-book",
   discovery: "magnifier-route",
-  journey: "magnifier-route",
+  journey: "panel-right",
   complete: "check-circle",
   timeline: "packet-clock",
   review: "flag",

@@ -3637,6 +3637,52 @@ function defaultOutreachWorkspace() {
   };
 }
 
+const outreachStopRulePresets = Object.freeze([
+  {
+    id: "standard",
+    label: "Standard review holds",
+    rules: ["No-contact hold", "Company owner", "Recent sale", "Source blocker", "Finished Discovery required"]
+  },
+  {
+    id: "court-packet",
+    label: "Court packet review holds",
+    rules: ["Court packet not reviewed", "No approval owner", "Source blocker"]
+  },
+  {
+    id: "strict",
+    label: "Strict compliance holds",
+    rules: ["Reply", "Call", "No-contact", "Source blocker", "Status change"]
+  },
+  {
+    id: "manual",
+    label: "Manual team hold only",
+    rules: ["Manual team hold"]
+  }
+]);
+
+function outreachStopRulePresetId(campaign) {
+  const current = Array.isArray(campaign?.stopRules) ? campaign.stopRules.map(String) : [];
+  return outreachStopRulePresets.find((preset) => preset.rules.length === current.length && preset.rules.every((rule, index) => rule === current[index]))?.id || "custom";
+}
+
+function outreachStopRuleOptionsHtml(campaign) {
+  const selectedId = outreachStopRulePresetId(campaign);
+  const options = outreachStopRulePresets.map((preset) => `<option value="${escapeHtml(preset.id)}" ${selectedId === preset.id ? "selected" : ""}>${escapeHtml(preset.label)}</option>`);
+  if (selectedId === "custom") options.unshift(`<option value="custom" selected>Current campaign rules</option>`);
+  return options.join("");
+}
+
+function updateSelectedOutreachStopRules(presetId) {
+  const campaign = selectedOutreachCampaign();
+  const preset = outreachStopRulePresets.find((item) => item.id === presetId);
+  if (!campaign || !preset) return;
+  state.outreachWorkspace.campaigns = state.outreachWorkspace.campaigns.map((item) => item.id === campaign.id
+    ? { ...item, stopRules: [...preset.rules], updatedAt: isoNow() }
+    : item);
+  persistOutreachWorkspace("Campaign stop rules updated");
+  renderDripsView();
+}
+
 function normalizeOutreachWorkspace(input = {}) {
   const seed = defaultOutreachWorkspace();
   const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
@@ -4109,11 +4155,13 @@ function nucleoIcon(name = "check-circle", size = 19, extraClass = "") {
     gear: '<path d="M9.67 4.14a2.34 2.34 0 0 1 4.66 0 2.34 2.34 0 0 0 3.32 1.91 2.34 2.34 0 0 1 2.33 4.04 2.34 2.34 0 0 0 0 3.82 2.34 2.34 0 0 1-2.33 4.04 2.34 2.34 0 0 0-3.32 1.91 2.34 2.34 0 0 1-4.66 0 2.34 2.34 0 0 0-3.32-1.91 2.34 2.34 0 0 1-2.33-4.04 2.34 2.34 0 0 0 0-3.82 2.34 2.34 0 0 1 2.33-4.04 2.34 2.34 0 0 0 3.32-1.91Z"/><circle cx="12" cy="12" r="3"/>',
     "packet-clock": '<path d="M5.5 4.5h8.2l4.8 4.8v10.2h-13V4.5Z"/><path d="M13.5 4.8v4.7h4.7"/><circle cx="11" cy="14.5" r="3.1"/><path d="M11 12.8v1.9l1.3.8"/>',
     "magnifier-route": '<path d="m20.5 20.5-4.2-4.2"/><circle cx="10.4" cy="10.4" r="6"/><path d="M7.4 8.3h.01M13.5 12.7h.01M7.5 8.4c3.2.1 5.6.8 5.6 2.4 0 1.8-3.4 1.5-4.8 3.1"/>',
+    "panel-right": '<rect x="4.5" y="4.5" width="15" height="15" rx="1.5"/><path d="M15.5 4.5v15"/><path d="m11 9 3 3-3 3"/>',
     eye: '<path d="M2.8 12s3.4-6 9.2-6 9.2 6 9.2 6-3.4 6-9.2 6-9.2-6-9.2-6Z"/><circle cx="12" cy="12" r="2.7"/>',
     pencil: '<path d="M4.8 16.8 4 20l3.2-.8L18.6 7.8a2.2 2.2 0 0 0-3.1-3.1L4.8 16.8Z"/><path d="m14.2 6 3.8 3.8"/><path d="M9.2 20h10.1"/>',
     flag: '<path d="M6.2 20V5.2"/><path d="M6.2 5.2h9.8l-1.4 3.1L16 11.4H6.2"/><path d="M6.2 15.3h6.5"/>',
     trash: '<path d="M5.2 7h13.6"/><path d="M9.2 7V4.9h5.6V7"/><path d="M7.3 7.1 8 19.2h8l.7-12.1"/><path d="M10.2 10.3v5.7M13.8 10.3v5.7"/>',
     close: '<path d="m6.5 6.5 11 11M17.5 6.5l-11 11"/>',
+    caution: '<path d="M12 4.2 20.4 19H3.6L12 4.2Z"/><path d="M12 9.2v4.5M12 16.7h.01"/>',
     "check-circle": '<circle cx="12" cy="12" r="8.4"/><path class="nucleo-check-mark" d="m8.75 12.1 2.35 2.25 4.45-4.65"/>'
   };
   const className = ["nucleo-icon", extraClass].filter(Boolean).join(" ");
@@ -4825,6 +4873,11 @@ function linearStatusIconHtml(stateName = "pending", label = "Needed") {
     return `<span class="linear-status-icon" data-state="blocked" aria-label="${escapeHtml(label)}">${nucleoIcon("flag", 15)}</span>`;
   }
   return `<span class="linear-status-icon" data-state="pending" aria-label="${escapeHtml(label)}"><span class="linear-status-pending-mark" aria-hidden="true"></span></span>`;
+}
+
+function adminErrorStatusIconHtml(item) {
+  const label = item?.ready ? "Complete" : item?.severity === "review" ? "Review needed" : "Blocked";
+  return `<span class="admin-error-status-icon" data-state="${item?.ready ? "complete" : "caution"}" aria-label="${escapeHtml(label)}">${nucleoIcon(item?.ready ? "check-circle" : "caution", 16)}</span>`;
 }
 
 function documentAutomationKey(docId, row = selectedRow()) {
@@ -8336,28 +8389,28 @@ function idiCoreCredentialStatus(connection = connectionByName("IDI Core")) {
   if (state.idiCoreUserApiKey) {
     return {
       tone: "review",
-      label: "Your key",
-      copy: "This browser will use your pasted IDI key for live runs. The team default stays unchanged."
+      label: "Approved run override",
+      copy: "This browser has an approved run override. Team-managed access remains the shared default."
     };
   }
   if (api.sharedDefaultConfigured || api.accessConfigured) {
     return {
       tone: "ready",
       label: "Team default",
-      copy: "Live IDI runs use the shared team key unless you paste your own."
+      copy: "Approved IDI runs use the shared team-managed connection."
     };
   }
   if (api.endpointConfigured && api.userOverrideAllowed) {
     return {
       tone: "review",
-      label: "Personal key optional",
-      copy: "Paste your own IDI key for this browser, or leave blank once the team default is added."
+      label: "Team access pending",
+      copy: "The vendor endpoint is configured, but team-managed access still needs confirmation."
     };
   }
   return {
     tone: "blocked",
-    label: "Key not ready",
-    copy: "Leave blank for the team default. The vendor connection is still required before live searches can run."
+    label: "Team access required",
+    copy: "Team-managed vendor access is required before live searches can run."
   };
 }
 
@@ -10746,11 +10799,13 @@ function outreachWorkflowControlsHtml(campaign, settings) {
             <option value="run-multiple">Allow repeat after approval</option>
           </select>
         </label>
-        <div class="workflow-control-item">
+        <label class="workflow-control-item">
           <span>Stop rules</span>
-          <strong>Reply, call, no-contact, source blocker, status change</strong>
+          <select data-outreach-stop-rules aria-label="Stop rules for ${escapeHtml(campaign?.name || "selected campaign")}">
+            ${outreachStopRuleOptionsHtml(campaign)}
+          </select>
           <em>${escapeHtml((campaign?.stopRules || []).join(" / ") || "Campaign stop rules required.")}</em>
-        </div>
+        </label>
       </div>
     </section>
   `;
@@ -10975,6 +11030,9 @@ function renderDripsView() {
       renderDripsView();
     });
   });
+  target.querySelector("[data-outreach-stop-rules]")?.addEventListener("change", (event) => {
+    updateSelectedOutreachStopRules(event.currentTarget.value);
+  });
   target.querySelectorAll("[data-drip-setting]").forEach((control) => {
     const update = () => {
       const key = control.dataset.dripSetting;
@@ -11041,24 +11099,7 @@ function renderQueueView() {
 
 function adminErrorItems() {
   const connectionNames = ["Podio", "Google", "Resend", "SMS Gateway", "Web Search", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "IDI Core", "Browserbase Usage", "Activepieces", "Linear Support", "Leads Engine Access"];
-  const actionItems = state.actionErrorLog.map((item) => ({ ...item, ready: false }));
-  const loggedActionTitles = new Set(actionItems.map((item) => item.title));
-  const blockedEventItems = state.shellEvents
-    .filter((event) => event.tone === "blocked" && !loggedActionTitles.has(event.title))
-    .slice(0, 4)
-    .map((event, index) => ({
-      id: `blocked-event-${index}-${Number(event.at || 0)}`,
-      title: event.title,
-      copy: event.copy,
-      severity: "blocked",
-      ready: false,
-      payload: {
-        source: "admin-error-log",
-        category: "blocked-action",
-        message: event.copy,
-        at: event.at
-      }
-    }));
+  const actionItems = state.actionErrorLog.filter((item) => item?.resolved !== true && item?.dismissed !== true).map((item) => ({ ...item, ready: false }));
   const connectionItems = connectionNames.map((name) => {
     const connection = connectionByName(name);
     const ok = Boolean(connection?.ok && connection?.mode === "live");
@@ -11094,7 +11135,7 @@ function adminErrorItems() {
       item
     }
   })) : [];
-  const fallback = !actionItems.length && !blockedEventItems.length && !connectionItems.length && !docItems.length ? [{
+  const fallback = !actionItems.length && !connectionItems.length && !docItems.length ? [{
     id: "no-errors",
     title: "No open setup errors",
     copy: "Current workspace blockers are clear. New integration or document-prep issues will appear here.",
@@ -11102,7 +11143,7 @@ function adminErrorItems() {
     ready: true,
     payload: {}
   }] : [];
-  return [...actionItems, ...blockedEventItems, ...connectionItems, ...docItems, ...fallback].slice(0, 12);
+  return [...actionItems, ...connectionItems, ...docItems, ...fallback].slice(0, 12);
 }
 
 function adminStatusHtml(status) {
@@ -11272,7 +11313,7 @@ function renderAdminLoopView() {
           <ul class="admin-error-list">
             ${errors.map((item) => `
               <li class="admin-error-row">
-                <span><strong>${linearStatusIconHtml(item.ready ? "complete" : item.severity === "review" ? "pending" : "blocked", item.severity)} ${escapeHtml(item.title)}</strong><span class="copy">${escapeHtml(item.copy)}</span></span>
+                <span><strong>${adminErrorStatusIconHtml(item)} ${escapeHtml(item.title)}</strong><span class="copy">${escapeHtml(item.copy)}</span></span>
                 ${item.ready ? "" : `<button class="btn quick solvys-liquid-glass" type="button" data-admin-file-ticket="${escapeHtml(item.id)}">File Linear</button>`}
               </li>
             `).join("")}
@@ -11444,7 +11485,7 @@ function integrationOnboardingCardHtml(kind) {
       name: "IDI Core",
       title: "IDI Core",
       action: "Open idiCORE",
-      steps: ["Use the approved idiCORE account or the shared team key", "Paste a personal key only for your own approved runs", "Import or review contacts before Discovery can use them"]
+      steps: ["Use the approved idiCORE account or the shared team-managed connection", "Keep approved run access behind the existing review gate", "Import or review contacts before Discovery can use them"]
     },
     leads: {
       name: "Leads Engine Access",
@@ -11456,6 +11497,7 @@ function integrationOnboardingCardHtml(kind) {
   if (!meta) return "";
   const isGoogle = kind === "google";
   const isIdi = kind === "idi";
+  const isUserScoped = kind === "podio" || isGoogle;
   const connection = connectionByName(meta.name);
   const workspace = isGoogle ? state.googleWorkspace : null;
   const workspaceConnected = Boolean(workspace?.connected);
@@ -11472,14 +11514,6 @@ function integrationOnboardingCardHtml(kind) {
   const statusTone = connected ? "ready" : browserbaseBlocked ? "blocked" : "review";
   const steps = meta.steps.map((step, index) => index === 0 && connected ? `${meta.title} setup present` : step);
   const idiPortalUrl = connection?.portal?.searchUrl || "https://idicore.com/search/PropertySearch";
-  const idiCredential = isIdi ? idiCoreCredentialStatus(connection) : null;
-  const idiCredentialControl = isIdi ? `
-    <div class="field">
-      <label>Personal IDI access key</label>
-      <input data-idi-settings-api-key type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(state.idiCoreUserApiKey)}" placeholder="Leave blank to use team default">
-      <span class="copy">${escapeHtml(idiCredential.copy)}</span>
-    </div>
-  ` : "";
   const googleWorkspaceControl = isGoogle ? (() => {
     if (!sessionReady) return `<span class="copy">Google OAuth needs to be configured before the Drive connection can start.</span>`;
     if (!workspaceConnected) return `<a class="btn primary solvys-liquid-glass" href="/auth/login?integration=google-workspace">Connect Google Workspace</a>`;
@@ -11510,10 +11544,10 @@ function integrationOnboardingCardHtml(kind) {
       <p class="copy">${escapeHtml(isGoogle && workspaceConnected
         ? workspace.destinationName ? `Drive folder selected: ${workspace.destinationName}. An operator can explicitly send an approved Discovery PDF here from Completion.` : "Google Workspace is connected. Choose a Drive folder for optional approved-packet handoff."
         : operatorConnectionMessage(connection, meta.name))}</p>
+      <p class="integration-scope">${isUserScoped ? "Per-user connection" : "Shared team connection"}</p>
       <ul class="integration-steps">
         ${steps.map((step) => `<li><span>${escapeHtml(step)}</span></li>`).join("")}
       </ul>
-      ${idiCredentialControl}
       <div class="integration-card-actions">${action}</div>
     </article>
   `;
@@ -11559,7 +11593,7 @@ function handleIntegrationOnboarding(kind) {
 }
 
 function integrationStatusRowsHtml() {
-  const names = ["Podio", "Google", "IDI Core", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "Browserbase Usage", "Activepieces", "Linear Support", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
+  const names = ["Podio", "Google", "IDI Core", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "Browserbase Usage", "Activepieces", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
   const items = names.map((name) => {
     const connection = connectionByName(name);
     const connected = Boolean(connection?.ok && connection?.mode === "live");
@@ -11599,6 +11633,7 @@ function integrationStatusRowsHtml() {
 const settingsTabs = [
   { id: "access", label: "Access" },
   { id: "integrations", label: "Integrations" },
+  { id: "support", label: "Support" },
   { id: "sources", label: "Sources" },
   { id: "outreach", label: "Outreach" },
   { id: "audit", label: "Audit" },
@@ -11680,12 +11715,11 @@ function renderAccessSettingsPanel() {
   const session = state.session || {};
   const user = session.user || {};
   const idi = connectionByName("IDI Core");
-  const idiCredential = idiCoreCredentialStatus(idi);
   const status = [
     { state: authConfigured ? "ready" : "blocked", copy: "Google-only login clears the blurred app gate." },
     { state: domains.length ? "ready" : "blocked", copy: `Allowed domains: ${domains.join(", ") || "not set"}.` },
     { state: state.session?.authenticated ? "ready" : "review", copy: user.email ? `Current user: ${user.name || user.email}.` : "No signed-in Google user on this browser." },
-    { state: idi?.api?.sharedDefaultConfigured || state.idiCoreUserApiKey ? "ready" : "review", copy: "IDI Core uses the shared team key by default; a user may paste a personal key for approved runs." },
+    { state: idi?.api?.sharedDefaultConfigured ? "ready" : "review", copy: "IDI Core uses the shared team-managed connection for approved runs." },
   ];
   return `
     ${settingsSectionShell("Team access", "Access", authConfigured ? "Google ready" : "Setup needed", `
@@ -11707,12 +11741,7 @@ function renderAccessSettingsPanel() {
         </article>
         <article class="settings-control-card">
           <strong>IDI Core API access</strong>
-          <span>The default key stays shared for the whole team. A pasted personal key stays only in this tab's memory, clears on reload, and never replaces the shared key.</span>
-          <div class="field">
-            <label>Personal IDI access key</label>
-            <input data-idi-settings-api-key type="password" autocomplete="off" spellcheck="false" value="${escapeHtml(state.idiCoreUserApiKey)}" placeholder="Leave blank to use team default">
-            <span class="copy">${escapeHtml(idiCredential.copy)}</span>
-          </div>
+          <span>The shared team key remains the only team-managed route shown here; any personal key stays outside Settings and is never entered on this surface.</span>
           <ul class="settings-control-list">
             <li data-state="${idi?.api?.sharedDefaultConfigured ? "ready" : "review"}">Shared team key: ${idi?.api?.sharedDefaultConfigured ? "available" : "not confirmed here"}.</li>
             <li data-state="${idi?.api?.endpointConfigured ? "ready" : "blocked"}">IDI Core connection: ${idi?.api?.endpointConfigured ? "configured" : "needed before live searches"}.</li>
@@ -11741,7 +11770,6 @@ function renderIntegrationSettingsPanel() {
         ${integrationOnboardingCardHtml("vital")}
         ${integrationOnboardingCardHtml("browserbase")}
         ${integrationOnboardingCardHtml("activepieces")}
-        ${integrationOnboardingCardHtml("linear")}
         ${integrationOnboardingCardHtml("web")}
         ${integrationOnboardingCardHtml("leads")}
         ${integrationOnboardingCardHtml("resend")}
@@ -11749,6 +11777,26 @@ function renderIntegrationSettingsPanel() {
       </div>
     `)}
     ${integrationStatusRowsHtml()}
+  `;
+}
+
+function renderSupportSettingsPanel() {
+  const connection = connectionByName("Linear Support");
+  const connected = Boolean(connection?.ok && connection?.mode === "live");
+  const status = connected ? "Available" : connectionTone(connection) === "review" ? "Review needed" : "Not connected";
+  return `
+    ${settingsSectionShell("Ticket routing", "Support", "", `
+      <div class="support-routing-row" data-state="${connected ? "ready" : "review"}">
+        <div>
+          <strong>Linear Support</strong>
+          <span>Internal setup and support tickets use the team route. The route stays separate from the operator integration gallery.</span>
+        </div>
+        <span class="support-routing-status" data-state="${connected ? "ready" : "review"}">${escapeHtml(status)}</span>
+      </div>
+      <div class="settings-action-row">
+        <button class="btn quick solvys-liquid-glass" type="button" data-settings-open-view="admin">Open Admin support</button>
+      </div>
+    `)}
   `;
 }
 
@@ -11851,8 +11899,7 @@ function renderSourceSettingsPanel() {
           badge: idi?.configuredMode === "api" ? "API" : "Portal/import",
           copy: operatorConnectionMessage(idi, "IDI Core"),
           checks: [
-            { state: idi?.api?.sharedDefaultConfigured ? "ready" : "review", copy: "Shared team API key remains the default for all users." },
-            { state: idi?.api?.userOverrideAllowed ? "ready" : "blocked", copy: "Personal pasted key is allowed as a per-user override." },
+            { state: idi?.api?.sharedDefaultConfigured ? "ready" : "review", copy: "Team-managed IDI access remains the default for approved enrichment." },
             { state: idi?.api?.liveRunApproved ? "ready" : "review", copy: "Controlled paid-run approval is required before a live lookup spends." },
           ]
         })}
@@ -11950,6 +11997,7 @@ function renderPreferencesSettingsPanel() {
 
 function settingsTabPanelHtml(tab) {
   if (tab === "integrations") return renderIntegrationSettingsPanel();
+  if (tab === "support") return renderSupportSettingsPanel();
   if (tab === "sources") return renderSourceSettingsPanel();
   if (tab === "outreach") return renderOutreachSettingsPanel();
   if (tab === "audit") return renderAuditSettingsPanel();
@@ -12035,13 +12083,6 @@ function renderSettingsView() {
       } catch (error) {
         addShellEvent("Drive folder blocked", error instanceof Error ? error.message : String(error), "blocked", true);
       }
-      renderSettingsView();
-    });
-  });
-  target.querySelectorAll("[data-idi-settings-api-key]").forEach((input) => {
-    input.addEventListener("input", () => persistIdiCoreUserApiKey(input.value));
-    input.addEventListener("change", () => {
-      persistIdiCoreUserApiKey(input.value, { announce: true });
       renderSettingsView();
     });
   });

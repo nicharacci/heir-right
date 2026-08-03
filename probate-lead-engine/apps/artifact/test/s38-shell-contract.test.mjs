@@ -308,7 +308,7 @@ function assertStaticContracts() {
   assert.match(railHost, /iconMarkup\("close", \{ size: 18 \}\)/, "the unified rail close control must use the semantic icon facade");
   assert.doesNotMatch(railHost, />×</, "the unified rail must not ship a raw multiplication glyph as its close icon");
   assert.match(iconFacadeSource, /close:\s*"close"/);
-  assert.match(iconFacadeSource, /journey:\s*"magnifier-route"/);
+  assert.match(iconFacadeSource, /journey:\s*"panel-right"/, "the Case Journey control must use a right-drawer icon");
 
   assert.match(themeControl, /\{ id: "dark", label: "Dark" \}/);
   assert.match(themeControl, /\{ id: "cream", label: "Cream" \}/);

@@ -6071,6 +6071,10 @@
       margin-top: 4px;
     }
 
+    #settingsView .settings-action-row {
+      justify-content: flex-end;
+    }
+
     .settings-control-grid,
     .source-control-grid,
     .outreach-control-grid,
@@ -6407,6 +6411,29 @@
       overflow-wrap: anywhere;
     }
 
+    .admin-error-status-icon {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--amber);
+      background: transparent;
+      border: 0;
+      line-height: 1;
+    }
+
+    .admin-error-status-icon[data-state="complete"] {
+      color: var(--green);
+    }
+
+    .admin-error-status-icon .nucleo-icon {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 16px;
+    }
+
     .admin-error-row .copy,
     .admin-access-row .copy,
     .team-kpi-row .copy {
@@ -6567,10 +6594,19 @@
     .integration-card-head,
     .integration-card-actions {
       display: flex;
-      align-items: start;
-      justify-content: space-between;
       gap: 10px;
       min-width: 0;
+    }
+
+    .integration-card-head {
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+
+    .integration-card-actions {
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
     }
 
     .integration-card h3 {
@@ -6578,6 +6614,52 @@
       color: var(--text);
       font-size: 15px;
       line-height: 1.2;
+    }
+
+    .integration-scope {
+      margin: -6px 0 0;
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .support-routing-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      min-width: 0;
+      padding: 4px 0;
+    }
+
+    .support-routing-row > div {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .support-routing-row strong {
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .support-routing-row span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .support-routing-status {
+      flex: 0 0 auto;
+      color: var(--soft) !important;
+      font-size: 11px !important;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .support-routing-status[data-state="ready"] {
+      color: var(--green) !important;
     }
 
     .integration-steps {
@@ -8982,7 +9064,7 @@
 
     .outreach-workspace {
       display: grid;
-      grid-template-columns: minmax(220px, .46fr) minmax(0, 1fr);
+      grid-template-columns: minmax(190px, .38fr) minmax(0, .62fr);
       gap: 14px;
       align-items: start;
       min-width: 0;
@@ -8993,10 +9075,7 @@
       gap: 12px;
       margin: 12px 0 16px;
       padding: 14px 0 16px;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-      border-image-source: var(--divider-line);
-      border-image-slice: 1;
+      border: 0;
     }
 
     .workflow-control-head {
@@ -9025,10 +9104,10 @@
       display: grid;
       gap: 6px;
       align-content: start;
-      padding: 11px;
-      border: 1px solid color-mix(in srgb, var(--line-strong) 54%, transparent);
-      border-radius: 14px;
-      background: color-mix(in srgb, var(--ios-fill) 72%, transparent);
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
     }
 
     .workflow-control-item span {
@@ -9075,6 +9154,12 @@
       min-width: 0;
       display: grid;
       gap: 10px;
+    }
+
+    .outreach-workspace > *,
+    .campaign-list > li,
+    .template-list > li {
+      min-width: 0;
     }
 
     .outreach-section-label {
@@ -9137,6 +9222,14 @@
       max-height: min(640px, calc(100vh - 220px));
     }
 
+    .outreach-side-card .tabbed-panel > .tab-strip {
+      justify-self: end;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
     .variable-scroll {
       min-height: 240px;
       max-height: min(430px, calc(100vh - 360px));
@@ -9172,6 +9265,10 @@
 
     .campaign-item,
     .template-list-item {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
       cursor: pointer;
     }
 
@@ -9196,6 +9293,8 @@
       color: var(--text);
       font-size: 13px;
       line-height: 1.25;
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
 
     .campaign-item span,
@@ -9205,6 +9304,8 @@
       color: var(--muted);
       font-size: 12px;
       line-height: 1.38;
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
 
     .campaign-item.is-selected,
