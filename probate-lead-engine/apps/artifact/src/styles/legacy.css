@@ -5940,12 +5940,12 @@
     }
 
     .settings-center-shell {
-      width: clamp(680px, 72vw, 1060px);
+      width: 100%;
       max-width: 100%;
       min-height: 100%;
       display: grid;
       align-content: start;
-      margin: 0 auto;
+      margin: 0;
     }
 
     .settings-unified-card {
