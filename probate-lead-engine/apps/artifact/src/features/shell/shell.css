@@ -354,6 +354,16 @@
   text-transform: uppercase;
 }
 
+#workspace[data-s38-shell="case-journey"] .agent-drawer:has(.shell-queue-table) { top: calc(var(--s38-header-height) + var(--hr-space-2)); bottom: auto; max-height: min(34rem, calc(100dvh - var(--s38-header-height) - 2rem)); }
+#workspace[data-s38-shell="case-journey"] .shell-queue-tabs { width: min(100%, 16rem); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#workspace[data-s38-shell="case-journey"] .shell-queue-table-wrap { min-height: 0; overflow: auto; }
+#workspace[data-s38-shell="case-journey"] .shell-queue-table { width: 100%; border-collapse: collapse; font-size: var(--hr-type-xs); }
+#workspace[data-s38-shell="case-journey"] .shell-queue-table th, #workspace[data-s38-shell="case-journey"] .shell-queue-table td { padding: .7rem .35rem; vertical-align: top; text-align: left; border-bottom: 1px solid var(--hr-ruler); }
+#workspace[data-s38-shell="case-journey"] .shell-queue-table th { color: var(--hr-text-subtle); font-weight: 700; }
+#workspace[data-s38-shell="case-journey"] .shell-queue-table button { display: grid; gap: .15rem; padding: 0; color: inherit; background: transparent; border: 0; text-align: left; }
+#workspace[data-s38-shell="case-journey"] .shell-queue-table button span { color: var(--hr-text-muted); }
+#workspace[data-s38-shell="case-journey"] .shell-queue-empty { color: var(--hr-text-muted); text-align: center !important; }
+
 #workspace[data-s38-shell="case-journey"] .shell-route-title-line {
   min-width: 0;
   display: flex;

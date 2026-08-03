@@ -2,6 +2,8 @@ import { iconMarkup } from "../../ui/icon-facade.js";
 import { buildLifecycle, resolveDisposition } from "../case-journey/case-journey.js";
 import { timeLabel } from "../case-journey/case-journey-rail.js";
 
+let dashboardRange = "30d";
+
 function safe(bridge, value) {
   return bridge.escapeHtml(String(value ?? ""));
 }
@@ -119,7 +121,7 @@ function attentionMarkup(state, bridge) {
     <section class="dashboard-section dashboard-attention" aria-labelledby="dashboardAttentionTitle">
       <div class="dashboard-section-heading">
         <h3 id="dashboardAttentionTitle">Needs attention</h3>
-        <button class="dashboard-bare-action" type="button" data-shell-open-context="activity">Recent Activity</button>
+
       </div>
       <div class="dashboard-editorial-list">
         ${attentionRows(state).map((item) => `
@@ -141,8 +143,8 @@ function estateRowsMarkup(state, bridge) {
   return `
     <section class="dashboard-section dashboard-active-work" aria-labelledby="dashboardActiveTitle">
       <div class="dashboard-section-heading">
-        <h3 id="dashboardActiveTitle">Active files</h3>
-        <button class="dashboard-bare-action" type="button" data-dashboard-view="find-estates">All Estates</button>
+        <h3 id="dashboardActiveTitle">File history</h3>
+        <button class="dashboard-bare-action" type="button" data-dashboard-view="find-estates">Estate Search</button>
       </div>
       <div class="dashboard-estate-list">
         ${rows.length ? rows.map((estate) => `
@@ -187,30 +189,40 @@ function renderDashboardView({ bridge }) {
   const disposition = resolveDisposition(state);
   const documents = state.docPrep?.documents || [];
   const verifiedDocuments = documents.filter((document) => document.hasVerifiedFile).length;
+  const rangeDays = Number.parseInt(dashboardRange, 10) || 30;
+  const rangeStart = Date.now() - rangeDays * 24 * 60 * 60 * 1000;
+  const estatesInRange = (state.estates || []).filter((row) => {
+    const timestamp = Date.parse(row.exportedAt || row.updatedAt || "");
+    return Number.isFinite(timestamp) && timestamp >= rangeStart;
+  });
+  const estateTotals = estatesInRange.reduce((totals, row) => {
+    if (row.workflowState === "exported") totals.exported += 1;
+    else if (row.workflowState === "completed-awaiting-export" || row.exportEligible) totals.withReports += 1;
+    else totals.withoutReports += 1;
+    return totals;
+  }, { withoutReports: 0, withReports: 0, exported: 0 });
+  const userName = String(state.session?.user?.name || state.session?.user?.email || "there").split("@")[0];
   return `
     <div class="case-dashboard" aria-label="HeirRight Case Journey Dashboard">
       <header class="dashboard-decision-band">
         <div class="dashboard-estate-context">
-          <h2>${safe(bridge, estate?.title || "Choose an estate file")}</h2>
-          <p>${safe(bridge, estate?.address || "Start with owner and property evidence, then follow the Case Journey.")}</p>
+          <h2>Good to see you, ${safe(bridge, userName)}</h2>
+          <p>Previous file: ${safe(bridge, estate?.title || "Choose an estate file")} · ${safe(bridge, estate?.address || "Start in Estates to choose a file.")}</p>
         </div>
         <div class="dashboard-disposition" data-disposition="${safe(bridge, disposition.tone)}">
-          <span>Disposition</span>
-          <strong>${safe(bridge, disposition.label)}</strong>
-          <p>${safe(bridge, disposition.reason)}</p>
+          <span>Last visited</span>
+          <strong>${safe(bridge, estate?.title || "No file selected")}</strong>
+          <p>${safe(bridge, estate?.address || "Open Estates to select your next file.")}</p>
           <button class="dashboard-primary-action" type="button" data-journey-next-view="${safe(bridge, disposition.next.view)}">
-            <span>${safe(bridge, disposition.next.label)}</span>
+            <span>Open previous file</span>
             ${iconMarkup("discovery", { size: 17 })}
           </button>
         </div>
       </header>
 
-      <section class="dashboard-journey" aria-labelledby="dashboardJourneyTitle">
-        <div class="dashboard-section-heading">
-          <h3 id="dashboardJourneyTitle">Case Journey</h3>
-          <button class="dashboard-bare-action" type="button" data-shell-open-context="journey">Open Timeline</button>
-        </div>
-        ${lifecycleMarkup(state, bridge)}
+      <section class="dashboard-kpi-strip" aria-label="Estate report totals">
+        <div class="dashboard-kpi-head"><h3>Estate report activity</h3><div class="dashboard-kpi-tabs" role="tablist" aria-label="Report lookback">${["7d", "14d", "30d"].map((range) => `<button type="button" role="tab" data-dashboard-range="${range}" aria-selected="${dashboardRange === range}">${range}</button>`).join("")}</div></div>
+        <dl><div><dt>Estates without Reports</dt><dd data-dashboard-counter>${safe(bridge, estateTotals.withoutReports)}</dd></div><div><dt>Estates with Reports</dt><dd data-dashboard-counter>${safe(bridge, estateTotals.withReports)}</dd></div><div><dt>Estates Exported</dt><dd data-dashboard-counter>${safe(bridge, estateTotals.exported)}</dd></div></dl>
       </section>
 
       <div class="dashboard-work-grid">
@@ -218,19 +230,10 @@ function renderDashboardView({ bridge }) {
         ${estateRowsMarkup(state, bridge)}
       </div>
 
-      <div class="dashboard-awareness-row">
-        ${activityMarkup(state, bridge)}
-        <aside class="dashboard-kpis" aria-label="Selected estate progress">
-          <dl>
-            <div><dt>Discovery</dt><dd>${safe(bridge, progressValue(state))}%</dd></div>
-            <div><dt>Verified documents</dt><dd>${safe(bridge, `${verifiedDocuments}/${documents.length}`)}</dd></div>
-            <div><dt>Evidence</dt><dd>${safe(bridge, `${estate?.evidence || 0}/${estate?.evidenceTotal || 0}`)}</dd></div>
-          </dl>
-          <button class="dashboard-bare-action" type="button" data-shell-open-context="overview">Estate Summary</button>
-        </aside>
-      </div>
     </div>
   `;
 }
 
-export { attentionRows, renderDashboardView };
+function setDashboardRange(range) { dashboardRange = ["7d", "14d", "30d"].includes(range) ? range : "30d"; }
+
+export { attentionRows, renderDashboardView, setDashboardRange };

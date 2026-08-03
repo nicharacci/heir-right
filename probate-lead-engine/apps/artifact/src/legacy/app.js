@@ -3937,14 +3937,22 @@ function eventTime(value) {
 function renderActivityDrawer() {
   const list = document.getElementById("activityList");
   if (!list) return;
-  const events = (state.shellEvents.length ? state.shellEvents : defaultShellEvents()).map(clientFacingEvent);
+  const adminErrors = state.activeView === "admin" ? adminErrorItems() : null;
+  const events = adminErrors || (state.shellEvents.length ? state.shellEvents : defaultShellEvents()).map(clientFacingEvent);
   list.innerHTML = events.map((event) => `
     <article class="activity-event ${escapeHtml(event.tone ?? "review")}">
       <strong>${escapeHtml(event.title)}</strong>
       <span>${escapeHtml(event.copy)}</span>
-      <div class="activity-time">${escapeHtml(eventTime(event.at ?? Date.now()))}</div>
+      ${adminErrors && !event.ready ? `<button class="btn quick" type="button" data-drawer-file-ticket="${escapeHtml(event.id)}">File Linear</button>` : ""}
+      <div class="activity-time">${escapeHtml(adminErrors ? (event.ready ? "Resolved" : "Needs review") : eventTime(event.at ?? Date.now()))}</div>
     </article>
   `).join("");
+  list.querySelectorAll("[data-drawer-file-ticket]").forEach((button) => button.addEventListener("click", () => { const item = adminErrorItems().find((entry) => entry.id === button.dataset.drawerFileTicket); if (item) fileAdminLinearTicket({ title: `[HeirRight] ${item.title}`, message: item.copy, severity: item.severity === "blocked" ? "high" : "medium", source: "HeirRight Admin Error Log", actor: currentActorEmail(), context: item.payload }); }));
+  const drawer = document.getElementById("agentDrawer");
+  if (drawer) {
+    drawer.querySelector(".drawer-title").textContent = adminErrors ? "Error log" : "Review trail";
+    drawer.querySelector(".drawer-head .eyebrow").textContent = adminErrors ? "Admin" : "Activity";
+  }
 }
 
 function renderShellPanels() {
@@ -11349,7 +11357,7 @@ function renderAdminLoopView() {
         </div>
       </section>
       <section class="loop-panel is-tall">
-        <div class="loop-panel-head"><div><h2 class="loop-title">Team Activity</h2></div><span class="pill ready">${state.shellEvents.length} events</span></div>
+        <div class="loop-panel-head"><div><h2 class="loop-title">Team Activity</h2></div><span><button class="btn icon-only" type="button" data-admin-open-errors aria-label="Open error log" title="Open error log">${nucleoIcon("caution", 16)}</button><span class="pill ready">${state.shellEvents.length} events</span></span></div>
         <div class="team-activity-layout">
           <div class="admin-error-list">
             ${activities.map((item) => `
@@ -11374,6 +11382,7 @@ function renderAdminLoopView() {
       </section>
     </div>
   `;
+  target.querySelector("[data-admin-open-errors]")?.addEventListener("click", () => setActivityOpen(true));
   target.querySelectorAll("[data-admin-file-ticket]").forEach((button) => {
     button.addEventListener("click", () => {
       const item = errors.find((entry) => entry.id === button.dataset.adminFileTicket);
@@ -11539,7 +11548,7 @@ function integrationOnboardingCardHtml(kind) {
           <p class="eyebrow">Integration</p>
           <h3>${escapeHtml(meta.title)}</h3>
         </div>
-        <span class="pill ${statusTone}">${escapeHtml(statusLabel)}</span>
+        <div class="integration-card-status"><button class="integration-refresh" type="button" data-settings-refresh-integration="${escapeHtml(kind)}" aria-label="Refresh ${escapeHtml(meta.title)} status" title="Refresh status">↻</button><span class="pill ${statusTone}">${escapeHtml(statusLabel)}</span></div>
       </div>
       <p class="copy">${escapeHtml(isGoogle && workspaceConnected
         ? workspace.destinationName ? `Drive folder selected: ${workspace.destinationName}. An operator can explicitly send an approved Discovery PDF here from Completion.` : "Google Workspace is connected. Choose a Drive folder for optional approved-packet handoff."
@@ -11757,10 +11766,6 @@ function renderIntegrationSettingsPanel() {
   return `
     ${settingsSectionShell("Integration status", "Workspace", "Reconnect / Review setup", `
       <p class="copy">Connector setup, approval, and readback status live here so Batch Queue and Outreach show only deal-work blockers.</p>
-      <div class="settings-action-row">
-        <button class="btn primary solvys-liquid-glass" type="button" data-settings-refresh-connections>Refresh statuses</button>
-        <button class="btn quick solvys-liquid-glass" type="button" data-settings-open-view="admin">Open Admin tickets</button>
-      </div>
       <div class="integration-onboarding settings-integrations-list">
         ${integrationOnboardingCardHtml("podio")}
         ${integrationOnboardingCardHtml("google")}
@@ -12015,12 +12020,12 @@ function renderSettingsView() {
       <section class="loop-panel full settings-unified-card">
         <div class="loop-panel-head">
           <div><p class="eyebrow">Settings</p><h2 class="loop-title">${escapeHtml(settingsTabs.find((item) => item.id === tab)?.label || "Access")} readiness</h2></div>
-          <div class="tab-strip" role="tablist" aria-label="Settings tabs">
-            ${settingsTabs.map((item) => `<button type="button" data-settings-tab="${escapeHtml(item.id)}" aria-pressed="${item.id === tab}">${escapeHtml(item.label)}</button>`).join("")}
+          <div class="hr-docprep-flow-switch beui-tabs settings-tabs" role="tablist" aria-label="Settings tabs" aria-orientation="horizontal">
+            ${settingsTabs.map((item) => `<button class="beui-tabs-trigger" type="button" role="tab" data-settings-tab="${escapeHtml(item.id)}" aria-controls="settingsTabPanel" aria-selected="${item.id === tab}" tabindex="${item.id === tab ? "0" : "-1"}">${escapeHtml(item.label)}</button>`).join("")}
           </div>
         </div>
         ${settingsReadinessBandHtml()}
-        ${settingsTabPanelHtml(tab)}
+        <div id="settingsTabPanel" role="tabpanel">${settingsTabPanelHtml(tab)}</div>
       </section>
     </div>
   `;
@@ -12035,6 +12040,16 @@ function renderSettingsView() {
       renderSettingsView();
     });
   });
+  target.querySelector(".settings-tabs")?.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const tabs = [...target.querySelectorAll("[data-settings-tab]")];
+    const current = tabs.indexOf(document.activeElement);
+    if (current < 0) return;
+    event.preventDefault();
+    const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    tabs[next]?.focus();
+    tabs[next]?.click();
+  });
   target.querySelectorAll("[data-settings-open-view]").forEach((button) => {
     button.addEventListener("click", () => {
       const view = button.dataset.settingsOpenView || "dashboard";
@@ -12047,6 +12062,16 @@ function renderSettingsView() {
       button.textContent = "Checking...";
       await loadConnectionStatuses();
       addShellEvent("Connection statuses refreshed", "Settings pulled the latest integration, source, and Outreach readiness checks.", "review", false);
+      renderSettingsView();
+    });
+  });
+  target.querySelectorAll("[data-settings-refresh-integration]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (button.disabled) return;
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+      const refreshed = await loadConnectionStatuses();
+      addShellEvent(refreshed ? "Integration status refreshed" : "Integration status needs retry", refreshed ? "The latest saved integration status is visible." : "The last saved integration status is still shown. Try again when the connection is available.", refreshed ? "review" : "blocked", false);
       renderSettingsView();
     });
   });
@@ -14360,12 +14385,11 @@ async function loadConnectionStatuses() {
     const response = await fetch("/api/connections/status", { cache: "no-store" });
     if (!response.ok) throw new Error("Connection status unavailable");
     state.connections = await response.json();
+    updateConnectionStatuses();
+    if (document.querySelector("[data-source-readiness-panel]")) renderRail();
+    return true;
   } catch (error) {
-    state.connections = [];
-  }
-  updateConnectionStatuses();
-  if (document.querySelector("[data-source-readiness-panel]")) {
-    renderRail();
+    return false;
   }
 }
 
@@ -15738,6 +15762,7 @@ function publicEstateRow(row) {
     workflowArtifact: workflow.artifact,
     handoff: workflow.handoff,
     exportedAt: workflow.exportedAt,
+    updatedAt: row.updatedAt || dossier?.updatedAt || workflow.updatedAt || "",
     packetApproved: Boolean(workflow.artifact && s40EnsurePacketArtifact(row) && currentPacketApproval(row, "discovery")),
   };
 }
@@ -16823,8 +16848,10 @@ loadSession().then(async (session) => {
   if (authGateBlocking(session)) return;
   try {
     prepareAuthorizedWorkspace();
-    await loadRun();
+    const runRestore = loadRun();
+    await Promise.race([runRestore, new Promise((resolve) => window.setTimeout(resolve, 2400))]);
     completeAuthorizedWorkspace();
+    void runRestore.then(() => { if (workspaceBooted) renderCurrentLoopView(); }).catch(() => {});
     // Access-list and Google status are secondary chrome. Let the estate
     // workspace become interactive first, then refresh those surfaces without
     // holding the auth gate open for optional network work.

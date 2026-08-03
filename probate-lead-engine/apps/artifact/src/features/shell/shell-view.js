@@ -63,7 +63,7 @@ function syncSidebarControl(workspace) {
 }
 
 function consolidateLegacyRails() {
-  const records = ["researchRail", "historyRail", "agentDrawer"].map((id) => {
+  const records = ["researchRail", "historyRail"].map((id) => {
     const element = document.getElementById(id);
     if (!element) return null;
     const record = {
@@ -111,7 +111,6 @@ function createShellView() {
   const routeContext = document.createElement("div");
   routeContext.className = "shell-route-context";
   routeContext.innerHTML = `
-    <span class="shell-route-kicker">Estate operations</span>
     <div class="shell-route-title-line">
       <h1 id="s38RouteTitle">Dashboard</h1>
       <span id="s38RouteDisposition" class="shell-route-disposition">Review</span>
@@ -125,11 +124,11 @@ function createShellView() {
   headerCommands.innerHTML = `
     <div class="shell-header-status" id="s38ShellStatus" role="status" aria-live="polite"></div>
     <button class="shell-primary-command" type="button" data-shell-primary-command>
-      <span data-shell-primary-label>Continue Review</span>
-      <span data-shell-primary-icon aria-hidden="true">${iconMarkup("discovery", { size: 17 })}</span>
+      <span data-shell-primary-label>Queue</span>
+      <span data-shell-primary-icon aria-hidden="true">${iconMarkup("queue", { size: 17 })}</span>
     </button>
-    <wa-tooltip for="s38OpenRail" placement="bottom">Open the Case Journey</wa-tooltip>
-    <button id="s38OpenRail" class="shell-icon-command" type="button" data-shell-open-context="overview" aria-label="Open Case Journey" aria-controls="s38UnifiedRail" aria-expanded="false">
+    <wa-tooltip for="s38OpenRail" placement="bottom">Open case drawer</wa-tooltip>
+    <button id="s38OpenRail" class="shell-icon-command" type="button" data-shell-open-context="overview" aria-label="Open case drawer" aria-controls="s38UnifiedRail" aria-expanded="false">
       ${iconMarkup("journey", { size: 27 })}
     </button>
   `;
@@ -186,13 +185,11 @@ function createShellView() {
       routeContext.querySelector("#s38RouteMeta").textContent = state.selectedEstate
         ? `${state.selectedEstate.title} · ${state.selectedEstate.address}`
         : "Choose an estate file to begin.";
-      const primaryAction = state.activeView === "find-estates"
-        ? { label: "Import Estate", view: "", action: "import-estate" }
-        : { ...disposition.next, action: "navigate" };
+      const primaryAction = { label: "Queue", view: "", action: "queue" };
       const primaryLabel = headerCommands.querySelector("[data-shell-primary-label]");
       primaryLabel.textContent = primaryAction.label;
       headerCommands.querySelector("[data-shell-primary-icon]").innerHTML = iconMarkup(
-        primaryAction.action === "import-estate" ? "estates" : "discovery",
+        "queue",
         { size: 17 },
       );
       this.primaryCommand.dataset.nextView = primaryAction.view;

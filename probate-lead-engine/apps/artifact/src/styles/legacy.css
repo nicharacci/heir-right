@@ -4639,7 +4639,7 @@
 
     .admin-tall-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 7fr) minmax(18rem, 3fr);
       gap: 14px;
       align-items: stretch;
     }
@@ -6006,6 +6006,12 @@
       margin: 4px 0 16px;
     }
 
+    .settings-unified-card > .loop-panel-head .settings-tabs {
+      width: min(100%, 38rem);
+      grid-template-columns: repeat(7, minmax(max-content, 1fr));
+      overflow-x: auto;
+    }
+
     .settings-unified-card > .loop-panel-head .tab-strip {
       min-width: 0;
       overflow-x: auto;
@@ -6357,6 +6363,10 @@
       align-content: start;
     }
 
+    #adminView .admin-tall-grid > .loop-panel:nth-child(1) { display: none; }
+    #adminView .admin-tall-grid > .loop-panel:nth-child(2) { grid-column: 2; grid-row: 1; }
+    #adminView .admin-tall-grid > .loop-panel:nth-child(3) { grid-column: 1; grid-row: 1; }
+
     .admin-log-layout,
     .admin-access-layout,
     .team-activity-layout {
@@ -6608,6 +6618,25 @@
       justify-content: flex-end;
       flex-wrap: wrap;
     }
+
+    .integration-card-status { display: inline-flex; align-items: center; gap: 8px; }
+
+    .integration-refresh {
+      width: 2rem;
+      height: 2rem;
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      font-size: 1.15rem;
+      line-height: 1;
+    }
+
+    .integration-refresh:is(:hover, :focus-visible) { color: var(--accent); }
+    .integration-refresh:focus-visible { outline: 2px solid var(--focus, var(--accent)); outline-offset: 2px; }
 
     .integration-card h3 {
       margin: 0;
