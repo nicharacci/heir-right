@@ -107,7 +107,22 @@ const state = {
   crmImportModal: {
     open: false,
     mode: "single",
-    provider: "podio"
+    provider: "podio",
+    draft: {
+      batchRows: "",
+      sourceUrl: "",
+      notes: ""
+    }
+  },
+  crmImportUpload: {
+    status: "idle",
+    name: "",
+    size: 0,
+    rowCount: 0,
+    progress: 0,
+    message: "",
+    failurePhase: "",
+    source: ""
   },
   columnOrder: {
     results: ["address", "lead", "score", "evidence"],
@@ -201,8 +216,11 @@ const dripSettingsKey = "heirright:drip-settings";
 const agenticModelPreferenceKey = "heirright:agentic-model-preference";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
 const walkthroughStateKey = "heirright:guided-walkthrough-seen";
+const crmImportMaxFileBytes = 10 * 1024 * 1024;
 let walkthroughAutoTimer = null;
 let shellViewTransitionTimer = null;
+let crmImportFile = null;
+let crmImportUploadToken = 0;
 const documentAutomationTimers = new Map();
 const serverBackedStateKeys = new Set([
   crmImportStateKey,
@@ -7172,20 +7190,217 @@ function wireDocumentActionModal(mount) {
 }
 
 function openCrmImportModal(options = {}) {
+  resetCrmImportUpload();
   const mode = options.mode === "batch" ? "batch" : "single";
   const provider = ["podio", "google-sheets", "csv"].includes(options.provider) ? options.provider : "podio";
   state.crmImportModal.open = true;
   state.crmImportModal.mode = mode;
   state.crmImportModal.provider = provider;
+  state.crmImportModal.draft = { batchRows: "", sourceUrl: "", notes: "" };
   renderCrmImportModal();
 }
 
 function closeCrmImportModal() {
+  resetCrmImportUpload();
   state.crmImportModal.open = false;
   renderCrmImportModal();
 }
+function emptyCrmImportUpload() {
+  return {
+    status: "idle",
+    name: "",
+    size: 0,
+    rowCount: 0,
+    progress: 0,
+    message: "",
+    failurePhase: "",
+    source: ""
+  };
+}
 
-function renderCrmImportModal() {
+function resetCrmImportUpload() {
+  crmImportFile = null;
+  crmImportUploadToken += 1;
+  state.crmImportUpload = emptyCrmImportUpload();
+}
+
+function formatCrmFileSize(bytes) {
+  const value = Number(bytes) || 0;
+  if (value < 1024) return value + " B";
+  if (value < 1024 * 1024) return (value / 1024).toFixed(1) + " KB";
+  return (value / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function countCrmImportRows(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line, index) => {
+      if (index !== 0) return true;
+      const header = splitCrmBatchLine(line).slice(0, 2).join(" ").toLowerCase();
+      return !/first\s+name/.test(header) && !/last\s+name/.test(header);
+    }).length;
+}
+
+function crmImportUploadStatusText(upload) {
+  switch (upload.status) {
+    case "uploading":
+      return "Reading the CSV file…";
+    case "importing":
+      return upload.message || "Importing estate records…";
+    case "success":
+      return upload.message || "CSV ready to import.";
+    case "error":
+      return upload.message || "The CSV could not be prepared.";
+    case "queued":
+      return upload.message || "CSV queued.";
+    default:
+      return "CSV only, up to 10 MB. Browse or drop a file to load estate rows.";
+  }
+}
+
+function renderCrmImportUpload() {
+  const upload = state.crmImportUpload || emptyCrmImportUpload();
+  const progress = Math.max(0, Math.min(100, Number(upload.progress) || 0));
+  const hasFile = Boolean(upload.name);
+  const showProgress = upload.status === "uploading" || upload.status === "importing";
+  const retry = upload.status === "error"
+    ? '<button class="btn compact" type="button" data-crm-upload-retry>Retry</button>'
+    : "";
+  const remove = hasFile
+    ? '<button class="btn compact" type="button" data-crm-upload-remove>Remove</button>'
+    : "";
+  const fileRow = hasFile
+    ? '<div class="crm-upload-file" data-crm-upload-file-row>' +
+        '<div class="crm-upload-file-meta">' +
+          '<strong>' + escapeHtml(upload.name) + '</strong>' +
+          '<span>' + formatCrmFileSize(upload.size) + (upload.rowCount ? " · " + upload.rowCount + " rows" : "") + '</span>' +
+        '</div>' +
+        '<div class="crm-upload-file-actions">' +
+          '<span class="crm-upload-file-status" data-crm-upload-file-status>' + escapeHtml(upload.status) + '</span>' +
+          retry +
+          remove +
+        '</div>' +
+      '</div>'
+    : "";
+  const progressMarkup = showProgress
+    ? '<div class="crm-upload-progress" role="progressbar" aria-label="CSV import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + progress + '">' +
+        '<span style="width:' + progress + '%"></span>' +
+      '</div>'
+    : "";
+  return '<div class="crm-upload" data-crm-upload-status="' + escapeHtml(upload.status) + '">' +
+    '<label class="crm-upload-dropzone" for="crmImportCsvFile" tabindex="0" role="button" data-crm-upload-dropzone>' +
+      '<span class="crm-upload-kicker">CSV file</span>' +
+      '<strong>Browse CSV or drop it here</strong>' +
+      '<span class="field-note">UTF-8 CSV, up to 10 MB. The original file stays in this browser.</span>' +
+    '</label>' +
+    '<input id="crmImportCsvFile" class="crm-upload-input" type="file" accept=".csv,text/csv" aria-describedby="crmImportCsvFileNote">' +
+    '<p id="crmImportCsvFileNote" class="field-note crm-upload-message" aria-live="polite">' + escapeHtml(crmImportUploadStatusText(upload)) + '</p>' +
+    fileRow +
+    progressMarkup +
+  '</div>';
+}
+
+function readCrmCsvFile(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("progress", (event) => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
+    });
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
+    reader.addEventListener("error", () => reject(new Error("csv-read-failed")));
+    reader.addEventListener("abort", () => reject(new Error("csv-read-aborted")));
+    reader.readAsText(file);
+  });
+}
+
+function setCrmImportUploadError(message, failurePhase = "processing") {
+  state.crmImportUpload = {
+    ...(state.crmImportUpload || emptyCrmImportUpload()),
+    status: "error",
+    progress: 0,
+    failurePhase,
+    message
+  };
+  renderCrmImportModal({ focus: false });
+  document.getElementById("topStatus").textContent = message;
+}
+
+async function queueCrmCsvFile(file) {
+  if (!file) return;
+  crmImportFile = file;
+  const token = ++crmImportUploadToken;
+  const fileName = String(file.name || "selected.csv");
+  state.crmImportUpload = {
+    ...emptyCrmImportUpload(),
+    status: "queued",
+    name: fileName,
+    size: Number(file.size) || 0,
+    source: "local-file",
+    message: "CSV queued for reading…"
+  };
+  renderCrmImportModal({ focus: false });
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  if (token !== crmImportUploadToken) return;
+  state.crmImportUpload = {
+    ...state.crmImportUpload,
+    status: "uploading",
+    message: "Reading the CSV file…"
+  };
+  renderCrmImportModal({ focus: false });
+  const fileType = String(file.type || "").toLowerCase();
+  if (!/\.csv$/i.test(fileName) && !["text/csv", "application/csv", "text/plain"].includes(fileType)) {
+    setCrmImportUploadError("Choose a CSV file to continue.", "validation");
+    return;
+  }
+  if (Number(file.size) > crmImportMaxFileBytes) {
+    setCrmImportUploadError("That CSV is larger than 10 MB. Choose a smaller export.", "validation");
+    return;
+  }
+  try {
+    const text = await readCrmCsvFile(file, (progress) => {
+      if (token !== crmImportUploadToken) return;
+      state.crmImportUpload = { ...state.crmImportUpload, progress };
+      renderCrmImportModal({ focus: false });
+    });
+    if (token !== crmImportUploadToken) return;
+    const rowCount = countCrmImportRows(text);
+    if (!rowCount) {
+      setCrmImportUploadError("That CSV has no estate rows to import.", "validation");
+      return;
+    }
+    const draft = state.crmImportModal.draft || { batchRows: "", sourceUrl: "", notes: "" };
+    state.crmImportModal.draft = {
+      ...draft,
+      batchRows: text,
+      sourceUrl: draft.sourceUrl || fileName
+    };
+    state.crmImportUpload = {
+      ...state.crmImportUpload,
+      status: "success",
+      progress: 100,
+      rowCount,
+      message: fileName + " is ready. Review the rows, then import the batch."
+    };
+    renderCrmImportModal({ focus: false });
+    document.getElementById("topStatus").textContent = fileName + " loaded. Review the rows, then import the batch.";
+  } catch {
+    if (token !== crmImportUploadToken) return;
+    setCrmImportUploadError("That CSV could not be read. Choose a UTF-8 CSV file and try again.", "read");
+  }
+}
+
+function removeCrmCsvFile() {
+  const input = document.getElementById("crmImportCsvFile");
+  if (input) input.value = "";
+  crmImportFile = null;
+  crmImportUploadToken += 1;
+  state.crmImportUpload = emptyCrmImportUpload();
+  renderCrmImportModal({ focus: false });
+}
+
+function renderCrmImportModal({ focus = true } = {}) {
   const mount = document.getElementById("crmImportModalMount");
   if (!mount) return;
   if (!state.crmImportModal.open) {
@@ -7194,6 +7409,8 @@ function renderCrmImportModal() {
   }
   const isBatch = state.crmImportModal.mode === "batch";
   const provider = ["podio", "google-sheets", "csv"].includes(state.crmImportModal.provider) ? state.crmImportModal.provider : "podio";
+  const draft = state.crmImportModal.draft || { batchRows: "", sourceUrl: "", notes: "" };
+  const isImporting = state.crmImportUpload.status === "importing";
   mount.innerHTML = `
     <section class="document-modal-layer" role="presentation" data-crm-import-layer>
       <form class="document-modal beui-dialog crm-import-modal" role="dialog" aria-modal="true" aria-labelledby="crmImportTitle" data-crm-import-form>
@@ -7219,20 +7436,19 @@ function renderCrmImportModal() {
             ${isBatch ? `
               <div class="field full">
                 <label for="crmImportBatchRows">Estate rows</label>
-                <textarea id="crmImportBatchRows" name="batchRows" required placeholder="Estate name | Owner / seller | Property address | County | Folio / parcel | CRM row ID"></textarea>
+                <textarea id="crmImportBatchRows" name="batchRows" required placeholder="Estate name | Owner / seller | Property address | County | Folio / parcel | CRM row ID">${escapeHtml(draft.batchRows)}</textarea>
               </div>
               <div class="field full">
                 <label for="crmImportCsvFile">Load a CSV file</label>
-                <input id="crmImportCsvFile" type="file" accept=".csv,text/csv" aria-describedby="crmImportCsvFileNote">
-                <p id="crmImportCsvFileNote" class="field-note">Semicolon exports with First Name, Last Name, Address, City, State, and Zip Code are mapped into review-only estate records. Nothing is written back to the source.</p>
+                ${renderCrmImportUpload()}
               </div>
               <div class="field full">
                 <label for="crmImportUrl">Batch source URL</label>
-                <input id="crmImportUrl" name="sourceUrl" autocomplete="off" placeholder="Optional Podio view, Sheet URL, or CSV source">
+                <input id="crmImportUrl" name="sourceUrl" autocomplete="off" placeholder="Optional Podio view, Sheet URL, or CSV source" value="${escapeHtml(draft.sourceUrl)}">
               </div>
               <div class="field full">
                 <label for="crmImportNotes">Batch notes</label>
-                <textarea id="crmImportNotes" name="notes" placeholder="Add source context that should apply to each imported estate."></textarea>
+                <textarea id="crmImportNotes" name="notes" placeholder="Add source context that should apply to each imported estate.">${escapeHtml(draft.notes)}</textarea>
               </div>
               <p class="field-note">Use one estate per line. Pipe-separated and tab-separated rows are safest; CSV rows are accepted for simple exports. No live CRM write or readback is attempted.</p>
             ` : `
@@ -7277,8 +7493,8 @@ function renderCrmImportModal() {
           </div>
         </div>
         <div class="document-modal-foot">
-          <button class="btn" type="button" data-close-crm-import>Cancel</button>
-          <button class="btn primary solvys-liquid-glass" type="submit">${isBatch ? "Import Batch" : "Import Estate"}</button>
+          <button class="btn" type="button" data-close-crm-import ${isImporting ? "disabled" : ""}>Cancel</button>
+          <button class="btn primary solvys-liquid-glass" type="submit" ${isImporting ? "disabled" : ""} aria-busy="${isImporting ? "true" : "false"}">${isBatch ? "Import Batch" : "Import Estate"}</button>
         </div>
       </form>
     </section>
@@ -7292,24 +7508,48 @@ function renderCrmImportModal() {
     event.preventDefault();
     submitCrmImport(new FormData(event.currentTarget));
   });
-  mount.querySelector("#crmImportCsvFile")?.addEventListener("change", async (event) => {
-    const file = event.currentTarget.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const rows = mount.querySelector("#crmImportBatchRows");
-      if (rows) {
-        rows.value = text;
-        rows.dispatchEvent(new Event("input", { bubbles: true }));
-      }
-      const sourceUrl = mount.querySelector("#crmImportUrl");
-      if (sourceUrl && !sourceUrl.value) sourceUrl.value = file.name;
-      document.getElementById("topStatus").textContent = `${file.name} loaded. Review the rows, then import the batch.`;
-    } catch {
-      document.getElementById("topStatus").textContent = "That CSV could not be read. Choose a UTF-8 CSV file and try again.";
-    }
+  const batchRowsField = mount.querySelector("#crmImportBatchRows");
+  const sourceUrlField = mount.querySelector("#crmImportUrl");
+  const notesField = mount.querySelector("#crmImportNotes");
+  [batchRowsField, sourceUrlField, notesField].filter(Boolean).forEach((field) => {
+    field.addEventListener("input", (event) => {
+      state.crmImportModal.draft = {
+        ...(state.crmImportModal.draft || { batchRows: "", sourceUrl: "", notes: "" }),
+        batchRows: batchRowsField?.value || "",
+        sourceUrl: sourceUrlField?.value || "",
+        notes: notesField?.value || ""
+      };
+    });
   });
-  requestAnimationFrame(() => mount.querySelector(isBatch ? "#crmImportBatchRows" : "#crmImportEstate")?.focus());
+  const csvInput = mount.querySelector("#crmImportCsvFile");
+  csvInput?.addEventListener("change", (event) => {
+    const file = event.currentTarget.files?.[0];
+    if (file) void queueCrmCsvFile(file);
+  });
+  const dropzone = mount.querySelector("[data-crm-upload-dropzone]");
+  dropzone?.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    dropzone.dataset.dragging = "true";
+  });
+  dropzone?.addEventListener("dragleave", () => {
+    delete dropzone.dataset.dragging;
+  });
+  dropzone?.addEventListener("drop", (event) => {
+    event.preventDefault();
+    delete dropzone.dataset.dragging;
+    const file = event.dataTransfer?.files?.[0];
+    if (file) void queueCrmCsvFile(file);
+  });
+  dropzone?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    csvInput?.click();
+  });
+  mount.querySelector("[data-crm-upload-retry]")?.addEventListener("click", () => {
+    if (crmImportFile) void queueCrmCsvFile(crmImportFile);
+  });
+  mount.querySelector("[data-crm-upload-remove]")?.addEventListener("click", removeCrmCsvFile);
+  if (focus) requestAnimationFrame(() => mount.querySelector(isBatch ? "#crmImportBatchRows" : "#crmImportEstate")?.focus());
 }
 
 function splitCrmBatchLine(line) {
@@ -7353,7 +7593,8 @@ function csvImportItem(line, index, sourceUrl, notes) {
   const parts = splitCrmBatchLine(line);
   const header = parts.slice(0, 2).join(" ").toLowerCase();
   if (/first\s+name/.test(header) || /last\s+name/.test(header)) return null;
-  if (parts.length < 6 || !line.includes(";")) return undefined;
+  const isCsvDelimited = line.includes(";") || line.includes(",") || line.includes("\t");
+  if (parts.length < 6 || !isCsvDelimited) return undefined;
   const [firstName, lastName, address, city, stateCode, zipCode] = parts;
   const ownerName = cleanCrmImportCell([firstName, lastName].filter(Boolean).join(" ")) || `Imported estate ${index + 1}`;
   const estateName = /^estate\s+of\b/i.test(ownerName) ? ownerName : `Estate of ${ownerName}`;
@@ -7400,39 +7641,74 @@ function batchImportItems(formData) {
   }).filter(Boolean);
 }
 
-function submitBatchCrmImport(formData) {
+async function submitBatchCrmImport(formData) {
   const imports = batchImportItems(formData);
   if (!imports.length) {
     document.getElementById("topStatus").textContent = "Paste at least one estate row before importing a batch.";
     return;
   }
-  const ids = new Set(imports.map((item) => item.id));
-  state.crmImports = [
-    ...imports,
-    ...state.crmImports.filter((item) => !ids.has(item.id))
-  ].slice(0, 200);
-  imports.map(crmImportRow).forEach(seedImportedDealStatus);
-  persistDealStatuses();
-  persistCrmImports(`${imports.length} CRM estates imported`);
-  state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
-  state.selectedId = imports[0]?.id ?? state.selectedId;
-  state.selectedIds.clear();
-  state.showArchivedEstates = false;
-  setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
-  state.docPrepListOpen = true;
-  closeCrmImportModal();
-  document.querySelector('[data-shell-nav="dossiers"]')?.click();
-  const evidenceFilter = document.getElementById("evidenceFilter");
-  const statusFilter = document.getElementById("statusFilter");
-  const globalSearch = document.getElementById("globalSearch");
-  if (evidenceFilter) evidenceFilter.value = "0";
-  if (statusFilter) statusFilter.value = "all";
-  if (globalSearch) globalSearch.value = "";
-  syncAllEnhancedSelects();
-  applyFilters();
-  updateFooterLeadContext(selectedRow());
-  document.getElementById("topStatus").textContent = `${imports.length} estates imported from ${crmProviderLabel(imports[0]?.provider)}. Begin Estate Discovery before Closing Prep.`;
-  addShellEvent("CRM batch imported", `${imports.length} estates are available in Estates and DocPrep while shared workspace readback completes. No live CRM write was attempted.`, "review", false);
+  state.crmImportUpload = {
+    ...(state.crmImportUpload || emptyCrmImportUpload()),
+    status: "importing",
+    progress: 0,
+    rowCount: imports.length,
+    message: "Preparing estate records…"
+  };
+  renderCrmImportModal({ focus: false });
+  try {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const prepared = [];
+    for (let index = 0; index < imports.length; index += 1) {
+      prepared.push(imports[index]);
+      const progress = Math.max(1, Math.round(((index + 1) / imports.length) * 65));
+      state.crmImportUpload = {
+        ...state.crmImportUpload,
+        progress,
+        message: "Preparing estate " + (index + 1) + " of " + imports.length + "…"
+      };
+      if (index % 8 === 7 || index === imports.length - 1) {
+        renderCrmImportModal({ focus: false });
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+    }
+    const ids = new Set(prepared.map((item) => item.id));
+    state.crmImports = [
+      ...prepared,
+      ...state.crmImports.filter((item) => !ids.has(item.id))
+    ].slice(0, 200);
+    prepared.map(crmImportRow).forEach(seedImportedDealStatus);
+    persistDealStatuses();
+    persistCrmImports(prepared.length + " CRM estates imported");
+    state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
+    state.selectedId = prepared[0]?.id ?? state.selectedId;
+    state.selectedIds.clear();
+    state.showArchivedEstates = false;
+    setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
+    state.docPrepListOpen = true;
+    state.crmImportUpload = {
+      ...state.crmImportUpload,
+      status: "success",
+      progress: 100,
+      message: prepared.length + " estates imported. Opening Estates…"
+    };
+    renderCrmImportModal({ focus: false });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    closeCrmImportModal();
+    document.querySelector('[data-shell-nav="dossiers"]')?.click();
+    const evidenceFilter = document.getElementById("evidenceFilter");
+    const statusFilter = document.getElementById("statusFilter");
+    const globalSearch = document.getElementById("globalSearch");
+    if (evidenceFilter) evidenceFilter.value = "0";
+    if (statusFilter) statusFilter.value = "all";
+    if (globalSearch) globalSearch.value = "";
+    syncAllEnhancedSelects();
+    applyFilters();
+    updateFooterLeadContext(selectedRow());
+    document.getElementById("topStatus").textContent = prepared.length + " estates imported from " + crmProviderLabel(prepared[0]?.provider) + ". Begin Estate Discovery before Closing Prep.";
+    addShellEvent("CRM batch imported", prepared.length + " estates are available in Estates and DocPrep while shared workspace readback completes. No live CRM write was attempted.", "review", false);
+  } catch {
+    setCrmImportUploadError("The batch import could not be completed. Review the rows and retry.", "import");
+  }
 }
 
 function submitCrmImport(formData) {

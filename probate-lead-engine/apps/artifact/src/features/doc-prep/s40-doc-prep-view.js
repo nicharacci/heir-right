@@ -96,13 +96,14 @@ function discoveryPreviewLink(bridge, label, url, fallback = discoveryFetchLabel
 function renderPossibleHeirsTable(preview, bridge) {
   const contacts = Array.isArray(preview.contacts) ? preview.contacts : [];
   const rowCount = Math.max(3, contacts.length);
+  const missing = discoveryPreviewFallback(preview);
   return "<section class=\"s40-discovery-heirs\"><h2>Possible Heirs</h2><table class=\"s40-discovery-heirs-table\"><thead><tr><th>Name</th><th>Relationship</th><th>Age</th><th>Likely current address</th></tr></thead><tbody>"
     + Array.from({ length: rowCount }, (_, index) => {
       const contact = contacts[index] || {};
-      return "<tr><td>" + discoveryPreviewValue(bridge, contact.name, "") + "</td><td>"
-        + discoveryPreviewValue(bridge, contact.relationship, "") + "</td><td>"
-        + discoveryPreviewValue(bridge, contact.age, "") + "</td><td>"
-        + discoveryPreviewValue(bridge, contact.likelyCurrentAddress, "") + "</td></tr>";
+      return "<tr><td>" + discoveryPreviewValue(bridge, contact.name, missing) + "</td><td>"
+        + discoveryPreviewValue(bridge, contact.relationship, missing) + "</td><td>"
+        + discoveryPreviewValue(bridge, contact.age, missing) + "</td><td>"
+        + discoveryPreviewValue(bridge, contact.likelyCurrentAddress, missing) + "</td></tr>";
     }).join("")
     + "</tbody></table></section>";
 }
@@ -123,15 +124,17 @@ function renderDiscoveryOfferTable(preview, bridge) {
         ? { ...row, tone: "yellow" }
         : row);
   return "<table class=\"s40-discovery-offer\">"
+    + "<colgroup><col class=\"s40-discovery-offer-description\"><col class=\"s40-discovery-offer-percentage\"><col class=\"s40-discovery-offer-total\"></colgroup>"
     + "<tbody><tr class=\"s40-discovery-offer-bar\"><th colspan=\"3\">Offer/Profit</th></tr>"
     + "<tr><th>Description</th><th>Percentage</th><th>Total</th></tr>"
     + rows.map((row) => {
       const tone = ["blue", "yellow"].includes(row.tone) ? " " + row.tone : "";
       const strong = ["As-Is Value", "Post Equity Value", "Profit", "Min Profit"].includes(row.label) ? " s40-discovery-strong" : "";
+      const missing = row.label ? discoveryPreviewFallback(preview) : "";
       return "<tr class=\"s40-discovery-offer-row" + tone + "\"><td class=\"" + strong.trim() + "\">"
         + discoveryPreviewValue(bridge, row.label, "")
-        + "</td><td>" + discoveryPreviewValue(bridge, row.percentage, "") + "</td><td>"
-        + discoveryPreviewValue(bridge, row.total, "")
+        + "</td><td>" + discoveryPreviewValue(bridge, row.percentage, missing) + "</td><td>"
+        + discoveryPreviewValue(bridge, row.total, missing)
         + "</td></tr>";
     }).join("")
     + "</tbody></table>";

@@ -236,3 +236,236 @@ body[data-theme] .dossier-table tr.is-batch-selected {
 body[data-theme] :is(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline-color: var(--hr-focus);
 }
+/* S40 annotated controls and CSV upload surface. */
+.hr-grid-controls :is(.hr-grid-import-action, .hr-grid-filter-toggle) {
+  min-height: 34px;
+  padding: 0.42rem 0.78rem;
+  border: 1px solid var(--hr-control-boundary);
+  border-radius: 999px;
+  color: var(--hr-text);
+  background: transparent;
+  box-shadow: none;
+}
+
+.hr-grid-controls :is(.hr-grid-import-action, .hr-grid-filter-toggle):is(:hover, :focus-visible) {
+  border-color: var(--hr-focus);
+  color: var(--hr-text);
+  background: var(--hr-surface-selected);
+}
+
+.hr-grid-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.hr-grid-filter-toggle [data-estate-filter-count] {
+  min-width: 1.2rem;
+  padding-inline: 0.28rem;
+  border-radius: 999px;
+  text-align: center;
+}
+
+#crmImportSingle,
+#crmImportBatchToggle {
+  align-items: center;
+  justify-content: center;
+}
+
+#crmImportSingle > span {
+  margin-bottom: 4px;
+}
+
+#crmImportBatchToggle {
+  margin-top: 2px;
+}
+
+#crmImportBatchToggle svg {
+  display: block;
+  margin: 0;
+}
+
+.crm-import-modal .document-modal-body {
+  background: #000000 !important;
+  background-color: #000000 !important;
+}
+
+.crm-import-modal .document-modal-head,
+.crm-import-modal .document-modal-foot {
+  background: #0a0a0a !important;
+  background-color: #0a0a0a !important;
+}
+
+.crm-import-modal .document-modal-foot > [data-close-crm-import] {
+  background: #121111 !important;
+  background-color: #121111 !important;
+}
+
+.crm-import-modal .select-button {
+  background: #0f1115 !important;
+  background-color: #0f1115 !important;
+}
+
+.crm-import-modal #crmImportBatchRows,
+.crm-import-modal #crmImportCsvFile,
+.crm-import-modal #crmImportUrl,
+.crm-import-modal #crmImportNotes,
+.crm-import-modal .crm-upload-dropzone {
+  background: #000000 !important;
+  background-color: #000000 !important;
+}
+
+.crm-upload {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.crm-upload-dropzone {
+  display: grid;
+  gap: 0.28rem;
+  min-height: 5.25rem;
+  align-content: center;
+  padding: 0.85rem 0.95rem;
+  border: 1px dashed var(--hr-control-boundary);
+  border-radius: var(--hr-radius-control);
+  color: var(--hr-text);
+  cursor: pointer;
+}
+
+.crm-upload-dropzone:is(:hover, :focus-visible),
+.crm-upload-dropzone[data-dragging="true"] {
+  border-color: var(--hr-focus);
+  outline: none;
+  background: #0f1115 !important;
+}
+
+.crm-upload-kicker {
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.crm-upload-dropzone strong {
+  font-size: var(--hr-type-sm);
+}
+
+.crm-upload-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+.crm-upload-input:focus-visible + .crm-upload-message {
+  outline: 2px solid var(--hr-focus);
+  outline-offset: 3px;
+}
+
+.crm-upload-message {
+  min-height: 1.2em;
+}
+
+.crm-upload-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--hr-control-boundary);
+  border-radius: var(--hr-radius-control);
+  background: #0a0a0a;
+}
+
+.crm-upload-file-meta,
+.crm-upload-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.crm-upload-file-meta {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.crm-upload-file-meta strong,
+.crm-upload-file-meta span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-upload-file-meta span,
+.crm-upload-file-status {
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+}
+
+.crm-upload-file-status {
+  text-transform: capitalize;
+}
+
+.crm-upload[data-crm-upload-status="success"] .crm-upload-file-status {
+  color: var(--hr-success);
+}
+
+.crm-upload[data-crm-upload-status="error"] .crm-upload-file-status {
+  color: var(--hr-danger);
+}
+
+.crm-upload[data-crm-upload-status="importing"] .crm-upload-file-status,
+.crm-upload[data-crm-upload-status="uploading"] .crm-upload-file-status,
+.crm-upload[data-crm-upload-status="queued"] .crm-upload-file-status {
+  color: var(--hr-accent-strong);
+}
+
+.crm-upload-progress {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #121111;
+}
+
+.crm-upload-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--hr-accent);
+  transition: width 140ms linear;
+}
+
+@media (max-width: 640px) {
+  .crm-upload-file {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .crm-upload-file-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .hr-grid-controls :is(.hr-grid-import-action, .hr-grid-filter-toggle) {
+    min-height: 32px;
+    padding-inline: 0.62rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crm-upload-progress > span {
+    transition: none;
+  }
+}

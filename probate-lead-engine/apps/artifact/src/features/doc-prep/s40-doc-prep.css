@@ -507,7 +507,6 @@
   overflow: auto;
   padding: var(--hr-space-4);
   background: rgb(48 48 48);
-  scrollbar-gutter: stable;
 }
 
 .s40-discovery-paper {
@@ -562,9 +561,23 @@
 .s40-discovery-offer {
   width: 332pt;
   max-width: 100%;
+  box-sizing: border-box;
   margin: 0 0 25pt;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 11pt;
+}
+
+.s40-discovery-offer > colgroup > col:nth-child(1) {
+  width: 106pt;
+}
+
+.s40-discovery-offer > colgroup > col:nth-child(2) {
+  width: 115pt;
+}
+
+.s40-discovery-offer > colgroup > col:nth-child(3) {
+  width: 111pt;
 }
 
 .s40-discovery-offer th,
