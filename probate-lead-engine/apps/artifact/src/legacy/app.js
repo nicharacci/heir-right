@@ -1330,11 +1330,11 @@ function applyServerBackedStateValue(key, value) {
 async function hydrateServerBackedState() {
   let changed = false;
   const local = localStateEndpointEnabled();
-  for (const key of serverBackedStateKeys) {
+  await Promise.all(Array.from(serverBackedStateKeys, async (key) => {
     try {
       const path = local ? `/local-state/${encodeURIComponent(key)}` : `/api/workspace/state?key=${encodeURIComponent(key)}`;
       const response = await fetch(path, { cache: "no-store" });
-      if (!response.ok) continue;
+      if (!response.ok) return;
       const payload = await response.json();
       if (!local && Number.isInteger(payload.revision)) state.workspaceStateRevisions[key] = payload.revision;
       if (typeof payload.value === "string") {
@@ -1349,7 +1349,7 @@ async function hydrateServerBackedState() {
         if (safeValue !== payload.value) await persistServerState(key, safeValue);
       }
     } catch {}
-  }
+  }));
   document.documentElement.dataset.crmImportCount = String(state.crmImports.length);
   document.documentElement.dataset.serverHydrated = changed ? "true" : "false";
   const hasActiveCrmImports = state.crmImports.some((item) => !item.deletedAt && !item.archivedAt);
@@ -16782,10 +16782,15 @@ loadSession().then(async (session) => {
   if (authGateBlocking(session)) return;
   try {
     prepareAuthorizedWorkspace();
-    await loadAdminAccessConfig({ rerender: true });
-    await loadGoogleWorkspaceConnection({ folders: initialUrlParams.get("googleWorkspace") === "connected" });
     await loadRun();
     completeAuthorizedWorkspace();
+    // Access-list and Google status are secondary chrome. Let the estate
+    // workspace become interactive first, then refresh those surfaces without
+    // holding the auth gate open for optional network work.
+    void Promise.all([
+      loadAdminAccessConfig({ rerender: true }),
+      loadGoogleWorkspaceConnection({ folders: initialUrlParams.get("googleWorkspace") === "connected" })
+    ]);
   } catch (error) {
     failAuthorizedWorkspace(error);
   }
