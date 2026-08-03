@@ -221,8 +221,9 @@ function mountEstatesGrid(root, bridge) {
     try {
       await bridge.dispatch("s40-queue-estates", { estateIds });
       gridStatus(statusRoot(), `${estateIds.length} estate${estateIds.length === 1 ? "" : "s"} moved to Doc Prep.`, "ready");
-    } catch {
-      gridStatus(statusRoot(), "The selected estates could not be queued for Doc Prep.", "blocked");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      gridStatus(statusRoot(), message || "The selected estates could not be queued for Doc Prep.", "blocked");
     } finally {
       if (action.isConnected) {
         action.disabled = false;

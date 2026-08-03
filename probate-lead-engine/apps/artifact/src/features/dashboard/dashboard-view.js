@@ -203,7 +203,7 @@ function renderDashboardView({ bridge }) {
   }, { withoutReports: 0, withReports: 0, exported: 0 });
   const userName = String(state.session?.user?.name || state.session?.user?.email || "there").split("@")[0];
   return `
-    <div class="case-dashboard" aria-label="HeirRight Case Journey Dashboard">
+    <div class="case-dashboard" aria-label="HeirRight Manage Estates workspace">
       <header class="dashboard-decision-band">
         <div class="dashboard-estate-context">
           <h2>Good to see you, ${safe(bridge, userName)}</h2>

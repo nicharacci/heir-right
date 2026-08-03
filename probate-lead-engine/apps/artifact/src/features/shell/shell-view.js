@@ -3,7 +3,7 @@ import { buildLifecycle, resolveDisposition } from "../case-journey/case-journey
 
 const SIDEBAR_STORAGE_KEY = "heirright:shell:sidebar-collapsed:v1";
 const ROUTE_LABELS = Object.freeze({
-  dashboard: "Dashboard",
+  dashboard: "Manage Estates",
   "find-estates": "Estates",
   dossiers: "Document Prep",
   drips: "Outreach",
@@ -51,8 +51,8 @@ function syncSidebarControl(workspace) {
   if (!toggle) return;
   if (window.matchMedia("(max-width: 819px)").matches) {
     toggle.dataset.shellCompactHome = "true";
-    toggle.setAttribute("aria-label", "Go to Dashboard");
-    toggle.setAttribute("title", "Go to Dashboard");
+    toggle.setAttribute("aria-label", "Go to Manage Estates");
+    toggle.setAttribute("title", "Go to Manage Estates");
     toggle.removeAttribute("aria-expanded");
     toggle.removeAttribute("aria-controls");
     return;
@@ -112,7 +112,7 @@ function createShellView() {
   routeContext.className = "shell-route-context";
   routeContext.innerHTML = `
     <div class="shell-route-title-line">
-      <h1 id="s38RouteTitle">Dashboard</h1>
+      <h1 id="s38RouteTitle">Manage Estates</h1>
     </div>
     <p id="s38RouteMeta">Choose an estate file to begin.</p>
   `;
@@ -176,7 +176,7 @@ function createShellView() {
       const lifecycle = buildLifecycle(state);
       const currentStage = lifecycle.find((stage) => ["current", "blocked"].includes(stage.status))
         || lifecycle.at(-1);
-      const routeTitle = ROUTE_LABELS[state.activeView] || "Dashboard";
+      const routeTitle = ROUTE_LABELS[state.activeView] || "Manage Estates";
       routeContext.querySelector("#s38RouteTitle").textContent = routeTitle;
       routeContext.querySelector("#s38RouteMeta").textContent = state.selectedEstate
         ? `${state.selectedEstate.title} · ${state.selectedEstate.address}`

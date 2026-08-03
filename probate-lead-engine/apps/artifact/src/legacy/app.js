@@ -4156,7 +4156,7 @@ function activeViewLabel(view = state.activeView) {
     dossiers: "Document Prep",
     export: "Export",
     drips: "Outreach",
-    dashboard: "Dashboard",
+    dashboard: "Manage Estates",
     queue: "Queue",
     admin: "Admin",
     settings: "Settings",
@@ -9331,9 +9331,9 @@ function renderDashboardView() {
   const stats = documentPrepStats(row, dossier);
   const activeProcessEstate = dashboardActiveProcessEstateLabel(row);
   target.innerHTML = `
-    <div class="arsip-dashboard" aria-label="HeirRight dashboard">
+    <div class="arsip-dashboard" aria-label="HeirRight Manage Estates workspace">
       <div class="arsip-topline">
-        <h2>Dashboard</h2>
+        <h2>Manage Estates</h2>
         <span class="arsip-date">${escapeHtml(todayLongLabel())}</span>
       </div>
       <section class="arsip-section" aria-label="Needs attention">
@@ -16342,8 +16342,29 @@ async function s40PersistWorkflowOrThrow() {
   }
 }
 
+async function ensureS40WorkflowStateReady() {
+  if (localStateEndpointEnabled()) return;
+  const requiredKeys = [crmImportStateKey, sourceCaptureStateKey, estateWorkflowStateKey];
+  const missingKeys = requiredKeys.filter((key) => !Number.isInteger(state.workspaceStateRevisions[key]));
+  if (!missingKeys.length) return;
+  await hydrateServerBackedState();
+  if (missingKeys.some((key) => !Number.isInteger(state.workspaceStateRevisions[key]))) {
+    throw new Error("The latest team version has not loaded yet. Reload the workspace before queueing Doc Prep.");
+  }
+}
+
 async function queueEstatesForDocPrep(rows = []) {
-  const uniqueRows = [...new Map(rows.filter(Boolean).map((row) => [String(row.id), row])).values()];
+  const requestedIds = [...new Set(rows.filter(Boolean).map((row) => String(row.id || "")).filter(Boolean))];
+  if (!requestedIds.length) throw new Error("Select at least one active estate before queueing Doc Prep.");
+  await ensureS40WorkflowStateReady();
+  const uniqueRows = [...new Map(
+    requestedIds
+      .map((estateId) => [estateId, rowById(estateId)])
+      .filter(([, row]) => row),
+  ).values()];
+  if (uniqueRows.length !== requestedIds.length) {
+    throw new Error("One or more selected estates are unavailable.");
+  }
   if (!uniqueRows.length) throw new Error("Select at least one active estate before queueing Doc Prep.");
   const previous = new Map(uniqueRows.map((row) => [String(row.id), normalizeEstateWorkflowRecord(estateWorkflowForRow(row))]));
   const blocked = uniqueRows.find((row) => canonicalStopReasonsForRow(row).length > 0);

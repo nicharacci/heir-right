@@ -143,7 +143,7 @@ function assertStaticContracts() {
   assert.match(controller, /document\.addEventListener\(SETTINGS_RENDERED_EVENT, onSettingsRendered\)/);
   assert.match(controller, /document\.removeEventListener\(SETTINGS_RENDERED_EVENT, onSettingsRendered\)/);
   assert.match(shellView, /SIDEBAR_STORAGE_KEY = "heirright:shell:sidebar-collapsed:v1"/);
-  assert.match(shellView, /matchMedia\("\(max-width: 819px\)"\)[\s\S]*shellCompactHome = "true"[\s\S]*"Go to Dashboard"/);
+  assert.match(shellView, /matchMedia\("\(max-width: 819px\)"\)[\s\S]*shellCompactHome = "true"[\s\S]*"Go to Manage Estates"/);
   assert.match(shellView, /window\.addEventListener\("resize", onWindowResize\)/);
   assert.match(shellView, /window\.removeEventListener\("resize", onWindowResize\)/);
   assert.match(controller, /sidebarToggle\.dataset\.shellCompactHome === "true"[\s\S]*bridge\.navigate\("dashboard"\)/);
@@ -677,7 +677,7 @@ async function assertExecutableContracts() {
     icon: (name, size) => `<span data-test-icon="${escapeHtml(name)}" data-size="${size}"></span>`,
   });
   const markup = runtime.renderDashboardView({ bridge });
-  assert.match(markup, /HeirRight Case Journey Dashboard/);
+  assert.match(markup, /HeirRight Manage Estates workspace/);
   assert.match(markup, /Estate report activity/);
   assert.match(markup, /Estates without Reports/);
   assert.match(markup, /Estates with Reports/);

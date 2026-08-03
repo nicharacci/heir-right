@@ -17,11 +17,17 @@ const shellCss = read("src/features/shell/shell.css");
 const legacyCss = read("src/styles/legacy.css");
 const exportView = read("src/features/estate-export/export-view.js");
 const exportRegister = read("src/features/estate-export/register.js");
+const shellView = read("src/features/shell/shell-view.js");
+const shellController = read("src/features/shell/shell-controller.js");
 
 const nav = [...html.matchAll(/data-shell-nav="([^"]+)"/g)].map((match) => match[1]);
 assert.deepEqual(nav.slice(0, 4), ["find-estates", "dossiers", "export", "drips"]);
 assert.doesNotMatch(nav.join(" "), /home|queue/i, "the primary loop must not expose Home or a duplicate Queue tab");
 assert.equal(nav[0], "find-estates");
+assert.equal(nav.filter((view) => view === "dashboard").length, 1, "Manage Estates must retain one legacy dashboard route");
+assert.match(html, /data-hover-label="Manage Estates"/);
+assert.match(html, /<span class="nav-label">Manage Estates<\/span>/);
+assert.doesNotMatch(html, /data-hover-label="Dashboard"/);
 assert.match(html, /<section class="app" data-active-view="find-estates"/);
 assert.match(html, /data-view-panel="export"/);
 assert.match(html, /data-drawer-mode="activity"/);
@@ -37,6 +43,9 @@ assert.match(legacy, /heirright:estate-workflow-state/);
 assert.match(legacy, /function setEstateWorkflowState/);
 assert.match(legacy, /estateWorkflowTransitions/);
 assert.match(legacy, /function queueEstatesForDocPrep/);
+assert.match(legacy, /function ensureS40WorkflowStateReady/);
+assert.match(legacy, /await ensureS40WorkflowStateReady\(\)/);
+assert.match(legacy, /requestedIds\s*\.map\(\(estateId\) => \[estateId, rowById\(estateId\)\]\)/);
 assert.match(legacy, /function runS40DocPrep/);
 assert.match(legacy, /function exportS40Handoff/);
 assert.match(legacy, /s40-queue-estates/);
@@ -81,6 +90,9 @@ assert.match(exportRegister, /id: "export"/);
 assert.match(exportView, /createCommunityGrid/);
 assert.match(exportView, /workflowState === "exported"/);
 assert.match(exportView, /Verified readback/);
+assert.match(shellView, /dashboard: "Manage Estates"/);
+assert.match(shellView, /Go to Manage Estates/);
+assert.match(shellController, /Manage Estates opened/);
 
 for (const source of [legacy, estates, docPrepView, exportView]) {
   assert.doesNotMatch(source, /BEUI_PRO_TOKEN|process\.env\.[A-Z0-9_]*TOKEN|client secret|access token/i);

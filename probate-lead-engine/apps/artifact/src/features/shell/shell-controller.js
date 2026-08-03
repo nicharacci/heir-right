@@ -180,7 +180,7 @@ function createShellController() {
       event.stopImmediatePropagation();
       if (sidebarToggle.dataset.shellCompactHome === "true") {
         bridge.navigate("dashboard");
-        shell.announce("Dashboard opened.");
+        shell.announce("Manage Estates opened.");
         return;
       }
       const collapsed = shell.toggleSidebar();
