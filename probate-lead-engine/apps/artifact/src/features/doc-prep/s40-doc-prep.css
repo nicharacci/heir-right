@@ -597,3 +597,113 @@
     transition: none;
   }
 }
+
+/* Empty Doc Prep retains the connected selector-and-rail workbench. */
+@media (min-width: 701px) {
+  .s40-docprep-empty {
+    display: block;
+    min-height: 100%;
+  }
+
+  .s40-docprep-empty .s40-workbench {
+    grid-template-columns: minmax(20rem, 28.125rem) minmax(0, 1fr);
+    min-height: min(44rem, calc(100dvh - 11rem));
+  }
+}
+
+.s40-artifact-rail-empty {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.s40-empty-rail-head {
+  display: flex;
+  gap: var(--hr-space-4);
+  align-items: start;
+  justify-content: space-between;
+}
+
+.s40-empty-rail-head > div:first-child {
+  display: grid;
+  gap: var(--hr-space-2);
+  min-width: 0;
+}
+
+.s40-empty-rail-head h2 {
+  margin: 0;
+  color: var(--hr-text);
+  font-size: var(--hr-type-lg);
+}
+
+.s40-empty-rail-head p:last-child {
+  margin: 0;
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-sm);
+}
+
+.s40-docprep-type-strip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--hr-chrome);
+  border: 1px solid var(--hr-ruler);
+  border-radius: var(--hr-radius-control);
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+  font-weight: 700;
+}
+
+.s40-docprep-type-strip span {
+  padding: 0.45rem 0.6rem;
+}
+
+.s40-docprep-type-strip [aria-current="true"] {
+  color: var(--hr-text);
+  background: var(--hr-surface-selected);
+  border-radius: calc(var(--hr-radius-control) - 0.2rem);
+}
+
+.s40-empty-stage-list {
+  display: grid;
+  align-content: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--hr-space-3);
+  margin: var(--hr-space-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.s40-empty-stage-list li {
+  display: grid;
+  gap: var(--hr-space-1);
+  min-width: 0;
+  padding: var(--hr-space-3) 0;
+  border-top: 2px solid var(--hr-control-boundary);
+}
+
+.s40-empty-stage-list strong {
+  color: var(--hr-text);
+  font-size: var(--hr-type-sm);
+}
+
+.s40-empty-stage-list span {
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+  line-height: var(--hr-leading-copy);
+}
+
+@media (max-width: 700px) {
+  .s40-empty-rail-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .s40-docprep-type-strip {
+    align-self: flex-start;
+  }
+
+  .s40-empty-stage-list {
+    grid-template-columns: 1fr;
+  }
+}

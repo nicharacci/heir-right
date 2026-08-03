@@ -159,11 +159,23 @@ function renderExportQueue(snapshot, bridge) {
   `;
 }
 
-function emptyDocPrepView(bridge) {
-  return `<section class="s40-docprep s40-docprep-empty" data-feature="s40-doc-prep">
-    <div><p class="s40-rail-kicker">Doc Prep</p><h1>Nothing is queued</h1><p>Queue an eligible estate from Estates to open the artifact workbench.</p><button type="button" class="s40-primary-button" data-open-estates>Open Estates</button></div>
-  </section>`;
+function emptyDocPrepView() {
+  return [
+    "<section class=\"s40-docprep s40-docprep-empty\" data-feature=\"s40-doc-prep\">",
+    "  <div class=\"s40-workbench\">",
+    "    <aside class=\"s40-selector\" aria-label=\"Doc Prep estate selector\">",
+    "      <header><div><span class=\"s40-column-kicker\">Queued estates</span><h2>Select files</h2></div><span>0</span></header>",
+    "      <div class=\"s40-empty-selector\"><strong>Nothing is queued</strong><span>Queue an eligible estate from Estates to start Doc Prep.</span><button type=\"button\" class=\"s40-link-button\" data-open-estates>Open Estates</button></div>",
+    "    </aside>",
+    "    <article class=\"s40-artifact-rail s40-artifact-rail-empty\" aria-label=\"Doc Prep artifact and status rail\">",
+    "      <header class=\"s40-empty-rail-head\"><div><p class=\"s40-rail-kicker\">Per-file and batch status</p><h2>Doc Prep status</h2><p>Select queued files to inspect each packet and phase.</p></div><div class=\"s40-docprep-type-strip\" aria-label=\"Doc Prep types\"><span aria-current=\"true\">Discovery</span><span>Closing Prep</span></div></header>",
+    "      <ol class=\"s40-empty-stage-list\" aria-label=\"Doc Prep phases waiting for a queued estate\"><li><strong>Selected files</strong><span>Waiting for an estate or batch selection</span></li><li><strong>Source evidence</strong><span>Waiting for a selected file</span></li><li><strong>Packet render</strong><span>Waiting for a Doc Prep run</span></li><li><strong>PDF readback</strong><span>Waiting for a rendered packet</span></li></ol>",
+    "    </article>",
+    "  </div>",
+    "</section>",
+  ].join("");
 }
+
 
 function renderS40DocPrepView({ bridge }) {
   const snapshot = bridge.readState();
