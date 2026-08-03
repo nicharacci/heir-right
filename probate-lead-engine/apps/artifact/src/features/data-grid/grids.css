@@ -1028,9 +1028,13 @@ table :is(th:first-child, th:last-child),
 
 .settings-main-layout {
   display: grid;
-  grid-template-columns: minmax(10rem, 13rem) minmax(0, 1fr);
-  gap: clamp(1rem, 2vw, 1.75rem);
+  grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr);
+  gap: clamp(1.5rem, 3vw, 3rem);
   min-width: 0;
+}
+
+.settings-center-shell {
+  width: min(100%, 1480px);
 }
 
 .settings-gutter {
@@ -1057,11 +1061,67 @@ table :is(th:first-child, th:last-child),
   background: var(--hr-surface-selected);
 }
 
+.settings-gutter .settings-select-label {
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.settings-gutter > .select-enhanced {
+  width: 100%;
+}
+
+.settings-gutter > .select-enhanced .select-button {
+  min-height: var(--hr-control-min);
+}
+
 .settings-integrations-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
+  gap: clamp(1.5rem, 3vw, 3rem);
   align-items: start;
+}
+
+.settings-integrations-rail {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+  align-content: start;
+}
+
+.settings-agentic-mini-card {
+  gap: 0.75rem;
+}
+
+.settings-agentic-mini-card .settings-field-grid {
+  grid-template-columns: 1fr;
+}
+
+.settings-mini-card-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.settings-mini-card-head > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.settings-mini-card-status {
+  flex: 0 0 auto;
+  color: var(--hr-text-muted) !important;
+  font-size: var(--hr-type-xs) !important;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.settings-mini-card-status[data-state="ready"] {
+  color: var(--hr-success) !important;
 }
 
 .settings-integrations-list {
@@ -1070,7 +1130,7 @@ table :is(th:first-child, th:last-child),
 
 .settings-status-list {
   min-width: 0;
-  padding: 0.85rem;
+  padding: 1rem;
   background: var(--hr-surface-lift);
   border: 1px solid var(--hr-ruler);
   border-radius: var(--hr-radius-panel, 0.8rem);
@@ -1082,7 +1142,7 @@ table :is(th:first-child, th:last-child),
 
 .settings-connection-list {
   display: grid;
-  gap: 0.1rem;
+  gap: 0.35rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1091,9 +1151,9 @@ table :is(th:first-child, th:last-child),
 .settings-connection-row {
   display: grid;
   grid-template-columns: 0.5rem minmax(0, 1fr);
-  gap: 0.55rem;
+  gap: 0.65rem;
   align-items: start;
-  padding: 0.55rem 0;
+  padding: 0.7rem 0.15rem;
   border-bottom: 1px solid var(--hr-ruler);
 }
 

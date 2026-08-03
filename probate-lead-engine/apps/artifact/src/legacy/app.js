@@ -11682,7 +11682,7 @@ function integrationStatusRowsHtml() {
     };
   });
   return `
-    <aside class="settings-status-list" aria-label="Connection status">
+    <div class="settings-status-list">
       <div class="settings-section-head">
         <div><p class="eyebrow">Readiness</p><h3>Connection status</h3></div>
         <span class="copy">${items.filter((item) => item.state === "complete").length}/${items.length} ready</span>
@@ -11698,7 +11698,7 @@ function integrationStatusRowsHtml() {
           </li>
         `).join("")}
       </ul>
-    </aside>
+    </div>
   `;
 }
 
@@ -11831,6 +11831,23 @@ function renderIntegrationSettingsPanel() {
   const freeModels = Array.isArray(modelStatus.freeModels) ? modelStatus.freeModels : [];
   const options = ["dynamic-free-catalog", ...freeModels.filter((model) => model !== "dynamic-free-catalog")];
   const selectedModel = options.includes(state.agenticModelPreference) ? state.agenticModelPreference : "dynamic-free-catalog";
+  const agenticCard = `
+    <article class="settings-control-card settings-agentic-mini-card" data-agentic-model-card>
+      <div class="settings-mini-card-head">
+        <div><p class="eyebrow">Nous Portal</p><strong>Back Story formatter</strong></div>
+        <span class="settings-mini-card-status" data-state="${modelStatus.available ? "ready" : "review"}">${escapeHtml(modelStatus.available ? "Automatic" : "Review only")}</span>
+      </div>
+      <span>HeirRight chooses the first verified zero-cost text model from the Nous catalog automatically. Doc Prep only receives the reviewed writing result.</span>
+      <div class="settings-field-grid">
+        <div class="settings-field"><label for="settingsAgenticModel">Free model</label><select id="settingsAgenticModel" data-agentic-model>${options.map((model) => `<option value="${escapeHtml(model)}" ${model === selectedModel ? "selected" : ""}>${escapeHtml(model === "dynamic-free-catalog" ? "Automatic free model" : model)}</option>`).join("")}</select></div>
+        <div class="settings-field"><label>Route</label><code>${escapeHtml(modelStatus.available ? "Nous Portal automatic selection" : "Reviewed report formatting")}</code></div>
+      </div>
+      <ul class="settings-control-list">
+        <li data-state="${modelStatus.available ? "ready" : "review"}">${escapeHtml(modelStatus.available ? `Automatic selection is ready${modelStatus.model ? `: ${modelStatus.model}` : ""}.` : "The catalog is not available in this environment; reviewed report formatting remains available.")}</li>
+        <li data-state="review">Generated Back Story text remains review-required and cannot authorize export, outreach, or legal conclusions.</li>
+      </ul>
+    </article>
+  `;
   return `
     ${settingsSectionShell("Integration status", "Workspace", "Reconnect / Review setup", `
       <p class="copy">Connector setup, approval, and readback status live here so Batch Queue and Outreach show only deal-work blockers.</p>
@@ -11849,23 +11866,10 @@ function renderIntegrationSettingsPanel() {
           ${integrationOnboardingCardHtml("resend")}
           ${integrationOnboardingCardHtml("sms")}
         </div>
-        ${integrationStatusRowsHtml()}
-      </div>
-    `)}
-    ${settingsSectionShell("Agentic writing", "Nous Portal", modelStatus.available ? "Automatic free route" : "Review only", `
-      <div class="settings-control-grid">
-        <article class="settings-control-card" data-agentic-model-card>
-          <strong>Back Story formatter</strong>
-          <span>HeirRight chooses the first verified zero-cost text model from the Nous catalog automatically. This setting stays in Settings; Doc Prep only receives the reviewed writing result.</span>
-          <div class="settings-field-grid">
-            <div class="settings-field"><label for="settingsAgenticModel">Free model</label><select id="settingsAgenticModel" data-agentic-model>${options.map((model) => `<option value="${escapeHtml(model)}" ${model === selectedModel ? "selected" : ""}>${escapeHtml(model === "dynamic-free-catalog" ? "Automatic free model" : model)}</option>`).join("")}</select></div>
-            <div class="settings-field"><label>Route</label><code>${escapeHtml(modelStatus.available ? "Nous Portal automatic selection" : "Reviewed report formatting")}</code></div>
-          </div>
-          <ul class="settings-control-list">
-            <li data-state="${modelStatus.available ? "ready" : "review"}">${escapeHtml(modelStatus.available ? `Automatic selection is ready${modelStatus.model ? `: ${modelStatus.model}` : ""}.` : "The catalog is not available in this environment; reviewed report formatting remains available.")}</li>
-            <li data-state="review">Generated Back Story text remains review-required and cannot authorize export, outreach, or legal conclusions.</li>
-          </ul>
-        </article>
+        <aside class="settings-integrations-rail" aria-label="Integration readiness">
+          ${agenticCard}
+          ${integrationStatusRowsHtml()}
+        </aside>
       </div>
     `)}
   `;
@@ -12140,9 +12144,10 @@ function renderSettingsView() {
       <div class="settings-main-layout">
         <aside class="settings-gutter" aria-label="Settings navigation">
           <p class="eyebrow">Settings</p>
-          <nav class="settings-tabs" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
-            ${settingsTabs.map((item) => `<button class="beui-tabs-trigger" type="button" role="tab" data-settings-tab="${escapeHtml(item.id)}" aria-controls="settingsTabPanel" aria-selected="${item.id === tab}" tabindex="${item.id === tab ? "0" : "-1"}">${escapeHtml(item.label)}</button>`).join("")}
-          </nav>
+          <label class="settings-select-label" for="settingsSectionSelect">Section</label>
+          <select id="settingsSectionSelect" data-settings-tab-select aria-label="Settings section">
+            ${settingsTabs.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === tab ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+          </select>
         </aside>
         <section class="loop-panel full settings-unified-card">
         <div class="loop-panel-head">
@@ -12159,22 +12164,9 @@ function renderSettingsView() {
   if (tax) tax.value = state.shellSettings.taxThreshold;
   if (reason) reason.value = state.shellSettings.reasonCodes;
   enhanceSelectMenus(target);
-  target.querySelectorAll("[data-settings-tab]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.settingsTab = normalizedSettingsTab(button.dataset.settingsTab);
+  target.querySelector("[data-settings-tab-select]")?.addEventListener("change", (event) => {
+      state.settingsTab = normalizedSettingsTab(event.target.value);
       renderSettingsView();
-    });
-  });
-  target.querySelector(".settings-tabs")?.addEventListener("keydown", (event) => {
-    if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    const tabs = [...target.querySelectorAll("[data-settings-tab]")];
-    const current = tabs.indexOf(document.activeElement);
-    if (current < 0) return;
-    event.preventDefault();
-    const forward = ["ArrowDown", "ArrowRight"].includes(event.key);
-    const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (current + (forward ? 1 : -1) + tabs.length) % tabs.length;
-    tabs[next]?.focus();
-    tabs[next]?.click();
   });
   target.querySelectorAll("[data-settings-open-view]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -15941,7 +15933,7 @@ function publicDiscoveryPreview(row, dossier, workflow) {
   const claim = (value, fallback = "") => live ? claimValue(value, fallback) : fallback;
   const money = (value) => live ? moneyClaimValue(value, "") : "";
   const percent = (value) => live ? percentClaimValue(value, "") : "";
-  const count = (value) => live ? countClaimValue(value, "Needs review") : "";
+  const count = (value) => live ? countClaimValue(value, "") : "";
   const title = cleanDisplayValue(
     dossier?.summary?.estateName
       || dossier?.property?.estateName?.value
@@ -16049,24 +16041,25 @@ function publicDiscoveryPreview(row, dossier, workflow) {
   );
   return {
     state: live ? "live" : "template",
+    workflowState: workflow?.state || "queued",
     title,
     dateAdded: live ? formatPacketDate(dossier?.generatedAt || row.importedAt || row.updatedAt) : "",
-    propertyAddress: cleanDisplayValue(row.address || claim(dossier?.property?.address, "Needs review")),
+    propertyAddress: cleanDisplayValue(row.address || claim(dossier?.property?.address)),
     sourceLink: live ? propertyTaxUrl : "",
     propertyTaxUrl: live ? propertyTaxUrl : "",
     taxReceiptUrl: live ? taxReceiptUrl : "",
     obituaryUrl: live ? obituaryUrl : "",
-    owner: claim(dossier?.property?.ownerName, "Needs review"),
-    folio: claim(dossier?.property?.parcelId, "Needs review"),
-    deedOrBookPage: claim(dossier?.deedHistory?.orBookPage, "Needs review"),
-    taxReview: claim(dossier?.taxHistory?.sourceStatus, "Needs review"),
-    probateReview: claim(dossier?.probateDocket?.sourceStatus, "Needs review"),
+    owner: claim(dossier?.property?.ownerName),
+    folio: claim(dossier?.property?.parcelId),
+    deedOrBookPage: claim(dossier?.deedHistory?.orBookPage),
+    taxReview: claim(dossier?.taxHistory?.sourceStatus),
+    probateReview: claim(dossier?.probateDocket?.sourceStatus),
     contactEnrichment: live
       ? contacts.length ? contacts.length + " contact review row" + (contacts.length === 1 ? "" : "s") : "Contact enrichment still needs review."
       : "",
-    dateOfBirth: claim(dossier?.marriageDeathIndicators?.dateOfBirth, "Needs review"),
-    dateOfDeath: claim(dossier?.marriageDeathIndicators?.dateOfDeath, "Needs review"),
-    obituary: live && obituaryUrl ? "View source" : "Needs review",
+    dateOfBirth: claim(dossier?.marriageDeathIndicators?.dateOfBirth),
+    dateOfDeath: claim(dossier?.marriageDeathIndicators?.dateOfDeath),
+    obituary: live && obituaryUrl ? "View source" : "",
     backStory: live ? cleanDisplayValue(report.backstory || dossier?.narrative || "") : "",
     contacts,
     offerRows,

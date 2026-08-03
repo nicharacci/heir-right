@@ -9,6 +9,11 @@ const stageLabels = Object.freeze({
   "export-handoff": "Export handoff",
 });
 
+const discoveryFetchLabel = "Run report to fetch";
+const discoveryFetchingLabel = "Fetching from report...";
+const discoveryRetryLabel = "Run report to retry";
+const discoveryMissingLabel = "Not returned by report";
+
 let activeMount = null;
 const selectedEstateIds = new Set();
 
@@ -54,7 +59,15 @@ function stageStatusLabel(status) {
   return "Waiting";
 }
 
-function discoveryPreviewValue(bridge, value, fallback = "Needs review") {
+function discoveryPreviewFallback(preview, completed = discoveryMissingLabel) {
+  const state = String(preview?.workflowState || "queued");
+  if (state === "processing") return discoveryFetchingLabel;
+  if (state === "blocked") return discoveryRetryLabel;
+  if (state === "completed-awaiting-export" || state === "exported") return completed;
+  return discoveryFetchLabel;
+}
+
+function discoveryPreviewValue(bridge, value, fallback = discoveryFetchLabel) {
   const text = String(value ?? "").trim();
   const shown = text || fallback;
   return "<span class=\"s40-discovery-value" + (text ? "" : " s40-discovery-pending") + "\">"
@@ -67,7 +80,7 @@ function discoveryPreviewParagraphs(bridge, value, fallback) {
   return (lines.length ? lines : [fallback]).map((line) => "<p>" + escape(bridge, line) + "</p>").join("");
 }
 
-function discoveryPreviewLink(bridge, label, url, fallback = "Needs review") {
+function discoveryPreviewLink(bridge, label, url, fallback = discoveryFetchLabel) {
   const candidate = String(url || "").trim();
   if (!candidate) return discoveryPreviewValue(bridge, "", fallback);
   return "<a class=\"s40-discovery-source-link\" href=\"" + escape(bridge, candidate) + "\" target=\"_blank\" rel=\"noopener noreferrer\">" + escape(bridge, label) + "</a>";
@@ -117,23 +130,24 @@ function renderDiscoveryOfferTable(preview, bridge) {
     + "</tbody></table>";
 }
 
-function renderDiscoveryContact(contact, bridge, index) {
+function renderDiscoveryContact(contact, bridge, index, preview) {
+  const missing = discoveryPreviewFallback(preview);
   const history = Array.isArray(contact.addressHistory) && contact.addressHistory.length
-    ? contact.addressHistory.map((item) => "<p>" + discoveryPreviewValue(bridge, item.address, "Address needs review")
-      + "<br><span>" + discoveryPreviewValue(bridge, item.dates, "Dates need review") + "</span></p>").join("")
-    : "<p>" + discoveryPreviewValue(bridge, contact.likelyCurrentAddress, "Needs approved enrichment") + "</p>";
+    ? contact.addressHistory.map((item) => "<p>" + discoveryPreviewValue(bridge, item.address, missing)
+      + "<br><span>" + discoveryPreviewValue(bridge, item.dates, missing) + "</span></p>").join("")
+    : "<p>" + discoveryPreviewValue(bridge, contact.likelyCurrentAddress, missing) + "</p>";
   const phones = Array.isArray(contact.phones) && contact.phones.length
-    ? contact.phones.map((phone) => "<p>" + discoveryPreviewValue(bridge, phone, "Needs approved enrichment") + "</p>").join("")
-    : "<p>" + discoveryPreviewValue(bridge, "", "Needs approved enrichment") + "</p>";
+    ? contact.phones.map((phone) => "<p>" + discoveryPreviewValue(bridge, phone, missing) + "</p>").join("")
+    : "<p>" + discoveryPreviewValue(bridge, "", missing) + "</p>";
   const emails = Array.isArray(contact.emails) && contact.emails.length
-    ? contact.emails.map((email) => "<p>" + discoveryPreviewValue(bridge, email, "Needs approved enrichment") + "</p>").join("")
-    : "<p>" + discoveryPreviewValue(bridge, "", "Needs approved enrichment") + "</p>";
+    ? contact.emails.map((email) => "<p>" + discoveryPreviewValue(bridge, email, missing) + "</p>").join("")
+    : "<p>" + discoveryPreviewValue(bridge, "", missing) + "</p>";
   return "<section class=\"s40-discovery-person\"><h3>" + (index + 1) + ". "
-    + discoveryPreviewValue(bridge, contact.name, "Possible heir")
-    + (contact.relationship ? " (" + discoveryPreviewValue(bridge, contact.relationship, "Heir/contact review") + ")" : "")
+    + discoveryPreviewValue(bridge, contact.name, missing)
+    + (contact.relationship ? " (" + discoveryPreviewValue(bridge, contact.relationship, missing) + ")" : "")
     + "</h3>"
-    + (contact.age ? "<p>" + discoveryPreviewValue(bridge, contact.age, "Age needs review") + "</p>" : "")
-    + "<p>Likely Current Address: " + discoveryPreviewValue(bridge, contact.likelyCurrentAddress, "Needs approved enrichment") + "</p>"
+    + (contact.age ? "<p>" + discoveryPreviewValue(bridge, contact.age, missing) + "</p>" : "")
+    + "<p>Likely Current Address: " + discoveryPreviewValue(bridge, contact.likelyCurrentAddress, missing) + "</p>"
     + "<h4>Address (County/Parish/Borough) History:</h4>" + history
     + "<h4>Phone number:</h4>" + phones
     + "<h4>Email Address:</h4>" + emails
@@ -143,31 +157,33 @@ function renderDiscoveryContact(contact, bridge, index) {
 function renderDiscoveryTemplatePreview(row, bridge) {
   const preview = row.discoveryPreview || {};
   const live = preview.state === "live";
+  const missing = discoveryPreviewFallback(preview);
+  const missingLink = discoveryPreviewFallback(preview, "Source link not returned");
   const title = preview.title || row.title || "Estate file";
   const contacts = Array.isArray(preview.contacts) ? preview.contacts : [];
   const contactMarkup = contacts.length
-    ? contacts.map((contact, index) => renderDiscoveryContact(contact, bridge, index)).join("")
+    ? contacts.map((contact, index) => renderDiscoveryContact(contact, bridge, index, preview)).join("")
     : "";
   return "<div class=\"s40-preview-viewport\" data-preview-state=\"" + (live ? "live" : "template") + "\" aria-label=\"" + escape(bridge, live ? "Live Discovery packet preview" : "Discovery packet template") + "\">"
     + "<div class=\"s40-discovery-paper\">"
     + "<main class=\"s40-discovery-template-page\">"
     + "<h1 class=\"s40-discovery-title\">" + discoveryPreviewValue(bridge, title, "Estate file") + "</h1>"
     + "<p class=\"s40-discovery-subtitle\">Family Tree</p>"
-    + "<p class=\"s40-discovery-date\">Date added: " + discoveryPreviewValue(bridge, preview.dateAdded, "Needs review") + "</p>"
-    + "<p class=\"s40-discovery-property\">Property Address: " + discoveryPreviewValue(bridge, preview.propertyAddress, "Needs review") + "</p>"
+    + "<p class=\"s40-discovery-date\">Date added: " + discoveryPreviewValue(bridge, preview.dateAdded, missing) + "</p>"
+    + "<p class=\"s40-discovery-property\">Property Address: " + discoveryPreviewValue(bridge, preview.propertyAddress, missing) + "</p>"
     + renderDiscoveryOfferTable(preview, bridge)
     + "<section class=\"s40-discovery-summary\"><p><strong>Owner:</strong></p><p><strong>"
-    + discoveryPreviewValue(bridge, preview.owner, "Needs review")
-    + "</strong></p><p>DOB: " + discoveryPreviewValue(bridge, preview.dateOfBirth, "Needs review")
-    + "</p><p>DOD: " + discoveryPreviewValue(bridge, preview.dateOfDeath, "Needs review")
-    + "</p><p>" + discoveryPreviewValue(bridge, preview.obituary, "Obituary - Needs review") + "</p>"
-    + "<p>Folio: " + discoveryPreviewValue(bridge, preview.folio, "Needs review") + "</p>"
+    + discoveryPreviewValue(bridge, preview.owner, missing)
+    + "</strong></p><p>DOB: " + discoveryPreviewValue(bridge, preview.dateOfBirth, missing)
+    + "</p><p>DOD: " + discoveryPreviewValue(bridge, preview.dateOfDeath, missing)
+    + "</p><p>" + discoveryPreviewValue(bridge, preview.obituary, missing) + "</p>"
+    + "<p>Folio: " + discoveryPreviewValue(bridge, preview.folio, missing) + "</p>"
     + "</section>"
     + "<section class=\"s40-discovery-story\"><p><strong>Back Story:</strong></p>"
-    + discoveryPreviewParagraphs(bridge, preview.backStory, live ? "Back Story is filling from reviewed evidence." : "Back Story will fill after Discovery starts.")
-    + "<p class=\"s40-discovery-evidence\"><strong>Property tax website:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.propertyTaxUrl || preview.sourceLink) + "</p>"
-    + "<p class=\"s40-discovery-evidence\"><strong>Tax receipt copy:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.taxReceiptUrl) + "</p>"
-    + "<p class=\"s40-discovery-evidence\"><strong>Obituary:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.obituaryUrl) + "</p></section>"
+    + discoveryPreviewParagraphs(bridge, preview.backStory, missing)
+    + "<p class=\"s40-discovery-evidence\"><strong>Property tax website:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.propertyTaxUrl || preview.sourceLink, missingLink) + "</p>"
+    + "<p class=\"s40-discovery-evidence\"><strong>Tax receipt copy:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.taxReceiptUrl, missingLink) + "</p>"
+    + "<p class=\"s40-discovery-evidence\"><strong>Obituary:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.obituaryUrl, missingLink) + "</p></section>"
     + renderPossibleHeirsTable(preview, bridge)
     + (contactMarkup ? "<section class=\"s40-discovery-contact-detail\"><h2>Heir detail review</h2>" + contactMarkup + "</section>" : "")
     + "</main></div></div>";
@@ -284,7 +300,7 @@ function renderArtifactRail(row, bridge, rows = []) {
     : "";
   return renderArtifactStreamSwitcher(rows, row, bridge) + `
     <header class="s40-rail-head">
-      <div><p class="s40-rail-kicker">Current estate</p><h2>${escape(bridge, row.title || "Estate file")}</h2><p>${escape(bridge, row.address || "Address unavailable")}</p></div>
+      <div><p class="s40-rail-kicker">Current</p><h2>${escape(bridge, row.title || "Estate file")}</h2><p>${escape(bridge, row.address || "Address unavailable")}</p></div>
       <div class="s40-rail-head-commands">
         <button type="button" class="s40-secondary-button" data-s40-idi-upload aria-label="Upload IDI Report PDF for ${escape(bridge, row.title || "this estate")}">Upload IDI Report PDF</button>
         <input type="file" hidden data-s40-idi-file accept=".pdf,application/pdf" aria-label="Choose an IDI Report PDF">
@@ -359,7 +375,7 @@ function renderS40DocPrepView({ bridge }) {
   return `
     <section class="s40-docprep" data-feature="s40-doc-prep" data-estate-id="${escape(bridge, current?.id || "")}">
       <header class="s40-docprep-head">
-        <div><p class="s40-rail-kicker">Doc Prep workbench</p><h1>Review packets, then hand off</h1><p>${escape(bridge, `${rows.length} estate${rows.length === 1 ? "" : "s"} in the shared workflow.`)}</p></div>
+        <div><p class="s40-rail-kicker">Doc Prep workbench</p><h1>Review packets, then hand off</h1></div>
         <div class="s40-docprep-command"><span aria-live="polite" data-s40-selected-count>${escape(bridge, countLabel)}</span><button type="button" class="s40-primary-button" data-s40-run data-run-docprep ${runnable.length ? "" : "disabled"}>${runnable.length > 1 ? `Run Doc Prep for ${runnable.length}` : "Run Doc Prep"}</button></div>
       </header>
       <div class="s40-workbench">

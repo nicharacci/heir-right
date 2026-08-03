@@ -98,7 +98,7 @@
   align-items: end;
   justify-content: space-between;
   padding-block-end: var(--hr-space-4);
-  border-bottom: 1px solid var(--hr-ruler);
+  border-bottom: 0;
 }
 
 .s40-docprep-head > div:first-child {
@@ -513,6 +513,8 @@
 .s40-discovery-paper {
   width: min(100%, 8.5in);
   margin: 0 auto;
+  overflow: hidden;
+  border-radius: 0.2rem;
   color: rgb(0 0 0);
   font-family: Arial, Helvetica, sans-serif;
   font-size: 11pt;
