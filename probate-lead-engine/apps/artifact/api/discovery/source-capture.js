@@ -1,4 +1,4 @@
-const { discoverTaxCollectorReceipt, extractTaxCollectorDetails, methodGuard, proxyWorkerJson, readJsonBody, receiptId, requireApiAuth, sendJson, sendProxied } = require("../_shared");
+const { discoverTaxCollectorReceipt, extractTaxCollectorDetails, methodGuard, proxyWorkerJson, readJsonBody, requireApiAuth, sendJson, sendProxied } = require("../_shared");
 
 function localSourceFactsFromCapture(body) {
   const facts = [];
@@ -23,6 +23,13 @@ function localSourceFactsFromCapture(body) {
     return Object.keys(output).length ? output : undefined;
   };
   const stringValue = (value) => typeof value === "string" ? value.trim() : "";
+  const explicitlyNoUnpaidYears = (value) => {
+    const normalized = stringValue(value)
+      .toLowerCase()
+      .replace(/[.!]+$/g, "")
+      .replace(/\s+/g, " ");
+    return /^(?:none|none found|no unpaid(?: tax)? years?(?: found)?|no delinquent(?: tax)? years?(?: found)?)(?: (?:in|on) (?:the )?(?:reviewed source|source|reviewed receipt|receipt))?$/.test(normalized);
+  };
   const sourceAttachment = (label, sourceUrl, fileName, fileKind = "link") => {
     if (!sourceUrl && !fileName) return undefined;
     return {
@@ -79,7 +86,7 @@ function localSourceFactsFromCapture(body) {
   } : undefined;
   const addFact = (source, factType, value, sourceUrl, factAttachment = undefined, reviewFlags = undefined) => {
     if (value === undefined || value === null || value === "") return;
-    if (Array.isArray(value) && !value.length) return;
+    if (Array.isArray(value) && !value.length && factType !== "unpaid_tax_years") return;
     if (typeof value === "object" && !Array.isArray(value) && !Object.keys(value).length) return;
     facts.push({
       id: `${body.runId || "artifact-source-capture"}:${source}:${factType}:${facts.length + 1}`,
@@ -105,7 +112,9 @@ function localSourceFactsFromCapture(body) {
   addFact("tax_collector", "tax_receipt_link", receiptUrl, receiptUrl, attachment, receiptDiscovery?.reviewFlags);
   addFact("tax_collector", "tax_receipt_attachment", attachment, receiptUrl, attachment, receiptDiscovery?.reviewFlags);
   addFact("tax_collector", "tax_amount_due", taxDetails.amountDue || taxReceipt.amountDue, listingUrl || receiptUrl);
-  addFact("tax_collector", "unpaid_tax_years", taxDetails.unpaidYears || taxReceipt.unpaidYears, listingUrl || receiptUrl);
+  const capturedUnpaidYears = taxDetails.unpaidYears
+    ?? (explicitlyNoUnpaidYears(taxReceipt.unpaidYears) ? [] : undefined);
+  addFact("tax_collector", "unpaid_tax_years", capturedUnpaidYears, listingUrl || receiptUrl);
   addFact("tax_collector", "tax_reassessment_signal", taxReceipt.reassessment || taxDetails.reassessment, listingUrl || receiptUrl);
   const deedSourceUrl = deed.documentUrl || deed.sourceUrl || deed.fileName;
   const orBookPage = compactObject({
@@ -134,7 +143,11 @@ function localSourceFactsFromCapture(body) {
   addFact("official_records", "foreclosure_signal", deed.foreclosureSignal, deedSourceUrl);
   addFact("official_records", "adverse_possession_signal", deed.adversePossessionSignal, deedSourceUrl);
   addFact("official_records", "title_signal", deed.titleSignal || deed.note, deedSourceUrl);
-  addFact("property_appraiser", "mailing_address_signal", propertyAppraiser.mailingAddressSignal || propertyAppraiser.mailingAddress, propertyAppraiser.sourceUrl);
+  const propertySourceUrl = stringValue(propertyAppraiser.sourceUrl);
+  addFact("property_appraiser", "property_owner", propertyAppraiser.owner || propertyAppraiser.ownerName, propertySourceUrl);
+  addFact("property_appraiser", "property_address", propertyAppraiser.address || propertyAppraiser.propertyAddress, propertySourceUrl);
+  addFact("property_appraiser", "property_folio", propertyAppraiser.folio || propertyAppraiser.parcelId, propertySourceUrl);
+  addFact("property_appraiser", "mailing_address_signal", propertyAppraiser.mailingAddressSignal || propertyAppraiser.mailingAddress, propertySourceUrl);
   const probateSourceUrl = probate.docketUrl || probate.sourceUrl || probate.searchUrl;
   const civilFamilyDocket = compactObject({
     court: probate.court,
@@ -184,17 +197,10 @@ async function handler(request, response) {
       sendProxied(response, proxied);
       return;
     }
-
-    const sourceFacts = localSourceFactsFromCapture(body);
-    sendJson(response, 200, {
-      ok: true,
-      mode: "source_review",
-      id: body.assetKey || body.id || receiptId("source-capture"),
-      capturedAt: new Date().toISOString(),
-      artifact: body,
-      sourceFacts,
-      reviewFlags: [...new Set(sourceFacts.flatMap((fact) => fact.reviewFlags || []))],
-      message: "Source capture was accepted by the production artifact app. Tax Collector receipt evidence was parsed when a listing page or receipt link was supplied. No external write was attempted.",
+    sendJson(response, 503, {
+      ok: false,
+      error: "source_capture_store_unavailable",
+      message: "The canonical Discovery File store is unavailable, so the source capture was not saved.",
     });
   } catch (error) {
     sendJson(response, 400, {

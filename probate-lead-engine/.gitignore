@@ -8,3 +8,5 @@ dist
 .turbo
 output
 .wrangler
+apps/artifact/runtime-assets
+apps/artifact/runtime-functions

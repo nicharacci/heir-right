@@ -1,5 +1,5 @@
 const { requireApiAuth, sendJson } = require("../_shared");
-const { readSession } = require("../auth/_shared");
+const { effectiveSession } = require("../auth/_shared");
 
 function workerApiBase() {
   return String(process.env.HEIRRIGHT_WORKER_URL || process.env.WORKER_API_URL || process.env.WORKER_BASE_URL || "").replace(/\/+$/, "");
@@ -49,7 +49,7 @@ module.exports = async function handler(request, response) {
     let body;
     if (request.method === "POST") {
       body = await readBody(request);
-      const session = readSession(request);
+      const session = effectiveSession(request);
       body.uploadedBy = session?.email || "approved HeirRight user";
     }
     const upstream = await fetch(`${base}/api/documents/attachments${inputUrl.search}`, {

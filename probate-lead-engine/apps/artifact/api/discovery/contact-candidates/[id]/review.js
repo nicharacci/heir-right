@@ -1,4 +1,5 @@
 const { methodGuard, proxyWorkerJson, readJsonBody, requireApiAuth, sendJson, sendProxied } = require("../../../_shared");
+const { effectiveSession } = require("../../../auth/_shared");
 
 function candidateIdFromRequest(request) {
   if (request.query?.id) return Array.isArray(request.query.id) ? request.query.id[0] : request.query.id;
@@ -14,20 +15,20 @@ module.exports = async function handler(request, response) {
   const candidateId = candidateIdFromRequest(request);
   try {
     const body = await readJsonBody(request);
-    const proxied = await proxyWorkerJson(`/api/discovery/contact-candidates/${encodeURIComponent(candidateId)}/review`, body);
+    const session = effectiveSession(request);
+    const proxied = await proxyWorkerJson(`/api/discovery/contact-candidates/${encodeURIComponent(candidateId)}/review`, {
+      ...body,
+      reviewedBy: session?.email || "approved HeirRight user",
+    });
     if (proxied) {
       sendProxied(response, proxied);
       return;
     }
 
-    sendJson(response, 200, {
-      ok: true,
-      mode: "review_receipt",
-      candidateId,
-      status: body.status || "accepted",
-      reviewedAt: new Date().toISOString(),
-      reviewedBy: body.reviewedBy || "operator",
-      message: "Contact review was accepted by the production artifact app. No external write was attempted.",
+    sendJson(response, 503, {
+      ok: false,
+      error: "contact_review_store_unavailable",
+      message: "Shared contact review storage is unavailable. The app did not claim this decision was saved.",
     });
   } catch (error) {
     sendJson(response, 400, {

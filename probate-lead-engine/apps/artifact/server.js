@@ -1,13 +1,17 @@
 // [claude-code 2026-06-02] Google OAuth gate for the HeirRight beta artifact.
 const { createServer } = require("node:http");
 const { randomBytes, createHmac } = require("node:crypto");
-const { readFileSync, existsSync } = require("node:fs");
-const { join } = require("node:path");
+const { readFileSync, existsSync, statSync } = require("node:fs");
+const { extname, join, resolve, sep } = require("node:path");
 const reportPdfHandler = require("./api/reports/pdf.js");
 const activepiecesHandler = require("./api/outreach/activepieces.js");
 const supportLinearHandler = require("./api/support/linear.js");
 const adminAccessHandler = require("./api/admin/access.js");
-const { allowedDomains: configuredAllowedDomains, allowedEmails: configuredAllowedEmails } = require("./api/admin/access-config.js");
+const {
+  adminEmails: configuredAdminEmails,
+  allowedDomains: configuredAllowedDomains,
+  allowedEmails: configuredAllowedEmails,
+} = require("./api/admin/access-config.js");
 const taxCollectorReceiptHandler = require("./api/discovery/tax-collector/receipt-run.js");
 const { buildConnectionStatuses, buildIdiCoreStatus } = require("./api/connections/status.js");
 const { discoverTaxCollectorReceipt, extractTaxCollectorDetails } = require("./api/_shared.js");
@@ -16,7 +20,14 @@ const {
   taxCollectorCaptureFromRun,
   withoutTaxCollectorAcquisitionEnv,
 } = require("./api/discovery/tax-collector/service.js");
-const { requireApiAuth } = require("./api/_shared.js");
+const { requireApiAdmin, requireApiAuth } = require("./api/_shared.js");
+const { secretMatches } = require("./api/security/secret-compare.js");
+const {
+  googleOAuthScopes,
+  storeGoogleWorkspaceConnection,
+  trustedIpSession,
+  workspaceIntentCookie,
+} = require("./api/auth/_shared.js");
 
 function loadLocalEnvFile(filePath) {
   if (!existsSync(filePath)) return;
@@ -68,13 +79,43 @@ const sessionCookie = process.env.AUTH_SESSION_COOKIE || "hr_session";
 const stateCookie = process.env.AUTH_STATE_COOKIE || "hr_oauth_state";
 const sessionTtlSeconds = Number(process.env.AUTH_SESSION_TTL_SECONDS || 60 * 60 * 12);
 const localIdiRuns = new Map();
-const localSourceCaptures = new Map();
-const localDiscoveryFiles = new Map();
-const localContactReviews = new Map();
 const localClientState = new Map();
+const browserSecurityHeaders = Object.freeze({
+  "cache-control": "private, no-store, max-age=0",
+  "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+  "permissions-policy": "camera=(), microphone=(), geolocation=()",
+  "referrer-policy": "no-referrer",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+});
 
 function firstExistingPath(...paths) {
   return paths.find((path) => existsSync(path));
+}
+
+const staticContentTypes = Object.freeze({
+  ".css": "text/css; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+});
+
+function staticAssetPath(pathname) {
+  if (!pathname.startsWith("/assets/")) return null;
+  let decoded;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return false;
+  }
+  const assetRoot = resolve(root, "assets");
+  const candidate = resolve(root, `.${decoded}`);
+  if (!candidate.startsWith(`${assetRoot}${sep}`) || !existsSync(candidate) || !statSync(candidate).isFile()) return false;
+  return candidate;
 }
 
 function authRequired() {
@@ -140,6 +181,7 @@ function createSessionToken(user) {
     name: user.name || user.email,
     picture: user.picture || null,
     domain: String(user.email || "").split("@")[1] || "",
+    mode: "google",
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + sessionTtlSeconds,
   }));
@@ -156,18 +198,20 @@ function readSession(req) {
       mode: "disabled",
     };
   }
+  const bypassSession = trustedIpSession(req);
+  if (bypassSession) return bypassSession;
   if (!process.env.AUTH_SESSION_SECRET) return null;
 
   const token = parseCookies(req)[sessionCookie];
   if (!token || !token.includes(".")) return null;
   const [payload, signature] = token.split(".");
-  if (!payload || !signature || sign(payload) !== signature) return null;
+  if (!payload || !signature || !secretMatches(signature, sign(payload))) return null;
 
   try {
     const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
     if (!session.exp || session.exp < Math.floor(Date.now() / 1000)) return null;
     if (!emailAllowed(session.email)) return null;
-    return { ...session, mode: "oauth" };
+    return { ...session, mode: "google" };
   } catch {
     return null;
   }
@@ -187,12 +231,12 @@ function clearCookie(name, req) {
 }
 
 function sendJson(res, status, body, headers = {}) {
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8", ...headers });
+  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers });
   res.end(`${JSON.stringify(body, null, 2)}\n`);
 }
 
 function sendHtml(res, status, body, headers = {}) {
-  res.writeHead(status, { "content-type": "text/html; charset=utf-8", ...headers });
+  res.writeHead(status, { "content-type": "text/html; charset=utf-8", ...browserSecurityHeaders, ...headers });
   res.end(body);
 }
 
@@ -232,7 +276,6 @@ function escapeHtml(value) {
 function loginPage(req, message = "Sign in with your HeirRight Google account to review lead packets.") {
   const configured = oauthConfigured(req);
   const domainText = allowedDomains().join(", ") || "heirright.com";
-  const emailText = allowedEmails().join(", ") || "approved Solvys admin emails";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -256,7 +299,7 @@ function loginPage(req, message = "Sign in with your HeirRight Google account to
     <h1>HeirRight Beta</h1>
     <p>${escapeHtml(message)}</p>
     ${configured ? `<a href="/auth/login">Continue with Google</a>` : `<p><strong>Google sign-in is not set up yet.</strong></p>`}
-    <p class="meta">Allowed domain: <code>${escapeHtml(domainText)}</code><br>Solvys admin access: <code>${escapeHtml(emailText)}</code></p>
+    <p class="meta">Allowed domain: <code>${escapeHtml(domainText)}</code><br>Exact-user access is managed by a HeirRight administrator.</p>
   </main>
 </body>
 </html>`;
@@ -304,20 +347,26 @@ function deniedAccessPage(req, email = "") {
 
 function sessionBody(req) {
   const session = readSession(req);
+  const canAdminister = !authRequired() || Boolean(
+    session?.mode === "google"
+    && configuredAdminEmails(process.env).includes(String(session.email || "").trim().toLowerCase())
+  );
   return {
     authenticated: Boolean(session),
+    canAdminister,
     user: session ? {
       email: session.email,
       name: session.name,
       picture: session.picture ?? null,
       domain: session.domain,
       mode: session.mode,
+      canAdminister,
     } : null,
     auth: {
       required: authRequired(),
       configured: oauthConfigured(req),
       allowedDomains: allowedDomains(),
-      allowedEmails: allowedEmails(),
+      allowedEmails: canAdminister ? allowedEmails() : [],
     },
   };
 }
@@ -601,7 +650,7 @@ function localSourceFactsFromCapture(body = {}) {
   const facts = [];
   const addFact = (source, factType, value, sourceUrl, attachment, reviewFlags) => {
     if (value === undefined || value === null || value === "") return;
-    if (Array.isArray(value) && !value.length) return;
+    if (Array.isArray(value) && !value.length && factType !== "unpaid_tax_years") return;
     if (typeof value === "object" && !Array.isArray(value) && !Object.keys(value).length) return;
     facts.push({
       id: `${body.runId || "local-source-capture"}:${source}:${factType}:${facts.length + 1}`,
@@ -629,6 +678,13 @@ function localSourceFactsFromCapture(body = {}) {
     return Object.keys(output).length ? output : undefined;
   };
   const stringValue = (value) => typeof value === "string" ? value.trim() : "";
+  const explicitlyNoUnpaidYears = (value) => {
+    const normalized = stringValue(value)
+      .toLowerCase()
+      .replace(/[.!]+$/g, "")
+      .replace(/\s+/g, " ");
+    return /^(?:none|none found|no unpaid(?: tax)? years?(?: found)?|no delinquent(?: tax)? years?(?: found)?)(?: (?:in|on) (?:the )?(?:reviewed source|source|reviewed receipt|receipt))?$/.test(normalized);
+  };
   const sourceAttachment = (label, sourceUrl, fileName, fileKind = "link") => {
     if (!sourceUrl && !fileName) return undefined;
     return {
@@ -691,7 +747,9 @@ function localSourceFactsFromCapture(body = {}) {
   addFact("tax_collector", "tax_receipt_link", receiptUrl, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
   addFact("tax_collector", "tax_receipt_attachment", receiptAttachment, receiptUrl, receiptAttachment, receiptDiscovery?.reviewFlags);
   addFact("tax_collector", "tax_amount_due", taxDetails.amountDue || taxReceipt.amountDue, listingUrl || receiptUrl);
-  addFact("tax_collector", "unpaid_tax_years", taxDetails.unpaidYears || taxReceipt.unpaidYears, listingUrl || receiptUrl);
+  const capturedUnpaidYears = taxDetails.unpaidYears
+    ?? (explicitlyNoUnpaidYears(taxReceipt.unpaidYears) ? [] : undefined);
+  addFact("tax_collector", "unpaid_tax_years", capturedUnpaidYears, listingUrl || receiptUrl);
   addFact("tax_collector", "tax_reassessment_signal", taxReceipt.reassessment || taxDetails.reassessment, listingUrl || receiptUrl);
   const deedSourceUrl = deed.documentUrl || deed.sourceUrl || deed.fileName;
   const orBookPage = compactObject({
@@ -767,128 +825,53 @@ function localIdiLockKey(body = {}) {
   ].filter(Boolean).join(":");
 }
 
-function idiCoreUserApiKey(body = {}) {
-  const directKey = String(body.idiCoreApiKey || body.userApiKey || "").trim();
-  return directKey || "";
-}
-
-function idiCoreSharedApiKey(env = process.env) {
-  return String(env.IDI_CORE_API_TOKEN || env.HEIRRIGHT_IDI_CORE_API_TOKEN || env.IDI_CORE_API_KEY || "").trim();
-}
-
-function idiCoreRequestApiKey(body = {}) {
-  return idiCoreUserApiKey(body) || idiCoreSharedApiKey(process.env);
-}
-
-function idiCoreApiKeySource(body = {}) {
-  if (idiCoreUserApiKey(body)) return "user_override";
-  return idiCoreSharedApiKey(process.env) ? "shared_default" : "missing";
-}
-
-function idiCoreMissingConfig(body = {}) {
-  const missing = [];
-  if (!process.env.IDI_CORE_API_URL) missing.push("IDI_CORE_API_URL");
-  if (!idiCoreRequestApiKey(body)) missing.push("IDI_CORE_API_TOKEN");
-  return missing;
-}
-
-function idiCoreLiveApproved(body = {}) {
-  return body.liveRunApproved === true || body.liveRunApproved === "true" || process.env.IDI_CORE_LIVE_RUN_APPROVED === "true";
-}
-
-function redactIdiCoreProviderResponse(value, depth = 0) {
-  if (depth > 6) return null;
-  if (Array.isArray(value)) return value.map((item) => redactIdiCoreProviderResponse(item, depth + 1));
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(Object.entries(value).map(([key, nested]) => [
-    key,
-    /authorization|api[_-]?key|token|secret|password/i.test(key)
-      ? "[redacted]"
-      : redactIdiCoreProviderResponse(nested, depth + 1),
-  ]));
-}
-
-async function runLiveIdiCore(body = {}, lockKey = "") {
-  const apiKey = idiCoreRequestApiKey(body);
-  const apiKeySource = idiCoreApiKeySource(body);
-  const missing = idiCoreMissingConfig(body);
-  if (!idiCoreLiveApproved(body)) {
-    return {
-      ok: false,
-      status: 403,
-      error: "idi_live_run_not_approved",
-      blockers: ["A live IDI Core run needs explicit approval before the app can spend a paid lookup."],
-      message: "Live IDI Core is blocked until the review owner approves this paid asset search.",
-    };
-  }
-  if (missing.length) {
-    const status = buildIdiCoreStatus(process.env);
-    const portalConfigured = status.configuredMode === "operator_portal";
-    return {
-      ok: false,
-      status: 503,
-      error: "idi_core_not_configured",
-      blockers: [`Live IDI Core needs approved access before it can run: ${operatorAccessList(missing) || missing.join(", ")}`],
-      message: portalConfigured
-        ? "idiCORE portal access is configured for approved operator searches, but backend live runs still need vendor API access. Open idiCORE, run the approved property search, then import the report."
-        : "Live IDI Core is not configured. Import an approved report or add the vendor access before running the paid search.",
-      idiCoreStatus: status,
-      apiKeySource,
-    };
-  }
-  const response = await fetch(process.env.IDI_CORE_API_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      propertyAddress: body.propertyAddress || body.address || body.assetAddress,
-      ownerName: body.ownerName || body.estateName,
-      estateName: body.estateName || body.ownerName,
-      county: body.county || "miami-dade",
-      lockKey,
-      reason: body.reason || "HeirRight controlled asset-search proof",
-    }),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || data.ok === false) {
-    return {
-      ok: false,
-      status: response.status || 502,
-      error: data.error || "idi_core_run_failed",
-      blockers: data.blockers || [`IDI Core returned ${response.status}. No Discovery contact facts were accepted.`],
-      message: data.message || "Live IDI Core did not complete. The Discovery file remains blocked.",
-      providerResponse: redactIdiCoreProviderResponse(data),
-      apiKeySource,
-    };
-  }
-  const candidates = data.candidates || data.contactCandidates || [];
-  return {
-    ok: true,
-    status: 200,
-    mode: "live_idi_core",
-    provider: body.provider || "idi",
-    lockKey,
-    importedAt: new Date().toISOString(),
-    duplicateGuard: body.adminOverrideReason ? "admin_override_recorded" : "first_paid_run_only",
-    adminOverrideReason: body.adminOverrideReason || null,
-    paidRun: true,
-    apiKeySource,
-    readbackStatus: data.readbackStatus || data.status || "provider_completed",
-    sourceEvidence: redactIdiCoreProviderResponse(data.sourceEvidence || data.evidence || null),
-    attachment: data.attachment || body.attachment || null,
-    importedText: data.importedText || data.reportText || "",
-    candidates,
-    contactPreviewCount: Array.isArray(candidates)
-      ? candidates.length
-      : String(data.importedText || data.reportText || "").split(/\n{2,}/).filter(Boolean).length,
-    message: "Live IDI Core asset search completed and is ready for contact review.",
-  };
+function idiCoreLiveApproved(_body = {}) {
+  return process.env.IDI_CORE_LIVE_RUN_APPROVED === "true";
 }
 
 async function handleIdiAssetImport(req, res) {
+  if (req.method !== "GET" && req.method !== "POST") {
+    sendMethodNotAllowed(res, "GET, POST");
+    return;
+  }
+  if (req.method === "GET") {
+    const assetKey = new URL(req.url || "/", "http://heirright.local").searchParams.get("assetKey")?.trim() || "";
+    if (!assetKey) {
+      sendJson(res, 400, {
+        ok: false,
+        error: "asset_key_required",
+        message: "Choose an estate before loading its imported IDI report.",
+      });
+      return;
+    }
+    const proxied = await proxyWorkerJson(`/api/discovery/idi-asset-search/import?assetKey=${encodeURIComponent(assetKey)}`, {
+      req,
+      method: "GET",
+    });
+    if (proxied) {
+      res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
+      res.end(proxied.body);
+      return;
+    }
+    sendJson(res, 503, {
+      ok: false,
+      error: "idi_import_store_unavailable",
+      message: "Canonical IDI import storage is unavailable. The app did not hydrate a local substitute.",
+    });
+    return;
+  }
   const body = req.method === "POST" ? await readJsonBody(req) : {};
+  const wantsLiveRun = body.runMode === "live_idi_core" || body.mode === "live_idi_core" || body.paidRun === true;
+  if ((wantsLiveRun || String(body.adminOverrideReason || "").trim()) && requireApiAdmin(req, res)) return;
+  if (wantsLiveRun && !idiCoreLiveApproved(body)) {
+    sendJson(res, 403, {
+      ok: false,
+      error: "idi_live_run_not_approved",
+      blockers: ["A live IDI Core run needs server-side approval before the app can spend a paid lookup."],
+      message: "Live IDI Core is blocked until an administrator enables the approved paid-search window.",
+    }, { "cache-control": "no-store" });
+    return;
+  }
   const proxied = await proxyWorkerJson("/api/discovery/idi-asset-search/import", {
     req,
     method: "POST",
@@ -897,6 +880,15 @@ async function handleIdiAssetImport(req, res) {
   if (proxied) {
     res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
     res.end(proxied.body);
+    return;
+  }
+  if (wantsLiveRun) {
+    sendJson(res, 503, {
+      ok: false,
+      error: "idi_paid_run_lock_unavailable",
+      blockers: ["Paid IDI duplicate protection is unavailable, so no vendor request was sent."],
+      message: "Live IDI Core is temporarily blocked because the paid-search lock could not be reserved.",
+    }, { "cache-control": "no-store" });
     return;
   }
   const lockKey = localIdiLockKey(body);
@@ -909,17 +901,6 @@ async function handleIdiAssetImport(req, res) {
       lockKey,
       firstImportedAt: existing.importedAt,
     }, { "cache-control": "no-store" });
-    return;
-  }
-  const wantsLiveRun = body.runMode === "live_idi_core" || body.mode === "live_idi_core" || body.paidRun === true;
-  if (wantsLiveRun) {
-    const result = await runLiveIdiCore(body, lockKey);
-    if (result.ok) {
-      localIdiRuns.set(lockKey, result);
-      sendJson(res, 200, result, { "cache-control": "no-store" });
-      return;
-    }
-    sendJson(res, result.status || 503, result, { "cache-control": "no-store" });
     return;
   }
   if (!String(body.importedText || "").trim() && !(body.attachment && (body.attachment.sourceUrl || body.attachment.fileName))) {
@@ -960,22 +941,11 @@ async function handleSourceCapture(req, res) {
     res.end(proxied.body);
     return;
   }
-  const id = body.assetKey || body.id || `${body.leadId || "lead"}:${body.kind || "source"}:${Date.now()}`;
-  const sourceFacts = localSourceFactsFromCapture(body);
-  const result = {
-    ok: true,
-    mode: "source_review",
-    id,
-    capturedAt: new Date().toISOString(),
-    artifact: body,
-    sourceFacts,
-    reviewFlags: [...new Set(sourceFacts.flatMap((item) => item.reviewFlags))],
-    message: sourceFacts.length
-      ? "Source capture saved for Discovery review."
-      : "Source capture saved, but no structured source facts were detected.",
-  };
-  localSourceCaptures.set(id, result);
-  sendJson(res, 200, result, { "cache-control": "no-store" });
+  sendJson(res, 503, {
+    ok: false,
+    error: "source_capture_store_unavailable",
+    message: "The canonical Discovery File store is unavailable, so the source capture was not saved.",
+  }, { "cache-control": "no-store" });
 }
 
 const discoverySourceLabels = [
@@ -1025,9 +995,12 @@ function sourceRunSeedFromBody(body = {}) {
   const capture = body.capture && typeof body.capture === "object" ? body.capture : body;
   const taxReceipt = capture.taxReceipt && typeof capture.taxReceipt === "object" ? capture.taxReceipt : {};
   const stringValue = (value) => typeof value === "string" ? value.trim() : "";
-  const confirmedSourceFacts = Array.isArray(seed.confirmedSourceFacts)
+  const confirmedSourceFactsInput = Array.isArray(seed.confirmedSourceFacts)
     ? seed.confirmedSourceFacts
     : Array.isArray(body.confirmedSourceFacts) ? body.confirmedSourceFacts : undefined;
+  const confirmedSourceFacts = confirmedSourceFactsInput?.filter((fact) =>
+    stringValue(objectValue(fact).source).toLowerCase() !== "idi"
+  );
   return {
     ownerName: stringValue(seed.ownerName) || stringValue(body.ownerName) || stringValue(body.owner) || "Fresh public-source lead",
     estateName: stringValue(seed.estateName) || stringValue(body.estateName) || undefined,
@@ -1048,43 +1021,15 @@ function objectValue(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
-function idiAssetImportInputFromBody(body = {}) {
-  const capture = objectValue(body.capture);
-  const input = objectValue(body.idiAssetImport || body.idiImport || capture.idiAssetImport || capture.idiImport);
-  const importedText = stringValue(input.importedText || body.idiImportedText);
-  const attachment = objectValue(input.attachment);
-  const sourceUrl = stringValue(attachment.sourceUrl || input.sourceUrl || input.reportSourceUrl);
-  if (!importedText && !sourceUrl && !Array.isArray(input.candidates)) return null;
-  return {
-    provider: stringValue(input.provider) || "idi",
-    mode: stringValue(input.mode) || undefined,
-    paidRun: input.paidRun === true,
-    paidRunApproved: input.paidRunApproved === true,
-    approvalRecord: input.approvalRecord || undefined,
-    readbackStatus: stringValue(input.readbackStatus) || undefined,
-    apiKeySource: stringValue(input.apiKeySource) || undefined,
-    importedText,
-    candidates: Array.isArray(input.candidates) ? input.candidates : undefined,
-    contactReviews: objectValue(input.contactReviews || body.contactReviews),
-    capturedBy: stringValue(input.capturedBy || body.capturedBy) || undefined,
-    adminOverrideReason: stringValue(input.adminOverrideReason) || undefined,
-    attachment: {
-      label: stringValue(attachment.label || input.label) || "IDI expanded asset search",
-      sourceUrl: sourceUrl || undefined,
-      fileKind: stringValue(attachment.fileKind || input.fileKind) || (sourceUrl ? "link" : "text"),
-      fileName: stringValue(attachment.fileName || input.fileName) || undefined,
-      capturedAt: stringValue(attachment.capturedAt) || new Date().toISOString(),
-      capturedBy: stringValue(attachment.capturedBy || input.capturedBy || body.capturedBy) || undefined,
-      reviewFlags: Array.isArray(attachment.reviewFlags) ? attachment.reviewFlags : ["IDI_ASSET_SEARCH_REVIEW_REQUIRED"],
-    },
-  };
-}
-
-function idiAssetImportFactsFromBody(runId, seed, body = {}) {
-  const input = idiAssetImportInputFromBody(body);
-  if (!input) return [];
-  const { buildIdiAssetSearchFacts } = require("../worker/dist/enrichment/idi-asset-search");
-  return buildIdiAssetSearchFacts(runId, seed, input);
+function withoutClientIdiProof(capture = {}) {
+  const {
+    idiAssetImport: _idiAssetImport,
+    idiImport: _idiImport,
+    idiImportedText: _idiImportedText,
+    contactReviews: _contactReviews,
+    ...safeCapture
+  } = capture;
+  return safeCapture;
 }
 
 function summarizeSourceRunFacts(sourceFacts) {
@@ -1346,7 +1291,10 @@ function satisfiedEvidenceForCheck(source, check, sourceFacts = []) {
       && sourceFactValuePresent(fact.value)
       && !sourceFactHasBlockingFlag(fact)
       && (checkCode !== "idi_contact_review" || ["accepted", "promoted"].includes(String(fact.value?.reviewStatus || "")))
-      && (checkCode !== "idi_paid_run_approval" || Boolean(fact.value?.paidRunApproved || fact.value?.approvalRecord || fact.value?.paidRun === true))
+      && (checkCode !== "idi_paid_run_approval" || (
+        fact.value?.paidRunApproved === true
+        && fact.value?.approvalRecord?.readbackStatus === "verified"
+      ))
   );
   const statusFacts = sourceStatusEvidence(source, check.code, facts);
   return [...byFactType, ...statusFacts].map((fact) => ({
@@ -1479,64 +1427,11 @@ async function handleExternalSourceRun(req, res) {
     res.end(proxied.body);
     return;
   }
-  const baseSeed = sourceRunSeedFromBody(body);
-  const taxCollectorReceiptRun = await maybeRunTaxCollectorReceipt(body, baseSeed);
-  const seed = mergeConfirmedFacts(baseSeed, taxCollectorReceiptRun?.sourceFacts || []);
-  const { runDryPipeline } = require("../worker/dist/index");
-  const pipeline = await runDryPipeline(seed, { env: taxCollectorReceiptRun ? withoutTaxCollectorAcquisitionEnv(process.env) : process.env });
-  const baseCapture = body.capture && typeof body.capture === "object" ? body.capture : body;
-  const capture = mergeTaxCollectorCapture(baseCapture, taxCollectorReceiptRun);
-  const capturedSourceFacts = localSourceFactsFromCapture({ ...capture, seed, runId: pipeline.runId });
-  const sourceFacts = [
-    ...pipeline.facts,
-    ...capturedSourceFacts,
-    ...idiAssetImportFactsFromBody(pipeline.runId, seed, body),
-  ].filter((fact) => discoverySourceLabels.some((item) => item.source === fact.source));
-  const sourceSummaries = summarizeSourceRunFacts(sourceFacts);
-  const sourceRunProof = sourceRunProofLedger(sourceSummaries, sourceFacts);
-  const blockers = [...new Set([
-    ...sourceSummaries
-      .filter((summary) => summary.status === "blocked" || summary.status === "needs_review")
-      .map((summary) => summary.nextAction),
-    ...(pipeline.dossier.audit.reviewFlags.includes("SOURCE_BLOCKED")
-      ? ["One or more Discovery sources are blocked; keep the packet in review."]
-      : []),
-  ])];
-  const estateId = body.assetKey || seed.estateName || seed.propertyAddress || seed.parcelId || "source-run";
-  const generatedAt = new Date().toISOString();
-  const discoveryFile = {
-    version: 1,
-    flow: "discovery",
-    estateId,
-    revision: pipeline.runId,
-    generatedAt,
-    seed,
-    capture,
-    sourceSummaries,
-    sourceRunProof,
-    sourceFacts,
-    taxCollectorReceiptRun,
-    dossier: pipeline.dossier,
-    blockers,
-  };
-  localDiscoveryFiles.set(String(estateId), discoveryFile);
-  sendJson(res, 200, {
-    ok: blockers.length === 0,
-    mode: "external_source_run",
-    runId: pipeline.runId,
-    estateId,
-    generatedAt,
-    seed,
-    sourceSummaries,
-    sourceRunProof,
-    sourceFacts,
-    taxCollectorReceiptRun,
-    dossier: pipeline.dossier,
-    blockers,
-    persistence: { stored: true, readbackStatus: "verified", revision: pipeline.runId },
-    message: blockers.length
-      ? "Discovery source checks ran and returned review blockers. The app did not assume missing public or paid-source facts."
-      : "Discovery source checks returned structured source facts for review.",
+  sendJson(res, 503, {
+    ok: false,
+    error: "discovery_file_store_unavailable",
+    mode: "external_source_run_unavailable",
+    message: "Discovery did not run because canonical Discovery File storage is unavailable. The prior verified output remains active.",
   }, { "cache-control": "no-store" });
 }
 
@@ -1556,35 +1451,39 @@ async function handleDiscoveryFile(req, res, url) {
     res.end(proxied.body);
     return;
   }
-  const record = localDiscoveryFiles.get(estateId);
-  if (!record) {
-    sendJson(res, 200, { ok: true, exists: false, estateId, message: "No persisted Discovery File exists for this estate yet." }, { "cache-control": "no-store" });
-    return;
-  }
-  sendJson(res, 200, { ok: true, exists: true, ...record, readbackStatus: "verified" }, { "cache-control": "no-store" });
+  sendJson(res, 503, {
+    ok: false,
+    error: "discovery_file_store_unavailable",
+    message: "Canonical Discovery File storage is unavailable, so no local fallback was loaded.",
+  }, { "cache-control": "no-store" });
 }
 
 async function handleContactCandidateReview(req, res, candidateId) {
-  const body = req.method === "POST" ? await readJsonBody(req) : {};
+  if (req.method !== "POST") {
+    sendMethodNotAllowed(res, "POST");
+    return;
+  }
+  const body = await readJsonBody(req);
+  const session = readSession(req);
+  const canonicalBody = {
+    ...body,
+    reviewedBy: session?.email || "approved HeirRight user",
+  };
   const proxied = await proxyWorkerJson(`/api/discovery/contact-candidates/${encodeURIComponent(candidateId)}/review`, {
     req,
-    method: "POST",
-    body: JSON.stringify(body),
+    method: req.method,
+    body: JSON.stringify(canonicalBody),
   });
   if (proxied) {
     res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
     res.end(proxied.body);
     return;
   }
-  const result = {
-    ok: true,
-    candidateId,
-    status: body.status || "accepted",
-    reviewedAt: new Date().toISOString(),
-    reviewedBy: body.reviewedBy || readSession(req)?.email || "local-dev@heirright.com",
-  };
-  localContactReviews.set(candidateId, result);
-  sendJson(res, 200, result, { "cache-control": "no-store" });
+  sendJson(res, 503, {
+    ok: false,
+    error: "contact_review_store_unavailable",
+    message: "Shared contact review storage is unavailable. The app did not claim this decision was saved.",
+  }, { "cache-control": "no-store" });
 }
 
 function localExportRoute(route, dryRun) {
@@ -1714,6 +1613,11 @@ async function handleLocalExport(req, res) {
     return;
   }
   const body = await readJsonBody(req);
+  if (body.controlledTest !== undefined && typeof body.controlledTest !== "boolean") {
+    sendJson(res, 400, { ok: false, error: "export_request_invalid", message: "Controlled-test mode must be an explicit boolean." });
+    return;
+  }
+  if (body.controlledTest === true && requireApiAdmin(req, res)) return;
   const proxied = await proxyWorkerJson("/api/exports", {
     req,
     method: "POST",
@@ -1995,17 +1899,26 @@ async function handleLogin(req, res) {
     return;
   }
 
+  const url = new URL(req.url || "/", originFor(req));
+  const connectWorkspace = url.searchParams.get("integration") === "google-workspace";
   const state = randomBytes(24).toString("base64url");
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_OAUTH_CLIENT_ID,
     redirect_uri: redirectUriFor(req),
     response_type: "code",
-    scope: "openid email profile",
+    scope: googleOAuthScopes(connectWorkspace),
     state,
-    prompt: "select_account",
+    prompt: connectWorkspace ? "select_account consent" : "select_account",
   });
+  if (connectWorkspace) {
+    params.set("access_type", "offline");
+    params.set("include_granted_scopes", "true");
+  }
   res.writeHead(302, {
-    "set-cookie": cookie(stateCookie, state, req, 600),
+    "set-cookie": [
+      cookie(stateCookie, state, req, 600),
+      connectWorkspace ? cookie(workspaceIntentCookie, "google-workspace", req, 600) : clearCookie(workspaceIntentCookie, req),
+    ],
     location: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
   });
   res.end();
@@ -2029,20 +1942,20 @@ async function exchangeGoogleCode(req, code) {
     headers: { authorization: `Bearer ${token.access_token}` },
   });
   if (!profileResponse.ok) throw new Error(`Google profile lookup failed: ${profileResponse.status}`);
-  return profileResponse.json();
+  return { profile: await profileResponse.json(), token };
 }
 
 async function handleCallback(req, res, url) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const expectedState = parseCookies(req)[stateCookie];
-  if (!code || !state || !expectedState || state !== expectedState) {
+  if (!code || !state || !expectedState || !secretMatches(state, expectedState)) {
     sendHtml(res, 400, loginPage(req, "The Google sign-in request expired. Start the login again."));
     return;
   }
 
   try {
-    const profile = await exchangeGoogleCode(req, code);
+    const { profile, token } = await exchangeGoogleCode(req, code);
     if (!profile.email || !emailAllowed(profile.email)) {
       sendHtml(res, 403, deniedAccessPage(req, profile.email), {
         "set-cookie": [
@@ -2052,13 +1965,16 @@ async function handleCallback(req, res, url) {
       });
       return;
     }
-    const token = createSessionToken(profile);
+    const connectWorkspace = parseCookies(req)[workspaceIntentCookie] === "google-workspace";
+    if (connectWorkspace) await storeGoogleWorkspaceConnection(req, profile, token);
+    const sessionToken = createSessionToken(profile);
     res.writeHead(302, {
       "set-cookie": [
-        cookie(sessionCookie, token, req, sessionTtlSeconds),
+        cookie(sessionCookie, sessionToken, req, sessionTtlSeconds),
         clearCookie(stateCookie, req),
+        clearCookie(workspaceIntentCookie, req),
       ],
-      location: "/",
+      location: connectWorkspace ? "/?googleWorkspace=connected" : "/",
     });
     res.end();
   } catch (error) {
@@ -2068,6 +1984,7 @@ async function handleCallback(req, res, url) {
 
 function handleRequest(req, res) {
   const url = new URL(req.url || "/", originFor(req));
+  const method = String(req.method || "GET").toUpperCase();
 
   if (url.pathname === "/health") {
     sendJson(res, 200, {
@@ -2118,7 +2035,7 @@ function handleRequest(req, res) {
   }
 
   if (url.pathname === "/auth/logout") {
-    res.writeHead(302, { "set-cookie": clearCookie(sessionCookie, req), location: "/" });
+    res.writeHead(302, { "set-cookie": clearCookie(sessionCookie, req), location: "/", "cache-control": "no-store" });
     res.end();
     return;
   }
@@ -2132,6 +2049,11 @@ function handleRequest(req, res) {
 
   if (url.pathname === "/api/doc-prep/cases" || url.pathname.startsWith("/api/doc-prep/cases/") || url.pathname === "/api/doc-prep/exports/google-drive") {
     handleDocPrepProcessRoute(req, res, url, session).catch((error) => sendJson(res, 502, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (["/latest-run.json", "/daily-run.json", "/fresh-lead-batch.json", "/qualification-review.json"].includes(url.pathname)) {
+    require("./api/runtime-artifact.js")(req, res);
     return;
   }
 
@@ -2242,6 +2164,26 @@ function handleRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/api/google-workspace/status") {
+    require("./api/google-workspace/status.js")(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/google-workspace/destinations") {
+    require("./api/google-workspace/destinations.js")(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/doc-prep/packet-approval") {
+    require("./api/doc-prep/packet-approval.js")(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/google-workspace/export") {
+    require("./api/google-workspace/export.js")(req, res);
+    return;
+  }
+
   if (url.pathname === "/api/closing-docs/export-google") {
     handleClosingDocsGoogleExport(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
     return;
@@ -2254,6 +2196,12 @@ function handleRequest(req, res) {
 
   if (url.pathname === "/api/discovery/idi-asset-search/import") {
     handleIdiAssetImport(req, res).catch((error) => sendJson(res, 500, { ok: false, error: error.message }));
+    return;
+  }
+
+  if (url.pathname === "/api/discovery/idi-asset-search/extract") {
+    const idiExtractHandler = require("./api/discovery/idi-asset-search/extract.js");
+    idiExtractHandler(req, res);
     return;
   }
 
@@ -2393,8 +2341,30 @@ function handleRequest(req, res) {
     return;
   }
 
+  const assetPath = staticAssetPath(url.pathname);
+  if (assetPath !== null) {
+    if (!assetPath) {
+      sendJson(res, 404, { error: "Asset not found." });
+      return;
+    }
+    if (method !== "GET" && method !== "HEAD") {
+      sendJson(res, 405, { error: "Method not allowed." }, { allow: "GET, HEAD" });
+      return;
+    }
+    const contentType = staticContentTypes[extname(assetPath).toLowerCase()] || "application/octet-stream";
+    const immutable = url.pathname.startsWith("/assets/webawesome/");
+    res.writeHead(200, {
+      "content-type": contentType,
+      "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
+      "x-content-type-options": "nosniff",
+    });
+    if (method === "HEAD") res.end();
+    else res.end(readFileSync(assetPath));
+    return;
+  }
+
   const html = readFileSync(join(root, "index.html"), "utf8");
-  res.writeHead(200, { "content-type": "text/html" });
+  res.writeHead(200, { "content-type": "text/html; charset=utf-8", ...browserSecurityHeaders });
   res.end(html);
 }
 

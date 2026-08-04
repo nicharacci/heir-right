@@ -58,6 +58,7 @@ const envKeys = [
   "BROWSERBASE_API_KEY",
   "BROWSERBASE_API_BASE",
   "TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID",
+  "TAX_COLLECTOR_ALLOWED_ORIGINS",
   "IDI_CORE_API_URL",
   "IDI_CORE_API_TOKEN",
   "HEIRRIGHT_IDI_CORE_API_TOKEN",
@@ -76,6 +77,7 @@ try {
   process.env.BROWSERBASE_API_KEY = "s33-browserbase-secret";
   process.env.BROWSERBASE_API_BASE = "https://browserbase-s33.test";
   process.env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID = "tax-s33-function";
+  process.env.TAX_COLLECTOR_ALLOWED_ORIGINS = "https://miamidade.county-taxes.test";
   process.env.IDI_CORE_API_URL = "https://idi-s33.test/asset-search";
   process.env.IDI_CORE_API_TOKEN = "s33-shared-team-token";
   process.env.IDI_CORE_LIVE_RUN_APPROVED = "true";
@@ -161,11 +163,9 @@ try {
     parcelId: "34-1133-036-0010",
     county: "miami-dade",
   });
-  assert.equal(sourceResult.statusCode, 200);
-  assert.equal(sourceResult.json.taxCollectorReceiptRun.ok, true);
-  assert.equal(sourceResult.json.taxCollectorReceiptRun.receipt.receiptUrl, "https://miamidade.county-taxes.test/receipts/2025-s33.pdf");
-  assert.ok(sourceResult.json.sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "tax_receipt_link" && /2025-s33\.pdf/.test(fact.value)));
-  assert.ok(sourceResult.json.sourceRunProof.sources.find((source) => source.source === "tax_collector")?.detailChecks.some((check) => check.code === "bottom_right_receipt" && check.status === "evidence_returned_review_required"));
+  assert.equal(sourceResult.statusCode, 503);
+  assert.equal(sourceResult.json.error, "discovery_file_store_unavailable");
+  assert.equal("sourceFacts" in sourceResult.json, false, "the artifact route must not return an unpersisted local source run");
   assert.doesNotMatch(sourceResult.text, /s33-browserbase-secret|s33-shared-team-token/);
 
   const idiStatus = buildIdiCoreStatus(process.env, "2026-07-04T00:00:00.000Z");
@@ -183,14 +183,9 @@ try {
     ownerName: "Estate of S33 Proof",
     county: "miami-dade",
   });
-  assert.equal(idiResult.statusCode, 200);
-  assert.equal(idiResult.json.ok, true);
-  assert.equal(idiResult.json.mode, "live_idi_core");
-  assert.equal(idiResult.json.apiKeySource, "shared_default");
-  assert.equal(idiResult.json.paidRun, true);
-  assert.equal(idiResult.json.lockKey, "idi:20611 nw 33rd pl miami gardens fl 33056:proof");
-  assert.equal(idiResult.json.readbackStatus, "readback_confirmed");
-  assert.equal(idiResult.json.candidates.length, 1);
+  assert.equal(idiResult.statusCode, 503);
+  assert.equal(idiResult.json.ok, false);
+  assert.equal(idiResult.json.error, "idi_paid_run_lock_unavailable");
   assert.doesNotMatch(idiResult.text, /s33-shared-team-token|Bearer|should-not-survive/);
 
   const duplicate = await callHandler(idiImport, {
@@ -202,17 +197,17 @@ try {
     propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
     ownerName: "Estate of S33 Proof",
   });
-  assert.equal(duplicate.statusCode, 409);
-  assert.equal(duplicate.json.error, "duplicate_idi_asset_search");
+  assert.equal(duplicate.statusCode, 503);
+  assert.equal(duplicate.json.error, "idi_paid_run_lock_unavailable");
 
   assert.ok(fetchCalls.some((call) => call.url.includes("/v1/functions/tax-s33-function/invoke")), "Tax Collector run must invoke Browserbase from estate facts.");
-  assert.ok(fetchCalls.some((call) => call.url === "https://idi-s33.test/asset-search"), "IDI live run must call configured backend endpoint.");
+  assert.equal(fetchCalls.some((call) => call.url === "https://idi-s33.test/asset-search"), false, "A facade without the canonical Worker lock must not call the paid IDI vendor.");
 
   console.log(JSON.stringify({
     ok: true,
     checks: [
       "tax_collector_receipt_run_starts_from_estate_facts",
-      "external_source_run_merges_tax_receipt_without_manual_listing",
+      "external_source_run_fails_closed_without_canonical_worker_storage",
       "idi_shared_backend_token_alias",
       "idi_duplicate_guard",
       "token_redaction",

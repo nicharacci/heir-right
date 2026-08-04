@@ -8,6 +8,7 @@ export interface IdiAssetImportInput {
   mode?: string;
   paidRun?: boolean;
   paidRunApproved?: boolean;
+  paidRunVerification?: string;
   approvalRecord?: unknown;
   readbackStatus?: string;
   apiKeySource?: string;
@@ -57,8 +58,41 @@ function extractEmails(text: string): string[] {
 }
 
 function extractAddresses(text: string): string[] {
-  const matches = text.match(/\b\d{2,6}\s+[A-Z0-9 .'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}\b/gi) ?? [];
+  const matches = text.match(/\b\d{2,6}\s+[A-Z0-9 .#'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}\b/gi) ?? [];
   return Array.from(new Set(matches.map((item) => item.replace(/\s+/g, " ").trim())));
+}
+
+function extractAge(text: string): number | undefined {
+  const value = Number(text.match(/\bage\s*[:#-]?\s*(\d{1,3})\b/i)?.[1]);
+  return Number.isInteger(value) && value > 0 && value < 125 ? value : undefined;
+}
+
+function extractInterest(text: string): string | undefined {
+  const labeled = text.match(
+    /\b(?:interest|ownership share|heir share)\s*[:#-]\s*([^\n|;]{1,80}?)(?=\s+(?:age|likely current address|current address|address history|phone|email|relationship|review status|relative|associate|spouse|child|contact)\s*[:#-]|[\n|;]|$)/i,
+  )?.[1];
+  if (labeled) return labeled.replace(/\s+/g, " ").trim();
+  return text.match(/\b(?:\d+\/\d+(?:st|nd|rd|th)?|\d+(?:\.\d+)?%)\s*(?:interest|share)\b/i)?.[0]?.replace(/\s+/g, " ").trim();
+}
+
+function extractAddressHistoryDetails(text: string): Array<{ address: string; county?: string; dates?: string }> {
+  const output: Array<{ address: string; county?: string; dates?: string }> = [];
+  const lines = text.split(/\r?\n/);
+  const addressPattern = /\b\d{2,6}\s+[A-Z0-9 .#'-]+,\s*[A-Z .'-]+,\s*[A-Z]{2}\s*\d{5}\b/gi;
+  const countyPattern = /\b([A-Z][A-Za-z .'-]+(?:County|Parish|Borough))\b/i;
+  const datePattern = /\b(?:(?:0?[1-9]|1[0-2])\/)?(?:19|20)\d{2}\b(?:\s*[-–—]\s*(?:(?:(?:0?[1-9]|1[0-2])\/)?(?:19|20)\d{2}|present|current))?/i;
+  for (let index = 0; index < lines.length; index += 1) {
+    const context = `${lines[index]} ${lines[index + 1] || ""}`;
+    for (const match of lines[index].matchAll(addressPattern)) {
+      const address = match[0].replace(/\s+/g, " ").trim();
+      const county = context.match(countyPattern)?.[1]?.replace(/\s+/g, " ").trim();
+      const dates = context.match(datePattern)?.[0]?.replace(/\s+/g, " ").trim();
+      if (!output.some((entry) => entry.address.toLowerCase() === address.toLowerCase() && entry.dates === dates)) {
+        output.push({ address, ...(county ? { county } : {}), ...(dates ? { dates } : {}) });
+      }
+    }
+  }
+  return output;
 }
 
 function inferRelationship(block: string): string {
@@ -123,6 +157,16 @@ function normalizeSuppliedCandidate(
   const phones = Array.isArray(candidate.phones) ? candidate.phones.map(String).filter(Boolean) : [];
   const emails = Array.isArray(candidate.emails) ? candidate.emails.map(String).filter(Boolean) : [];
   const addressHistory = Array.isArray(candidate.addressHistory) ? candidate.addressHistory.map(String).filter(Boolean) : [];
+  const addressHistoryDetails = Array.isArray(candidate.addressHistoryDetails)
+    ? candidate.addressHistoryDetails.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const address = String(item.address || "").trim();
+      if (!address) return [];
+      const county = String(item.county || "").trim();
+      const dates = String(item.dates || "").trim();
+      return [{ address, ...(county ? { county } : {}), ...(dates ? { dates } : {}) }];
+    })
+    : [];
   const currentAddress = String(candidate.currentAddress || addressHistory[0] || "").trim();
   const group = candidate.group === "primary" || candidate.group === "alternative"
     ? candidate.group
@@ -131,11 +175,14 @@ function normalizeSuppliedCandidate(
     id: String(candidate.id || `${idiRunLockKey(seed)}:contact:${index + 1}`),
     name,
     relationship,
+    ...(typeof candidate.age === "number" && candidate.age > 0 && candidate.age < 125 ? { age: candidate.age } : {}),
+    ...(String(candidate.interest || "").trim() ? { interest: String(candidate.interest).trim() } : {}),
     group,
     phones,
     emails,
     currentAddress: currentAddress || undefined,
     addressHistory,
+    ...(addressHistoryDetails.length ? { addressHistoryDetails } : {}),
     ownerLastNameMatch: typeof candidate.ownerLastNameMatch === "boolean"
       ? candidate.ownerLastNameMatch
       : ownerNameMatches(name, seed.ownerName ?? seed.estateName ?? ""),
@@ -157,6 +204,7 @@ export function parseIdiAssetSearchText(importedText: string, seed: IntakeSeed, 
   return blocks.map((block, index) => {
     const relationship = inferRelationship(block);
     const addresses = extractAddresses(block);
+    const addressDetails = extractAddressHistoryDetails(block);
     const currentAddress = addresses.find((address) => /current|likely/i.test(block)) ?? addresses[0];
     const sameLastName = ownerNameMatches(inferName(block), seed.ownerName ?? seed.estateName ?? "");
     const primary = candidateGroup(relationship) === "primary";
@@ -164,11 +212,14 @@ export function parseIdiAssetSearchText(importedText: string, seed: IntakeSeed, 
       id: `${idiRunLockKey(seed)}:contact:${index + 1}`,
       name: inferName(block),
       relationship,
+      ...(extractAge(block) ? { age: extractAge(block) } : {}),
+      ...(extractInterest(block) ? { interest: extractInterest(block) } : {}),
       group: primary ? "primary" : "alternative",
       phones: extractPhones(block),
       emails: extractEmails(block),
       currentAddress,
       addressHistory: addresses,
+      ...(addressDetails.length ? { addressHistoryDetails: addressDetails } : {}),
       ownerLastNameMatch: sameLastName,
       confidence: primary ? 0.86 : sameLastName ? 0.72 : 0.58,
       sourceRefs: [ref],
@@ -203,6 +254,10 @@ export function buildIdiAssetSearchFacts(runId: string, seed: IntakeSeed, input:
   const primaryCandidates = candidates.filter((candidate) => candidate.group === "primary");
   const alternativeCandidates = candidates.filter((candidate) => candidate.group === "alternative");
   const acceptedCandidateCount = candidates.filter((candidate) => candidate.reviewStatus === "accepted" || candidate.reviewStatus === "promoted").length;
+  const approvalRecord = input.approvalRecord && typeof input.approvalRecord === "object"
+    ? input.approvalRecord as Record<string, unknown>
+    : null;
+  const paidRunApproved = input.paidRunApproved === true && approvalRecord?.readbackStatus === "verified";
 
   return [
     fact({
@@ -224,8 +279,9 @@ export function buildIdiAssetSearchFacts(runId: string, seed: IntakeSeed, input:
         acceptedContactCount: acceptedCandidateCount,
         mode: input.mode || "operator_import",
         paidRun: Boolean(input.paidRun),
-        paidRunApproved: Boolean(input.paidRunApproved || input.paidRun === true || input.approvalRecord),
-        approvalRecord: input.approvalRecord || undefined,
+        paidRunApproved,
+        paidRunVerification: input.paidRunVerification,
+        approvalRecord: paidRunApproved ? approvalRecord : undefined,
         readbackStatus: input.readbackStatus,
         apiKeySource: input.apiKeySource,
       },

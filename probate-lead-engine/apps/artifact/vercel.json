@@ -1,11 +1,61 @@
 {
-  "buildCommand": "node build.js",
+  "buildCommand": "pnpm build:production",
   "outputDirectory": "dist",
-  "installCommand": "echo skipping install",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "private, no-store, max-age=0" }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "private, no-store, max-age=0" }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/auth/:path*",
       "destination": "/api/auth/:path*"
+    },
+    {
+      "source": "/latest-run.json",
+      "destination": "/api/runtime-artifact?name=latest-run.json"
+    },
+    {
+      "source": "/daily-run.json",
+      "destination": "/api/runtime-artifact?name=daily-run.json"
+    },
+    {
+      "source": "/fresh-lead-batch.json",
+      "destination": "/api/runtime-artifact?name=fresh-lead-batch.json"
+    },
+    {
+      "source": "/qualification-review.json",
+      "destination": "/api/runtime-artifact?name=qualification-review.json"
     }
-  ]
+  ],
+  "functions": {
+    "api/discovery/idi-asset-search/extract.js": {
+      "includeFiles": "{runtime-assets,runtime-functions}/**",
+      "maxDuration": 60
+    },
+    "api/**/*.js": {
+      "excludeFiles": "dist/**/*.map",
+      "maxDuration": 60
+    }
+  }
 }

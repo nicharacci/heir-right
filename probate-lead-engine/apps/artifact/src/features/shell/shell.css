@@ -1,0 +1,2038 @@
+#workspace[data-s38-shell="case-journey"] {
+  --s38-left-rail-expanded: 13.75rem;
+  --s38-left-rail-collapsed: 3.5rem;
+  --s38-left-rail-width: var(--s38-left-rail-expanded);
+  --s38-header-height: 4.75rem;
+  --s38-footer-height: 2.75rem;
+  --s38-main-radius: var(--hr-radius-main);
+  --s38-command-drawer-width: 30rem;
+  --s38-command-row-height: 3.75rem;
+  --s38-main-gutter: 0.625rem;
+  --s38-rail-min-width: 30rem;
+  --s38-rail-max-width: 34.5rem;
+  --s38-action-row-offset-y: 0.25rem;
+  --s38-header-primary-offset-y: -0.125rem;
+  --s38-header-rail-offset-y: -0.0625rem;
+  grid-template-columns: var(--s38-left-rail-width) minmax(0, 1fr) !important;
+  height: 100dvh;
+  min-height: 40rem;
+  overflow: hidden;
+  background: var(--hr-chrome);
+  transition: grid-template-columns var(--hr-motion-rail) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] {
+  --s38-left-rail-width: var(--s38-left-rail-collapsed);
+}
+
+#workspace[data-s38-shell="case-journey"] .sidebar {
+  position: relative;
+  z-index: 40;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  color: var(--hr-text);
+  background: var(--hr-chrome);
+  border: 0;
+  overflow: hidden;
+}
+
+#workspace[data-s38-shell="case-journey"] .sidebar-top {
+  min-height: var(--s38-header-height);
+  padding: var(--hr-space-3) var(--hr-space-2);
+  gap: var(--hr-space-2);
+  background: var(--hr-chrome);
+}
+
+#workspace[data-s38-shell="case-journey"] #sidebarToggle {
+  display: inline-grid !important;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  color: var(--hr-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--hr-radius-control);
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] #sidebarToggle:is(:hover, :focus-visible) {
+  color: var(--hr-accent-strong);
+  background: transparent;
+}
+
+#workspace[data-s38-shell="case-journey"] .brand {
+  color: var(--hr-text);
+  font-size: var(--hr-type-md);
+  transition: opacity var(--hr-motion-state) var(--hr-ease-standard), transform var(--hr-motion-state) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .brand-mark {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--hr-text);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#workspace[data-s38-shell="case-journey"] :is(.brand-mark, .toggle-logo) img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+#workspace[data-s38-shell="case-journey"] .toggle-logo {
+  width: 2rem;
+  height: 2rem;
+}
+
+#workspace[data-s38-shell="case-journey"] .nav-list {
+  display: grid;
+  align-content: start;
+  gap: var(--hr-space-1);
+  padding: var(--hr-space-2) 0.375rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--hr-chrome);
+}
+
+#workspace[data-s38-shell="case-journey"] .nav-item {
+  width: 100%;
+  min-height: 2.75rem;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--hr-space-2);
+  padding: 0.25rem 0.5rem;
+  color: var(--hr-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0.875rem;
+  text-align: left;
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), opacity var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .nav-item::before,
+#workspace[data-s38-shell="case-journey"] .nav-item::after {
+  display: none !important;
+}
+
+#workspace[data-s38-shell="case-journey"] .nav-item:is(:hover, :focus-visible) {
+  color: var(--hr-accent-strong);
+  background: transparent;
+}
+
+#workspace[data-s38-shell="case-journey"] .nav-item.is-active {
+  color: var(--hr-action-ink);
+  background: var(--hr-pearl-selected);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .nav-item.is-active:focus-visible {
+  outline: var(--hr-focus-width) solid var(--hr-focus);
+  outline-offset: 2px;
+}
+
+#workspace[data-s38-shell="case-journey"] .nav-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-grid;
+  place-items: center;
+  color: var(--hr-accent-strong);
+}
+
+#workspace[data-s38-shell="case-journey"] .nav-icon::before {
+  display: none !important;
+}
+
+#workspace[data-s38-shell="case-journey"] .nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--hr-type-sm);
+  font-weight: 650;
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .brand {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateX(-0.5rem);
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .sidebar-top,
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .nav-list {
+  justify-items: center;
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .nav-list {
+  gap: var(--hr-space-2);
+  overflow-y: auto;
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .nav-item {
+  width: 2.75rem;
+  grid-template-columns: 2.25rem;
+  justify-content: center;
+  padding-inline: 0.25rem;
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .nav-label {
+  display: none;
+}
+
+@media (min-width: 820px) {
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .brand {
+    width: auto;
+    overflow: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .sidebar-top {
+    justify-content: flex-start;
+  }
+
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .toggle-panel-icon {
+    display: block;
+  }
+
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .toggle-logo {
+    display: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .nav-list {
+    justify-items: stretch;
+    gap: var(--hr-space-1);
+    overflow-y: auto;
+  }
+
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .nav-item {
+    width: 100%;
+    height: auto;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    place-items: initial;
+    justify-content: normal;
+  }
+
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .nav-label {
+    display: block;
+    width: auto;
+    opacity: 1;
+  }
+
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .user-strip {
+    width: 100%;
+    height: auto;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    place-items: initial;
+    justify-self: stretch;
+    padding: 0.4375rem 0.375rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .user-strip .avatar {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .user-name,
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .user-meta {
+    display: block;
+  }
+}
+
+#workspace[data-s38-shell="case-journey"] .sidebar-footer {
+  padding: var(--hr-space-2) 0.375rem var(--hr-space-3);
+  background: var(--hr-chrome);
+  border: 0;
+}
+
+#workspace[data-s38-shell="case-journey"] .theme-row {
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .user-strip {
+  min-height: 2.75rem;
+  color: var(--hr-text-muted);
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: var(--hr-radius-control);
+  box-shadow: none !important;
+}
+
+#workspace[data-s38-shell="case-journey"] .user-strip:is(:hover, :focus-visible, :active, [aria-expanded="true"]) {
+  color: var(--hr-text);
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#workspace[data-s38-shell="case-journey"] .user-strip:focus-visible {
+  outline: 2px solid var(--hr-focus);
+  outline-offset: 2px;
+}
+
+#workspace[data-s38-shell="case-journey"] .user-strip .avatar {
+  width: 2rem;
+  height: 2rem;
+  aspect-ratio: 1;
+  flex: 0 0 2rem;
+  overflow: hidden;
+  color: var(--hr-accent-strong);
+  background-color: transparent !important;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  border: 0 !important;
+  border-radius: 50%;
+  box-shadow: none !important;
+  filter: none;
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), filter var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip {
+  width: 2.75rem;
+  padding: 0;
+  justify-content: center;
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip:focus-visible {
+  outline: var(--hr-focus-width) solid var(--hr-focus);
+  outline-offset: 2px;
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip:not(:disabled):is(:hover, :focus-visible, :active) .avatar {
+  color: var(--hr-accent-strong);
+  filter: drop-shadow(0 0 0.3rem var(--hr-icon-glow));
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip > span:not(.avatar) {
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .app {
+  grid-column: 2;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) var(--s38-command-row-height) var(--s38-footer-height);
+  overflow: hidden;
+  color: var(--hr-text);
+  background: var(--hr-chrome);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .topbar {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: var(--s38-header-height);
+  display: grid;
+  grid-template-columns: minmax(12rem, 17rem) minmax(16rem, 1fr) auto;
+  grid-template-areas: "route search commands";
+  align-items: center;
+  gap: var(--hr-space-4);
+  padding: 0.625rem var(--hr-space-4);
+  color: var(--hr-text);
+  background: var(--hr-chrome);
+  border: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-route-context {
+  grid-area: route;
+  min-width: 0;
+  display: grid;
+  gap: 0.125rem;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-route-kicker,
+#workspace[data-s38-shell="case-journey"] .shell-rail-kicker {
+  color: var(--hr-text-subtle);
+  font-size: var(--hr-type-xs);
+  font-weight: 720;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-route-title-line {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--hr-space-2);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-route-title-line h1 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--hr-text);
+  font-size: var(--hr-type-lg);
+  font-weight: 740;
+  line-height: var(--hr-leading-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-route-context p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-route-disposition {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.5rem;
+  color: var(--hr-text);
+  background: var(--hr-surface-selected);
+  border-radius: 999px;
+  font-size: var(--hr-type-xs);
+  font-weight: 720;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-route-disposition[data-disposition="forward"] {
+  color: var(--hr-success);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-route-disposition[data-disposition="blocked"],
+#workspace[data-s38-shell="case-journey"] .shell-route-disposition[data-disposition="move-on"] {
+  color: var(--hr-danger);
+}
+
+#workspace[data-s38-shell="case-journey"] .topbar > .search-control {
+  grid-area: search;
+  width: 100%;
+  max-width: 42rem;
+  min-height: 2.75rem;
+  justify-self: center;
+  color: var(--hr-text);
+  background: var(--hr-surface);
+  border: 1px solid var(--hr-control-boundary);
+  border-radius: var(--hr-radius-control);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* The extracted interface still carries legacy material class names on a few
+ * non-shell views. Once the S38 shell is active, neutralize their generated
+ * rims and blur layers so the entire workspace uses the flat semantic roles. */
+#workspace[data-s38-shell="case-journey"] :is(.solvys-liquid-glass, .solvys-liquid-glass-strong) {
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+#workspace[data-s38-shell="case-journey"] :is(.solvys-liquid-glass, .solvys-liquid-glass-strong)::before,
+#workspace[data-s38-shell="case-journey"] :is(.solvys-liquid-glass, .solvys-liquid-glass-strong)::after {
+  display: none !important;
+  content: none !important;
+}
+
+#workspace[data-s38-shell="case-journey"] .search-control input {
+  margin-block-start: 0.5px;
+  color: var(--hr-text);
+  font-size: var(--hr-type-sm);
+}
+
+#workspace[data-s38-shell="case-journey"] .topbar .search-control .kbd {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .search-control input::placeholder {
+  color: var(--hr-text-subtle);
+}
+
+#workspace[data-s38-shell="case-journey"] .top-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#workspace[data-s38-shell="case-journey"] .top-actions[data-s38-legacy-actions="true"] {
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-header-commands {
+  grid-area: commands;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--hr-space-2);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-header-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-primary-command {
+  margin-block-start: var(--s38-header-primary-offset-y);
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hr-space-2);
+  padding: 0.625rem 0.875rem;
+  color: var(--hr-action-ink);
+  background: var(--hr-action-pearl);
+  border: 1px solid var(--hr-action-border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+  font-size: var(--hr-type-sm);
+  font-weight: 760;
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard), opacity var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] #s38OpenRail {
+  margin-block-start: var(--s38-header-rail-offset-y);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-primary-command:is(:hover, :focus-visible) {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-pearl-hover);
+  border-color: var(--hr-action-border-strong);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 22%);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-primary-command:active {
+  background: var(--hr-action-pearl-active);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-primary-command[aria-busy="true"] {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-icon-command,
+#workspace[data-s38-shell="case-journey"] .shell-rail-close {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface);
+  border: 1px solid var(--hr-action-border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-icon-command :is(svg, .nucleo-icon),
+#workspace[data-s38-shell="case-journey"] .shell-rail-close :is(svg, .nucleo-icon) {
+  transition: filter var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-icon-command:is(:hover, :focus-visible),
+#workspace[data-s38-shell="case-journey"] .shell-rail-close:is(:hover, :focus-visible) {
+  color: var(--hr-accent-strong);
+  background: var(--hr-action-surface);
+  border-color: var(--hr-action-border);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-icon-command:is(:hover, :focus-visible) :is(svg, .nucleo-icon),
+#workspace[data-s38-shell="case-journey"] .shell-rail-close:is(:hover, :focus-visible) :is(svg, .nucleo-icon) {
+  filter: drop-shadow(0 0 0.3rem var(--hr-icon-glow));
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu {
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .app[data-active-view="find-estates"] #crmImportMenu {
+  display: block;
+  margin-block-start: 0.375rem;
+  margin-inline-end: 0.375rem;
+}
+
+#workspace[data-s38-shell="case-journey"] .app[data-active-view="find-estates"] .shell-primary-command {
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split {
+  min-height: 2.75rem;
+  color: var(--hr-accent-ink);
+  background: var(--hr-action-pearl);
+  border: 0;
+  border-radius: var(--hr-radius-control);
+  box-shadow: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-theme-control-mount {
+  flex: 0 0 auto;
+}
+
+#workspace[data-s38-shell="case-journey"] .settings-theme-setting {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--hr-space-4);
+}
+
+#workspace[data-s38-shell="case-journey"] .settings-theme-setting > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: var(--hr-space-1);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-theme-control {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.1875rem;
+  background: var(--hr-surface);
+  border-radius: var(--hr-radius-control);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-theme-control button {
+  min-height: 2.75rem;
+  padding: 0.375rem 0.5rem;
+  color: var(--hr-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0.625rem;
+  font-size: var(--hr-type-xs);
+  font-weight: 680;
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-theme-control button:is(:hover, :focus-visible) {
+  color: var(--hr-text);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-theme-control button[aria-pressed="true"] {
+  color: var(--hr-text);
+  background: var(--hr-surface-selected);
+}
+
+#workspace[data-s38-shell="case-journey"] .content {
+  grid-column: 1;
+  grid-row: 2 / 4;
+  min-width: 0;
+  min-height: 0;
+  display: flex !important;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 var(--hr-space-2) var(--hr-space-2) var(--s38-main-gutter);
+  overflow: hidden;
+  background: var(--hr-chrome);
+  border-radius: 0;
+}
+
+#workspace[data-s38-shell="case-journey"] .filters {
+  flex: 0 0 var(--filters-width, 20rem);
+  width: var(--filters-width, 20rem);
+  min-width: 0;
+  background: var(--hr-chrome);
+  border: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .filters::after {
+  background: var(--hr-ruler);
+}
+
+#workspace[data-s38-shell="case-journey"] .content.is-filter-collapsed .filters {
+  flex-basis: 0;
+  width: 0;
+}
+
+#workspace[data-s38-shell="case-journey"] .app[data-active-view]:not([data-active-view="find-estates"]) .filters {
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .workbench {
+  position: relative;
+  grid-column: auto;
+  grid-row: auto;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--hr-text);
+  background: var(--hr-surface);
+  border: 1px solid var(--hr-ruler);
+  border-radius: var(--s38-main-radius);
+  box-shadow: none;
+  scroll-padding-bottom: var(--s38-command-row-height);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .workbench::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .loop-view,
+#workspace[data-s38-shell="case-journey"] #dossiersView {
+  min-width: 0;
+  min-height: 0;
+  background: var(--hr-surface);
+}
+
+#workspace[data-s38-shell="case-journey"] .app[data-active-view="dossiers"] #dossiersView {
+  padding-right: 0;
+  transition: none;
+}
+
+#workspace[data-s38-shell="case-journey"] [data-s38-consolidated="true"] {
+  display: none !important;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-composer {
+  grid-column: 1;
+  grid-row: 3;
+  position: relative;
+  z-index: 60;
+  min-height: var(--s38-command-row-height);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.5rem var(--hr-space-3);
+  color: var(--hr-text);
+  background: transparent;
+  border: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-toggle {
+  position: absolute;
+  right: var(--hr-space-3);
+  bottom: 0.5rem;
+  width: max-content;
+  max-width: 100%;
+  min-height: 2.75rem;
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  padding: 0.25rem var(--hr-space-4);
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface);
+  border: 1px solid var(--hr-action-border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  visibility: visible;
+  transform: translateX(0.375rem);
+  transform-origin: right center;
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard), opacity var(--hr-motion-state) var(--hr-ease-standard), transform var(--hr-motion-state) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-composer:is(:hover, :focus-within) .command-drawer-toggle,
+#workspace[data-s38-shell="case-journey"] .command-drawer-toggle:is(:hover, :focus-visible),
+#workspace[data-s38-shell="case-journey"] .shell-composer[data-command-drawer-open="true"] .command-drawer-toggle {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface-hover);
+  border-color: var(--hr-action-border-strong);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 22%);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-composer:is(:hover, :focus-within) .command-drawer-toggle {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-toggle:focus-visible,
+#workspace[data-s38-shell="case-journey"] .command-drawer-close:focus-visible {
+  outline: 2px solid var(--hr-accent);
+  outline-offset: 2px;
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-toggle-copy {
+  min-width: 0;
+  display: block;
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-toggle-copy strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-toggle-copy strong {
+  color: currentColor;
+  font-size: var(--hr-type-sm);
+  font-weight: 720;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-composer[data-command-drawer-open="true"] .command-drawer-toggle {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(0.375rem);
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-panel {
+  position: absolute;
+  right: var(--hr-space-3);
+  bottom: 0.5rem;
+  z-index: 1;
+  width: min(var(--s38-command-drawer-width), calc(100% - 1.5rem));
+  min-height: 3.25rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.75rem;
+  align-items: center;
+  gap: var(--hr-space-1);
+  padding: 0.1875rem 0.25rem 0.1875rem var(--hr-space-2);
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface);
+  border: 1px solid var(--hr-action-border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+  opacity: 0;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  pointer-events: none;
+  visibility: hidden;
+  transform: translateX(0.5rem);
+  transform-origin: right center;
+  transition: opacity var(--hr-motion-state) var(--hr-ease-standard), transform var(--hr-motion-state) var(--hr-ease-standard), visibility 0s linear var(--hr-motion-state);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-composer[data-command-drawer-open="true"] .command-drawer-panel {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+  transform: translateX(0);
+  transition: opacity var(--hr-motion-state) var(--hr-ease-standard), transform var(--hr-motion-state) var(--hr-ease-standard), visibility 0s linear 0s;
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-panel .command-form {
+  width: 100%;
+  min-height: 2.75rem;
+  grid-template-columns: minmax(0, 1fr) 2.75rem;
+  gap: var(--hr-space-1);
+  padding: 0;
+  color: var(--hr-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-panel .command-form input {
+  min-height: 2.75rem;
+  padding-inline: var(--hr-space-3);
+  color: var(--hr-action-ink);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  outline: 0;
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-panel:focus-within {
+  border-color: var(--hr-action-border-strong);
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-panel .command-form .btn.primary {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-close {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  color: var(--hr-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--hr-radius-control);
+  cursor: pointer;
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-close:is(:hover, :focus-visible) {
+  color: var(--hr-accent-strong);
+  background: transparent;
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-close > .nucleo-icon {
+  pointer-events: none;
+  transition: filter var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .command-drawer-close:is(:hover, :focus-visible) > .nucleo-icon {
+  filter: drop-shadow(0 0 0.3rem var(--hr-icon-glow));
+}
+
+#workspace[data-s38-shell="case-journey"] .statusbar {
+  grid-column: 1;
+  grid-row: 4;
+  position: relative;
+  min-width: 0;
+  min-height: var(--s38-footer-height);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--hr-space-3);
+  padding: 0 var(--hr-space-3) 10px;
+  color: var(--hr-text-muted);
+  background: var(--hr-chrome);
+  border: 0;
+  font-family: var(--hr-font-sans);
+  font-size: var(--hr-type-xs);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .statusbar > .footer-left {
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-kpi-strip {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--hr-space-6);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-kpi-strip > span {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-kpi-strip > span + span::before {
+  content: "/";
+  margin-inline: calc(var(--hr-space-3) * -1) 0.375rem;
+  color: color-mix(in srgb, var(--hr-text-subtle) 42%, transparent);
+  font-size: 0.625rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-kpi-strip small {
+  color: var(--hr-text-subtle);
+  font-size: 0.625rem;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-kpi-strip strong {
+  color: var(--hr-text);
+  font-size: var(--hr-type-sm);
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: -0.012em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+#workspace[data-s38-shell="case-journey"] .connection-statuses {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--hr-space-3);
+  color: var(--hr-text-muted);
+  background: transparent;
+  border: 0;
+  font-size: 0.6875rem;
+  font-weight: 620;
+  line-height: 1;
+  letter-spacing: 0.015em;
+}
+
+#workspace[data-s38-shell="case-journey"] .connection-chip {
+  color: var(--hr-text-muted);
+  background: transparent;
+  border: 0;
+  white-space: nowrap;
+}
+
+@media (min-width: 820px) {
+  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip,
+  #workspace[data-s38-shell="case-journey"] .connection-statuses {
+    align-self: end;
+    margin-block-end: 0.3125rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip {
+    margin-inline-start: 0.9375rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip .avatar {
+    margin-inline-start: 0.125rem;
+    margin-block-end: -0.8125rem;
+  }
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer {
+  position: relative;
+  flex: 0 0 0;
+  width: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: visible;
+  transition: flex-basis var(--hr-motion-rail) var(--hr-ease-standard), width var(--hr-motion-rail) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer[data-open="true"] {
+  flex-basis: clamp(var(--s38-rail-min-width), var(--s38-active-rail-width, var(--s38-rail-min-width)), var(--s38-rail-max-width));
+  width: clamp(var(--s38-rail-min-width), var(--s38-active-rail-width, var(--s38-rail-min-width)), var(--s38-rail-max-width));
+  min-width: var(--s38-rail-min-width);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer[data-open="closing"],
+#workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer[data-open="false"] {
+  flex-basis: 0;
+  width: 0;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-unified-rail {
+  position: absolute;
+  inset: 0;
+  width: clamp(var(--s38-rail-min-width), var(--s38-active-rail-width, var(--s38-rail-min-width)), var(--s38-rail-max-width));
+  min-width: var(--s38-rail-min-width);
+  max-width: var(--s38-rail-max-width);
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  overflow: hidden;
+  color: var(--hr-text);
+  background: var(--hr-chrome);
+  border: 0;
+  opacity: 0;
+  transform: translateX(1rem);
+  transition: opacity var(--hr-motion-state) var(--hr-ease-standard), transform var(--hr-motion-rail) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-unified-rail.is-open {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-unified-rail.is-closing {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(1rem);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-resizer {
+  position: absolute;
+  inset: 0 auto 0 -0.375rem;
+  z-index: 3;
+  width: 0.75rem;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-resizer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.1875rem;
+  height: 3rem;
+  background: var(--hr-control-boundary);
+  border-radius: 999px;
+  opacity: 0.45;
+  transform: translate(-50%, -50%);
+  transition: opacity var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-resizer:is(:hover, :focus-visible)::after {
+  opacity: 1;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-header {
+  min-height: 5.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--hr-space-3);
+  padding: var(--hr-space-4) var(--hr-space-3) var(--hr-space-3) var(--hr-space-5);
+  border-bottom: 1px solid var(--hr-ruler);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-heading {
+  min-width: 0;
+  display: grid;
+  gap: 0.1875rem;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-heading strong,
+#workspace[data-s38-shell="case-journey"] .shell-rail-heading > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-heading strong {
+  color: var(--hr-text);
+  font-size: var(--hr-type-md);
+  font-weight: 740;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-heading > span:last-child {
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-close > .nucleo-icon {
+  pointer-events: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-tabs {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: var(--hr-space-2) var(--hr-space-3) var(--hr-space-3) var(--hr-space-5);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--hr-ruler);
+  scrollbar-width: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-tabs button {
+  min-height: 2.75rem;
+  flex: 0 0 auto;
+  padding: 0.4375rem 0.625rem;
+  color: var(--hr-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0.6875rem;
+  font-size: var(--hr-type-xs);
+  font-weight: 680;
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), opacity var(--hr-motion-state) var(--hr-ease-standard), transform var(--hr-motion-state) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-tabs button:is(:hover, :focus-visible) {
+  color: var(--hr-text);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-tabs button[aria-selected="true"] {
+  color: var(--hr-text);
+  background: var(--hr-surface-selected);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-action-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hr-space-3);
+  margin: var(--hr-space-2) var(--hr-space-3) 0 var(--hr-space-5);
+  padding: var(--hr-space-3);
+  color: var(--hr-text-muted);
+  background: color-mix(in srgb, var(--hr-danger) 9%, var(--hr-surface));
+  border-radius: var(--hr-radius-control);
+  font-size: var(--hr-type-xs);
+  line-height: var(--hr-leading-copy);
+  animation: shell-rail-feedback-enter var(--hr-motion-state) var(--hr-ease-standard) both;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-action-error[hidden] {
+  display: none !important;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-action-error-copy {
+  min-width: 0;
+  display: grid;
+  gap: var(--hr-space-1);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-action-error-copy strong {
+  color: var(--hr-danger);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-action-error button {
+  min-height: 2.75rem;
+  flex: 0 0 auto;
+  padding-inline: var(--hr-space-2);
+  color: var(--hr-text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--hr-radius-control);
+  font: inherit;
+  font-weight: 720;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-action-error button:is(:hover, :focus-visible) {
+  color: var(--hr-danger);
+}
+
+@keyframes shell-rail-feedback-enter {
+  from {
+    transform: translateY(-0.25rem);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-content {
+  min-width: 0;
+  min-height: 0;
+  padding: var(--hr-space-4) var(--hr-space-3) var(--hr-space-8) var(--hr-space-5);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity var(--hr-motion-state) var(--hr-ease-standard), transform var(--hr-motion-state) var(--hr-ease-standard);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-content[data-transition="changing"] {
+  opacity: 0.45;
+  transform: translateX(0.375rem);
+}
+
+#workspace[data-s38-shell="case-journey"] .shell-rail-backdrop {
+  display: none;
+}
+
+body.s38-rail-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+@media (max-width: 1120px) {
+  #workspace[data-s38-shell="case-journey"] .topbar {
+    grid-template-columns: minmax(11rem, 14rem) minmax(12rem, 1fr) auto;
+    gap: var(--hr-space-2);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-theme-control button {
+    width: 3rem;
+    overflow: hidden;
+    padding-inline: 0.25rem;
+    text-overflow: clip;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-primary-command {
+    margin-block-start: 0;
+    min-width: 2.75rem;
+    width: 2.75rem;
+    padding: 0 !important;
+    color: var(--hr-accent-strong);
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    padding-inline: 0;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-primary-command:is(:hover, :focus-visible) {
+    color: var(--hr-accent-strong);
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-primary-command :is(svg, .nucleo-icon) {
+    transition: filter var(--hr-motion-feedback) var(--hr-ease-standard);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-primary-command:is(:hover, :focus-visible) :is(svg, .nucleo-icon) {
+    filter: drop-shadow(0 0 0.3rem var(--hr-icon-glow));
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-primary-command > [data-shell-primary-label] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .connection-statuses {
+    display: none;
+  }
+}
+
+@media (max-width: 819px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100vw;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body.s38-mobile-rail-open {
+    overflow: hidden;
+  }
+
+  #workspace[data-s38-shell="case-journey"],
+  #workspace[data-s38-shell="case-journey"].is-collapsed,
+  #workspace[data-s38-shell="case-journey"].is-auto-collapsed {
+    --s38-left-rail-width: var(--s38-left-rail-collapsed);
+    width: 100vw;
+    height: 100dvh;
+    min-height: 0;
+    grid-template-columns: var(--s38-left-rail-collapsed) minmax(0, 1fr) !important;
+    overflow: hidden;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .sidebar {
+    display: grid;
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .sidebar-top {
+    justify-content: center;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .brand,
+  #workspace[data-s38-shell="case-journey"] .nav-label,
+  #workspace[data-s38-shell="case-journey"] .user-strip > span:not(.avatar) {
+    display: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .nav-list {
+    justify-items: center;
+    gap: var(--hr-space-1);
+    padding-inline: 0.375rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .nav-item {
+    width: 2.75rem;
+    grid-template-columns: 2.25rem;
+    justify-content: center;
+    padding-inline: 0.25rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .user-strip {
+    width: 2.75rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .app {
+    grid-column: 2;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr) var(--s38-command-row-height) var(--s38-footer-height);
+    overflow: hidden;
+    border: 0;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .topbar {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "route commands"
+      "search search";
+    gap: var(--hr-space-2);
+    padding: var(--hr-space-2);
+    overflow: visible;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-route-kicker,
+  #workspace[data-s38-shell="case-journey"] .shell-route-context p {
+    display: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-route-title-line {
+    display: grid;
+    gap: 0.125rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-route-disposition {
+    width: max-content;
+    max-width: 100%;
+    padding: 0;
+    background: transparent;
+    font-size: 0.6875rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .topbar > .search-control {
+    width: 100%;
+    max-width: 100%;
+    min-height: 2.75rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-header-commands {
+    gap: 0.125rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-primary-command {
+    min-width: 2.75rem;
+    width: 2.75rem;
+    padding-inline: 0;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-primary-command > [data-shell-primary-label] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-theme-control {
+    min-height: 2.75rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-theme-control button {
+    width: 3rem;
+    min-height: 2.75rem;
+    padding-inline: 0.1875rem;
+    font-size: var(--hr-type-xs);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .app[data-active-view="find-estates"] #crmImportMenu {
+    display: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .app[data-active-view="find-estates"] .shell-primary-command {
+    display: inline-flex;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .content,
+  #workspace[data-s38-shell="case-journey"] .content.is-filter-collapsed {
+    display: flex !important;
+    min-height: 0;
+    padding: 0 0.375rem 0.375rem 0.375rem;
+    overflow: hidden;
+    border-radius: 0;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .filters,
+  #workspace[data-s38-shell="case-journey"] .app[data-active-view="find-estates"] .filters {
+    display: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .workbench {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    grid-column: auto;
+    grid-row: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-radius: 1.25rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .workbench-body {
+    overflow-x: hidden;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-composer {
+    min-height: var(--s38-command-row-height);
+    padding: 0.375rem var(--hr-space-2);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .command-drawer-toggle {
+    right: var(--hr-space-2);
+    bottom: 0.375rem;
+    width: max-content;
+    max-width: calc(100% - 1rem);
+    min-height: 2.75rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .command-drawer-panel {
+    right: var(--hr-space-2);
+    bottom: 0.375rem;
+    width: calc(100% - 1rem);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .command-drawer-panel .command-form input {
+    font-size: 1rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .statusbar {
+    min-height: 2.75rem;
+    display: flex;
+    padding-inline: var(--hr-space-2);
+    overflow: hidden;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip {
+    width: 100%;
+    justify-content: space-between;
+    gap: var(--hr-space-2);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip > span {
+    display: grid;
+    gap: 0.1875rem;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip > span + span::before {
+    content: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip small {
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer,
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer[data-open="true"],
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer[data-open="closing"],
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer[data-open="false"] {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    width: 100vw;
+    min-width: 0;
+    max-width: 100vw;
+    height: 100dvh;
+    flex-basis: auto;
+    pointer-events: none;
+    transition: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer[data-open="true"],
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer[data-open="closing"] {
+    pointer-events: auto;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-rail-backdrop {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    background: color-mix(in srgb, var(--hr-canvas) 72%, transparent);
+    border: 0;
+    opacity: 0;
+    transition: opacity var(--hr-motion-state) var(--hr-ease-standard);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer[data-open="true"] .shell-rail-backdrop {
+    opacity: 1;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: min(100vw, 30rem);
+    min-width: 0;
+    max-width: 100vw;
+    height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--hr-chrome);
+    transform: translateX(100%);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail.is-open {
+    transform: translateX(0);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail.is-closing {
+    transform: translateX(100%);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-rail-resizer {
+    display: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-rail-header {
+    padding-left: var(--hr-space-4);
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-rail-tabs,
+  #workspace[data-s38-shell="case-journey"] .shell-rail-action-error,
+  #workspace[data-s38-shell="case-journey"] .shell-rail-content {
+    padding-left: var(--hr-space-4);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  #workspace[data-s38-shell="case-journey"] .command-drawer-toggle {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 430px) {
+  #workspace[data-s38-shell="case-journey"] .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip small {
+    display: none;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip > span {
+    display: inline-flex;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .command-drawer-toggle-copy small {
+    display: none;
+  }
+}
+
+/* Shared action material: true commands use one graphite plate. Navigation,
+   segmented theme choices, menu rows, and editorial rows keep their own
+   geometry even when their accessible primitive is a button. */
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)) {
+  margin-block-start: var(--s38-action-row-offset-y);
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface);
+  border: 1px solid var(--hr-action-border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard), opacity var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(:hover, :focus-visible) {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface-hover);
+  border-color: var(--hr-action-border-strong);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 22%);
+}
+
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):active {
+  background: var(--hr-action-surface-active);
+}
+
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(.primary, .shell-primary-command, .dashboard-primary-action, .hr-grid-primary-action, .journey-action-primary, [aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .is-active) {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-pearl);
+  border-color: var(--hr-action-border-strong);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 22%);
+}
+
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(.primary, .shell-primary-command, .dashboard-primary-action, .hr-grid-primary-action, .journey-action-primary, [aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .is-active):is(:hover, :focus-visible) {
+  background: var(--hr-action-pearl-hover);
+}
+
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(.primary, .shell-primary-command, .dashboard-primary-action, .hr-grid-primary-action, .journey-action-primary, [aria-current="page"], [aria-selected="true"], [aria-pressed="true"], .is-active):active {
+  background: var(--hr-action-pearl-active);
+}
+
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):is(.hr-danger-command) {
+  color: #ffc0ba;
+  border-color: rgb(240 139 130 / 36%);
+}
+
+body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .journey-document-row, .journey-action-row, .hr-document-row, .hr-idi-report-command, .dossier-doc, .dossier-check-row, .process-folder-card, .docprep-add-option, .template-list-item, .campaign-item, .template-attachment-option, .import-option, .export-option, .help-demo-card, .source-action-card, .shell-rail-backdrop, .nav-item, .user-strip, .icon-button, .icon-only, .shell-icon-command, .shell-rail-close, .command-drawer-close, .template-editor-button, .breadcrumb-button, .row-trash-action, .file-drop-icon, .import-split-menu, [data-case-stage], [data-docprep-section-cycle], .command-form .btn.primary, [data-shell-theme], [role="tab"], [role="menuitem"], .ag-root-wrapper button)):disabled {
+  opacity: 0.46;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--hr-action-highlight) 50%, transparent);
+  cursor: not-allowed;
+  transform: none;
+}
+
+body[data-s38-shell="case-journey"] wa-button::part(base) {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface);
+  border: 1px solid var(--hr-action-border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard), opacity var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+body[data-s38-shell="case-journey"] wa-button {
+  margin-block-start: var(--s38-action-host-margin-block-start, var(--s38-action-row-offset-y));
+}
+
+body[data-s38-shell="case-journey"] wa-button:is(:hover, :focus-visible)::part(base) {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface-hover);
+  border-color: var(--hr-action-border-strong);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 22%);
+}
+
+body[data-s38-shell="case-journey"] wa-button[variant="brand"][appearance="filled"]::part(base) {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-pearl);
+  border-color: var(--hr-action-border-strong);
+}
+
+body[data-s38-shell="case-journey"] wa-button[variant="brand"][appearance="filled"]:is(:hover, :focus-visible)::part(base) {
+  background: var(--hr-action-pearl-hover);
+}
+
+body[data-s38-shell="case-journey"] wa-button[variant="brand"][appearance="filled"]:active::part(base) {
+  background: var(--hr-action-pearl-active);
+}
+
+body[data-s38-shell="case-journey"] wa-button:is([disabled], [loading])::part(base) {
+  opacity: 0.46;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--hr-action-highlight) 50%, transparent);
+  cursor: not-allowed;
+}
+
+body[data-s38-shell="case-journey"] a.btn:not(.icon-only) {
+  margin-block-start: var(--s38-action-row-offset-y);
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface);
+  border: 1px solid var(--hr-action-border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+  transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+body[data-s38-shell="case-journey"] a.btn:not(.icon-only):is(:hover, :focus-visible) {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface-hover);
+  border-color: var(--hr-action-border-strong);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 22%);
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface);
+  border: 1px solid var(--hr-action-border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split > button {
+  margin-block-start: var(--s38-action-row-offset-y);
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split-main:is(:hover, :focus-visible) {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-surface-hover);
+  box-shadow: none;
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split-main {
+  padding-inline: var(--hr-space-4);
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split-menu {
+  border-left: 1px solid var(--hr-action-border);
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split-menu::before {
+  display: none;
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split-menu svg,
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split-menu:is(:hover, :focus-visible) svg {
+  color: currentColor;
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split-menu:is(:hover, :focus-visible),
+#workspace[data-s38-shell="case-journey"] #crmImportMenu[data-open="true"] .import-split-menu {
+  color: var(--hr-accent-strong);
+  background: transparent;
+  box-shadow: none;
+}
+
+#workspace[data-s38-shell="case-journey"] #crmImportMenu .import-split-menu:is(:hover, :focus-visible) svg,
+#workspace[data-s38-shell="case-journey"] #crmImportMenu[data-open="true"] .import-split-menu svg {
+  filter: drop-shadow(0 0 0.3rem var(--hr-icon-glow));
+}
+
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] #sidebarToggle,
+#workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] #sidebarToggle:is(:hover, :focus-visible) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Icon-only commands stay as bare marks. Their sole hover treatment is a
+   tight HeirRight-blue glow on the glyph. A visible outline returns only in
+   forced-colors mode, where the glow cannot carry keyboard focus by itself. */
+body[data-s38-shell="case-journey"] :is(
+  button.icon-button,
+  button.icon-only,
+  .btn.icon-only,
+  button.shell-icon-command,
+  button.shell-rail-close,
+  button.command-drawer-close,
+  button.template-editor-button,
+  button.breadcrumb-button,
+  button.row-trash-action,
+  button.file-drop-icon,
+  button.import-split-menu,
+  button[data-docprep-section-cycle],
+  .command-form button.btn.primary
+) {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+body[data-s38-shell="case-journey"] :is(
+  button.icon-button,
+  button.icon-only,
+  .btn.icon-only,
+  button.shell-icon-command,
+  button.shell-rail-close,
+  button.command-drawer-close,
+  button.template-editor-button,
+  button.breadcrumb-button,
+  button.file-drop-icon,
+  button.import-split-menu,
+  button[data-docprep-section-cycle],
+  .command-form button.btn.primary
+) {
+  color: var(--hr-accent-strong) !important;
+}
+
+body[data-s38-shell="case-journey"] button.row-trash-action {
+  color: var(--hr-danger) !important;
+}
+
+body[data-s38-shell="case-journey"] :is(
+  button.icon-button,
+  button.icon-only,
+  .btn.icon-only,
+  button.shell-icon-command,
+  button.shell-rail-close,
+  button.command-drawer-close,
+  button.template-editor-button,
+  button.breadcrumb-button,
+  button.row-trash-action,
+  button.file-drop-icon,
+  button.import-split-menu,
+  button[data-docprep-section-cycle],
+  .command-form button.btn.primary,
+  .nav-item:not(.is-active)
+) :is(svg, .nucleo-icon, .nav-icon, .linear-status-icon, .toggle-logo img) {
+  filter: none;
+  transition: filter var(--hr-motion-feedback) var(--hr-ease-standard), color var(--hr-motion-feedback) var(--hr-ease-standard);
+}
+
+body[data-s38-shell="case-journey"] :is(
+  button.icon-button,
+  button.icon-only,
+  .btn.icon-only,
+  button.shell-icon-command,
+  button.shell-rail-close,
+  button.command-drawer-close,
+  button.template-editor-button,
+  button.breadcrumb-button,
+  button.file-drop-icon,
+  button.import-split-menu,
+  button[data-docprep-section-cycle],
+  .command-form button.btn.primary
+):not(:disabled):is(:hover, :focus-visible, :active),
+body[data-s38-shell="case-journey"] .nav-item:not(.is-active):not(:disabled):is(:hover, :focus-visible, :active) {
+  color: var(--hr-accent-strong) !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+body[data-s38-shell="case-journey"] .nav-item:not(.is-active):focus-visible {
+  outline: var(--hr-focus-width) solid var(--hr-focus) !important;
+  outline-offset: 2px;
+}
+
+body[data-s38-shell="case-journey"] :is(
+  button.icon-button,
+  button.icon-only,
+  .btn.icon-only,
+  button.shell-icon-command,
+  button.shell-rail-close,
+  button.command-drawer-close,
+  button.template-editor-button,
+  button.breadcrumb-button,
+  button.row-trash-action,
+  button.file-drop-icon,
+  button.import-split-menu,
+  button[data-docprep-section-cycle],
+  .command-form button.btn.primary
+):not(:disabled):is(:hover, :focus-visible, :active) :is(svg, .nucleo-icon, .linear-status-icon, .toggle-logo img),
+body[data-s38-shell="case-journey"] .nav-item:not(.is-active):not(:disabled):is(:hover, :focus-visible, :active) .nav-icon {
+  filter: drop-shadow(0 0.0625rem 0.125rem rgb(44 91 141 / 24%));
+}
+
+body[data-s38-shell="case-journey"] :is(
+  button.icon-button,
+  button.icon-only,
+  .btn.icon-only,
+  button.shell-icon-command,
+  button.shell-rail-close,
+  button.command-drawer-close,
+  button.template-editor-button,
+  button.breadcrumb-button,
+  button.row-trash-action,
+  button.file-drop-icon,
+  button.import-split-menu,
+  button[data-docprep-section-cycle],
+  .command-form button.btn.primary
+):focus-visible {
+  outline: var(--hr-focus-width) solid var(--hr-focus) !important;
+  outline-offset: 2px;
+}
+
+body[data-s38-shell="case-journey"] :is(
+  button.icon-button,
+  button.icon-only,
+  .btn.icon-only,
+  button.shell-icon-command,
+  button.shell-rail-close,
+  button.command-drawer-close,
+  button.template-editor-button,
+  button.breadcrumb-button,
+  button.row-trash-action,
+  button.file-drop-icon,
+  button.import-split-menu,
+  button[data-docprep-section-cycle],
+  .command-form button.btn.primary
+):disabled {
+  opacity: 0.46;
+  cursor: not-allowed;
+}
+
+body[data-s38-shell="case-journey"] :is(
+  button.icon-button,
+  button.icon-only,
+  .btn.icon-only,
+  button.shell-icon-command,
+  button.shell-rail-close,
+  button.command-drawer-close,
+  button.template-editor-button,
+  button.breadcrumb-button,
+  button.row-trash-action,
+  button.file-drop-icon,
+  button.import-split-menu,
+  button[data-docprep-section-cycle],
+  .command-form button.btn.primary
+):disabled :is(svg, .nucleo-icon, .linear-status-icon, .toggle-logo img) {
+  filter: none !important;
+}
+
+@media (forced-colors: active) {
+  body[data-s38-shell="case-journey"] :is(
+    button.icon-button,
+    button.icon-only,
+    .btn.icon-only,
+    button.shell-icon-command,
+    button.shell-rail-close,
+    button.command-drawer-close,
+    button.template-editor-button,
+    button.breadcrumb-button,
+    button.row-trash-action,
+    button.file-drop-icon,
+    button.import-split-menu,
+    button[data-docprep-section-cycle],
+    .command-form button.btn.primary
+  ):focus-visible,
+  body[data-s38-shell="case-journey"] .nav-item:not(.is-active):focus-visible,
+  #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip:focus-visible {
+    outline-color: ButtonText !important;
+  }
+}
+
+/* The desktop primary command collapses to a glyph-only action at this
+   breakpoint, so it follows the same bare-mark interaction contract. */
+@media (max-width: 1120px) {
+  body[data-s38-shell="case-journey"] .shell-primary-command {
+    margin-block-start: 0;
+    padding: 0 !important;
+    color: var(--hr-accent-strong) !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body[data-s38-shell="case-journey"] .shell-primary-command:focus-visible {
+    outline: var(--hr-focus-width) solid var(--hr-focus) !important;
+    outline-offset: 2px;
+  }
+
+  body[data-s38-shell="case-journey"] .shell-primary-command :is(svg, .nucleo-icon) {
+    filter: none;
+    transition: filter var(--hr-motion-feedback) var(--hr-ease-standard), color var(--hr-motion-feedback) var(--hr-ease-standard);
+  }
+
+  body[data-s38-shell="case-journey"] .shell-primary-command:not(:disabled):is(:hover, :focus-visible, :active) :is(svg, .nucleo-icon) {
+    filter: drop-shadow(0 0 0.3rem var(--hr-icon-glow));
+  }
+
+  body[data-s38-shell="case-journey"] .shell-primary-command:disabled :is(svg, .nucleo-icon) {
+    filter: none !important;
+  }
+
+  @media (forced-colors: active) {
+    body[data-s38-shell="case-journey"] .shell-primary-command:focus-visible {
+      outline-color: ButtonText !important;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #workspace[data-s38-shell="case-journey"],
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail-layer,
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail,
+  #workspace[data-s38-shell="case-journey"] .shell-rail-content,
+  #workspace[data-s38-shell="case-journey"] .command-drawer-toggle,
+  #workspace[data-s38-shell="case-journey"] .command-drawer-panel {
+    transition-duration: 1ms;
+  }
+
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail,
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail.is-open,
+  #workspace[data-s38-shell="case-journey"] .shell-unified-rail.is-closing,
+  #workspace[data-s38-shell="case-journey"] .shell-rail-content,
+  #workspace[data-s38-shell="case-journey"] .shell-rail-content[data-transition="changing"],
+  #workspace[data-s38-shell="case-journey"] .command-drawer-toggle,
+  #workspace[data-s38-shell="case-journey"] .command-drawer-panel {
+    transform: none;
+  }
+}

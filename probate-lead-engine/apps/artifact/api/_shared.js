@@ -1,3 +1,5 @@
+const { secretMatches } = require("./security/secret-compare");
+
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
     if (request.body && typeof request.body === "object" && !Buffer.isBuffer(request.body)) {
@@ -38,19 +40,47 @@ function internalBearerAllowed(request) {
   const expected = String(process.env.HEIRRIGHT_API_TOKEN || "");
   if (!expected) return false;
   const supplied = String(request?.headers?.authorization || "").replace(/^Bearer\s+/i, "");
-  if (!supplied || supplied.length !== expected.length) return false;
-  const { timingSafeEqual } = require("node:crypto");
-  return timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+  return secretMatches(supplied, expected);
 }
 
 function requireApiAuth(request, response) {
-  const { authRequired, readSession } = require("./auth/_shared");
-  if (!authRequired() || readSession(request) || internalBearerAllowed(request)) return false;
+  const { authRequired, effectiveSession } = require("./auth/_shared");
+  if (!authRequired() || effectiveSession(request) || internalBearerAllowed(request)) return false;
   sendJson(response, 401, {
     ok: false,
     error: "auth_required",
     message: "Sign in with an approved HeirRight Google account.",
     loginUrl: "/auth/login",
+  });
+  return true;
+}
+
+function apiAdminAllowed(request) {
+  const { authRequired, effectiveSession } = require("./auth/_shared");
+  const { adminEmails } = require("./admin/access-config");
+  if (!authRequired() || internalBearerAllowed(request)) return true;
+  const session = effectiveSession(request);
+  const email = String(session?.email || "").trim().toLowerCase();
+  return Boolean(session?.mode === "google" && email && adminEmails(process.env).includes(email));
+}
+
+function requireApiAdmin(request, response) {
+  const { effectiveSession } = require("./auth/_shared");
+  if (apiAdminAllowed(request)) return false;
+  const session = effectiveSession(request);
+  if (!session) {
+    sendJson(response, 401, {
+      ok: false,
+      error: "auth_required",
+      message: "Sign in with an approved HeirRight Google account.",
+      loginUrl: "/auth/login",
+    });
+    return true;
+  }
+  sendJson(response, 403, {
+    ok: false,
+    error: "admin_required",
+    message: "A configured HeirRight administrator must approve this change.",
   });
   return true;
 }
@@ -321,12 +351,14 @@ function taxReceiptCandidateScore(candidate = {}) {
 }
 
 module.exports = {
+  apiAdminAllowed,
   discoverTaxCollectorReceipt,
   extractTaxCollectorDetails,
   idiLockKey,
   methodGuard,
   proxyWorkerHttp,
   proxyWorkerJson,
+  requireApiAdmin,
   requireApiAuth,
   readJsonBody,
   receiptId,

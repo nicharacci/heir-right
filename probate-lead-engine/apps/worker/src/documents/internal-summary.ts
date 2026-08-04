@@ -19,6 +19,12 @@ function readableRecord(value: unknown): string {
   return entries.length ? entries.join("; ") : "Needs review";
 }
 
+function readableList(value: unknown): string {
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "None found";
+  if (value === null || value === undefined || value === "") return "Needs review";
+  return String(value);
+}
+
 export async function generateInternalSummary(dossier: RawDossier): Promise<DocumentPacket> {
   const lines = [
     `# HeirRight Internal Summary - ${dossier.summary.displayName}`,
@@ -47,7 +53,7 @@ export async function generateInternalSummary(dossier: RawDossier): Promise<Docu
     "",
     "## Tax History",
     `Status: ${dossier.taxHistory.sourceStatus.value ?? "Needs review"}`,
-    `Unpaid years: ${dossier.taxHistory.unpaidYears.value?.join(", ") ?? "Needs review"}`,
+    `Unpaid years: ${readableList(dossier.taxHistory.unpaidYears.value)}`,
     `Amount due: ${dossier.taxHistory.amountDue.value ? `${dossier.taxHistory.amountDue.value.currency} ${dossier.taxHistory.amountDue.value.amount}` : "Needs review"}`,
     `Reassessment: ${dossier.taxHistory.reassessment.value ?? "Needs review"}`,
     `Receipt status: ${dossier.taxHistory.receiptStatus.value ?? "Listing-page receipt link required"}`,

@@ -1,0 +1,66 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  scrollbar-color: color-mix(in srgb, var(--hr-text-subtle) 64%, transparent) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 0.625rem;
+  height: 0.625rem;
+  background: transparent;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track-piece,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--hr-text-subtle) 64%, transparent);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--hr-text-muted) 76%, transparent);
+}
+
+html {
+  background: var(--hr-canvas);
+  color: var(--hr-text);
+  font-family: var(--hr-font-sans);
+}
+
+body {
+  background: var(--hr-canvas);
+  color: var(--hr-text);
+}
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: var(--hr-focus-width) solid var(--hr-focus);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+[inert] {
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}

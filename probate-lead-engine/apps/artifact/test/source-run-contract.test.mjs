@@ -1,12 +1,19 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
+import workerModule, { WorkspaceState } from "../../worker/dist/cloudflare.js";
+import { readArtifactSource } from "./helpers/artifact-source.mjs";
 
 process.env.AUTH_REQUIRED = "false";
 
 const require = createRequire(import.meta.url);
 const externalSourceRun = require("../api/discovery/external-source-run.js");
+const sourceCapture = require("../api/discovery/source-capture.js");
 const { discoverTaxCollectorReceipt } = require("../api/_shared.js");
+const legacyAppSource = readFileSync(new URL("../src/legacy/app.js", import.meta.url), "utf8");
+const sourceCaptureRouteSource = readFileSync(new URL("../api/discovery/source-capture.js", import.meta.url), "utf8");
+const localServerSource = readFileSync(new URL("../server.js", import.meta.url), "utf8");
+const completedLeadReportSource = readFileSync(new URL("../../worker/src/documents/completed-lead-report.ts", import.meta.url), "utf8");
 
 function callHandler(handler, body) {
   return new Promise((resolve, reject) => {
@@ -38,21 +45,125 @@ function callHandler(handler, body) {
   });
 }
 
+class MemoryStorage {
+  values = new Map();
+  async get(key) { return this.values.get(key); }
+  async put(key, value) { this.values.set(key, structuredClone(value)); }
+  async transaction(closure) { return closure(this); }
+}
+
+class MemoryKv {
+  values = new Map();
+  async get(key) { return this.values.get(key) || null; }
+  async put(key, value) { this.values.set(key, value); }
+  async delete(key) { this.values.delete(key); }
+}
+
 const previousWorkerUrl = process.env.HEIRRIGHT_WORKER_URL;
 const previousWorkerApiUrl = process.env.WORKER_API_URL;
 const previousWorkerBaseUrl = process.env.WORKER_BASE_URL;
+const originalFetch = globalThis.fetch;
 delete process.env.HEIRRIGHT_WORKER_URL;
 delete process.env.WORKER_API_URL;
 delete process.env.WORKER_BASE_URL;
 
 try {
+  const unavailableCapture = await callHandler(sourceCapture, {
+    assetKey: "source-capture-store-unavailable",
+    taxReceipt: { paidBy: "Must not be presented as saved" },
+  });
+  assert.equal(unavailableCapture.statusCode, 503);
+  assert.equal(unavailableCapture.json.error, "source_capture_store_unavailable");
+  assert.match(sourceCaptureRouteSource, /source_capture_store_unavailable/);
+  assert.doesNotMatch(sourceCaptureRouteSource, /sendJson\(response,\s*200/, "the artifact route must not claim a canonical source save without the Worker");
+  assert.match(localServerSource, /source_capture_store_unavailable/, "the local server must fail closed when canonical source storage is unavailable");
+  assert.doesNotMatch(legacyAppSource, /Source capture saved locally/, "the UI must never describe an unverified source capture as saved");
+  assert.match(completedLeadReportSource, /safeSourceLinkUrl[\s\S]*parsed\.protocol === "https:" \|\| parsed\.protocol === "http:"/, "packet source links must reject executable and non-web URL schemes");
+  assert.ok(
+    legacyAppSource.includes('const safeUrl = /^https?:\\/\\//i.test(sourceUrl)'),
+    "rendered source links must reject executable URL schemes before entering href"
+  );
+  assert.match(legacyAppSource, /result\.readbackStatus !== "verified" \|\| result\.persistence\?\.readbackStatus !== "verified"/, "manual source capture must require canonical readback before updating local state");
+  const reviewedNoneFacts = sourceCapture.localSourceFactsFromCapture({
+    assetKey: "source-capture-reviewed-none",
+    ownerName: "Estate of Contract Proof",
+    propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+    taxReceipt: {
+      listingUrl: "https://miamidade.county-taxes.test/listing/reviewed-none",
+      receiptLink: "https://miamidade.county-taxes.test/receipt/reviewed-none.pdf",
+      unpaidYears: "None found in reviewed source",
+    },
+  });
+  const reviewedNoneFact = reviewedNoneFacts.find((fact) => fact.factType === "unpaid_tax_years");
+  assert.deepEqual(
+    reviewedNoneFact?.value,
+    [],
+    "free-text reviewed-none input must persist as a verified empty unpaid-years list",
+  );
+  for (const ambiguousUnpaidYears of ["unknown", "not checked", "see receipt", "202"]) {
+    const ambiguousFacts = sourceCapture.localSourceFactsFromCapture({
+      assetKey: `source-capture-ambiguous-${ambiguousUnpaidYears.replace(/\W+/g, "-")}`,
+      taxReceipt: {
+        listingUrl: "https://miamidade.county-taxes.test/listing/ambiguous",
+        receiptLink: "https://miamidade.county-taxes.test/receipt/ambiguous.pdf",
+        unpaidYears: ambiguousUnpaidYears,
+      },
+    });
+    assert.equal(
+      ambiguousFacts.some((fact) => fact.factType === "unpaid_tax_years"),
+      false,
+      `ambiguous unpaid-year text must remain missing: ${ambiguousUnpaidYears}`,
+    );
+  }
+  const autonomousSourceRun = legacyAppSource.match(/async function runAutonomousDiscoverySources[\s\S]*?\n}\n\nasync function hydratePersistedDiscoveryFile/)?.[0] || "";
+  assert.ok(autonomousSourceRun.indexOf("result.persistence?.readbackStatus") < autonomousSourceRun.indexOf("applyExternalSourceRunResult"), "automated Discovery must verify persistence before applying source evidence");
+  const sharedSourceRun = legacyAppSource.match(/async function runExternalSourceSearchForRow[\s\S]*?\n}\n\nfunction wireAssetDiscoveryControls/)?.[0] || "";
+  assert.ok(sharedSourceRun.indexOf("result.persistence?.readbackStatus") < sharedSourceRun.indexOf("applyExternalSourceRunResult"), "every visible source search must verify persistence before applying source evidence");
+  const manualSourceRun = legacyAppSource.match(/content\.querySelector\("\[data-run-source-search\]"\)[\s\S]*?content\.querySelector\("\[data-import-idi\]"\)/)?.[0] || "";
+  assert.match(manualSourceRun, /runExternalSourceSearchForRow\(row,\s*payload\)/, "the legacy source control must delegate to the verified shared runner");
+  assert.match(legacyAppSource, /id === "run-source-search"[\s\S]*?runExternalSourceSearchForRow\(row\)/, "the Document Prep source command must delegate to the same verified runner");
+
+  const worker = workerModule.default || workerModule;
+  const workspace = new WorkspaceState({ storage: new MemoryStorage() });
+  const workerBaseEnv = {
+    AUTH_REQUIRED: "false",
+    PACKET_ARTIFACTS: new MemoryKv(),
+    WORKSPACE_STATE: {
+      idFromName: (name) => name,
+      get: () => ({ fetch: (request) => workspace.fetch(request) }),
+    },
+    TAX_COLLECTOR_ALLOWED_ORIGINS: "https://county-taxes.net,https://miamidade.county-taxes.com,https://miamidade.county-taxes.test",
+  };
+  const workerEnv = new Proxy(workerBaseEnv, {
+    get(target, property) {
+      return Reflect.has(target, property) ? Reflect.get(target, property) : process.env[property];
+    },
+  });
+  const transportFetch = globalThis.fetch;
+  process.env.HEIRRIGHT_WORKER_URL = "https://worker.contract.test";
+  globalThis.fetch = async (input, init = {}) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.startsWith("https://worker.contract.test/")) {
+      const request = input instanceof Request ? input : new Request(url, init);
+      return worker.fetch(request, workerEnv);
+    }
+    return transportFetch(input, init);
+  };
+
   const baseSourceRunPayload = {
+    operatorIntent: "run_external_source_search",
     assetKey: "source-run-contract-proof",
     estateName: "Estate of Contract Proof",
     ownerName: "Estate of Contract Proof",
     propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
     parcelId: "34-1133-036-0010",
     county: "miami-dade",
+    confirmedSourceFacts: [{
+      source: "idi",
+      factType: "idi_asset_search_status",
+      value: { paidRun: true, paidRunApproved: true, approvalRecord: "client-claimed-approval" },
+      reviewFlags: [],
+    }],
     capture: {
       taxReceipt: {
         listingUrl: "https://miamidade.county-taxes.test/listing/3411330360010",
@@ -74,6 +185,10 @@ try {
       },
       propertyAppraiser: {
         sourceUrl: "https://www.miamidade.gov/Apps/PA/property/3411330360010",
+        owner: "Estate of Contract Proof",
+        ownerType: "trust_estate_review",
+        propertyAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
+        folio: "34-1133-036-0010",
         mailingAddress: "20611 NW 33rd Pl, Miami Gardens, FL 33056",
       },
       deed: {
@@ -113,6 +228,9 @@ try {
     },
     idiAssetImport: {
       provider: "idi",
+      paidRun: true,
+      paidRunApproved: true,
+      approvalRecord: "client-claimed-approval",
       importedText: [
         "Spouse: Marie Contract Proof",
         "Phone: 305-555-0199",
@@ -139,7 +257,9 @@ try {
         confidence: 0.86,
         reviewStatus: "imported",
       }],
-      contactReviews: {},
+      contactReviews: {
+        "idi-candidate-1": { status: "accepted" },
+      },
     },
   };
 
@@ -162,6 +282,42 @@ try {
     result.json.message,
     /source APIs/i,
     "Source-run response must not imply every Discovery source is an API."
+  );
+
+  const reviewedNonePayload = structuredClone(baseSourceRunPayload);
+  reviewedNonePayload.assetKey = "source-run-reviewed-none-proof";
+  reviewedNonePayload.capture.taxReceipt = {
+    ...reviewedNonePayload.capture.taxReceipt,
+    listingHtml: "",
+    amountDue: "$0.00",
+    unpaidYears: "None found in reviewed source",
+  };
+  const reviewedNoneResult = await callHandler(externalSourceRun, reviewedNonePayload);
+  assert.equal(reviewedNoneResult.statusCode, 200, "reviewed-none tax input must not crash the source run");
+  assert.equal(reviewedNoneResult.json.mode, "external_source_run");
+  assert.equal(reviewedNoneResult.json.persistence?.readbackStatus, "verified");
+  const reviewedNoneWorkerFact = (reviewedNoneResult.json.sourceFacts || [])
+    .find((fact) => fact.factType === "unpaid_tax_years" && Array.isArray(fact.value));
+  assert.deepEqual(
+    reviewedNoneWorkerFact?.value,
+    [],
+    "Worker source facts must persist reviewed-none tax input as a typed empty list",
+  );
+
+  const ambiguousYearsPayload = structuredClone(baseSourceRunPayload);
+  ambiguousYearsPayload.assetKey = "source-run-ambiguous-years-proof";
+  ambiguousYearsPayload.capture.taxReceipt = {
+    ...ambiguousYearsPayload.capture.taxReceipt,
+    listingHtml: "",
+    unpaidYears: "not checked",
+  };
+  const ambiguousYearsResult = await callHandler(externalSourceRun, ambiguousYearsPayload);
+  assert.equal(ambiguousYearsResult.statusCode, 200);
+  assert.equal(ambiguousYearsResult.json.persistence?.readbackStatus, "verified");
+  assert.equal(
+    ambiguousYearsResult.json.dossier?.taxHistory?.unpaidYears?.value,
+    null,
+    "ambiguous unpaid-year text must remain review-required in the canonical dossier",
   );
 
   const requiredSources = [
@@ -228,7 +384,7 @@ try {
       "Source proof credential gates must not expose raw environment names"
     );
   }
-  assert.equal(proofBySource.get("idi").proofState, "facts_returned_review_required");
+  assert.equal(proofBySource.get("idi").proofState, "evidence_required");
   const idiDetails = proofBySource.get("idi").detailChecks || [];
   const idiCodes = new Set(idiDetails.map((check) => check.code));
   for (const code of [
@@ -245,12 +401,8 @@ try {
     "IDI source detail checks must stay approval-gated and never allow legal autofill"
   );
   assert.ok(
-    idiDetails.some((check) =>
-      check.code === "idi_report_import"
-        && check.status === "evidence_returned_review_required"
-        && check.satisfiedFactTypes.includes("idi_asset_search_status")
-    ),
-    "IDI report import checklist step must resolve from approved imported report evidence"
+    idiDetails.every((check) => !check.resolved && check.status !== "evidence_returned_review_required"),
+    "Client-supplied IDI imports, paid approval, and contact decisions must not resolve fallback proof checks"
   );
   assert.ok(
     idiDetails.some((check) =>
@@ -258,7 +410,7 @@ try {
         && check.status === "approval_required"
         && !check.resolved
     ),
-    "Imported IDI report evidence must not pretend that paid-run approval was separately proven"
+    "Client-claimed paid-run approval must remain unproven without canonical IDI readback"
   );
   assert.ok(
     idiDetails.some((check) =>
@@ -266,7 +418,7 @@ try {
         && check.status === "manual_review_required"
         && !check.resolved
     ),
-    "Imported IDI contact candidates must not clear the contact-review gate until accepted or promoted"
+    "Client-claimed accepted contacts must not clear the contact-review gate without canonical IDI readback"
   );
   const skipTraceDetails = proofBySource.get("skip_trace").detailChecks || [];
   const skipTraceCodes = new Set(skipTraceDetails.map((check) => check.code));
@@ -315,36 +467,73 @@ try {
     sourceFacts.some((fact) => fact.source === "tax_collector" && fact.factType === "unpaid_tax_years" && fact.value?.includes?.(2024) && fact.value?.includes?.(2025)),
     "source facts must parse unpaid Tax Collector years from listing/receipt page text"
   );
-  assert.ok(
-    sourceFacts.some((fact) => fact.source === "idi" && fact.factType === "idi_asset_report_attachment"),
-    "source facts must include the approved IDI report attachment when imported into source-run"
-  );
-  assert.ok(
-    sourceFacts.some((fact) => fact.source === "idi" && fact.factType === "primary_contact_profile" && fact.value?.reviewStatus === "imported"),
-    "source facts must include imported IDI contact candidates without pretending they are accepted"
+  for (const factType of ["property_owner", "owner_type", "property_address", "property_folio", "mailing_address_signal"]) {
+    const canonicalPropertyFact = sourceFacts.find((fact) => fact.source === "property_appraiser"
+      && fact.factType === factType
+      && fact.sourceUrl === "https://www.miamidade.gov/Apps/PA/property/3411330360010");
+    assert.ok(canonicalPropertyFact?.value, `verified Property Appraiser capture must emit source-bound ${factType}`);
+  }
+  assert.equal(
+    sourceFacts.filter((fact) => fact.source === "idi").length,
+    0,
+    "The artifact fallback must ignore raw IDI text, attachments, candidates, review decisions, and confirmed facts from the client"
   );
 
-  const acceptedIdiResult = await callHandler(externalSourceRun, {
-    ...baseSourceRunPayload,
-    idiAssetImport: {
-      ...baseSourceRunPayload.idiAssetImport,
-      contactReviews: {
-        "idi-candidate-1": { status: "accepted" },
-      },
+  const executableLinkResult = await callHandler(externalSourceRun, {
+    operatorIntent: "run_external_source_search",
+    assetKey: "source-link-scheme-contract-proof",
+    seed: {
+      estateName: "Estate of Source Link Contract Proof",
+      ownerName: "Estate of Source Link Contract Proof",
+      propertyAddress: "10000 Test Record Way, Miami, FL 00000",
+      county: "miami-dade",
+      confirmedSourceFacts: [{
+        source: "property_appraiser",
+        factType: "mailing_address_signal",
+        value: "Synthetic review fixture",
+        sourceUrl: "javascript:alert('source-link-contract')",
+        reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
+      }, {
+        source: "skip_trace",
+        factType: "enriched_contact_profile",
+        value: {
+          name: "Synthetic Contact",
+          addressHistory: [{
+            address: "10000 Test Record Way, Miami, FL 00000",
+            sourceUrl: "javascript:alert('contact-history-contract')",
+          }],
+        },
+        sourceUrl: "https://source.example.test/contact/synthetic",
+        reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
+      }, {
+        source: "clerk_of_courts",
+        factType: "obituary_link",
+        value: "javascript:alert('obituary-link-contract')",
+        sourceUrl: "https://source.example.test/obituary/synthetic",
+        reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
+      }],
     },
   });
-  const acceptedIdiProof = new Map(acceptedIdiResult.json.sourceRunProof.sources.map((item) => [item.source, item])).get("idi");
-  assert.ok(
-    acceptedIdiProof.detailChecks.some((check) =>
-      check.code === "idi_contact_review"
-        && check.status === "evidence_returned_review_required"
-        && check.satisfiedFactTypes.includes("primary_contact_profile")
-    ),
-    "Accepted IDI contacts must resolve the contact-review detail check without legal-template autofill"
+  assert.equal(executableLinkResult.statusCode, 200);
+  assert.equal(
+    executableLinkResult.json.dossier.completedLeadReport.sourceLinks.some((link) => /javascript:/i.test(String(link.url || ""))),
+    false,
+    "executable source URL schemes must never enter the completed report link model"
   );
-  assert.ok(
-    acceptedIdiResult.json.sourceFacts.some((fact) => fact.source === "idi" && fact.factType === "primary_contact_profile" && fact.value?.reviewStatus === "accepted"),
-    "Accepted contact-review state must be preserved in source-run facts"
+  const executableLinkFormats = executableLinkResult.json.dossier.completedLeadReport.formats;
+  assert.ok(String(executableLinkFormats.html || "").length > 0, "completed report HTML security assertion requires a rendered document");
+  assert.ok(String(executableLinkFormats.familyTreeHtml || "").length > 0, "family-tree HTML security assertion requires a rendered document");
+  assert.match(String(executableLinkFormats.html), /Synthetic Contact/, "completed report HTML must contain the malicious-link fixture's safe contact content");
+  assert.match(String(executableLinkFormats.familyTreeHtml), /10000 Test Record Way/, "family-tree HTML must contain the malicious-link fixture's safe address content");
+  assert.doesNotMatch(
+    String(executableLinkFormats.html),
+    /javascript:alert/i,
+    "executable source URL schemes must never enter completed report HTML"
+  );
+  assert.doesNotMatch(
+    String(executableLinkFormats.familyTreeHtml),
+    /javascript:alert/i,
+    "nested contact-history and obituary URLs must never enter family-tree report links"
   );
 
   const previousClerkAuthKey = process.env.MIAMI_DADE_CLERK_AUTH_KEY;
@@ -353,8 +542,8 @@ try {
   try {
     process.env.MIAMI_DADE_CLERK_AUTH_KEY = "contract-clerk-key";
     process.env.MIAMI_DADE_CLERK_API_BASE = "https://clerk-contract.test/api";
-    globalThis.fetch = async (input) => {
-      const url = String(input);
+    globalThis.fetch = async (input, init = {}) => {
+      const url = input instanceof Request ? input.url : String(input);
       if (url.includes("/OfficialRecords")) {
         return Response.json({
           Status: "Success",
@@ -403,9 +592,10 @@ try {
           UnitsBalance: 40,
         });
       }
-      return previousFetch(input);
+      return previousFetch(input, init);
     };
     const clerkResult = await callHandler(externalSourceRun, {
+      operatorIntent: "run_external_source_search",
       assetKey: "clerk-commercial-contract-proof",
       estateName: "Estate of Clerk Contract Proof",
       ownerName: "Estate of Clerk Contract Proof",
@@ -414,6 +604,7 @@ try {
       caseNumber: "2025-CP-001234",
       county: "miami-dade",
     });
+    assert.equal(clerkResult.statusCode, 200, JSON.stringify(clerkResult.json));
     const clerkProofBySource = new Map(clerkResult.json.sourceRunProof.sources.map((item) => [item.source, item]));
     assert.equal(clerkProofBySource.get("official_records").proofState, "facts_returned_review_required");
     assert.equal(clerkProofBySource.get("probate_court").proofState, "facts_returned_review_required");
@@ -457,8 +648,8 @@ try {
     process.env.TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID = "tax-contract-function";
     process.env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID = "vital-contract-function";
     process.env.BROWSERBASE_API_BASE = "https://browserbase-contract.test";
-    globalThis.fetch = async (input) => {
-      const url = String(input);
+    globalThis.fetch = async (input, init = {}) => {
+      const url = input instanceof Request ? input.url : String(input);
       if (url.includes("/v1/functions/tax-contract-function/invoke")) {
         return Response.json({
           id: "inv-tax-contract",
@@ -496,9 +687,10 @@ try {
           },
         }, { status: 202 });
       }
-      return previousBrowserbaseFetch(input);
+      return previousBrowserbaseFetch(input, init);
     };
     const browserbaseResult = await callHandler(externalSourceRun, {
+      operatorIntent: "run_external_source_search",
       assetKey: "browserbase-route-contract-proof",
       estateName: "Estate of Browserbase Contract Proof",
       ownerName: "Estate of Browserbase Contract Proof",
@@ -506,6 +698,7 @@ try {
       parcelId: "34-1133-036-0010",
       county: "miami-dade",
     });
+    assert.equal(browserbaseResult.statusCode, 200, JSON.stringify(browserbaseResult.json));
     const browserbaseProofBySource = new Map(browserbaseResult.json.sourceRunProof.sources.map((item) => [item.source, item]));
     assert.equal(browserbaseProofBySource.get("tax_collector").proofState, "facts_returned_review_required");
     assert.equal(browserbaseProofBySource.get("clerk_of_courts").proofState, "facts_returned_review_required");
@@ -576,7 +769,7 @@ try {
   assert.equal(artifactReceipt?.details?.amountDue?.amount, 1234.56);
   assert.deepEqual(artifactReceipt?.details?.unpaidYears, [2024, 2025]);
 
-  const bundle = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
+  const bundle = readArtifactSource();
   assert.ok(bundle.includes("What this run proved"));
   assert.ok(bundle.includes("source checklist item"));
   assert.ok(bundle.includes("bottom-right receipt link"));
@@ -608,6 +801,9 @@ try {
     "BROWSERBASE_API_BASE",
     "TAX_COLLECTOR_LISTING_URL",
     "TAX_COLLECTOR_LISTING_URL_TEMPLATE",
+    "TAX_COLLECTOR_ALLOWED_ORIGINS",
+    "TAX_COLLECTOR_FETCH_TIMEOUT_MS",
+    "TAX_COLLECTOR_FETCH_MAX_BYTES",
     "TAX_COLLECTOR_LIVE_ACQUISITION_ENABLED",
     "TAX_COLLECTOR_SEARCH_URL",
     "TAX_COLLECTOR_BROWSER_WORKFLOW_URL",
@@ -643,7 +839,7 @@ try {
       "source_proof_detail_checks",
       "blocking_detail_checks_gate_readiness",
       "idi_core_guardrail_detail_checks",
-      "idi_import_and_contact_review_split",
+      "artifact_fallback_rejects_client_idi_proof",
       "clerk_commercial_api_route_fact_mapping",
       "browserbase_source_run_route_fact_mapping",
       "governed_manual_and_paid_sources_visible",
@@ -653,6 +849,7 @@ try {
     ],
   }, null, 2));
 } finally {
+  globalThis.fetch = originalFetch;
   if (previousWorkerUrl === undefined) delete process.env.HEIRRIGHT_WORKER_URL;
   else process.env.HEIRRIGHT_WORKER_URL = previousWorkerUrl;
   if (previousWorkerApiUrl === undefined) delete process.env.WORKER_API_URL;

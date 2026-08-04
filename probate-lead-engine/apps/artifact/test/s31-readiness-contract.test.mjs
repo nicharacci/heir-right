@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { readArtifactSource } from "./helpers/artifact-source.mjs";
 
-const bundle = readFileSync(new URL("../src/index.html", import.meta.url), "utf8");
+const bundle = readArtifactSource();
 const server = readFileSync(new URL("../server.js", import.meta.url), "utf8");
 
 for (const tab of ["Access", "Integrations", "Sources", "Outreach", "Audit", "Preferences"]) {
@@ -22,7 +23,7 @@ for (const copy of [
 assert.ok(bundle.includes("auth-gate"), "Auth gate overlay markup/styles must remain present.");
 assert.ok(bundle.includes('body[data-auth-gated="true"] .workspace'), "Auth gate must blur the app shell.");
 assert.ok(bundle.includes("data-settings-account-menu"), "Settings must expose the account menu control.");
-assert.ok(server.includes('prompt: "select_account"'), "Google login must force account selection.");
+assert.ok(server.includes('prompt: connectWorkspace ? "select_account consent" : "select_account"'), "Google login must force account selection, including Workspace consent.");
 assert.ok(bundle.includes("positionTableFiltersPopover"), "Estate list filters must calculate viewport-safe popover placement.");
 assert.ok(bundle.includes("--table-filters-popover-max-height"), "Estate list filters must cap height from the visible viewport.");
 assert.ok(bundle.includes("overscroll-behavior: contain"), "Estate list filters must scroll internally instead of bleeding past the viewport.");
@@ -32,11 +33,12 @@ assert.ok(bundle.includes(".workspace.is-collapsed .user-strip"), "Collapsed sid
 assert.ok(bundle.includes("width: 44px;\n      height: 44px;\n      min-height: 44px;"), "Collapsed account chip must align to the same 44px rail geometry as nav items.");
 assert.ok(bundle.includes(".workspace.is-collapsed .user-strip .avatar"), "Collapsed account emblem must have explicit centered avatar geometry.");
 assert.ok(bundle.includes("width: 42px;\n      height: 42px;\n      border-radius: inherit;"), "Collapsed account emblem must match the 42px nav icon well.");
-assert.ok(bundle.includes("demoEstateLeadImports"), "The live demo must seed sample estate leads when no saved estate list exists.");
-assert.ok(bundle.includes("seedDemoEstatePreviewState"), "Sample estate leads must hydrate the shared table, document prep, and queue state.");
-assert.ok(bundle.includes("Sample: "), "Sample estate rows must be visibly labeled instead of looking like real sourced leads.");
-assert.ok(bundle.includes("SAMPLE-CRM-001"), "Sample CRM rows must include reviewable source record IDs.");
-assert.ok(bundle.includes('document.documentElement.dataset.demoEstateLeads = state.demoEstateLeadsActive ? "true" : "false"'), "The shell must expose whether demo estate leads are active for browser verification.");
+assert.doesNotMatch(bundle, /demoEstateLeadImports|seedDemoEstatePreviewState|SAMPLE-CRM-001/, "The production shell must not seed or expose synthetic estate records.");
+assert.ok(bundle.includes("csvFileImportItems"), "The app must parse selected CSV files before the operator commits an import.");
+assert.ok(bundle.includes("crmBatchImportLimit = 250"), "The app batch limit must accept the supplied 51-row client file without silently truncating it.");
+assert.ok(bundle.includes("First Name, Last Name, and Address columns"), "The app must explain the required client CSV mapping.");
+assert.ok(bundle.includes("legacyPlaceholderEstateImportsOlderThan"), "The app must identify old placeholder estates through a bounded lifecycle path.");
+assert.ok(bundle.includes("Remove ${count} placeholder estate"), "The app must show the exact old-placeholder cleanup count before deletion.");
 
 for (const copy of [
   "IDI Core API access",
@@ -77,6 +79,6 @@ console.log(JSON.stringify({
     "source_enrichment_readiness_controls",
     "outreach_first_party_review_package_without_activepieces_builder",
     "send_locked_guardrail_visible",
-    "sample_estate_leads_seeded_for_table_preview",
+    "app_native_csv_import_and_bounded_placeholder_cleanup",
   ],
 }, null, 2));

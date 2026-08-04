@@ -4,15 +4,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PDFDocument } from "pdf-lib";
+import { readArtifactSource } from "./helpers/artifact-source.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const assetRoot = path.resolve(here, "../../worker/src/documents/assets");
 const pdfPath = path.join(assetRoot, "heirright-closing-templates-v1.pdf");
 const mapPath = path.join(assetRoot, "heirright-closing-field-map-v1.json");
-const artifactHtmlPath = path.resolve(here, "../src/index.html");
 const bytes = fs.readFileSync(pdfPath);
 const fieldMap = JSON.parse(fs.readFileSync(mapPath, "utf8"));
-const artifactHtml = fs.readFileSync(artifactHtmlPath, "utf8");
+const artifactHtml = readArtifactSource();
 const pdf = await PDFDocument.load(bytes);
 
 assert.equal(fieldMap.templateId, "heirright-closing-templates-v1");

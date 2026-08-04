@@ -101,6 +101,7 @@ function closingSections(
       tone: fields[field] ? "normal" as const : "warning" as const,
     })),
     sourceUrls: [],
+    attachments: [],
   }));
 }
 

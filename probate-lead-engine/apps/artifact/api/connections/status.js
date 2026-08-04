@@ -79,8 +79,11 @@ function podioAuthSummary(env) {
   const browserSessionRefresh = Boolean(clientId && clientSecret && podioBrowserRefreshToken(env));
   const bearerTokenConfigured = Boolean(podioAccessToken(env));
   const durableTeamAuth = appTokenConfigured || serverRefreshConfigured || bearerTokenConfigured;
-  const durableRequired = env.PODIO_DURABLE_AUTH_REQUIRED !== "false";
-  const perUserRequired = env.PODIO_PER_USER_AUTH_REQUIRED === "true";
+  // HeirRight's production policy is user-scoped OAuth. Missing or empty
+  // deployment flags must fail toward that isolated mode; shared team access
+  // is available only when an environment opts into it explicitly.
+  const perUserRequired = env.PODIO_PER_USER_AUTH_REQUIRED !== "false";
+  const durableRequired = env.PODIO_DURABLE_AUTH_REQUIRED === "true";
   const userScopedRefresh = env.PODIO_USER_SCOPED_REFRESH === "true" || browserSessionRefresh;
   const accessRequirementMet = perUserRequired ? userScopedRefresh : (!durableRequired || durableTeamAuth);
   return {

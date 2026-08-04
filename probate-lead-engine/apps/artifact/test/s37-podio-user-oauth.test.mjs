@@ -33,6 +33,13 @@ function cookieValue(setCookie, name) {
   return match?.[1] || "";
 }
 
+function tamperSameLength(value) {
+  const text = String(value || "");
+  const index = Math.max(0, text.length - 1);
+  const replacement = text[index] === "a" ? "b" : "a";
+  return `${text.slice(0, index)}${replacement}${text.slice(index + 1)}`;
+}
+
 async function start(email) {
   const response = await worker.fetch(new Request("https://worker.test/api/podio/oauth/start", {
     headers: { cookie: `hr_session=${sessionToken(email, env.AUTH_SESSION_SECRET)}` },
@@ -65,7 +72,23 @@ const env = {
   PODIO_DURABLE_AUTH_REQUIRED: "false",
   PODIO_OAUTH_REDIRECT_URI: "https://worker.test/api/podio/oauth/callback",
   PODIO_TOKEN_STORE: kv,
+  HEIRRIGHT_API_TOKEN: "podio-worker-internal-token",
 };
+
+const exactBearer = await worker.fetch(new Request("https://worker.test/api/health/deep", {
+  headers: { authorization: `Bearer ${env.HEIRRIGHT_API_TOKEN}` },
+}), env);
+assert.equal(exactBearer.status, 200, "the exact Worker bearer must preserve internal health access");
+for (const nearMiss of [
+  tamperSameLength(env.HEIRRIGHT_API_TOKEN),
+  env.HEIRRIGHT_API_TOKEN.slice(1),
+  `${env.HEIRRIGHT_API_TOKEN}x`,
+]) {
+  const rejectedBearer = await worker.fetch(new Request("https://worker.test/api/health/deep", {
+    headers: { authorization: `Bearer ${nearMiss}` },
+  }), env);
+  assert.equal(rejectedBearer.status, 401, "same-length, truncated, and extended Worker bearer near-misses must fail closed");
+}
 
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
@@ -81,7 +104,22 @@ globalThis.fetch = async (url, init = {}) => {
 };
 
 try {
+  const validSession = sessionToken("operator-a@heirright.com", env.AUTH_SESSION_SECRET);
+  const [sessionPayload, sessionSignature] = validSession.split(".");
+  const tamperedSessionStart = await worker.fetch(new Request("https://worker.test/api/podio/oauth/start", {
+    headers: { cookie: `hr_session=${sessionPayload}.${tamperSameLength(sessionSignature)}` },
+  }), env);
+  assert.equal(tamperedSessionStart.status, 401, "a same-length tampered Worker session HMAC must not start Podio OAuth");
+
   const userA = await start("operator-a@heirright.com");
+  const tamperedState = await callback({ ...userA, state: tamperSameLength(userA.state) }, userA.email, "tampered-state");
+  assert.equal(tamperedState.status, 400, "a same-length tampered Podio state must fail closed");
+  const [stateValue, stateSignature] = userA.stateCookie.split(".");
+  const tamperedStateCookie = await callback({
+    ...userA,
+    stateCookie: `${stateValue}.${tamperSameLength(stateSignature)}`,
+  }, userA.email, "tampered-cookie-hmac");
+  assert.equal(tamperedStateCookie.status, 400, "a same-length tampered Podio state-cookie HMAC must fail closed");
   const crossUser = await callback(userA, "operator-b@heirright.com", "user-a");
   assert.equal(crossUser.status, 400, "another signed-in user must not finish this OAuth state");
   assert.equal(kv.values.size, 0);
@@ -108,6 +146,9 @@ console.log(JSON.stringify({
   ok: true,
   checks: [
     "oauth_state_bound_to_google_user",
+    "session_hmac_near_miss_rejected",
+    "worker_bearer_near_misses_rejected",
+    "podio_state_near_misses_rejected",
     "cross_user_callback_rejected",
     "refresh_tokens_stored_per_user",
     "storage_keys_hash_email",

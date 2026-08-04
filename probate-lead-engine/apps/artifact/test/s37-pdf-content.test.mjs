@@ -4,7 +4,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { PDFDocument } from "pdf-lib";
-import workerModule from "../../worker/dist/cloudflare.js";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import workerModule, { WorkspaceState } from "../../worker/dist/cloudflare.js";
+import {
+  buildContactPlaceholders,
+  generateCompletedLeadReport,
+} from "../../worker/dist/documents/completed-lead-report.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const worker = workerModule.default || workerModule;
@@ -15,29 +20,128 @@ const closingFieldMap = JSON.parse(fs.readFileSync(path.join(appRoot, "apps/work
 
 class MemoryKv {
   values = new Map();
+  options = new Map();
   async get(key) { return this.values.get(key) || null; }
-  async put(key, value) { this.values.set(key, value); }
+  async put(key, value, options = {}) {
+    this.values.set(key, value);
+    this.options.set(key, options);
+  }
+  async delete(key) { this.values.delete(key); }
+}
+
+class MemoryDurableStorage {
+  values = new Map();
+  async get(key) { return this.values.get(key); }
+  async put(key, value) { this.values.set(key, structuredClone(value)); }
+  async transaction(closure) { return closure(this); }
 }
 
 const kv = new MemoryKv();
+const workspace = new WorkspaceState({ storage: new MemoryDurableStorage() });
 const env = {
   AUTH_REQUIRED: "false",
   PACKET_ARTIFACTS: kv,
+  WORKSPACE_STATE: {
+    idFromName: (name) => name,
+    get: () => ({ fetch: (request) => workspace.fetch(request) }),
+  },
 };
 
 const reviewedDossier = structuredClone(sourceRun.dossier);
-reviewedDossier.completedLeadReport.contactPlaceholders = [{
-  role: "child",
-  name: "Sandra Hawkins",
-  age: 58,
-  likelyCurrentAddress: "Miami, FL",
-  phones: ["305-555-0101"],
-  emails: ["sandra.hawkins@example.com"],
-  addresses: ["Miami, FL"],
-  addressHistory: [],
-  note: "Reviewed contact fixture for deterministic packet validation.",
+const obituaryUrl = "https://source.example.test/annie-hawkins-obituary";
+const obituaryRawId = `${reviewedDossier.runId}:obituary:reviewed`;
+reviewedDossier.audit.facts.push({
+  id: obituaryRawId,
+  runId: reviewedDossier.runId,
+  source: "clerk_of_courts",
+  rawId: obituaryRawId,
+  fetchedAt: reviewedDossier.generatedAt,
+  county: "miami-dade",
+  subject: { estateName: reviewedDossier.summary.estateName, propertyAddress: reviewedDossier.property.address.value },
+  factType: "obituary_link",
+  value: obituaryUrl,
+  confidence: 0.9,
+  sourceUrl: obituaryUrl,
+  attachment: {
+    label: "Annie Hawkins obituary",
+    sourceUrl: obituaryUrl,
+    fileKind: "html",
+    capturedAt: reviewedDossier.generatedAt,
+    capturedBy: "test",
+    reviewFlags: [],
+  },
   reviewFlags: [],
-}];
+});
+reviewedDossier.marriageDeathIndicators.obituaryLink = {
+  value: obituaryUrl,
+  confidence: 0.9,
+  sourceRefs: [{ source: "clerk_of_courts", rawId: obituaryRawId, fetchedAt: reviewedDossier.generatedAt }],
+  reviewFlags: [],
+};
+reviewedDossier.audit.facts.push({
+  id: `${reviewedDossier.runId}:idi:reviewed-contact`,
+  runId: reviewedDossier.runId,
+  source: "idi",
+  rawId: `${reviewedDossier.runId}:idi:reviewed-contact`,
+  fetchedAt: reviewedDossier.generatedAt,
+  county: "miami-dade",
+  subject: { estateName: reviewedDossier.summary.estateName, propertyAddress: reviewedDossier.property.address.value },
+  factType: "alternative_contact_profile",
+  value: {
+    id: `${reviewedDossier.runId}:idi:reviewed-contact`,
+    name: "Sandra Hawkins",
+    relationship: "child",
+    age: 58,
+    interest: "1/9th Interest",
+    group: "alternative",
+    phones: ["305-555-0101"],
+    emails: ["sandra.hawkins@example.com"],
+    currentAddress: "Miami, FL",
+    addressHistory: ["Miami, FL", "Orlando, FL"],
+    addressHistoryDetails: [
+      { address: "Miami, FL", county: "Miami-Dade County", dates: "2018 - Present" },
+      { address: "Orlando, FL", county: "Orange County", dates: "2012 - 2018" },
+    ],
+    ownerLastNameMatch: true,
+    confidence: 0.86,
+    sourceRefs: [],
+    reviewStatus: "accepted",
+    reviewFlags: [],
+  },
+  confidence: 0.86,
+  sourceUrl: "https://source.example.test/reviewed-idi-report",
+  attachment: {
+    label: "idi-report-02-production.pdf",
+    sourceUrl: "https://source.example.test/reviewed-idi-report",
+    fileKind: "pdf",
+    capturedAt: reviewedDossier.generatedAt,
+    reviewFlags: [],
+  },
+  reviewFlags: [],
+});
+reviewedDossier.completedLeadReport = await generateCompletedLeadReport(reviewedDossier);
+reviewedDossier.completedLeadReport.contactPlaceholders = buildContactPlaceholders(reviewedDossier);
+Object.assign(reviewedDossier.completedLeadReport.offerMath.asIsValue, { value: 300000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.taxesDue, { value: 5000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.liens, { value: 1000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.mortgages, { value: 50000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.sellingCosts, { value: 10000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.probateCosts, { value: 5000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.partitionCosts, { value: 0 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.postEquityValue, { value: 229000 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.heirCount, { value: 8 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.equityPerHeir, { value: 28625 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.buyPercentage, { value: 50 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.offerAmount, { value: 14312.5 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.profit, { value: 14312.5 });
+Object.assign(reviewedDossier.completedLeadReport.offerMath.minimumNetProfit, { value: 15000 });
+reviewedDossier.completedLeadReport.backstory = "receipt_link_captured: https://source.example.test/private-tax-receipt";
+reviewedDossier.completedLeadReport.formats.familyTreeHtml = "<p>stale client report receipt_link_captured https://source.example.test/private-tax-receipt idi-report-02-production.pdf</p>";
+assert.deepEqual(
+  reviewedDossier.completedLeadReport.contactPlaceholders.map((contact) => ({ name: contact.name, role: contact.role, reviewFlags: contact.reviewFlags })),
+  [{ name: "Sandra Hawkins", role: "child", reviewFlags: [] }],
+  "an accepted IDI contact must replace generic family rows in the generated Discovery packet",
+);
 
 async function generate(dossiers, flow = "discovery", estateId = "", payload = {}) {
   const response = await worker.fetch(new Request("https://worker.test/api/exports", {
@@ -46,9 +150,11 @@ async function generate(dossiers, flow = "discovery", estateId = "", payload = {
     body: JSON.stringify({
       routes: [],
       dryRun: true,
+      controlledTest: !estateId,
       flow,
       dossiers,
       ...(estateId ? { estateId } : {}),
+      ...(estateId ? { packetRevision: 1 } : {}),
       operatorIntent: "generate_packet",
       ...payload,
     }),
@@ -72,11 +178,36 @@ assert.equal(single.body.packetPersistence[0].readbackStatus, "verified");
 assert.match(single.body.artifactUrl, /^\/api\/reports\/pdf\?artifactId=packet-/);
 assert.equal(single.body.estateIds.length, 1);
 assert.ok(single.body.sections.length >= 10);
+assert.equal(single.body.documentArtifacts.length, 9);
+assert.deepEqual(
+  single.body.documentArtifacts.map((document) => document.documentId).sort(),
+  [
+    "completed-report",
+    "crm-handoff",
+    "deed-title-notes",
+    "drip-schedule",
+    "heir-contact-matrix",
+    "outreach-drafts",
+    "probate-request",
+    "source-notes",
+    "tax-history",
+  ],
+);
+assert.ok(single.body.documentArtifacts.every((document) => document.artifactId !== single.body.artifact.artifactId));
 
 const artifactId = single.body.artifact.artifactId;
-const persistedDiscoveryFile = JSON.parse(await kv.get(discoveryFileKey));
+const persistedDiscoveryResponse = await worker.fetch(new Request(`https://worker.test/api/discovery/file?estateId=${encodeURIComponent(persistedEstateId)}`), env);
+const persistedDiscoveryFile = await persistedDiscoveryResponse.json();
 assert.equal(persistedDiscoveryFile.packetArtifacts[0].artifactId, artifactId);
 assert.equal(persistedDiscoveryFile.packetArtifacts[0].readbackStatus, "verified");
+assert.equal(persistedDiscoveryFile.packetArtifacts[0].documentArtifacts.length, 9);
+const persistedDiscoveryRevisionKey = [...kv.values.keys()].find((key) => key.startsWith(`${discoveryFileKey}:revision:`));
+assert.ok(persistedDiscoveryRevisionKey, "packet references must be staged as an immutable Discovery File revision");
+assert.equal(
+  kv.options.get(persistedDiscoveryRevisionKey)?.expirationTtl,
+  30 * 24 * 60 * 60,
+  "packet-reference rewrites must retain the bounded Discovery-file privacy TTL"
+);
 const stored = JSON.parse(await kv.get(`packet:${artifactId}`));
 const storedText = JSON.stringify(stored.model);
 for (const heading of [
@@ -100,8 +231,110 @@ assert.equal(pdfResponse.headers.get("content-type"), "application/pdf");
 const singlePdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
 assert.ok(singlePdfBytes.byteLength > 10_000);
 const singlePdf = await PDFDocument.load(singlePdfBytes);
-assert.ok(singlePdf.getPageCount() > 10);
+assert.ok(singlePdf.getPageCount() >= 8);
 assert.equal(singlePdf.getTitle(), single.body.artifact.flow === "discovery" ? stored.model.title : undefined);
+assert.ok(
+  singlePdf.getPages().some((page) => (page.node.Annots()?.size() || 0) > 0),
+  "the exact-format Discovery PDF must contain clickable evidence annotations",
+);
+const renderedDiscovery = await getDocument({ data: singlePdfBytes.slice(), disableWorker: true }).promise;
+const firstPageText = (await (await renderedDiscovery.getPage(1)).getTextContent()).items.filter((item) => item.str?.trim());
+const firstPageItem = (text) => firstPageText.find((item) => item.str === text);
+assert.ok(Math.abs(firstPageItem("Property Address:")?.transform?.[4] - 72) < 0.2, "the property row must retain the approved 72-point left edge");
+assert.ok(Math.abs(firstPageItem("Offer/Profit")?.transform?.[4] - 208.7) < 1, "the 332-point offer table heading must stay centered like the approved HeirRight example");
+assert.ok(Math.abs(firstPageItem("Description")?.transform?.[4] - 94.6) < 1, "the approved first offer-table column geometry must not drift");
+assert.equal(firstPageItem("Owner:")?.transform?.[4], 72, "the owner block must align with the approved HeirRight example");
+assert.equal(firstPageItem("Obituary")?.transform?.[4], 72, "the source-linked obituary must remain present in the approved first-page position");
+for (const value of ["$300,000.00", "8", "50%", "$14,312.50", "$15,000.00"]) {
+  assert.ok(firstPageItem(value), `the client-format Offer/Profit table must render ${value} from the report model`);
+}
+const familyTreeText = [];
+for (let pageNumber = 2; pageNumber <= Math.min(3, renderedDiscovery.numPages); pageNumber += 1) {
+  const textContent = await (await renderedDiscovery.getPage(pageNumber)).getTextContent();
+  familyTreeText.push(...textContent.items.map((item) => item.str).filter(Boolean));
+}
+const familyTreeCopy = familyTreeText.join(" ");
+for (const required of [
+  "Back Story:",
+  "Back Story evidence:",
+  "Heirs: None confirmed by the reviewed evidence.",
+  "Possible Heirs:",
+  "Associates: None reviewed.",
+  "Address (County/Parish/Borough) History:",
+  "Miami, FL",
+  "1/9th Interest",
+  "(58)",
+  "Miami-Dade County",
+  "2018 - Present",
+  "Orlando, FL",
+  "Phone number:",
+  "305-555-0101",
+  "Email Address:",
+  "sandra.hawkins@example.com",
+]) assert.match(familyTreeCopy, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+
+let completedReportPdfBytes;
+for (const document of single.body.documentArtifacts) {
+  const documentResponse = await worker.fetch(new Request(`https://worker.test${document.artifactUrl}`), env);
+  assert.equal(documentResponse.status, 200);
+  assert.equal(documentResponse.headers.get("x-heirright-artifact-id"), document.artifactId);
+  assert.equal(documentResponse.headers.get("x-heirright-content-hash"), document.contentHash);
+  const documentBytes = new Uint8Array(await documentResponse.arrayBuffer());
+  if (document.documentId === "completed-report") completedReportPdfBytes = documentBytes;
+  assert.ok(documentBytes.byteLength > 700);
+  const documentPdf = await PDFDocument.load(documentBytes);
+  assert.ok(documentPdf.getPageCount() >= 1);
+  assert.match(documentPdf.getTitle() || "", new RegExp(document.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+}
+const completedReportPdf = await PDFDocument.load(completedReportPdfBytes);
+assert.ok(
+  completedReportPdf.getPageCount() >= 2 && completedReportPdf.getPageCount() <= 12,
+  "the client-facing completed report must stay within the reviewed family-tree packet range",
+);
+const completedReportRender = await getDocument({ data: completedReportPdfBytes.slice(), disableWorker: true }).promise;
+const completedReportPages = [];
+const completedReportLinkTargets = [];
+for (let pageNumber = 1; pageNumber <= completedReportRender.numPages; pageNumber += 1) {
+  const page = await completedReportRender.getPage(pageNumber);
+  const textContent = await page.getTextContent();
+  const pageCopy = textContent.items.map((item) => item.str).filter(Boolean).join(" ");
+  assert.ok(
+    pageCopy.length > 200,
+    `completed report page ${pageNumber} must contain substantial client-facing content; received: ${pageCopy}`,
+  );
+  completedReportPages.push(pageCopy);
+  completedReportLinkTargets.push(...(await page.getAnnotations())
+    .filter((annotation) => annotation.subtype === "Link")
+    .map((annotation) => String(annotation.url || annotation.unsafeUrl || "")));
+}
+const completedReportCopy = completedReportPages.join(" ");
+assert.ok(completedReportLinkTargets.length > 0, "the completed report must retain clickable evidence links");
+assert.ok(
+  completedReportLinkTargets.every((target) => /^https?:\/\//i.test(target) || /^\/(?!\/)/.test(target)),
+  "clickable evidence links must remain usable web or app-relative URLs without encoded control bytes",
+);
+for (const internalTerm of [
+  "Raw no-enrichment",
+  "approval-gated",
+  "CRM",
+  "outreach action",
+  "skip-traced",
+  "human review",
+  "browser extraction",
+  "operator contact review",
+  "manual_review_required",
+  "Review gate:",
+  "receipt_link_captured",
+  "https://source.example.test/private-tax-receipt",
+  "idi-report-02-production.pdf",
+]) {
+  assert.doesNotMatch(
+    completedReportCopy,
+    new RegExp(internalTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+    `the client-facing completed report must not expose internal term: ${internalTerm}`,
+  );
+}
+assert.match(completedReportCopy, /Reviewed IDI evidence/, "the client PDF must replace a private IDI filename with a stable evidence label");
 
 const secondDossier = structuredClone(reviewedDossier);
 secondDossier.id = `${secondDossier.id}-second`;
@@ -124,6 +357,7 @@ if (process.env.S37_PDF_OUTPUT_DIR) {
   fs.mkdirSync(process.env.S37_PDF_OUTPUT_DIR, { recursive: true });
   fs.writeFileSync(path.join(process.env.S37_PDF_OUTPUT_DIR, "discovery-single.pdf"), singlePdfBytes);
   fs.writeFileSync(path.join(process.env.S37_PDF_OUTPUT_DIR, "discovery-batch.pdf"), batchPdfBytes);
+  fs.writeFileSync(path.join(process.env.S37_PDF_OUTPUT_DIR, "discovery-completed-report.pdf"), completedReportPdfBytes);
 }
 
 const oldQuery = await worker.fetch(new Request("https://worker.test/api/reports/pdf?title=Fake+Packet"), env);
@@ -257,6 +491,7 @@ console.log(JSON.stringify({
     "closing_contents_paginate_for_large_batch",
     "artifact_integrity_hash",
     "shared_discovery_file_packet_reference",
+    "packet_reference_rewrite_preserves_discovery_file_ttl",
   ],
   singlePages: singlePdf.getPageCount(),
   batchPages: batchPdf.getPageCount(),

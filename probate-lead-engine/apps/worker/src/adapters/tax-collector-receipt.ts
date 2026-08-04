@@ -89,6 +89,13 @@ export interface TaxCollectorReceiptAcquisitionOptions {
 }
 
 const DEFAULT_TAX_COLLECTOR_SEARCH_URL = "https://county-taxes.net/fl-miamidade/property-tax";
+const DEFAULT_TAX_COLLECTOR_ALLOWED_ORIGINS = [
+  "https://county-taxes.net",
+  "https://miamidade.county-taxes.com",
+];
+const TAX_COLLECTOR_FETCH_TIMEOUT_MS = 12_000;
+const TAX_COLLECTOR_FETCH_MAX_BYTES = 1_000_000;
+const TAX_COLLECTOR_FETCH_MAX_REDIRECTS = 5;
 const DEFAULT_REVIEW_FLAGS: ReviewFlag[] = [
   "TAX_COLLECTOR_LISTING_PAGE_REQUIRED",
   "TAX_RECEIPT_LINK_REQUIRED",
@@ -262,6 +269,158 @@ function browserbaseApiBase(env: RuntimeEnv): string {
 
 function browserbaseApiKey(env: RuntimeEnv): string {
   return stringValue(env.BROWSERBASE_API_KEY);
+}
+
+function boundedPositiveInteger(value: unknown, fallback: number, minimum: number, maximum: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= minimum && parsed <= maximum ? parsed : fallback;
+}
+
+function taxCollectorFetchTimeoutMs(env: RuntimeEnv): number {
+  return boundedPositiveInteger(env.TAX_COLLECTOR_FETCH_TIMEOUT_MS, TAX_COLLECTOR_FETCH_TIMEOUT_MS, 20, 30_000);
+}
+
+function taxCollectorFetchMaxBytes(env: RuntimeEnv): number {
+  return boundedPositiveInteger(env.TAX_COLLECTOR_FETCH_MAX_BYTES, TAX_COLLECTOR_FETCH_MAX_BYTES, 1_024, 2_000_000);
+}
+
+function taxCollectorAllowedOrigins(env: RuntimeEnv): Set<string> {
+  const configured = stringValue(env.TAX_COLLECTOR_ALLOWED_ORIGINS)
+    .split(/[\s,]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const origins = configured.length ? configured : DEFAULT_TAX_COLLECTOR_ALLOWED_ORIGINS;
+  return new Set(origins.flatMap((value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password && url.pathname === "/" && !url.search && !url.hash
+        ? [url.origin]
+        : [];
+    } catch {
+      return [];
+    }
+  }));
+}
+
+function approvedTaxCollectorUrl(value: unknown, env: RuntimeEnv, baseUrl?: string): URL | null {
+  try {
+    const url = new URL(stringValue(value), baseUrl);
+    return url.protocol === "https:"
+      && !url.username
+      && !url.password
+      && taxCollectorAllowedOrigins(env).has(url.origin)
+      ? url
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function approvedTaxCollectorDiscovery(
+  discovery: TaxCollectorReceiptDiscovery | null,
+  env: RuntimeEnv,
+): TaxCollectorReceiptDiscovery | null {
+  if (!discovery) return null;
+  const listing = approvedTaxCollectorUrl(discovery.listingUrl, env);
+  const receipt = approvedTaxCollectorUrl(discovery.receiptUrl, env, listing?.toString());
+  return listing && receipt ? discovery : null;
+}
+
+function safeTaxCollectorContentType(response: Response): boolean {
+  const type = stringValue(response.headers.get("content-type")).split(";", 1)[0].toLowerCase();
+  return type === "text/html" || type === "application/xhtml+xml";
+}
+
+async function boundedTaxCollectorBody(response: Response, maxBytes: number): Promise<string | null> {
+  const contentLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) return null;
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      byteLength += value.byteLength;
+      if (byteLength > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+}
+
+async function fetchApprovedTaxCollectorPage(
+  initialUrl: string,
+  env: RuntimeEnv,
+  fetchImpl: FetchImpl,
+): Promise<{
+  response?: Response;
+  body?: string;
+  finalUrl?: string;
+  error?: "invalid_url" | "redirect_blocked" | "too_many_redirects" | "unsafe_content_type" | "body_too_large" | "timed_out" | "fetch_failed";
+}> {
+  const initial = approvedTaxCollectorUrl(initialUrl, env);
+  if (!initial) return { error: "invalid_url" };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), taxCollectorFetchTimeoutMs(env));
+  let current = initial;
+  try {
+    for (let redirectCount = 0; redirectCount <= TAX_COLLECTOR_FETCH_MAX_REDIRECTS; redirectCount += 1) {
+      let response: Response;
+      try {
+        response = await fetchImpl(current.toString(), {
+          redirect: "manual",
+          signal: controller.signal,
+          headers: {
+            accept: "text/html,application/xhtml+xml;q=0.9",
+            "user-agent": "HeirRight-TaxCollectorReceipt/1.0",
+          },
+        });
+      } catch {
+        return { error: controller.signal.aborted ? "timed_out" : "fetch_failed" };
+      }
+      const responseUrl = stringValue(response.url);
+      if (responseUrl && !approvedTaxCollectorUrl(responseUrl, env)) {
+        await response.body?.cancel().catch(() => undefined);
+        return { error: "redirect_blocked" };
+      }
+      if (response.status >= 300 && response.status < 400) {
+        const location = stringValue(response.headers.get("location"));
+        await response.body?.cancel().catch(() => undefined);
+        if (!location) return { error: "redirect_blocked" };
+        const next = approvedTaxCollectorUrl(location, env, current.toString());
+        if (!next) return { error: "redirect_blocked" };
+        if (redirectCount === TAX_COLLECTOR_FETCH_MAX_REDIRECTS) return { error: "too_many_redirects" };
+        current = next;
+        continue;
+      }
+      if (!safeTaxCollectorContentType(response)) {
+        await response.body?.cancel().catch(() => undefined);
+        return { error: "unsafe_content_type" };
+      }
+      const body = await boundedTaxCollectorBody(response, taxCollectorFetchMaxBytes(env));
+      if (body === null) return { error: "body_too_large" };
+      const finalUrl = approvedTaxCollectorUrl(responseUrl || current.toString(), env);
+      if (!finalUrl) return { error: "redirect_blocked" };
+      return { response, body, finalUrl: finalUrl.toString() };
+    }
+    return { error: "too_many_redirects" };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function truthyEnv(value: unknown): boolean {
@@ -477,13 +636,13 @@ export async function acquireTaxCollectorReceipt(
       });
       const data = await response.json().catch(() => ({})) as Record<string, unknown>;
       const workflowListingUrl = stringValue(data.listingUrl) || stringValue(data.finalUrl) || searchUrl;
-      const workflowDiscovery = discoverTaxCollectorReceipt({
+      const workflowDiscovery = approvedTaxCollectorDiscovery(discoverTaxCollectorReceipt({
         ...input,
         listingUrl: workflowListingUrl,
         listingHtml: data.listingHtml,
         receiptUrl: data.receiptUrl,
         receiptLink: data.receiptLink,
-      });
+      }), env);
       if (response.ok && workflowDiscovery) {
         return {
           ok: true,
@@ -550,13 +709,13 @@ export async function acquireTaxCollectorReceipt(
       const completedInvocation = await waitForBrowserbaseInvocation(invocation, env, apiKey, fetchImpl);
       const result = asRecord(completedInvocation.results);
       const workflowListingUrl = stringValue(result.listingUrl) || stringValue(result.finalUrl) || searchUrl;
-      const workflowDiscovery = discoverTaxCollectorReceipt({
+      const workflowDiscovery = approvedTaxCollectorDiscovery(discoverTaxCollectorReceipt({
         ...input,
         listingUrl: workflowListingUrl,
         listingHtml: result.listingHtml,
         receiptUrl: result.receiptUrl,
         receiptLink: result.receiptLink,
-      });
+      }), env);
       if (response.ok && workflowDiscovery) {
         return {
           ok: true,
@@ -624,14 +783,30 @@ export async function acquireTaxCollectorReceipt(
   }
 
   try {
-    const response = await fetchImpl(listingUrl, {
-      redirect: "follow",
-      headers: {
-        accept: "text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.8",
-        "user-agent": "HeirRight-TaxCollectorReceipt/1.0",
-      },
-    });
-    const body = await response.text();
+    const fetched = await fetchApprovedTaxCollectorPage(listingUrl, env, fetchImpl);
+    if (!fetched.response || fetched.body === undefined || !fetched.finalUrl) {
+      const blocker = fetched.error === "invalid_url" || fetched.error === "redirect_blocked"
+        ? "Tax Collector retrieval was blocked because the URL is outside the approved county HTTPS origins."
+        : fetched.error === "unsafe_content_type"
+          ? "Tax Collector retrieval was blocked because the listing did not return an approved HTML content type."
+          : fetched.error === "body_too_large"
+            ? "Tax Collector retrieval was blocked because the listing exceeded the safe response-size limit."
+            : fetched.error === "timed_out"
+              ? "Tax Collector retrieval timed out before a safe listing page was returned."
+              : "Tax Collector retrieval could not safely load the approved county listing page.";
+      return {
+        ok: false,
+        mode: "listing_page_blocked",
+        paidRun: false,
+        listingUrl: fetched.error === "invalid_url" ? "" : listingUrl,
+        searchUrl,
+        blocker,
+        reviewFlags: ["SOURCE_BLOCKED", ...DEFAULT_REVIEW_FLAGS],
+      };
+    }
+    const response = fetched.response;
+    const body = fetched.body;
+    const finalUrl = fetched.finalUrl;
     const bodySnippet = body.replace(/\s+/g, " ").slice(0, 500);
     if (isCloudflareChallenge(response.status, body) || isJavascriptShell(body)) {
       return {
@@ -641,8 +816,7 @@ export async function acquireTaxCollectorReceipt(
         listingUrl,
         searchUrl,
         status: response.status,
-        finalUrl: response.url,
-        bodySnippet,
+        finalUrl,
         blocker: "Tax Collector listing page requires a browser workflow before the receipt link can be captured by script.",
         reviewFlags: BROWSER_WORKFLOW_FLAGS,
       };
@@ -655,14 +829,16 @@ export async function acquireTaxCollectorReceipt(
         listingUrl,
         searchUrl,
         status: response.status,
-        finalUrl: response.url,
-        bodySnippet,
+        finalUrl,
         blocker: `Tax Collector listing page returned HTTP ${response.status}.`,
         reviewFlags: ["SOURCE_BLOCKED", ...DEFAULT_REVIEW_FLAGS],
       };
     }
 
-    const discovery = discoverTaxCollectorReceipt({ ...input, listingHtml: body, listingUrl: response.url || listingUrl });
+    const discovery = approvedTaxCollectorDiscovery(
+      discoverTaxCollectorReceipt({ ...input, listingHtml: body, listingUrl: finalUrl }),
+      env,
+    );
     if (!discovery) {
       return {
         ok: false,
@@ -671,8 +847,7 @@ export async function acquireTaxCollectorReceipt(
         listingUrl,
         searchUrl,
         status: response.status,
-        finalUrl: response.url,
-        bodySnippet,
+        finalUrl,
         blocker: "Tax Collector listing page loaded, but no receipt/payment/print link was found for the bottom-right receipt step.",
         reviewFlags: DEFAULT_REVIEW_FLAGS,
       };
@@ -685,7 +860,7 @@ export async function acquireTaxCollectorReceipt(
       listingUrl: discovery.listingUrl,
       searchUrl,
       status: response.status,
-      finalUrl: response.url,
+      finalUrl,
       bodySnippet,
       discovery,
       reviewFlags: discovery.reviewFlags,
@@ -697,7 +872,7 @@ export async function acquireTaxCollectorReceipt(
       paidRun: false,
       listingUrl,
       searchUrl,
-      blocker: error instanceof Error ? error.message : String(error),
+      blocker: "Tax Collector retrieval could not safely load the approved county listing page.",
       reviewFlags: ["SOURCE_BLOCKED", ...DEFAULT_REVIEW_FLAGS],
     };
   }

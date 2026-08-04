@@ -129,13 +129,13 @@ function disqualifiedByStopRule(dossier: RawDossier): boolean {
 
 function decisionLabel(decisionStatus: QualificationDecision["status"]): string {
   if (decisionStatus === "qualified") return "Qualified for operator spot-check";
-  if (decisionStatus === "disqualified") return "Disqualified until operator override";
+  if (decisionStatus === "disqualified") return "Disqualified by stop rule";
   return "Review before promotion";
 }
 
 function nextActionFor(dossier: RawDossier, decisionStatus: QualificationDecision["status"], blockers: string[]): string {
   if (decisionStatus === "qualified") return "Spot-check the completed report and source links before any handoff or outreach.";
-  if (decisionStatus === "disqualified") return "Keep this lead out of the qualified queue unless an operator documents an override.";
+  if (decisionStatus === "disqualified") return "Keep this lead out of the qualified queue. Correct and rerun the source record if the stop fact is wrong.";
   if (blockers.some((blocker) => /source area|Source coverage/i.test(blocker))) {
     return "Resolve blocked source areas, then rerun qualification review before promotion.";
   }
