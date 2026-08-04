@@ -40,6 +40,7 @@ module.exports = async function handler(request, response) {
       body: {
         email: session.email,
         actorEmail: session.email,
+        actorName: session.name || session.email,
         artifactId,
         estateId,
         flow,

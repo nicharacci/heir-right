@@ -105,13 +105,32 @@ body[data-theme] #dossiersView.hr-docprep-mount {
   cursor: pointer;
   transition:
     color var(--hr-motion-feedback) var(--hr-ease-standard),
-    background-color var(--hr-motion-feedback) var(--hr-ease-standard);
+    background-color var(--hr-motion-feedback) var(--hr-ease-standard),
+    border-color var(--hr-motion-feedback) var(--hr-ease-standard),
+    box-shadow var(--hr-motion-feedback) var(--hr-ease-standard);
 }
 
-.hr-docprep-flow-switch button:hover,
-.hr-docprep-flow-switch button[aria-selected="true"] {
+.hr-docprep-flow-switch button:hover {
   color: var(--hr-text);
   background: var(--hr-surface-selected);
+}
+
+.hr-docprep-flow-switch button[aria-selected="true"] {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-pearl);
+  border: 1px solid var(--hr-action-border);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
+}
+
+.hr-docprep-flow-switch button[aria-selected="true"]:is(:hover, :focus-visible) {
+  color: var(--hr-action-ink);
+  background: var(--hr-action-pearl-hover);
+  border-color: var(--hr-action-border-strong);
+  box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 22%);
+}
+
+.hr-docprep-flow-switch button[aria-selected="true"]:active {
+  background: var(--hr-action-pearl-active);
 }
 
 .hr-docprep-flow-switch button:focus-visible {
@@ -270,10 +289,10 @@ body[data-theme] #dossiersView.hr-docprep-mount {
     opacity var(--hr-motion-feedback) var(--hr-ease-standard);
 }
 
-/* The IDI report control is deliberately a bare secondary action beside the
- * filled Discovery command. Its boundary comes from focus, never a resting
- * plate, so the two operations stay visually distinct without changing the
- * existing upload behavior. */
+/* Source review and IDI attachment are deliberately bare secondary actions
+ * beside the filled Discovery command. Their boundary comes from focus, never
+ * a resting plate, so the three operations keep a clear hierarchy. */
+.hr-upload-command.hr-public-sources-command,
 .hr-upload-command.hr-idi-report-command {
   color: var(--hr-accent-strong);
   background: transparent;
@@ -281,6 +300,7 @@ body[data-theme] #dossiersView.hr-docprep-mount {
   box-shadow: none;
 }
 
+.hr-upload-command.hr-public-sources-command:hover:not(:disabled),
 .hr-upload-command.hr-idi-report-command:hover:not(:disabled) {
   color: var(--hr-text);
   background: transparent;
@@ -288,6 +308,7 @@ body[data-theme] #dossiersView.hr-docprep-mount {
   box-shadow: none;
 }
 
+.hr-upload-command.hr-public-sources-command:active:not(:disabled),
 .hr-upload-command.hr-idi-report-command:active:not(:disabled) {
   background: transparent;
   border-color: transparent;
@@ -341,7 +362,8 @@ body[data-theme] #dossiersView.hr-docprep-mount {
 .hr-idi-file-review,
 .hr-inline-recovery,
 .hr-rerun-form,
-.hr-local-completion {
+.hr-local-completion,
+.hr-cloud-process {
   grid-column: 1 / -1;
   display: flex;
   gap: var(--hr-space-4);
@@ -462,6 +484,37 @@ body[data-theme] #dossiersView.hr-docprep-mount {
 
 .hr-local-completion {
   justify-content: flex-start;
+}
+
+.hr-cloud-process {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  color: var(--hr-text-muted);
+}
+
+.hr-cloud-process-copy {
+  display: grid;
+  gap: var(--hr-space-1);
+  min-width: 0;
+}
+
+.hr-cloud-process-copy strong {
+  color: var(--hr-text);
+}
+
+.hr-cloud-process-copy span {
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-sm);
+  line-height: var(--hr-leading-copy);
+}
+
+.hr-cloud-process[data-tone="blocked"] .hr-cloud-process-copy strong,
+.hr-cloud-process[data-tone="blocked"] .hr-cloud-process-copy span {
+  color: var(--hr-danger);
+}
+
+.hr-cloud-process[data-tone="ready"] .hr-cloud-process-copy strong {
+  color: var(--hr-success);
 }
 
 .hr-local-completion > span:first-child {
@@ -772,6 +825,109 @@ body[data-theme] #dossiersView.hr-docprep-mount {
   min-width: 0;
 }
 
+.hr-source-evidence-form {
+  display: grid;
+  gap: var(--hr-space-5);
+}
+
+.hr-source-evidence-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: var(--hr-space-4);
+  background: var(--hr-surface-raised);
+  border: 0;
+  border-radius: var(--hr-radius-control);
+}
+
+.hr-source-evidence-form legend {
+  padding: 0;
+  color: var(--hr-text);
+  font-size: var(--hr-type-sm);
+  font-weight: 700;
+}
+
+.hr-source-evidence-form fieldset > p,
+.hr-source-readback > span,
+.hr-source-readback li {
+  margin: var(--hr-space-1) 0 var(--hr-space-4);
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+  line-height: var(--hr-leading-copy);
+}
+
+.hr-source-readback {
+  display: grid;
+  gap: var(--hr-space-2);
+  padding: var(--hr-space-4);
+  background: var(--hr-surface-raised);
+  border-radius: var(--hr-radius-control);
+}
+
+.hr-source-readback strong {
+  color: var(--hr-warning);
+  font-size: var(--hr-type-sm);
+}
+
+.hr-source-readback[data-state="verified"] strong {
+  color: var(--hr-success);
+}
+
+.hr-source-readback > span {
+  margin: 0;
+}
+
+.hr-source-readback ul {
+  display: grid;
+  gap: var(--hr-space-2);
+  margin: var(--hr-space-2) 0 0;
+  padding-inline-start: 1.1rem;
+}
+
+.hr-source-readback li {
+  margin: 0;
+}
+
+.hr-source-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--hr-space-3);
+}
+
+.hr-source-field {
+  display: grid;
+  gap: var(--hr-space-2);
+  min-width: 0;
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+}
+
+.hr-source-field-full {
+  grid-column: 1 / -1;
+}
+
+.hr-source-field :is(input, select, textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: var(--hr-space-2) var(--hr-space-3);
+  color: var(--hr-text);
+  background: var(--hr-surface);
+  border: 1px solid var(--hr-ruler);
+  border-radius: var(--hr-radius-control);
+  font: inherit;
+}
+
+.hr-source-field textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.hr-source-field :is(input, select, textarea):focus-visible {
+  border-color: var(--hr-accent-strong);
+  outline: var(--hr-focus-width) solid var(--hr-focus);
+  outline-offset: 2px;
+}
+
 .hr-document-facts {
   display: grid;
   margin: 0;
@@ -905,6 +1061,14 @@ body[data-theme] #dossiersView.hr-docprep-mount {
     gap: var(--hr-space-3);
   }
 
+  .hr-source-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hr-source-field-full {
+    grid-column: auto;
+  }
+
   .hr-document-meta {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -968,7 +1132,8 @@ body[data-theme] #dossiersView.hr-docprep-mount {
 
   .hr-idi-file-review,
   .hr-inline-recovery,
-  .hr-local-completion {
+  .hr-local-completion,
+  .hr-cloud-process {
     display: grid;
     align-items: stretch;
   }
@@ -1004,7 +1169,8 @@ body[data-theme] #dossiersView.hr-docprep-mount {
   .hr-idi-file-review,
   .hr-inline-recovery,
   .hr-rerun-form,
-  .hr-local-completion {
+  .hr-local-completion,
+  .hr-cloud-process {
     animation: none;
   }
 }

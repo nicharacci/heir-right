@@ -1,0 +1,24 @@
+{
+  "name": "@ple/docprep-api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm build && node --test dist/app.test.js",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.797.0",
+    "@hono/node-server": "^2.0.5",
+    "@ple/docprep-core": "workspace:*",
+    "hono": "^4.9.7",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.4",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

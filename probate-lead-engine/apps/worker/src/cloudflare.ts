@@ -68,6 +68,11 @@ interface CloudflareEnv {
     get(key: string): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number; metadata?: unknown }): Promise<void>;
     delete(key: string): Promise<void>;
+    list?(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
+      keys: Array<{ name: string }>;
+      list_complete: boolean;
+      cursor?: string;
+    }>;
   };
   WORKSPACE_STATE?: {
     idFromName(name: string): unknown;
@@ -81,7 +86,9 @@ interface CloudflareEnv {
   SOLVYS_ADMIN_EMAILS?: string;
   HEIRRIGHT_API_TOKEN?: string;
   HEIRRIGHT_ADMIN_SETTINGS_PASSWORD?: string;
+  HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN?: string;
   GOOGLE_WORKSPACE_ACCESS_TOKEN?: string;
+  GOOGLE_WORKSPACE_DESTINATION_EMAIL?: string;
   GOOGLE_TRACKING_SHEET_ID?: string;
   GOOGLE_DRIVE_PARENT_FOLDER_ID?: string;
   GOOGLE_TRACKING_SHEET_RANGE?: string;
@@ -1812,6 +1819,11 @@ function internalBearerAuthorized(request: Request, env: CloudflareEnv): boolean
   return Boolean(env.HEIRRIGHT_API_TOKEN && timingSafeStringEqual(bearer, env.HEIRRIGHT_API_TOKEN));
 }
 
+function docPrepDriveBrokerAuthorized(request: Request, env: CloudflareEnv): boolean {
+  const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
+  return Boolean(env.HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN && timingSafeStringEqual(bearer, env.HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN));
+}
+
 async function loadStoredSupportingDocument(env: CloudflareEnv, attachmentId: string): Promise<StoredSupportingDocument | null> {
   if (!env.PACKET_ARTIFACTS || !/^supporting-[0-9]+-[a-f0-9]{16}$/.test(attachmentId)) return null;
   return storedSupportingDocument(await env.PACKET_ARTIFACTS.get(supportingDocumentKey(attachmentId)));
@@ -3260,6 +3272,12 @@ async function exportResponse(request: Request, url: URL, env: CloudflareEnv): P
       if (stopCheck.reasons.length) return canonicalStopJson(stopCheck.reasons, "Packet generation");
     }
   }
+  if (flow === "discovery") {
+    await Promise.all(packetDossiers.map(async (dossier) => {
+      const reviewedOfferMath = dossier.completedLeadReport?.offerMath;
+      dossier.completedLeadReport = await generateCompletedLeadReport(dossier, { reviewedOfferMath });
+    }));
+  }
   const closingPacketOptions: ClosingPacketOptions = body?.closingPacketOptions ?? {
     default: {
       selectedTemplateIds: body?.selectedClosingTemplateIds,
@@ -4155,6 +4173,7 @@ const GOOGLE_DRIVE_MARKER_PROPERTY = "heirrightMarker";
 const GOOGLE_DRIVE_PURPOSE_PROPERTY = "heirrightPurpose";
 const GOOGLE_DRIVE_CONTENT_PROPERTY = "heirrightContent";
 const GOOGLE_DRIVE_ATTEMPT_PROPERTY = "heirrightAttempt";
+const GOOGLE_DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 const GOOGLE_DRIVE_READBACK_DELAYS_MS = [0, 60, 180] as const;
 
 async function googleDriveRetryDelay(attempt: number): Promise<void> {
@@ -4305,6 +4324,82 @@ async function googleDriveFileMetadata(
     return response.ok && file.id === fileId ? { state: "found", file } : { state: "transient" };
   } catch {
     return { state: "transient" };
+  }
+}
+
+type GoogleDriveTeamFolder = { id: string; name: string };
+
+function googleDriveTeamFolderName(actorName: string): string | null {
+  const parts = stringValue(actorName).replace(/[^a-z .'-]/gi, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (parts.length < 2) return null;
+  return `${parts[0][0].toUpperCase()} ${parts.at(-1)}`;
+}
+
+function googleDriveEstatePdfName(estateName: string): string {
+  const estate = stringValue(estateName)
+    .replace(/^\s*(?:estate|est)\s+of\s+/i, "")
+    .replace(/[^a-z0-9 .'-]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120) || "Estate";
+  const date = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "2-digit", day: "2-digit", year: "numeric" }).format(new Date()).replaceAll("/", "-");
+  return `EST of ${estate} (${date}).pdf`;
+}
+
+async function ensureGoogleDriveTeamFolder(
+  env: CloudflareEnv,
+  accessToken: string,
+  rootFolderId: string,
+  actorName: string,
+): Promise<{ ok: true; folder: GoogleDriveTeamFolder } | { ok: false; response: Response }> {
+  const folderName = googleDriveTeamFolderName(actorName);
+  if (!folderName) {
+    return {
+      ok: false,
+      response: json({ ok: false, error: "google_workspace_operator_name_required", message: "A signed-in operator first and last name is required for the Google Drive team folder." }, { status: 400, headers: { "cache-control": "no-store" } }),
+    };
+  }
+  const operationHash = await sha256Hex(`google-drive-team-folder:${rootFolderId}:${folderName}`);
+  const reserved = await reserveGoogleDriveOperation(env, operationHash);
+  if (!reserved.ok) return reserved;
+  const release = async () => finalizeGoogleDriveOperation(env, reserved.reservation, "release");
+  const review = async () => finalizeGoogleDriveOperation(env, reserved.reservation, "review");
+  const failure = async (error: string, message: string, status = 503, uncertain = true) => {
+    await (uncertain ? review() : release());
+    return { ok: false as const, response: json({ ok: false, error, message }, { status, headers: { "cache-control": "no-store" } }) };
+  };
+  const query = `name = '${folderName.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' and mimeType = '${GOOGLE_DRIVE_FOLDER_MIME_TYPE}' and '${rootFolderId.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' in parents and trashed = false`;
+  try {
+    const existingResponse = await fetch(`https://www.googleapis.com/drive/v3/files?${new URLSearchParams({
+      q: query,
+      spaces: "drive",
+      fields: "files(id,name,mimeType,parents)",
+      supportsAllDrives: "true",
+      includeItemsFromAllDrives: "true",
+    }).toString()}`, { headers: { authorization: `Bearer ${accessToken}` } });
+    const existing = await existingResponse.json().catch(() => ({})) as { files?: GoogleDriveFileMetadata[] };
+    if (!existingResponse.ok) return failure("google_workspace_team_folder_lookup_failed", "Google Drive could not verify the operator folder under the shared root.");
+    const matching = (existing.files || []).filter((folder) => folder.id && folder.name === folderName && folder.mimeType === GOOGLE_DRIVE_FOLDER_MIME_TYPE && folder.parents?.includes(rootFolderId));
+    if (matching.length > 1) return failure("google_workspace_team_folder_duplicate", `Google Drive has more than one '${folderName}' folder under the shared root.`, 409, true);
+    if (matching[0]?.id) {
+      if (!await release()) return failure("google_workspace_team_folder_lock_failed", "Google Drive operator-folder verification could not be finalized.");
+      return { ok: true, folder: { id: matching[0].id, name: folderName } };
+    }
+    const createdResponse = await fetch("https://www.googleapis.com/drive/v3/files?fields=id,name,mimeType,parents&supportsAllDrives=true", {
+      method: "POST",
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ name: folderName, mimeType: GOOGLE_DRIVE_FOLDER_MIME_TYPE, parents: [rootFolderId], appProperties: { heirrightTeamFolder: folderName } }),
+    });
+    const created = await createdResponse.json().catch(() => ({})) as GoogleDriveFileMetadata;
+    if (!createdResponse.ok || !created.id) return failure("google_workspace_team_folder_create_failed", "Google Drive did not create the operator folder safely.");
+    const readback = await googleDriveFileMetadata(accessToken, created.id);
+    if (readback.state !== "found" || readback.file.name !== folderName || readback.file.mimeType !== GOOGLE_DRIVE_FOLDER_MIME_TYPE || !readback.file.parents?.includes(rootFolderId)) {
+      return failure("google_workspace_team_folder_readback_failed", "Google Drive did not verify the operator folder under the shared root.");
+    }
+    if (!await release()) return failure("google_workspace_team_folder_lock_failed", "Google Drive operator-folder verification could not be finalized.");
+    return { ok: true, folder: { id: created.id, name: folderName } };
+  } catch {
+    return failure("google_workspace_team_folder_unavailable", "Google Drive could not prepare the operator folder.");
   }
 }
 
@@ -4666,6 +4761,39 @@ async function googleWorkspaceDestinationsResponse(request: Request, url: URL, e
   const data = await response.json().catch(() => ({})) as { files?: Array<{ id?: string; name?: string; webViewLink?: string }> };
   if (!response.ok) return json({ ok: false, error: "google_workspace_destinations_failed", message: "Google Workspace could not load Drive folders." }, { status: 502 });
   return json({ ok: true, folders: (data.files || []).filter((folder) => folder.id && folder.name).map((folder) => ({ id: folder.id, name: folder.name, url: folder.webViewLink || null })) }, { headers: { "cache-control": "no-store" } });
+}
+
+/**
+ * A narrow service-to-service handoff for the S41 Fly API. The selected user's
+ * refresh token stays encrypted in PACKET_ARTIFACTS; the broker emits only a
+ * short-lived access token and the already-selected destination folder.
+ */
+async function docPrepGoogleDriveCredentialsResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "POST") return methodNotAllowed("POST");
+  if (!docPrepDriveBrokerAuthorized(request, env)) {
+    return json({ ok: false, error: "unauthorized" }, { status: 401, headers: { "cache-control": "no-store" } });
+  }
+  const email = stringValue(env.GOOGLE_WORKSPACE_DESTINATION_EMAIL).toLowerCase();
+  if (!email || !emailAllowed(email, env)) {
+    return json({ ok: false, error: "google_drive_export_account_not_configured" }, { status: 503, headers: { "cache-control": "no-store" } });
+  }
+  const connection = await googleWorkspaceConnectionForEmail(env, email);
+  if (!connection) {
+    return json({ ok: false, error: "google_workspace_connection_required" }, { status: 428, headers: { "cache-control": "no-store" } });
+  }
+  if (!connection.destinationId) {
+    return json({ ok: false, error: "google_workspace_destination_required" }, { status: 428, headers: { "cache-control": "no-store" } });
+  }
+  const access = await refreshGoogleWorkspaceAccessToken(connection, env);
+  if (!access.ok) {
+    return json({ ok: false, error: "google_workspace_connection_expired" }, { status: 428, headers: { "cache-control": "no-store" } });
+  }
+  return json({
+    ok: true,
+    accessToken: access.token,
+    parentFolderId: access.record.destinationId,
+    expiresAt: access.record.expiresAt,
+  }, { headers: { "cache-control": "no-store" } });
 }
 
 type StoredGoogleWorkspaceDelivery = {
@@ -5141,6 +5269,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const email = stringValue(body.email).toLowerCase();
   const actorEmail = stringValue(body.actorEmail).toLowerCase();
+  const actorName = stringValue(body.actorName);
   if (!email || !actorEmail || actorEmail !== email) {
     return json({
       ok: false,
@@ -5324,17 +5453,23 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
   } catch {
     return json({ ok: false, error: "packet_render_failed", message: "The approved packet could not be rendered safely. Google Drive was not contacted." }, { status: 422 });
   }
-  const connection = await googleWorkspaceConnectionForEmail(env, email);
-  if (!connection?.destinationId || !connection.destinationName) return json({ ok: false, error: "google_workspace_destination_required", message: "Connect Google Workspace and choose a Drive folder before packet delivery." }, { status: 428 });
+  const sharedDestinationEmail = stringValue(env.GOOGLE_WORKSPACE_DESTINATION_EMAIL).toLowerCase();
+  if (!sharedDestinationEmail) return json({ ok: false, error: "google_workspace_root_required", message: "Configure the shared Google Drive root before packet delivery." }, { status: 428 });
+  const connection = await googleWorkspaceConnectionForEmail(env, sharedDestinationEmail);
+  if (!connection?.destinationId || !connection.destinationName) return json({ ok: false, error: "google_workspace_destination_required", message: "Connect Google Workspace and choose the shared Drive root before packet delivery." }, { status: 428 });
   const access = await refreshGoogleWorkspaceAccessToken(connection, env);
   if (!access.ok) return json({ ok: false, error: "google_workspace_connection_expired", message: access.message }, { status: 428 });
+  const teamFolder = await ensureGoogleDriveTeamFolder(env, access.token, connection.destinationId, actorName);
+  if (!teamFolder.ok) return teamFolder.response;
+  const destination = { id: teamFolder.folder.id, name: teamFolder.folder.name };
+  const deliveryConnection = { ...connection, destinationId: destination.id, destinationName: destination.name };
   const pdfHash = await sha256ByteHex(pdf);
   const userHash = await sha256Hex(email);
-  const marker = await sha256Hex(`packet_export:${userHash}:${approval.estateId}:${approval.flow}:${approval.packetRevision}:${artifactId}:${deliveryArtifact.id}:${deliveryDocumentId || "full-packet"}:${connection.destinationId}:${deliveryArtifact.contentHash}`);
+  const marker = await sha256Hex(`packet_export:${userHash}:${approval.estateId}:${approval.flow}:${approval.packetRevision}:${artifactId}:${deliveryArtifact.id}:${deliveryDocumentId || "full-packet"}:${destination.id}:${deliveryArtifact.contentHash}`);
   const reserved = await reserveGoogleDriveOperation(env, marker);
   if (!reserved.ok) return reserved.response;
   const reservation = reserved.reservation;
-  const deliveryKey = googleWorkspaceDeliveryKey(artifactId, connection.destinationId, deliveryDocumentId);
+  const deliveryKey = googleWorkspaceDeliveryKey(artifactId, destination.id, deliveryDocumentId);
   const loadedPrior = await loadGoogleWorkspaceDelivery(env, deliveryKey);
   if (!loadedPrior.ok) {
     await finalizeGoogleDriveOperation(env, reservation, "release");
@@ -5349,7 +5484,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     if (prior.artifactId !== artifactId
       || prior.deliveryArtifactId !== deliveryArtifact.id
       || prior.deliveryDocumentId !== (deliveryDocumentId || null)
-      || prior.destinationId !== connection.destinationId) {
+      || prior.destinationId !== destination.id) {
       await finalizeGoogleDriveOperation(env, reservation, "release");
       return json({
         ok: false,
@@ -5359,7 +5494,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     }
     let priorVerification = await verifyGoogleDrivePdf(access.token, prior.fileId, {
       marker,
-      destinationId: connection.destinationId,
+      destinationId: destination.id,
       contentHash: prior.pdfHash,
       byteLength: prior.bytes,
       allowLegacyMarker: !prior.marker,
@@ -5373,7 +5508,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
       priorVerification = adopted
         ? await verifyGoogleDrivePdf(access.token, prior.fileId, {
           marker,
-          destinationId: connection.destinationId,
+          destinationId: destination.id,
           contentHash: prior.pdfHash,
           byteLength: prior.bytes,
         })
@@ -5425,7 +5560,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
         }, { status: 503, headers: { "cache-control": "no-store" } });
       }
       await finalizeGoogleDriveOperation(env, reservation, "release");
-      return googleWorkspaceDeliveryResponse(connection, verifiedPrior, { idempotent: true });
+      return googleWorkspaceDeliveryResponse(deliveryConnection, verifiedPrior, { idempotent: true });
     }
     if (priorVerification.state === "transient") {
       await finalizeGoogleDriveOperation(env, reservation, "release");
@@ -5487,7 +5622,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     }
     const verification = await verifyGoogleDrivePdf(access.token, fileId, {
       marker,
-      destinationId: connection.destinationId,
+      destinationId: destination.id,
       contentHash: candidateHash,
       byteLength: candidateBytes,
     });
@@ -5556,20 +5691,18 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
       }, { status: 503, headers: { "cache-control": "no-store" } });
     }
     await finalizeGoogleDriveOperation(env, reservation, "release");
-    return googleWorkspaceDeliveryResponse(connection, recoveredDelivery, { reconciled: true });
+    return googleWorkspaceDeliveryResponse(deliveryConnection, recoveredDelivery, { reconciled: true });
   }
 
   const estateLabel = stringValue(deliveryArtifact.model.estates?.[0]?.displayName)
     || deliveryArtifact.model.estateIds[0]
     || artifactId;
-  const fileName = deliveryDocumentId === "completed-report"
-    ? `${estateLabel} Family Tree.pdf`
-    : `${artifact.model.flow === "closing-docs" ? "Closing Prep" : "Discovery"} - ${estateLabel}.pdf`;
+  const fileName = googleDriveEstatePdfName(estateLabel);
   const appProperties = googleDriveAppProperties("packet_export", marker, pdfHash, reservation.reservationId);
   const upload = googleMultipartPayload({
     name: fileName,
     mimeType: "application/pdf",
-    parents: [connection.destinationId],
+    parents: [destination.id],
     appProperties,
   }, "application/pdf", pdf);
   let created: Response;
@@ -5606,7 +5739,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
   }
   const verification = await verifyGoogleDrivePdf(access.token, fileId, {
     marker,
-    destinationId: connection.destinationId,
+    destinationId: destination.id,
     contentHash: pdfHash,
     byteLength: pdf.byteLength,
   });
@@ -5657,7 +5790,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     }, { status: 503, headers: { "cache-control": "no-store" } });
   }
   await finalizeGoogleDriveOperation(env, reservation, "release");
-  return googleWorkspaceDeliveryResponse(connection, delivery);
+  return googleWorkspaceDeliveryResponse(deliveryConnection, delivery);
 }
 
 async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Promise<Response> {
@@ -5681,7 +5814,7 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
     ...captureInput
   } = withoutClientIdiProof(body);
   const signedActor = await signedSessionEmail(request, env);
-  const capture = {
+  const capture: Record<string, unknown> = {
     ...captureInput,
     assetKey: estateId,
     capturedAt: nowIso(),
@@ -5692,19 +5825,116 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
   }
   const runId = `source-capture-${Date.now()}-${crypto.randomUUID()}`;
   const generatedAt = nowIso();
-  const sourceFacts = sourceFactsFromCapture(runId, seed, { ...capture, seed });
+  const capturedSourceFacts = sourceFactsFromCapture(runId, seed, { ...capture, seed });
+  const canonicalBeforeCapture = await loadCanonicalDiscoveryFile(env, estateId);
+  if (canonicalBeforeCapture.exists
+    && !["verified", "verified_recovered_previous"].includes(canonicalBeforeCapture.readbackStatus)) {
+    return canonicalEstateReadbackFailure("Source capture", canonicalBeforeCapture.readbackStatus);
+  }
+  const priorRecord = await latestConfiguredDiscoveryRecord(env, estateId, canonicalBeforeCapture.record);
+  const configuredSourceRunVerified = Boolean(priorRecord);
+  const ownedFactKeys = new Set<string>();
+  const ownFacts = (
+    section: string,
+    source: SourceFact["source"],
+    factTypes: SourceFact["factType"][],
+  ) => {
+    if (!capture[section] || typeof capture[section] !== "object" || Array.isArray(capture[section])) return;
+    factTypes.forEach((factType) => ownedFactKeys.add(`${source}:${factType}`));
+  };
+  ownFacts("taxReceipt", "tax_collector", [
+    "source_status",
+    "tax_last_paid_by",
+    "tax_payer_identity",
+    "tax_paid_date",
+    "tax_receipt_status",
+    "tax_receipt_link",
+    "tax_receipt_attachment",
+    "tax_amount_due",
+    "unpaid_tax_years",
+    "tax_reassessment_signal",
+  ]);
+  ownFacts("deed", "official_records", [
+    "official_records_status",
+    "deed_history_status",
+    "or_book_page",
+    "latest_deed",
+    "deed_attachment",
+    "last_sale_date",
+    "ownership_activity_note",
+    "mortgage_signal",
+    "lien_signal",
+    "lis_pendens_signal",
+    "foreclosure_signal",
+    "adverse_possession_signal",
+    "title_signal",
+  ]);
+  ownFacts("propertyAppraiser", "property_appraiser", [
+    "property_owner",
+    "owner_type",
+    "property_address",
+    "property_folio",
+    "mailing_address_signal",
+  ]);
+  ownFacts("probate", "probate_court", [
+    "probate_docket_status",
+    "case_number",
+    "probate_case_status",
+    "civil_family_docket_ref",
+    "affidavit_of_heirs_status",
+    "probate_document_availability",
+  ]);
+  ownFacts("probate", "official_records", ["official_record_cross_link"]);
+  ownFacts("obituary", "clerk_of_courts", [
+    "marriage_death_status",
+    "marriage_license_signal",
+    "date_of_birth",
+    "date_of_death",
+    "obituary_link",
+    "obituary_snapshot",
+    "memorial_search_tasks",
+    "death_certificate_status",
+    "incarceration_status_signal",
+  ]);
+  const priorSourceFacts = configuredSourceRunVerified && Array.isArray(priorRecord?.sourceFacts)
+    ? priorRecord.sourceFacts as SourceFact[]
+    : [];
+  const inheritedSourceFacts = priorSourceFacts.filter((factItem) => (
+    factItem?.source !== "idi"
+      && !ownedFactKeys.has(`${factItem?.source}:${factItem?.factType}`)
+  ));
+  const canonicalIdiFacts = configuredSourceRunVerified
+    ? await storedIdiImportFacts(env, runId, seed, estateId)
+    : [];
+  const sourceFacts = configuredSourceRunVerified
+    ? [...inheritedSourceFacts, ...capturedSourceFacts, ...canonicalIdiFacts]
+    : capturedSourceFacts;
+  const dossier = configuredSourceRunVerified
+    ? await rebuildDiscoveryDossier(runId, sourceFacts)
+    : null;
   const sourceSummaries = summarizeSourceRunFacts(sourceFacts);
   const sourceRunProof = sourceRunProofLedger(sourceSummaries, sourceFacts);
   const reviewFlags = [...new Set(sourceFacts.flatMap((item) => item.reviewFlags))];
-  const blockers = [
-    sourceFacts.length
-      ? "Run Discovery again to reconcile the saved source capture with configured sources before generating a packet."
-      : "The saved capture contains no structured source facts. Review the fields and run Discovery before generating a packet.",
-  ];
+  const blockers = dossier
+    ? Array.from(new Set([
+        ...canonicalStopReasons({ seed, capture, sourceFacts, dossier }).map((reason) => reason.message),
+        ...sourceSummaries
+          .filter((summary) => summary.status === "blocked" || summary.status === "needs_review")
+          .map((summary) => String(summary.nextAction)),
+        ...(dossier.audit.reviewFlags.includes("SOURCE_BLOCKED")
+          ? ["One or more Discovery sources are blocked; keep the packet in review."]
+          : []),
+      ]))
+    : [
+        sourceFacts.length
+          ? "Run Discovery once to reconcile the saved source capture with configured sources before generating a packet."
+          : "The saved capture contains no structured source facts. Review the fields and run Discovery before generating a packet.",
+      ];
   const record = {
     version: 1,
     flow: "discovery",
-    mode: "source_capture",
+    mode: dossier ? "source_capture_reconcile" : "source_capture",
+    configuredSourceRunVerified,
     estateId,
     revision: runId,
     generatedAt,
@@ -5714,6 +5944,7 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
     sourceRunProof,
     sourceFacts,
     blockers,
+    ...(dossier ? { dossier } : {}),
   };
   let persistence: Record<string, unknown>;
   try {
@@ -5735,7 +5966,8 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
   }
   return json({
     ok: true,
-    mode: "source_capture",
+    mode: record.mode,
+    configuredSourceRunVerified,
     id: runId,
     estateId,
     runId,
@@ -5748,11 +5980,14 @@ async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Prom
     sourceFacts,
     blockers,
     reviewFlags,
+    ...(dossier ? { dossier } : {}),
     persistence,
     readbackStatus: "verified",
-    message: sourceFacts.length
-      ? "Source capture passed canonical Discovery File readback. Run Discovery to reconcile it with configured sources."
-      : "Source capture passed canonical readback, but no structured source facts were detected.",
+    message: dossier
+      ? "Source capture passed canonical readback and refreshed the reviewed dossier without another configured public-source search."
+      : sourceFacts.length
+        ? "Source capture passed canonical Discovery File readback. Run Discovery once to reconcile it with configured sources."
+        : "Source capture passed canonical readback, but no structured source facts were detected.",
   }, { headers: { "cache-control": "no-store" } });
 }
 
@@ -6645,6 +6880,57 @@ async function loadCanonicalDiscoveryFile(env: CloudflareEnv, estateId: string):
   return { record: previousRecord, exists: true, readbackStatus: "verified_recovered_previous", pointer: previous };
 }
 
+async function latestConfiguredDiscoveryRecord(
+  env: CloudflareEnv,
+  estateId: string,
+  activeRecord: Record<string, unknown> | null,
+): Promise<Record<string, unknown> | null> {
+  const isConfiguredRecord = (record: Record<string, unknown> | null): boolean => {
+    if (!record || !Array.isArray(record.sourceFacts) || !stringValue(record.generatedAt)) return false;
+    const mode = stringValue(record.mode);
+    if (mode === "external_source_run") {
+      return Boolean(record.sourceRunProof && typeof record.sourceRunProof === "object");
+    }
+    return Boolean(record.dossier)
+      && (record.configuredSourceRunVerified === true || !mode);
+  };
+  if (isConfiguredRecord(activeRecord)) {
+    return activeRecord;
+  }
+  if (!env.PACKET_ARTIFACTS?.list) return null;
+  const prefix = `${await discoveryFileKey(estateId)}:revision:`;
+  const candidates: Record<string, unknown>[] = [];
+  let cursor: string | undefined;
+  try {
+    for (let page = 0; page < 3; page += 1) {
+      const listing = await env.PACKET_ARTIFACTS.list({ prefix, cursor, limit: 50 });
+      const records = await Promise.all(listing.keys.map(async ({ name }) => {
+        const serialized = await env.PACKET_ARTIFACTS?.get(name);
+        if (!serialized) return null;
+        const contentHash = await sha256Hex(serialized);
+        if (name !== await discoveryFileRevisionKey(estateId, contentHash)) return null;
+        try {
+          const record = JSON.parse(serialized) as Record<string, unknown>;
+          return stringValue(record.estateId) === estateId
+            && isConfiguredRecord(record)
+            ? record
+            : null;
+        } catch {
+          return null;
+        }
+      }));
+      candidates.push(...records.filter((record): record is Record<string, unknown> => Boolean(record)));
+      if (listing.list_complete || !listing.cursor) break;
+      cursor = listing.cursor;
+    }
+  } catch {
+    return null;
+  }
+  return candidates.sort((a, b) => (
+    (Date.parse(stringValue(b.generatedAt)) || 0) - (Date.parse(stringValue(a.generatedAt)) || 0)
+  ))[0] || null;
+}
+
 async function persistDiscoveryFile(env: CloudflareEnv, record: Record<string, unknown>): Promise<Record<string, unknown>> {
   const estateId = stringValue(record.estateId);
   const revision = stringValue(record.revision);
@@ -6898,6 +7184,8 @@ async function externalSourceRunResponse(request: Request, url: URL, env: Cloudf
   const discoveryFile = {
     version: 1,
     flow: "discovery",
+    mode: "external_source_run",
+    configuredSourceRunVerified: true,
     estateId,
     revision: pipeline.runId,
     generatedAt,
@@ -7699,6 +7987,10 @@ export default {
         deploymentKey: env.DEPLOYMENT_KEY || "heirright",
         endpoints: routeList(),
       });
+    }
+
+    if (url.pathname === "/internal/doc-prep/google-drive-credentials") {
+      return docPrepGoogleDriveCredentialsResponse(request, env);
     }
 
     if (url.pathname === "/api/health/deep") {

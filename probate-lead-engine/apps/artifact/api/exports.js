@@ -1,4 +1,4 @@
-const { requireApiAdmin, requireApiAuth } = require("./_shared");
+const { allowDocPrepSource, requireApiAdmin, requireApiAuth } = require("./_shared");
 
 function readBody(request) {
   return new Promise((resolve, reject) => {
@@ -95,6 +95,7 @@ function blockedResponse(body) {
 }
 
 module.exports = async function handler(request, response) {
+  allowDocPrepSource(request);
   if (requireApiAuth(request, response)) return;
   response.setHeader("Cache-Control", "no-store");
   if (request.method !== "POST") {

@@ -6,6 +6,7 @@ import type {
   SourceKey,
   SourceRef,
 } from "@ple/types";
+import { clientEvidenceLabel, displayAddress } from "./completed-lead-report";
 
 export type PacketFlow = "discovery" | "closing-docs";
 
@@ -13,6 +14,7 @@ export interface PacketLine {
   label?: string;
   value: string;
   tone?: "normal" | "muted" | "warning";
+  contactGroup?: "confirmed-heir" | "possible-heir" | "associate";
 }
 
 export interface PacketAttachment {
@@ -213,7 +215,7 @@ function evidenceAttachments(dossier: RawDossier): PacketAttachment[] {
     const attachment = fact.attachment;
     const next: PacketAttachment = {
       id: fact.id,
-      label: attachment?.label || evidenceLabel(url, fact.factType),
+      label: clientEvidenceLabel({ source: fact.source, factType: fact.factType }) || evidenceLabel(url, fact.factType),
       url,
       source: fact.source,
       fileKind: attachment?.fileKind || "link",
@@ -277,6 +279,12 @@ function offerScalarLine(
 
 function contactLines(contact: ContactPlaceholderEntry, index: number): PacketLine[] {
   const identity = contact.name || `${contact.role} contact`;
+  const normalizedRole = contact.role.toLowerCase().replace(/[\s-]+/g, "_");
+  const contactGroup: PacketLine["contactGroup"] = /^(confirmed|legal)_heir$/.test(normalizedRole)
+    ? "confirmed-heir"
+    : /associate|friend|neighbor|business|coworker|colleague|roommate|caregiver/.test(normalizedRole)
+      ? "associate"
+      : "possible-heir";
   const addressHistory = (contact.addressHistory || []).map((item) => [
     item.address,
     item.county ? `(${item.county})` : "",
@@ -286,6 +294,7 @@ function contactLines(contact: ContactPlaceholderEntry, index: number): PacketLi
     {
       label: `Contact ${index + 1}`,
       value: `${identity} | relationship ${contact.role}${contact.interest ? ` | interest ${contact.interest}` : ""}${contact.age ? ` | age ${contact.age}` : ""}`,
+      contactGroup,
     },
     { label: "Likely Current Address", value: contact.likelyCurrentAddress || "Not confirmed", tone: contact.likelyCurrentAddress ? "normal" : "warning" },
     { label: "Address (County/Parish/Borough) History", value: addressHistory || "None confirmed", tone: addressHistory ? "normal" : "warning" },
@@ -304,7 +313,7 @@ function hypothesisContactLines(dossier: RawDossier): PacketLine[] {
   return nodes.flatMap((node, index) => {
     const relationship = node.role.replace(/_/g, " ");
     return [
-      { label: `Contact ${index + 1}`, value: `${node.name} | relationship reported ${relationship}` },
+      { label: `Contact ${index + 1}`, value: `${node.name} | relationship reported ${relationship}`, contactGroup: "possible-heir" },
       { label: "Likely Current Address", value: "IDI report pending", tone: "warning" },
       { label: "Address (County/Parish/Borough) History", value: "IDI report pending", tone: "warning" },
       { label: "Phone number", value: "IDI report pending", tone: "warning" },
@@ -333,6 +342,15 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
     || flag === "VITAL_RECORDS_WORKFLOW_REQUIRED"
   )));
   const publicFamilyLines = hypothesisContactLines(dossier);
+  const reviewedContacts = [...(report?.contactPlaceholders ?? [])].sort((left, right) => {
+    const groupRank = (contact: ContactPlaceholderEntry): number => {
+      const role = contact.role.toLowerCase().replace(/[\s-]+/g, "_");
+      if (/^(confirmed|legal)_heir$/.test(role)) return 0;
+      if (/associate|friend|neighbor|business|coworker|colleague|roommate|caregiver/.test(role)) return 2;
+      return 1;
+    };
+    return groupRank(left) - groupRank(right);
+  });
   const titleRefs = [
     ...dossier.deedHistory.sourceStatus.sourceRefs,
     ...dossier.deedHistory.latestDeed.sourceRefs,
@@ -478,8 +496,8 @@ function discoverySections(dossier: RawDossier): PacketSection[] {
     {
       id: "family-contacts",
       title: "Family Tree And Contact Review",
-      lines: report?.contactPlaceholders.length
-        ? report.contactPlaceholders.flatMap(contactLines)
+      lines: reviewedContacts.length
+        ? reviewedContacts.flatMap(contactLines)
         : publicFamilyLines.length
           ? publicFamilyLines
           : [],
@@ -546,8 +564,8 @@ export function buildDiscoveryPacketModel(dossiers: RawDossier[], generatedAt = 
   if (!dossiers.length) throw new Error("At least one reviewed dossier is required.");
   const estates = dossiers.map((dossier) => ({
     dossierId: dossier.id,
-    displayName: dossier.summary.displayName,
-    propertyAddress: dossier.property.address.value || "Address not confirmed",
+    displayName: dossier.summary.estateName || dossier.property.ownerName.value || dossier.summary.displayName,
+    propertyAddress: displayAddress(dossier.property.address.value),
     sections: discoverySections(dossier),
   }));
   const sections = estates.flatMap((estate) => estate.sections.map((section) => ({

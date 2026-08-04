@@ -53,6 +53,185 @@ function activeFlowMeta(snapshot = {}) {
   };
 }
 
+const SOURCE_EVIDENCE_GROUPS = Object.freeze([
+  Object.freeze({
+    id: "property-appraiser",
+    title: "Property Appraiser",
+    copy: "Record the owner, folio, site address, mailing address, and exact official parcel URL.",
+    fields: Object.freeze([
+      { path: "propertyAppraiser.owner", label: "Owner", placeholder: "Owner exactly as shown" },
+      { path: "propertyAppraiser.folio", label: "Folio", placeholder: "Folio or parcel number" },
+      { path: "propertyAppraiser.address", label: "Property address", placeholder: "Property address exactly as shown", full: true },
+      { path: "propertyAppraiser.mailingAddress", label: "Mailing address", placeholder: "Mailing address or mismatch note", full: true },
+      { path: "propertyAppraiser.sourceUrl", label: "Official parcel URL", placeholder: "https://…", full: true },
+    ]),
+  }),
+  Object.freeze({
+    id: "tax",
+    title: "Tax Collector",
+    copy: "Preserve the listing, receipt, payment facts, and any truthful browser blocker.",
+    fields: Object.freeze([
+      { path: "taxReceipt.listingUrl", label: "Listing page", placeholder: "Tax Collector parcel or listing URL", full: true },
+      { path: "taxReceipt.receiptLink", label: "Receipt link", placeholder: "Receipt link from the listing page", full: true },
+      { path: "taxReceipt.paidBy", label: "Tax paid by", placeholder: "Name on last paid receipt" },
+      { path: "taxReceipt.paidDate", label: "Paid date", placeholder: "Date shown on receipt" },
+      { path: "taxReceipt.amountDue", label: "Amount due", placeholder: "$0.00 or amount from record" },
+      { path: "taxReceipt.unpaidYears", label: "Unpaid years", placeholder: "Example: 2024, 2025" },
+      { path: "taxReceipt.reassessment", label: "Reassessment", placeholder: "Reassessment note from tax record" },
+      {
+        path: "taxReceipt.status",
+        label: "Receipt status",
+        type: "select",
+        options: Object.freeze([
+          ["", "Needs review"],
+          ["receipt_link_captured", "Receipt link captured"],
+          ["paid_receipt_reviewed", "Paid receipt reviewed"],
+          ["browser_workflow_required", "Browser workflow blocked"],
+          ["unavailable_after_listing_check", "Unavailable after listing check"],
+        ]),
+      },
+      { path: "taxReceipt.sourceBlockedReason", label: "Source blocker note", placeholder: "Record the exact truthful blocker.", type: "textarea", full: true },
+      { path: "taxReceipt.listingHtml", label: "Listing page source note", placeholder: "Optional source excerpt needed to locate the receipt link.", type: "textarea", full: true },
+    ]),
+  }),
+  Object.freeze({
+    id: "deed",
+    title: "Deed and title",
+    copy: "Capture only facts supported by the official records result.",
+    fields: Object.freeze([
+      { path: "deed.sourceUrl", label: "Official Records page", placeholder: "Official Records search or result URL", full: true },
+      { path: "deed.instrument", label: "OR or instrument", placeholder: "OR book/page or instrument" },
+      { path: "deed.documentUrl", label: "Recorded deed file", placeholder: "PDF or record link" },
+      { path: "deed.book", label: "Book", placeholder: "OR book" },
+      { path: "deed.page", label: "Page", placeholder: "OR page" },
+      { path: "deed.recordingDate", label: "Recording date", placeholder: "Date recorded" },
+      { path: "deed.documentType", label: "Document type", placeholder: "Warranty deed, quit claim, etc." },
+      { path: "deed.grantor", label: "Grantor", placeholder: "Seller or grantor shown" },
+      { path: "deed.grantee", label: "Grantee", placeholder: "Buyer or grantee shown" },
+      { path: "deed.lastSaleDate", label: "Last sale date", placeholder: "Last sale or transfer date" },
+      { path: "deed.mortgageSignal", label: "Mortgage signal", placeholder: "Present, absent, or needs review" },
+      { path: "deed.lienSignal", label: "Lien signal", placeholder: "Present, absent, or needs review" },
+      { path: "deed.lisPendensSignal", label: "Lis Pendens", placeholder: "Present, absent, or needs review" },
+      { path: "deed.foreclosureSignal", label: "Foreclosure signal", placeholder: "Present, absent, or needs review" },
+      { path: "deed.adversePossessionSignal", label: "Adverse possession", placeholder: "Present, absent, or needs review" },
+      { path: "deed.note", label: "Official Records notes", placeholder: "Owner-chain, title, mortgage, lien, or filing notes.", type: "textarea", full: true },
+    ]),
+  }),
+  Object.freeze({
+    id: "probate",
+    title: "Probate",
+    copy: "Keep missing records and unavailable documents explicit; do not infer a probate case.",
+    fields: Object.freeze([
+      { path: "probate.docketUrl", label: "Docket page", placeholder: "Clerk or probate docket URL", full: true },
+      { path: "probate.caseNumber", label: "Case number", placeholder: "Case number from docket" },
+      { path: "probate.caseStatus", label: "Case status", placeholder: "Open, closed, pending, etc." },
+      { path: "probate.affidavitOfHeirsStatus", label: "Affidavit of heirs", placeholder: "Available, missing, requested" },
+      { path: "probate.documentAvailability", label: "Probate documents", placeholder: "Available documents or request needed" },
+      { path: "probate.docketNumber", label: "Related docket", placeholder: "Civil or family docket if found" },
+      { path: "probate.caseType", label: "Related case type", placeholder: "Civil, family, probate" },
+    ]),
+  }),
+  Object.freeze({
+    id: "obituary",
+    title: "Obituary and vital records",
+    copy: "Record the reviewed result and preserve uncertainty when a source is unavailable.",
+    fields: Object.freeze([
+      {
+        path: "obituary.status",
+        label: "Obituary status",
+        type: "select",
+        options: Object.freeze([
+          ["", "Needs review"],
+          ["found", "Found"],
+          ["reviewed-not-found", "Reviewed not found"],
+        ]),
+      },
+      { path: "obituary.sourceUrl", label: "Link or snapshot", placeholder: "Obituary URL or screenshot file" },
+      { path: "obituary.dateOfBirth", label: "Date of birth", placeholder: "DOB from obituary or vital source" },
+      { path: "obituary.dateOfDeath", label: "Date of death", placeholder: "DOD from obituary or vital source" },
+      { path: "obituary.marriageLicenseSignal", label: "Marriage or license signal", placeholder: "Spouse or marriage signal, or absent" },
+      { path: "obituary.deathCertificateStatus", label: "Death certificate", placeholder: "Requested, obtained, missing" },
+      { path: "obituary.googleNote", label: "Obituary or vital notes", placeholder: "Record the reviewed source result.", type: "textarea", full: true },
+    ]),
+  }),
+]);
+
+const SOURCE_EVIDENCE_PATHS = new Set(
+  SOURCE_EVIDENCE_GROUPS.flatMap((group) => group.fields.map((field) => field.path)),
+);
+
+function nestedSourceValue(source, path) {
+  return String(path || "").split(".").reduce((value, part) => value?.[part], source) ?? "";
+}
+
+function renderSourceEvidenceField(field, capture, escape) {
+  const value = String(nestedSourceValue(capture, field.path));
+  const className = field.full ? "hr-source-field hr-source-field-full" : "hr-source-field";
+  const control = field.type === "select"
+    ? `<select name="${escape(field.path)}">${field.options.map(([optionValue, label]) => (
+        `<option value="${escape(optionValue)}"${value === optionValue ? " selected" : ""}>${escape(label)}</option>`
+      )).join("")}</select>`
+    : field.type === "textarea"
+      ? `<textarea name="${escape(field.path)}" placeholder="${escape(field.placeholder || "")}">${escape(value)}</textarea>`
+      : `<input name="${escape(field.path)}" value="${escape(value)}" placeholder="${escape(field.placeholder || "")}">`;
+  return `<label class="${className}"><span>${escape(field.label)}</span>${control}</label>`;
+}
+
+function renderSourceEvidenceRail(context) {
+  const { bridge, snapshot, escape } = railContext(context);
+  if (!bridge || !snapshot.selectedEstateId) return "<p>Select an estate to review its source evidence.</p>";
+  const capture = snapshot.docPrep?.sourceCapture || {};
+  const run = capture.sourceApiRun || {};
+  const verified = run.persistence?.stored === true && run.persistence?.readbackStatus === "verified";
+  const blockers = Array.isArray(run.blockers) ? run.blockers.filter(Boolean) : [];
+  return `
+    <section class="hr-docprep-rail-panel hr-source-evidence" data-docprep-rail-panel="evidence">
+      <header>
+        <h2>Source evidence</h2>
+        <p>Save reviewed facts to the canonical Discovery File. Blank fields remain unresolved.</p>
+      </header>
+      <div class="hr-source-readback" data-state="${verified ? "verified" : "review"}">
+        <strong>${verified ? "Shared source run verified" : "Source review needs attention"}</strong>
+        <span>${verified ? "This editor preserves the existing source run and updates reviewed facts without starting another run." : "Run Public Sources once from Document Prep, then save any reviewed fallback facts here."}</span>
+        ${blockers.length ? `<ul>${blockers.map((blocker) => `<li>${escape(blocker)}</li>`).join("")}</ul>` : ""}
+      </div>
+      <form class="hr-source-evidence-form" data-source-evidence-form>
+        ${SOURCE_EVIDENCE_GROUPS.map((group) => `
+          <fieldset data-source-group="${escape(group.id)}">
+            <legend>${escape(group.title)}</legend>
+            <p>${escape(group.copy)}</p>
+            <div class="hr-source-field-grid">
+              ${group.fields.map((field) => renderSourceEvidenceField(field, capture, escape)).join("")}
+            </div>
+          </fieldset>
+        `).join("")}
+        <div class="hr-rail-actions">
+          <button type="button" class="hr-text-command" data-rail-action="save-source-capture" data-estate-id="${escape(snapshot.selectedEstateId)}">Save source evidence</button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function setNestedSourceValue(target, path, value) {
+  const parts = String(path || "").split(".").filter(Boolean);
+  if (!parts.length) return;
+  const leaf = parts.pop();
+  const parent = parts.reduce((current, part) => {
+    current[part] = current[part] && typeof current[part] === "object" ? current[part] : {};
+    return current[part];
+  }, target);
+  parent[leaf] = String(value ?? "").trim();
+}
+
+function sourceCaptureFromFormData(formData = {}) {
+  const capture = {};
+  Object.entries(formData).forEach(([path, value]) => {
+    if (SOURCE_EVIDENCE_PATHS.has(path)) setNestedSourceValue(capture, path, value);
+  });
+  return capture;
+}
+
 function sectionState(status = "pending") {
   const value = String(status || "pending").toLowerCase();
   if (/complete|exported/.test(value)) return "complete";
@@ -409,13 +588,25 @@ async function runContactReviewAction(payload = {}) {
   });
 }
 
+async function runSourceCaptureAction(payload = {}) {
+  const { bridge, snapshot, estateId } = currentPayload(payload);
+  if (!bridge || !estateId) throw new Error("Select an estate before saving source evidence.");
+  if (String(snapshot.selectedEstateId || "") !== estateId) {
+    throw new Error("The selected estate changed before this source evidence could be saved.");
+  }
+  return bridge.dispatch("save-source-capture", {
+    estateId,
+    capture: sourceCaptureFromFormData(payload.formData),
+  });
+}
+
 const docPrepRail = Object.freeze({
   id: "doc-prep-context",
   label: "Document Prep",
   defaultTab: "automation",
-  minWidth: 340,
-  defaultWidth: 392,
-  maxWidth: 480,
+  minWidth: 480,
+  defaultWidth: 480,
+  maxWidth: 552,
   mobileSheet: true,
   actions: Object.freeze({
     "review-next-estate": (payload = {}) => (payload.bridge || getLegacyBridge())?.navigate("find-estates"),
@@ -428,6 +619,14 @@ const docPrepRail = Object.freeze({
       actions: Object.freeze({
         "google-settings": () => getLegacyBridge()?.navigate("settings"),
         "review-contact-candidate": runContactReviewAction,
+      }),
+    }),
+    Object.freeze({
+      id: "evidence",
+      label: "Evidence",
+      render: renderSourceEvidenceRail,
+      actions: Object.freeze({
+        "save-source-capture": runSourceCaptureAction,
       }),
     }),
     Object.freeze({
@@ -485,7 +684,10 @@ export {
   renderContactReview,
   renderCompletionRail,
   renderDocumentRail,
+  renderSourceEvidenceRail,
+  runSourceCaptureAction,
   runPacketAction,
   runContactReviewAction,
   selectedDocument,
+  sourceCaptureFromFormData,
 };

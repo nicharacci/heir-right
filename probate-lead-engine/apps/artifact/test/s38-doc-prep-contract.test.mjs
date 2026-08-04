@@ -107,6 +107,24 @@ function snapshotFor(estateId = "estate-contract") {
       googleDestination: "",
       googleHandoffReady: true,
       googleHandoffDestination: "Discovery Packets / Estate of Morgan Reyes",
+      sourceCapture: {
+        propertyAppraiser: {
+          owner: "Morgan Reyes",
+          folio: "01-0000-000-0000",
+          address: "121 Probate Way",
+          mailingAddress: "PO Box 121",
+          sourceUrl: "https://county.example.test/property/01-0000-000-0000",
+        },
+        taxReceipt: {
+          status: "browser_workflow_required",
+          sourceBlockedReason: "The county receipt needs an interactive browser review.",
+        },
+        sourceApiRun: {
+          generatedAt: new Date(now - 45_000).toISOString(),
+          blockers: ["The county receipt needs an interactive browser review."],
+          persistence: { stored: true, readbackStatus: "verified" },
+        },
+      },
       packet: {
         artifactId: "packet-contract-1",
         artifactUrl: "/api/reports/pdf?artifactId=packet-contract-1",
@@ -239,9 +257,13 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   const snapshot = snapshotFor();
   const html = viewModule.renderDocPrepView({ bridge: bridgeFor(snapshot) });
   const runIndex = html.indexOf("data-run-discovery");
+  const sourceIndex = html.indexOf("data-run-public-sources");
   const uploadIndex = html.indexOf("data-idi-picker");
+  assert.ok(sourceIndex > -1 && uploadIndex > sourceIndex, "Public source review must be available before the optional IDI upload");
   assert.ok(uploadIndex > -1 && runIndex > uploadIndex, "Replace IDI Report must precede the Discovery rerun action");
   assert.match(html, /data-feature="doc-prep" data-estate-id="estate-contract"/);
+  assert.match(html, /aria-label="Run configured public sources for Estate of Morgan Reyes"/);
+  assert.match(html, />Run Public Sources<\/span>/);
   assert.match(html, /class="hr-upload-command hr-idi-report-command"/);
   assert.match(html, /aria-label="Replace IDI Report for Estate of Morgan Reyes"/);
   assert.match(html, /Replace IDI Report/);
@@ -249,6 +271,10 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.doesNotMatch(html, /\.csv|\.doc(?:[,"])/i);
   assert.match(html, /data-local-packet-complete/);
   assert.match(html, /Google Workspace is an optional handoff and can be set up afterward/);
+  assert.match(html, /data-start-cloud-docprep/);
+  assert.doesNotMatch(html, /data-export-cloud-docprep/, "Google Drive delivery must stay unavailable until the cloud PDF is verified");
+  assert.match(html, /Cloud packet not started/);
+  assert.match(html, /Browser controls never own its progress/);
   assert.equal((html.match(/class="hr-document-row"/g) || []).length, 2);
   assert.match(html, /class="hr-document-row"[\s\S]*role="button"[\s\S]*tabindex="0"/);
   assert.doesNotMatch(html, /class="hr-document-list"[^>]*role="list"/);
@@ -256,6 +282,27 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(html, /<button id="hrDocPrepFlowDiscovery"[^>]*tabindex="0"[^>]*aria-selected="true"/);
   assert.match(html, /<button id="hrDocPrepFlowClosing"[^>]*tabindex="-1"[^>]*aria-selected="false"/);
   assert.match(html, /role="tablist"[^>]*aria-orientation="horizontal"/);
+
+  const productionSnapshot = structuredClone(snapshot);
+  productionSnapshot.estates.unshift({
+    id: "estate",
+    title: "Bundled dry-run fixture",
+    address: "Fixture address",
+  });
+  const productionHtml = viewModule.renderDocPrepView({ bridge: bridgeFor(productionSnapshot) });
+  assert.doesNotMatch(productionHtml, /<option value="estate"/, "the bundled dry-run fixture must not leak into Document Prep when imported estates exist");
+  assert.match(productionHtml, /<option value="estate-contract" selected>/, "the selected imported estate must remain available after fixture filtering");
+
+  const dryRunSnapshot = structuredClone(snapshot);
+  dryRunSnapshot.selectedEstateId = "estate";
+  dryRunSnapshot.selectedEstate = { ...dryRunSnapshot.selectedEstate, id: "estate" };
+  dryRunSnapshot.estates = [{
+    id: "estate",
+    title: "Bundled dry-run fixture",
+    address: "Fixture address",
+  }];
+  const dryRunHtml = viewModule.renderDocPrepView({ bridge: bridgeFor(dryRunSnapshot) });
+  assert.match(dryRunHtml, /<option value="estate" selected>/, "the bundled estate must remain available as the sole dry-run fallback");
 
   const firstImportSnapshot = structuredClone(snapshot);
   firstImportSnapshot.docPrep.documents = firstImportSnapshot.docPrep.documents.filter((document) => document.id !== "idi-asset-search");
@@ -269,7 +316,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   const moveOnHtml = viewModule.renderDocPrepView({ bridge: bridgeFor(moveOnSnapshot) });
   assert.match(moveOnHtml, /Move On[\s\S]*data-open-estates[\s\S]*Review Next Estate/);
   assert.doesNotMatch(moveOnHtml, />Disposition</, "the retired Document Prep eyebrow header must not return");
-  assert.doesNotMatch(moveOnHtml, /data-run-discovery|data-idi-picker|data-idi-file-input|data-open-completion-actions/, "Move On must hide Discovery, IDI upload, and completion work controls");
+  assert.doesNotMatch(moveOnHtml, /data-run-public-sources|data-run-discovery|data-idi-picker|data-idi-file-input|data-open-completion-actions/, "Move On must hide source review, Discovery, IDI upload, and completion work controls");
   assert.match(moveOnHtml, /class="hr-document-row"[\s\S]*role="button"[\s\S]*tabindex="0"/, "stopped estate documents must remain keyboard-selectable for truthful context");
 
   const stoppedRailMarkup = [
@@ -286,6 +333,47 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
     bridge: bridgeFor(moveOnSnapshot, { navigate: (view) => { stoppedNavigation = view; } }),
   });
   assert.equal(stoppedNavigation, "find-estates", "the stopped rail must retain one safe route to the next estate");
+}
+
+{
+  const estateId = `estate-source-run-${Date.now()}`;
+  const snapshot = snapshotFor(estateId);
+  const calls = [];
+  const events = [];
+  let refreshes = 0;
+  const result = await viewModule.startPublicSourceSearch({
+    bridge: bridgeFor(snapshot, {
+      dispatch: async (command, payload) => {
+        calls.push({ command, payload });
+        return { persistence: { readbackStatus: "verified" } };
+      },
+      emit: (...args) => events.push(args),
+    }),
+    snapshot,
+    refresh: () => { refreshes += 1; },
+  });
+  assert.deepEqual(calls, [{
+    command: "run-source-search",
+    payload: { estateId },
+  }]);
+  assert.equal(result.persistence.readbackStatus, "verified");
+  assert.equal(events[0][0], "Public source review finished");
+  assert.equal(refreshes, 1);
+
+  await assert.rejects(
+    viewModule.startPublicSourceSearch({
+      bridge: bridgeFor(snapshot, {
+        dispatch: async () => { throw new Error("County source unavailable."); },
+        emit: (...args) => events.push(args),
+      }),
+      snapshot,
+      refresh: () => { refreshes += 1; },
+    }),
+    /County source unavailable/,
+  );
+  assert.equal(events.at(-1)[0], "Public source review needs attention");
+  assert.equal(events.at(-1)[2], "blocked");
+  assert.equal(refreshes, 2, "the source control must refresh after success and failure");
 }
 
 {
@@ -553,7 +641,56 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(fullPacketRail, /iframe[\s\S]*packet-contract-1/);
   assert.deepEqual(railActionNames(fullPacketRail), ["open-packet", "download-packet"]);
 
-  assert.deepEqual(railModule.docPrepRail.tabs.map((tab) => tab.id), ["automation", "document", "attachments", "completion"]);
+  assert.deepEqual(railModule.docPrepRail.tabs.map((tab) => tab.id), ["automation", "evidence", "document", "attachments", "completion"]);
+  const evidenceRail = railModule.renderSourceEvidenceRail({ bridge: bridgeFor(snapshot), snapshot });
+  assert.match(evidenceRail, /data-docprep-rail-panel="evidence"[\s\S]*Shared source run verified/);
+  assert.match(evidenceRail, /name="propertyAppraiser\.owner" value="Morgan Reyes"/);
+  assert.match(evidenceRail, /name="propertyAppraiser\.sourceUrl" value="https:\/\/county\.example\.test\/property\/01-0000-000-0000"/);
+  assert.match(evidenceRail, /name="taxReceipt\.status"[\s\S]*value="browser_workflow_required" selected/);
+  assert.match(evidenceRail, /data-rail-action="save-source-capture"/);
+  assert.doesNotMatch(evidenceRail, /researchRail/, "source evidence must be editable in the unified rail");
+  assert.ok(actionHandlers.has("save-source-capture"));
+
+  const capture = railModule.sourceCaptureFromFormData({
+    "propertyAppraiser.owner": " Morgan Reyes ",
+    "propertyAppraiser.folio": " 01-0000-000-0000 ",
+    "unknown.private": "must be dropped",
+  });
+  assert.deepEqual(capture, {
+    propertyAppraiser: {
+      owner: "Morgan Reyes",
+      folio: "01-0000-000-0000",
+    },
+  });
+
+  const evidenceDispatches = [];
+  const evidenceBridge = bridgeFor(snapshot, {
+    dispatch: async (command, payload) => {
+      evidenceDispatches.push({ command, payload });
+      return snapshot;
+    },
+  });
+  await railModule.runSourceCaptureAction({
+    bridge: evidenceBridge,
+    estateId: snapshot.selectedEstateId,
+    formData: {
+      "propertyAppraiser.owner": "Morgan Reyes",
+      "propertyAppraiser.folio": "01-0000-000-0000",
+    },
+  });
+  assert.deepEqual(evidenceDispatches, [{
+    command: "save-source-capture",
+    payload: {
+      estateId: snapshot.selectedEstateId,
+      capture: {
+        propertyAppraiser: {
+          owner: "Morgan Reyes",
+          folio: "01-0000-000-0000",
+        },
+      },
+    },
+  }]);
+
   const attachmentsRail = railModule.renderAttachmentsRail({ bridge: bridgeFor(snapshot), snapshot });
   assert.match(attachmentsRail, /data-docprep-rail-panel="attachments"[\s\S]*Obituary[\s\S]*Back Story · Public obituary/);
   assert.match(attachmentsRail, /data-rail-action="open-attachment"/);
@@ -666,9 +803,9 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(uploadModule.validateIdiReport({ name: "report.pdf", size: 3_000_001 }), /3 MB or smaller/);
   assert.match(uploadModule.operatorError("The generated PDF did not pass packet verification."), /new packet could not be verified/i);
   assert.doesNotMatch(uploadModule.operatorError("The generated PDF did not pass packet verification."), /choose a searchable/i);
-  const sampleEstateBlocker = uploadModule.operatorError("Sample estates stay isolated from production source runs and packet export.");
-  assert.match(sampleEstateBlocker, /Sample estates cannot run production Discovery/i);
-  assert.doesNotMatch(sampleEstateBlocker, /new packet could not be verified/i, "sample isolation must not be misreported as a packet-verification failure");
+  const placeholderEstateBlocker = uploadModule.operatorError("A legacy placeholder estate stays isolated until it is removed from the shared workspace.");
+  assert.match(placeholderEstateBlocker, /legacy placeholder estate cannot run production Discovery/i);
+  assert.doesNotMatch(placeholderEstateBlocker, /new packet could not be verified/i, "legacy placeholder isolation must not be misreported as a packet-verification failure");
   const ownerEvidenceBlocker = uploadModule.operatorError("Owner Details needs review. Owner Details needs verified Property Appraiser readback with the source URL, owner, property address, folio, and mailing address before Discovery can continue.");
   assert.match(ownerEvidenceBlocker, /Owner Details still needs verified Property Appraiser evidence/i);
   assert.doesNotMatch(ownerEvidenceBlocker, /could not confirm the saved report/i, "a source-evidence blocker must not blame an already verified IDI upload");
@@ -994,8 +1131,11 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.doesNotMatch(docPrepTree, /ag-grid/i, "Document Prep rows must remain editorial, not a data grid");
   assert.doesNotMatch(docPrepRailSource, /researchRail|querySelector\([^)]*data-contact-review/, "the unified contact review must use its own snapshot/action contract, not the hidden legacy rail DOM");
   assert.match(legacy, /contactReview:\s*publicContactReview\(row\)/, "the unified rail snapshot must carry the current estate's sanitized contact review state");
+  assert.match(legacy, /sourceCapture:\s*row[\s\S]*sourceCapturePersistenceSnapshot/, "the unified rail snapshot must carry a privacy-filtered source capture");
   assert.match(legacy, /id === "review-contact-candidate"[\s\S]*saveContactCandidateReview\(row, payload\.candidateId, payload\.status, payload\.reportRevision\)/, "the unified action must reuse the verified canonical review write");
+  assert.match(legacy, /id === "save-source-capture"[\s\S]*saveSourceCaptureForRow\(row, payload\.capture\)/, "the unified evidence action must reuse canonical Discovery File readback");
   assert.match(unifiedRailHost, /"review-contact-candidate":\s*"The IDI contact decision could not be saved[\s\S]*data-unified-rail-retry/, "contact review failures must stay visible and retryable in the unified rail");
+  assert.match(unifiedRailHost, /"save-source-capture":\s*"The source evidence could not be saved[\s\S]*new FormData\(button\.form\)/, "source evidence failures must stay visible and form values must flow through the unified rail action");
   assert.match(gridCommunity, /from "ag-grid-community"/);
   assert.match(gridCommunity, /ClientSideRowModelModule/);
   assert.match(gridCommunity, /PaginationModule/);
@@ -1031,7 +1171,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.doesNotMatch(gridsCss, /@keyframes hr-grid-enter[\s\S]*?from\s*\{[^}]*opacity:\s*0/, "grid content must remain visible if its entrance motion never runs");
   assert.doesNotMatch(gridsCss, /\.hr-grid-primary-action:hover[^}]*\{[^}]*transform:/, "primary grid actions must not jump on hover");
   assert.doesNotMatch(gridTree, /AllCommunityModule|AllEnterpriseModule|ag-grid-enterprise/i);
-  assert.match(docPrepCss, /\.hr-upload-command\.hr-idi-report-command\s*\{[^}]*background:\s*transparent[^}]*border-color:\s*transparent[^}]*box-shadow:\s*none/, "the IDI replacement action must remain a bare control");
+  assert.match(docPrepCss, /\.hr-upload-command\.hr-public-sources-command,[\s\S]*\.hr-upload-command\.hr-idi-report-command\s*\{[^}]*background:\s*transparent[^}]*border-color:\s*transparent[^}]*box-shadow:\s*none/, "source review and IDI replacement must remain bare secondary controls");
   assert.match(docPrepCss, /@media \(max-width:\s*620px\)[\s\S]*\.hr-discovery-actions\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/, "mobile Discovery actions must stack so their labels remain fully readable");
   assert.match(tokensCss, /--hr-divider-line:\s*linear-gradient\([\s\S]*transparent 0%[\s\S]*var\(--hr-ruler\) 10%[\s\S]*var\(--hr-ruler\) 90%[\s\S]*transparent 100%/, "horizontal divider edges must share one theme-aware fade token");
   assert.match(tokensCss, /--hr-divider-line-vertical:\s*linear-gradient\([\s\S]*180deg/, "vertical divider edges must share the matching fade token");
@@ -1071,7 +1211,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   const acceptedContacts = legacy.slice(legacy.indexOf("function acceptedContactCandidates"), legacy.indexOf("function primaryContactCandidates"));
   const sourceHydration = legacy.slice(legacy.indexOf("function applyExternalSourceRunResult"), legacy.indexOf("function idiCoreCredentialStatus"));
   const estateIdentityBoundary = legacy.slice(legacy.indexOf("function normalizedAssetAddress"), legacy.indexOf("const entityOwnerPattern"));
-  const estateMigrationBoundary = legacy.slice(legacy.indexOf("function migrateUnambiguousLegacyEstateState"), legacy.indexOf("function seedDemoEstatePreviewState"));
+  const estateMigrationBoundary = legacy.slice(legacy.indexOf("function migrateUnambiguousLegacyEstateState"), legacy.indexOf("function syncLegacyPlaceholderEstateState"));
   const migrationState = {
     crmImports: [],
     sourceCaptures: {}, idiImports: {}, contactReviews: {}, dealStatuses: {}, docPrepEstateState: {},
@@ -1192,7 +1332,8 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.doesNotMatch(finishRun, /deliverPacketToGoogle/, "Discovery completion must keep Google delivery behind the explicit rail command");
   assert.match(finishRun, /remains local until an operator explicitly sends it from the Completion rail/);
   assert.ok(finishRun.indexOf("snapshotFullDiscoveryOutput(row, flowId)") < finishRun.indexOf("generatePacketPreview(row"), "the prior active output must be captured before packet generation mutates runtime state");
-  assert.match(finishRun, /catch \{[\s\S]*restoreFullDiscoveryOutput\(previousOutput\)[\s\S]*setDocPrepRunState\(row, flowId, ""\)[\s\S]*setDocPrepStreamPhase[\s\S]*renderDocPrepRunSurfaces\(\)/, "thrown packet generation must restore output and expose inline retry state");
+  assert.match(finishRun, /catch \(error\) \{[\s\S]*restoreFullDiscoveryOutput\(previousOutput\)[\s\S]*setDocPrepRunState\(row, flowId, ""\)[\s\S]*setDocPrepStreamPhase[\s\S]*renderDocPrepRunSurfaces\(\)/, "thrown packet generation must restore output and expose inline retry state");
+  assert.match(finishRun, /state\.exportResult\?\.blockers[\s\S]*state\.exportResult\.blockers\.join\(" "\)[\s\S]*packet verification blocked\. \$\{message\}/, "packet verification must preserve the exact operator-safe blocker after restoring the prior active output");
   assert.match(finishRun, /catch \(error\) \{[\s\S]*canonicalStateAdvanced[\s\S]*if \(!canonicalStateAdvanced\) docPrepEstateRecord\(row\)\[flowId\] = previousFlowState;[\s\S]*state\.discoveryCompleted = previousDiscoveryCompleted;[\s\S]*restoreFullDiscoveryOutput\(previousOutput\)[\s\S]*renderDocPrepRunSurfaces\(\)/, "failed packet-audit readback must restore both the prior revision and active output without overwriting a newer canonical teammate revision");
   const outputRollback = legacy.slice(legacy.indexOf("function snapshotFullDiscoveryOutput"), legacy.indexOf("function stopFullDiscoveryRun"));
   assert.match(outputRollback, /packetArtifacts[\s\S]*documentRecords[\s\S]*exportResult/);

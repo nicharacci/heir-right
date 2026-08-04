@@ -84,8 +84,10 @@ function multipartParts(bodyValue, contentType) {
 
 class DriveMock {
   files = new Map();
+  folders = new Map();
   createdRecords = [];
   createCount = 0;
+  folderCreateCount = 0;
   deleteCount = 0;
   wrongReadback = "";
   deleteFails = false;
@@ -95,6 +97,14 @@ class DriveMock {
   async fetch(input, options = {}) {
     const url = new URL(String(input));
     const method = String(options.method || "GET").toUpperCase();
+    if (url.hostname === "www.googleapis.com" && url.pathname === "/drive/v3/files" && method === "POST") {
+      const metadata = JSON.parse(String(options.body || "{}"));
+      if (metadata.mimeType !== "application/vnd.google-apps.folder") throw new Error(`Unexpected Drive metadata create: ${JSON.stringify(metadata)}`);
+      const id = `drive-team-folder-${++this.folderCreateCount}`;
+      const folder = { id, name: metadata.name, mimeType: metadata.mimeType, parents: metadata.parents || [], appProperties: metadata.appProperties || {} };
+      this.folders.set(id, folder);
+      return jsonResponse(folder);
+    }
     if (url.hostname === "www.googleapis.com" && url.pathname === "/upload/drive/v3/files" && method === "POST") {
       const { metadata, bytes } = multipartParts(options.body, options.headers?.["content-type"]);
       const id = `drive-file-${++this.createCount}`;
@@ -119,6 +129,9 @@ class DriveMock {
       return jsonResponse(file);
     }
     if (url.hostname === "www.googleapis.com" && url.pathname === "/drive/v3/files" && method === "GET") {
+      if (String(url.searchParams.get("q") || "").includes("application/vnd.google-apps.folder")) {
+        return jsonResponse({ incompleteSearch: false, files: [...this.folders.values()] });
+      }
       const marker = String(url.searchParams.get("q") || "").match(/value='([a-f0-9]{64})'/)?.[1] || "";
       return jsonResponse({
         incompleteSearch: false,
@@ -143,7 +156,7 @@ class DriveMock {
         file.appProperties = { ...file.appProperties, ...(body.appProperties || {}) };
         return jsonResponse(file);
       }
-      const file = this.files.get(id);
+      const file = this.files.get(id) || this.folders.get(id);
       if (!file) return jsonResponse({ error: "not_found" }, 404);
       if (url.searchParams.get("alt") === "media") return new Response(file.bytes);
       if (url.searchParams.get("fields") === "id") return jsonResponse({ id });
@@ -168,6 +181,7 @@ function makeEnv(kv = new MemoryKv(), storage = new MemoryDurableStorage()) {
       AUTH_REQUIRED: "false",
       AUTH_ALLOWED_DOMAINS: "heirright.com",
       HEIRRIGHT_API_TOKEN: API_TOKEN,
+      GOOGLE_WORKSPACE_DESTINATION_EMAIL: EMAIL,
       GOOGLE_OAUTH_CLIENT_ID: "google-client",
       GOOGLE_OAUTH_CLIENT_SECRET: "google-secret",
       PACKET_ARTIFACTS: kv,
@@ -228,18 +242,33 @@ reviewedDossier.completedLeadReport.sourceLinks.push({
   url: obituaryUrl,
   source: "clerk_of_courts",
 });
-reviewedDossier.completedLeadReport.contactPlaceholders = [{
-  role: "child",
-  name: "Sandra Hawkins",
-  age: 58,
-  likelyCurrentAddress: "Miami, FL",
-  phones: ["305-555-0101"],
-  emails: ["sandra.hawkins@example.com"],
-  addresses: ["Miami, FL"],
-  addressHistory: [],
-  note: "Reviewed fixture",
+reviewedDossier.audit.facts.push({
+  id: `${reviewedDossier.runId}:idi:reviewed-contact`,
+  runId: reviewedDossier.runId,
+  source: "idi",
+  rawId: `${reviewedDossier.runId}:idi:reviewed-contact`,
+  fetchedAt: reviewedDossier.generatedAt,
+  county: "miami-dade",
+  subject: { estateName: reviewedDossier.summary.estateName, propertyAddress: reviewedDossier.property.address.value },
+  factType: "alternative_contact_profile",
+  value: {
+    id: `${reviewedDossier.runId}:idi:reviewed-contact`,
+    name: "Sandra Hawkins",
+    relationship: "child",
+    age: 58,
+    group: "alternative",
+    phones: ["305-555-0101"],
+    emails: ["sandra.hawkins@example.com"],
+    currentAddress: "Miami, FL",
+    addressHistory: ["Miami, FL"],
+    sourceRefs: [],
+    reviewStatus: "accepted",
+    reviewFlags: [],
+  },
+  confidence: 0.86,
+  sourceUrl: "https://source.example.test/reviewed-idi-report",
   reviewFlags: [],
-}];
+});
 
 const templateHarness = makeEnv();
 const canonicalKey = `discovery-file:${sha256(ESTATE_ID)}`;
@@ -322,6 +351,7 @@ function exportApprovalBody(overrides = {}) {
   return {
     email: EMAIL,
     actorEmail: EMAIL,
+    actorName: "Sam Frederique",
     artifactId,
     estateId: ESTATE_ID,
     flow: "discovery",
@@ -650,7 +680,10 @@ for (const wrongReadback of ["folder", "size"]) {
   assert.equal(result.body.artifactId, artifactId, "Drive delivery must remain approval-bound to the parent packet");
   assert.equal(result.body.deliveryArtifactId, completedReportArtifactId, "Drive delivery must use the separated client-facing report");
   assert.equal(result.body.deliveryDocumentId, "completed-report");
-  assert.equal(drive.createdRecords[0].name, `${reviewedDossier.summary.displayName} Family Tree.pdf`);
+  assert.equal(drive.createdRecords[0].name, "EST of Annie Hawkins (08-04-2026).pdf");
+  assert.deepEqual(drive.createdRecords[0].parents, ["drive-team-folder-1"]);
+  assert.equal(drive.folderCreateCount, 1, "every direct Drive export must resolve the signed-in operator folder under the shared root");
+  assert.doesNotMatch(drive.createdRecords[0].name, /131 NW 67 ST|33150-0000/);
   const uploaded = [...drive.files.values()][0];
   const completedReportResponse = await worker.fetch(new Request(
     `https://worker.test/api/reports/pdf?artifactId=${completedReportArtifactId}`,
@@ -684,7 +717,7 @@ for (const wrongReadback of ["folder", "size"]) {
   assert.equal(first.response.status, 503);
   assert.equal(first.body.error, "google_workspace_upload_uncertain");
   assert.equal(drive.createCount, 1);
-  const lockKey = [...harness.storage.values.keys()].find((key) => key.startsWith("google-drive-operation:"));
+  const lockKey = [...harness.storage.values.entries()].find(([key, value]) => key.startsWith("google-drive-operation:") && value.status === "review_required")?.[0];
   assert.ok(lockKey);
   const stale = harness.storage.values.get(lockKey);
   stale.updatedAt = new Date(Date.now() - 16 * 60 * 1000).toISOString();

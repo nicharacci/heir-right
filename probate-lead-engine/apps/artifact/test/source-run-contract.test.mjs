@@ -117,8 +117,11 @@ try {
   }
   const autonomousSourceRun = legacyAppSource.match(/async function runAutonomousDiscoverySources[\s\S]*?\n}\n\nasync function hydratePersistedDiscoveryFile/)?.[0] || "";
   assert.ok(autonomousSourceRun.indexOf("result.persistence?.readbackStatus") < autonomousSourceRun.indexOf("applyExternalSourceRunResult"), "automated Discovery must verify persistence before applying source evidence");
+  const sharedSourceRun = legacyAppSource.match(/async function runExternalSourceSearchForRow[\s\S]*?\n}\n\nfunction wireAssetDiscoveryControls/)?.[0] || "";
+  assert.ok(sharedSourceRun.indexOf("result.persistence?.readbackStatus") < sharedSourceRun.indexOf("applyExternalSourceRunResult"), "every visible source search must verify persistence before applying source evidence");
   const manualSourceRun = legacyAppSource.match(/content\.querySelector\("\[data-run-source-search\]"\)[\s\S]*?content\.querySelector\("\[data-import-idi\]"\)/)?.[0] || "";
-  assert.ok(manualSourceRun.indexOf("result.persistence?.readbackStatus") < manualSourceRun.indexOf("applyExternalSourceRunResult"), "manual source search must verify persistence before applying source evidence");
+  assert.match(manualSourceRun, /runExternalSourceSearchForRow\(row,\s*payload\)/, "the legacy source control must delegate to the verified shared runner");
+  assert.match(legacyAppSource, /id === "run-source-search"[\s\S]*?runExternalSourceSearchForRow\(row\)/, "the Document Prep source command must delegate to the same verified runner");
 
   const worker = workerModule.default || workerModule;
   const workspace = new WorkspaceState({ storage: new MemoryStorage() });

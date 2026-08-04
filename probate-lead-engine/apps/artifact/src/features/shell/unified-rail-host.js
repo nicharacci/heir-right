@@ -14,6 +14,7 @@ const RAIL_ACTION_ERRORS = Object.freeze({
   "chatgpt-work": "The ChatGPT Work handoff could not continue. Confirm the current packet and try again.",
   "open-chatgpt-work": "The ChatGPT Work handoff could not continue. Confirm the current packet and try again.",
   "review-contact-candidate": "The IDI contact decision could not be saved. Confirm this estate's current report and try again.",
+  "save-source-capture": "The source evidence could not be saved. Confirm the selected estate and try again.",
 });
 
 function reducedMotion() {
@@ -231,10 +232,10 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
 
   function setRailGeometry(state) {
     const descriptor = state.active;
-    const width = Number(state.width || descriptor?.defaultWidth || 392);
+    const width = Number(state.width || descriptor?.defaultWidth || 480);
     layer.style.setProperty("--s38-active-rail-width", `${width}px`);
-    resizer.setAttribute("aria-valuemin", String(descriptor?.minWidth || 340));
-    resizer.setAttribute("aria-valuemax", String(descriptor?.maxWidth || 480));
+    resizer.setAttribute("aria-valuemin", String(descriptor?.minWidth || 480));
+    resizer.setAttribute("aria-valuemax", String(descriptor?.maxWidth || 552));
     resizer.setAttribute("aria-valuenow", String(width));
     resizer.setAttribute("aria-valuetext", `${state.active?.label || "Context"} ${width} pixels wide`);
   }
@@ -427,6 +428,9 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
       state: appState,
       view: dataset.nextView,
       documentId: dataset.documentId,
+      formData: button.form
+        ? Object.fromEntries(new FormData(button.form).entries())
+        : undefined,
     };
     const result = await executeRailAction({
       controls: [button],
@@ -546,7 +550,7 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
   function onPointerDown(event) {
     if (mobileQuery.matches) return;
     event.preventDefault();
-    resizing = { x: event.clientX, width: Number(railState.width || 392) };
+    resizing = { x: event.clientX, width: Number(railState.width || 480) };
     document.body.classList.add("s38-rail-resizing");
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", stopResize, { once: true });
@@ -554,9 +558,9 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
   }
 
   function onResizeKeyDown(event) {
-    const width = Number(railState.width || 392);
-    const min = Number(railState.active?.minWidth || 340);
-    const max = Number(railState.active?.maxWidth || 480);
+    const width = Number(railState.width || 480);
+    const min = Number(railState.active?.minWidth || 480);
+    const max = Number(railState.active?.maxWidth || 552);
     const commands = {
       ArrowLeft: Math.min(max, width + RAIL_WIDTH_STEP),
       ArrowRight: Math.max(min, width - RAIL_WIDTH_STEP),
@@ -586,7 +590,7 @@ function createUnifiedRailHost({ bridge, content, announce = () => {} }) {
   document.addEventListener("focusin", onFocusIn, true);
   resizer.addEventListener("pointerdown", onPointerDown);
   resizer.addEventListener("keydown", onResizeKeyDown);
-  resizer.addEventListener("dblclick", () => runtime.rails.setWidth(392));
+  resizer.addEventListener("dblclick", () => runtime.rails.setWidth(480));
   mobileQuery.addEventListener?.("change", onMobileChange);
   syncRailTriggerSemantics({ ...railState, mobileSheet: mobileQuery.matches });
   runtime.rails.setMobileSheet(mobileQuery.matches);

@@ -1,0 +1,13 @@
+# fly.toml app configuration file generated for heirright-docprep-worker on 2026-08-04T15:50:09Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "heirright-docprep-worker"
+primary_region = 'iad'
+
+[build]
+  dockerfile = "deploy/heirright-process/Dockerfile.worker"
+
+[processes]
+  app = 'node apps/docprep-worker/dist/index.js'

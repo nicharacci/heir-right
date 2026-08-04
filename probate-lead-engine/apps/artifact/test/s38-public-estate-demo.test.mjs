@@ -80,7 +80,7 @@ const copy = pageText.join(" ");
 for (const required of [
   "ESTATE OF EMILIO ALVAREZ-RECIO",
   "Family Tree",
-  "600 GRAPETREE DR 3AN, Key Biscayne, FL 33149-0000",
+  "600 GRAPETREE DR 3AN, Key Biscayne, FL 33149",
   "EMILIO ALVAREZ-RECIO &W LOLITA",
   "DOB: 2/12/1938",
   "DOD: 9/11/2025",
@@ -95,6 +95,8 @@ for (const required of [
   "Not confirmed",
   "relationship and inheritance notes remain research hypotheses",
 ]) assert.match(copy, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+
+assert.equal(copy.includes("600 GRAPETREE DR 3AN, Key Biscayne, FL 33149-0000"), false, "Rendered addresses must use the display-address normalization applied by the production packet model.");
 
 for (const forbidden of [
   "305-555",

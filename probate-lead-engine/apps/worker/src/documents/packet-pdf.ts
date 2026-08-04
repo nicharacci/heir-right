@@ -1,12 +1,13 @@
 import {
   PDFDocument,
   PDFHexString,
+  PDFString,
   StandardFonts,
   rgb,
   type PDFFont,
   type PDFPage,
 } from "pdf-lib";
-import type { PacketAttachment, PacketModel, PacketSection } from "./packet-model";
+import type { PacketAttachment, PacketLine, PacketModel, PacketSection } from "./packet-model";
 import { CLOSING_FIELD_MAP, closingTemplateBytes } from "./closing-template-data";
 
 const PAGE_WIDTH = 612;
@@ -108,7 +109,7 @@ function annotationLink(
     A: {
       Type: "Action",
       S: "URI",
-      URI: PDFHexString.fromText(href),
+      URI: PDFString.of(href),
     },
   }));
   page.node.addAnnot(annotation);
@@ -283,9 +284,10 @@ function drawOfferProfitTable(
   return y;
 }
 
-function familyTableRows(section: PacketSection | undefined): Array<{ name: string; relationship: string; age: string; address: string }> {
+function familyTableRows(section: PacketSection | undefined, group?: PacketLine["contactGroup"]): Array<{ name: string; relationship: string; age: string; address: string }> {
   const rows: Array<{ name: string; relationship: string; age: string; address: string }> = [];
   let current: { name: string; relationship: string; age: string; address: string } | null = null;
+  let currentGroup: PacketLine["contactGroup"] | undefined;
   const plain = (value: string): string => {
     const text = ascii(String(value || "").split(" | confidence ")[0]);
     return /^(?:not confirmed|none confirmed|idi report pending|needs review|needs approved enrichment)$/i.test(text) ? "" : text;
@@ -293,8 +295,9 @@ function familyTableRows(section: PacketSection | undefined): Array<{ name: stri
   for (const line of section?.lines || []) {
     const label = String(line.label || "");
     if (/^Contact\s+\d+/i.test(label)) {
-      if (current) rows.push(current);
+      if (current && (!group || currentGroup === group)) rows.push(current);
       const parts = plain(line.value).split(/\s+\|\s+/);
+      currentGroup = line.contactGroup || "possible-heir";
       current = {
         name: parts[0] || "",
         relationship: parts.find((part) => /^relationship\s+/i.test(part))?.replace(/^relationship\s+/i, "") || "",
@@ -306,7 +309,7 @@ function familyTableRows(section: PacketSection | undefined): Array<{ name: stri
     if (!current) continue;
     if (/^Likely Current Address$/i.test(label)) current.address = plain(line.value);
   }
-  if (current) rows.push(current);
+  if (current && (!group || currentGroup === group)) rows.push(current);
   return rows;
 }
 
@@ -316,12 +319,13 @@ function drawPossibleHeirsTable(
   bold: PDFFont,
   startY: number,
   section: PacketSection | undefined,
+  group?: PacketLine["contactGroup"],
 ): number {
   const left = 72;
   const width = 468;
   const columns = [166, 128, 48, 126];
   const rowHeight = 20;
-  const rows = familyTableRows(section);
+  const rows = familyTableRows(section, group);
   const rowCount = Math.max(3, rows.length);
   let y = startY;
   let x = left;
@@ -556,11 +560,30 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
         }
 
         if (contacts) {
+          const confirmedHeirs = familyTableRows(contacts, "confirmed-heir");
+          const possibleHeirs = familyTableRows(contacts, "possible-heir");
+          const associates = familyTableRows(contacts, "associate");
           ensureFamilySpace(120);
-          page.drawText("Heirs:", { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+          page.drawText(confirmedHeirs.length ? "Heirs:" : "Heirs: None confirmed by the reviewed evidence.", { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
           cursor -= familyLineHeight;
-          cursor = drawPossibleHeirsTable(page, regular, bold, cursor, contacts);
-          cursor -= 18;
+          if (confirmedHeirs.length) {
+            cursor = drawPossibleHeirsTable(page, regular, bold, cursor, contacts, "confirmed-heir");
+            cursor -= 18;
+          }
+          ensureFamilySpace(104);
+          page.drawText("Possible Heirs:", { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+          cursor -= familyLineHeight;
+          if (possibleHeirs.length) {
+            cursor = drawPossibleHeirsTable(page, regular, bold, cursor, contacts, "possible-heir");
+            cursor -= 18;
+          }
+          ensureFamilySpace(familyLineHeight * 2);
+          page.drawText(associates.length ? "Associates:" : "Associates: None reviewed.", { x: familyLeft, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+          cursor -= familyLineHeight;
+          if (associates.length) {
+            cursor = drawPossibleHeirsTable(page, regular, bold, cursor, contacts, "associate");
+            cursor -= 18;
+          }
           for (const line of contacts.lines) {
             const label = String(line.label || "");
             const value = packetValue(line.value);

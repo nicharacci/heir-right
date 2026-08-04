@@ -1,5 +1,10 @@
 const { secretMatches } = require("./security/secret-compare");
 
+// Only the two Doc Prep source endpoints mark an incoming request as eligible
+// for this bearer. Keeping the marker process-local prevents the scoped token
+// from becoming a general operator or admin credential.
+const docPrepSourceRequests = new WeakSet();
+
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
     if (request.body && typeof request.body === "object" && !Buffer.isBuffer(request.body)) {
@@ -43,9 +48,21 @@ function internalBearerAllowed(request) {
   return secretMatches(supplied, expected);
 }
 
+function allowDocPrepSource(request) {
+  if (request && typeof request === "object") docPrepSourceRequests.add(request);
+}
+
+function docPrepSourceBearerAllowed(request) {
+  if (!request || typeof request !== "object" || !docPrepSourceRequests.has(request)) return false;
+  const expected = String(process.env.HEIRRIGHT_DOC_PREP_SOURCE_TOKEN || "");
+  if (!expected) return false;
+  const supplied = String(request.headers?.authorization || "").replace(/^Bearer\s+/i, "");
+  return secretMatches(supplied, expected);
+}
+
 function requireApiAuth(request, response) {
   const { authRequired, effectiveSession } = require("./auth/_shared");
-  if (!authRequired() || effectiveSession(request) || internalBearerAllowed(request)) return false;
+  if (!authRequired() || effectiveSession(request) || internalBearerAllowed(request) || docPrepSourceBearerAllowed(request)) return false;
   sendJson(response, 401, {
     ok: false,
     error: "auth_required",
@@ -351,6 +368,7 @@ function taxReceiptCandidateScore(candidate = {}) {
 }
 
 module.exports = {
+  allowDocPrepSource,
   apiAdminAllowed,
   discoverTaxCollectorReceipt,
   extractTaxCollectorDetails,

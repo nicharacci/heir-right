@@ -110,6 +110,13 @@ reviewedDossier.audit.facts.push({
   },
   confidence: 0.86,
   sourceUrl: "https://source.example.test/reviewed-idi-report",
+  attachment: {
+    label: "idi-report-02-production.pdf",
+    sourceUrl: "https://source.example.test/reviewed-idi-report",
+    fileKind: "pdf",
+    capturedAt: reviewedDossier.generatedAt,
+    reviewFlags: [],
+  },
   reviewFlags: [],
 });
 reviewedDossier.completedLeadReport = await generateCompletedLeadReport(reviewedDossier);
@@ -128,6 +135,8 @@ Object.assign(reviewedDossier.completedLeadReport.offerMath.buyPercentage, { val
 Object.assign(reviewedDossier.completedLeadReport.offerMath.offerAmount, { value: 14312.5 });
 Object.assign(reviewedDossier.completedLeadReport.offerMath.profit, { value: 14312.5 });
 Object.assign(reviewedDossier.completedLeadReport.offerMath.minimumNetProfit, { value: 15000 });
+reviewedDossier.completedLeadReport.backstory = "receipt_link_captured: https://source.example.test/private-tax-receipt";
+reviewedDossier.completedLeadReport.formats.familyTreeHtml = "<p>stale client report receipt_link_captured https://source.example.test/private-tax-receipt idi-report-02-production.pdf</p>";
 assert.deepEqual(
   reviewedDossier.completedLeadReport.contactPlaceholders.map((contact) => ({ name: contact.name, role: contact.role, reviewFlags: contact.reviewFlags })),
   [{ name: "Sandra Hawkins", role: "child", reviewFlags: [] }],
@@ -248,7 +257,9 @@ const familyTreeCopy = familyTreeText.join(" ");
 for (const required of [
   "Back Story:",
   "Back Story evidence:",
-  "Heirs:",
+  "Heirs: None confirmed by the reviewed evidence.",
+  "Possible Heirs:",
+  "Associates: None reviewed.",
   "Address (County/Parish/Borough) History:",
   "Miami, FL",
   "1/9th Interest",
@@ -282,16 +293,26 @@ assert.ok(
 );
 const completedReportRender = await getDocument({ data: completedReportPdfBytes.slice(), disableWorker: true }).promise;
 const completedReportPages = [];
+const completedReportLinkTargets = [];
 for (let pageNumber = 1; pageNumber <= completedReportRender.numPages; pageNumber += 1) {
-  const textContent = await (await completedReportRender.getPage(pageNumber)).getTextContent();
+  const page = await completedReportRender.getPage(pageNumber);
+  const textContent = await page.getTextContent();
   const pageCopy = textContent.items.map((item) => item.str).filter(Boolean).join(" ");
   assert.ok(
     pageCopy.length > 200,
     `completed report page ${pageNumber} must contain substantial client-facing content; received: ${pageCopy}`,
   );
   completedReportPages.push(pageCopy);
+  completedReportLinkTargets.push(...(await page.getAnnotations())
+    .filter((annotation) => annotation.subtype === "Link")
+    .map((annotation) => String(annotation.url || annotation.unsafeUrl || "")));
 }
 const completedReportCopy = completedReportPages.join(" ");
+assert.ok(completedReportLinkTargets.length > 0, "the completed report must retain clickable evidence links");
+assert.ok(
+  completedReportLinkTargets.every((target) => /^https?:\/\//i.test(target) || /^\/(?!\/)/.test(target)),
+  "clickable evidence links must remain usable web or app-relative URLs without encoded control bytes",
+);
 for (const internalTerm of [
   "Raw no-enrichment",
   "approval-gated",
@@ -303,6 +324,9 @@ for (const internalTerm of [
   "operator contact review",
   "manual_review_required",
   "Review gate:",
+  "receipt_link_captured",
+  "https://source.example.test/private-tax-receipt",
+  "idi-report-02-production.pdf",
 ]) {
   assert.doesNotMatch(
     completedReportCopy,
@@ -310,6 +334,7 @@ for (const internalTerm of [
     `the client-facing completed report must not expose internal term: ${internalTerm}`,
   );
 }
+assert.match(completedReportCopy, /Reviewed IDI evidence/, "the client PDF must replace a private IDI filename with a stable evidence label");
 
 const secondDossier = structuredClone(reviewedDossier);
 secondDossier.id = `${secondDossier.id}-second`;

@@ -1044,7 +1044,7 @@ function loadCrmImports() {
   try {
     const storedValue = storageGetItem(crmImportStateKey);
     if (storedValue === null) {
-      state.crmImports = demoEstateLeadImports();
+      state.crmImports = initialCrmImports();
       state.demoEstateLeadsActive = true;
       return;
     }
@@ -1053,7 +1053,7 @@ function loadCrmImports() {
     if (canonicalValue !== storedValue) storageSetItem(crmImportStateKey, canonicalValue, { sync: false });
     state.demoEstateLeadsActive = state.crmImports.some(isDemoEstateImport);
   } catch {
-    state.crmImports = demoEstateLeadImports();
+    state.crmImports = initialCrmImports();
     state.demoEstateLeadsActive = true;
   }
 }
@@ -1379,6 +1379,34 @@ async function hydrateServerBackedState() {
 
 function sourceCaptureForRow(row = selectedRow()) {
   return state.sourceCaptures[assetDiscoveryKey(row)] ?? {};
+}
+
+function verifiedSourceCaptureResult(row = selectedRow()) {
+  if (!row) return null;
+  const capture = sourceCaptureForRow(row);
+  const sourceRun = capture.sourceApiRun;
+  if (
+    !sourceRun
+    || !capture.dossier
+    || (sourceRun.mode !== "external_source_run" && sourceRun.configuredSourceRunVerified !== true)
+    || sourceRun.persistence?.stored !== true
+    || sourceRun.persistence?.readbackStatus !== "verified"
+    || !sourceRun.generatedAt
+    || !Array.isArray(capture.sourceFacts)
+  ) return null;
+  return {
+    ok: true,
+    mode: sourceRun.mode || "external_source_run",
+    runId: sourceRun.runId || "",
+    generatedAt: sourceRun.generatedAt,
+    sourceFacts: capture.sourceFacts,
+    sourceSummaries: Array.isArray(sourceRun.sourceSummaries) ? sourceRun.sourceSummaries : [],
+    sourceRunProof: sourceRun.sourceRunProof || null,
+    blockers: Array.isArray(sourceRun.blockers) ? sourceRun.blockers : [],
+    message: sourceRun.message || "",
+    persistence: sourceRun.persistence,
+    dossier: capture.dossier
+  };
 }
 
 function idiImportForRow(row = selectedRow()) {
@@ -2400,75 +2428,8 @@ const demoEstateLeadMeta = {
   }
 };
 
-function demoEstateLeadImports() {
-  return [
-    {
-      id: "demo-estate-001",
-      provider: "podio",
-      estateName: "Estate of Avery Example (Sample)",
-      ownerName: "AVERY EXAMPLE SAMPLE EST OF",
-      propertyAddress: "101 TEST RECORD WAY, Miami, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0001",
-      sourceRecordId: "SAMPLE-CRM-001",
-      notes: "Sample estate lead for table review only. Begin with owner, tax receipt, deed, and probate checks."
-    },
-    {
-      id: "demo-estate-002",
-      provider: "google-sheets",
-      estateName: "Estate of Jordan Sample (Sample)",
-      ownerName: "JORDAN SAMPLE RECORD EST OF",
-      propertyAddress: "202 DEMO ESTATE AVE, Miami, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0002",
-      sourceRecordId: "SAMPLE-SHEET-002",
-      notes: "Sample estate lead for document-prep table review. Deed and OR book/page still need evidence."
-    },
-    {
-      id: "demo-estate-003",
-      provider: "csv",
-      estateName: "Estate of Morgan Fixture (Sample)",
-      ownerName: "MORGAN FIXTURE SAMPLE EST OF",
-      propertyAddress: "303 FICTIONAL FILE TER, Miami, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0003",
-      sourceRecordId: "SAMPLE-CSV-003",
-      notes: "Sample post-discovery estate. Review heirs and contacts before any outreach."
-    },
-    {
-      id: "demo-estate-004",
-      provider: "podio",
-      estateName: "Estate of Riley Example (Sample)",
-      ownerName: "RILEY EXAMPLE SAMPLE EST OF",
-      propertyAddress: "404 NONDELIVERABLE CT, Miami Gardens, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0004",
-      sourceRecordId: "SAMPLE-CRM-004",
-      notes: "Sample warm estate for Closing Prep review. Fill buyer, signer, title, and bank-transfer fields before export."
-    },
-    {
-      id: "demo-estate-005",
-      provider: "google-sheets",
-      estateName: "Estate of Casey Sample (Sample)",
-      ownerName: "CASEY SAMPLE RECORD EST OF",
-      propertyAddress: "505 TEST ONLY ST, Miami, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0005",
-      sourceRecordId: "SAMPLE-SHEET-005",
-      notes: "Sample blocked estate. Recent sale review must clear before any paid source or outreach work."
-    },
-    {
-      id: "demo-estate-006",
-      provider: "csv",
-      estateName: "Estate of Taylor Fixture (Sample)",
-      ownerName: "TAYLOR FIXTURE SAMPLE EST OF",
-      propertyAddress: "606 DEMO PROBATE LN, North Miami, FL 00000",
-      county: "miami-dade",
-      parcelId: "00-0000-000-0006",
-      sourceRecordId: "SAMPLE-CSV-006",
-      notes: "Sample probate-review estate. Check civil, family, probate, official records, and affidavit-of-heirs paths."
-    }
-  ].map(normalizeCrmImport);
+function initialCrmImports() {
+  return [];
 }
 
 function isDemoEstateImport(item = {}) {
@@ -2479,6 +2440,31 @@ function demoEstateMetaFor(rowOrImport = {}) {
   return demoEstateLeadMeta[String(rowOrImport?.id || "")] || {};
 }
 
+const legacyPlaceholderEstatePattern = /\b(?:sample|fixture|fictional|non[-\s]?deliverable|test\s+only|test\s+record|demo\s+estate)\b/i;
+const legacyPlaceholderEstateIds = /^demo-estate-\d+$/i;
+const placeholderCleanupAgeMs = 3 * 24 * 60 * 60 * 1000;
+
+function isLegacyPlaceholderEstateImport(item = {}) {
+  const values = [item?.id, item?.estateName, item?.ownerName, item?.propertyAddress, item?.sourceRecordId, item?.notes]
+    .map((value) => String(value || ""));
+  return legacyPlaceholderEstateIds.test(values[0]) || values.some((value) => legacyPlaceholderEstatePattern.test(value));
+}
+
+function legacyPlaceholderEstateImportsOlderThan(referenceAt = Date.now()) {
+  const cutoff = referenceAt - placeholderCleanupAgeMs;
+  return state.crmImports
+    .map(normalizeCrmImport)
+    .filter((item) => !item.deletedAt && isLegacyPlaceholderEstateImport(item))
+    .filter((item) => Number.isFinite(Date.parse(item.importedAt || "")) && Date.parse(item.importedAt) < cutoff);
+}
+
+function syncLegacyPlaceholderCleanupControl() {
+  const button = document.getElementById("legacyPlaceholderCleanup");
+  if (!button) return;
+  const count = legacyPlaceholderEstateImportsOlderThan().length;
+  button.hidden = count === 0;
+  button.textContent = `Remove ${count} placeholder estate${count === 1 ? "" : "s"} older than 3 days`;
+}
 function generatedCrmEstateId() {
   const uuid = globalThis.crypto?.randomUUID?.();
   return uuid
@@ -2698,17 +2684,9 @@ function migrateUnambiguousLegacyEstateState(rows = state.rows) {
   return changed;
 }
 
-function seedDemoEstatePreviewState() {
-  const demoRows = state.rows.filter((row) => row.sourceKind === "crm-import" && isDemoEstateImport(row));
-  state.demoEstateLeadsActive = Boolean(demoRows.length && state.crmImports.some(isDemoEstateImport));
-  document.documentElement.dataset.demoEstateLeads = state.demoEstateLeadsActive ? "true" : "false";
-  if (!demoRows.length) return;
-  demoRows.forEach((row) => {
-    const status = demoEstateMetaFor(row).dealStatus || "pre-discovery";
-    const key = assetDiscoveryKey(row);
-    if (!state.dealStatuses[key]) state.dealStatuses[key] = status;
-  });
-  if (!state.selectedId || !rowById(state.selectedId)) state.selectedId = demoRows[0].id;
+function syncLegacyPlaceholderEstateState() {
+  state.legacyPlaceholderEstatesActive = state.crmImports.some(isLegacyPlaceholderEstateImport);
+  document.documentElement.dataset.legacyPlaceholderEstates = state.legacyPlaceholderEstatesActive ? "true" : "false";
 }
 
 function crmImportCounts() {
@@ -2721,7 +2699,8 @@ function rebuildRowsFromCurrentSources() {
   state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
   migrateUnambiguousLegacyEstateState(state.rows);
   pruneBatchSets();
-  seedDemoEstatePreviewState();
+  syncLegacyPlaceholderEstateState();
+  syncLegacyPlaceholderCleanupControl();
 }
 
 function syncEstateArchiveToggle() {
@@ -5693,23 +5672,27 @@ async function finishFullDiscoveryRun(row = selectedRow(), flowId = "discovery",
   let packet;
   try {
     packet = await generatePacketPreview(row, null, { flowId, render: false });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The packet export or readback did not complete.";
     restoreFullDiscoveryOutput(previousOutput);
     if (!docPrepMainRunActive(row, flowId)) return;
     setDocPrepRunState(row, flowId, "");
-    if (finalPhase) setDocPrepStreamPhase(row, flowId, finalPhase, "blocked", "The packet export or readback did not complete.");
-    document.getElementById("topStatus").textContent = `${flow.shortTitle} packet verification blocked. Retry when the packet service is available.`;
-    addShellEvent(`${flow.shortTitle} packet blocked`, "The packet export or readback did not complete, so the prior active output remains unchanged.", "blocked", true, { row, source: flow.title });
+    if (finalPhase) setDocPrepStreamPhase(row, flowId, finalPhase, "blocked", message);
+    document.getElementById("topStatus").textContent = `${flow.shortTitle} packet verification blocked. ${message}`;
+    addShellEvent(`${flow.shortTitle} packet blocked`, `${message} The prior active output remains unchanged.`, "blocked", true, { row, source: flow.title });
     renderDocPrepRunSurfaces();
     return;
   }
   if (!packet?.verification?.verified || !docPrepMainRunActive(row, flowId)) {
+    const message = Array.isArray(state.exportResult?.blockers) && state.exportResult.blockers.length
+      ? state.exportResult.blockers.join(" ")
+      : "The packet did not pass artifact and storage readback verification.";
     restoreFullDiscoveryOutput(previousOutput);
     if (!docPrepMainRunActive(row, flowId)) return;
     setDocPrepRunState(row, flowId, "");
-    if (finalPhase) setDocPrepStreamPhase(row, flowId, finalPhase, "blocked", "The packet did not pass artifact and storage readback verification.");
-    document.getElementById("topStatus").textContent = `${flow.shortTitle} packet verification blocked. Review the packet blocker and retry.`;
-    addShellEvent(`${flow.shortTitle} packet blocked`, "The generated PDF did not pass artifact and storage readback verification, so no document was marked complete.", "blocked", true, { row, source: flow.title });
+    if (finalPhase) setDocPrepStreamPhase(row, flowId, finalPhase, "blocked", message);
+    document.getElementById("topStatus").textContent = `${flow.shortTitle} packet verification blocked. ${message}`;
+    addShellEvent(`${flow.shortTitle} packet blocked`, `${message} No document was marked complete.`, "blocked", true, { row, source: flow.title });
     renderDocPrepRunSurfaces();
     return;
   }
@@ -5954,8 +5937,8 @@ async function runFullDiscovery(row = selectedRow(), source = null, flowId = sta
     addShellEvent(`${flow.shortTitle} rerun blocked`, "Add a short correction note before replacing the active verified packet.", "blocked", true, { row, source: flow.title });
     return;
   }
-  if (isDemoEstateImport(row)) {
-    nudgeDeniedAction(source, `${flow.shortTitle} blocked`, "Sample estates stay isolated from production source runs and packet export.", { pill: true, source: "docprep-run" });
+  if (isLegacyPlaceholderEstateImport(row)) {
+    nudgeDeniedAction(source, `${flow.shortTitle} blocked`, "A legacy placeholder estate stays isolated until it is removed from the shared workspace.", { pill: true, source: "docprep-run" });
     return;
   }
   state.discoveryOpen = false;
@@ -5973,9 +5956,14 @@ async function runFullDiscovery(row = selectedRow(), source = null, flowId = sta
     { row, source: flow.title }
   );
   if (flow.id === "discovery") {
-    document.getElementById("topStatus").textContent = `Searching configured public sources for ${docPrepEstateLabel(row)}...`;
+    const savedSourceResult = verifiedSourceCaptureResult(row);
+    document.getElementById("topStatus").textContent = savedSourceResult
+      ? `Validating the saved public-source capture for ${docPrepEstateLabel(row)}...`
+      : `Searching configured public sources for ${docPrepEstateLabel(row)}...`;
     renderDocPrepRunSurfaces();
-    const sourceRun = await runAutonomousDiscoverySources(row);
+    const sourceRun = savedSourceResult
+      ? { ok: true, result: savedSourceResult, reused: true }
+      : await runAutonomousDiscoverySources(row);
     if (!docPrepMainRunActive(row, flow.id)) return;
     if (!sourceRun.ok) {
       setDocPrepRunState(row, flow.id, "");
@@ -5988,10 +5976,12 @@ async function runFullDiscovery(row = selectedRow(), source = null, flowId = sta
     }
     const blockerCount = Array.isArray(sourceRun.result?.blockers) ? sourceRun.result.blockers.length : 0;
     addShellEvent(
-      "Discovery sources checked",
-      blockerCount
-        ? `${blockerCount} source review item${blockerCount === 1 ? "" : "s"} remain visible in the packet workflow.`
-        : "Configured public sources returned evidence for the Discovery review.",
+      sourceRun.reused ? "Verified Discovery sources reused" : "Discovery sources checked",
+      sourceRun.reused
+        ? `The saved public-source capture passed shared Discovery File readback. ${blockerCount ? `${blockerCount} review item${blockerCount === 1 ? "" : "s"} remain visible in the packet workflow.` : "No source blockers remain."}`
+        : blockerCount
+          ? `${blockerCount} source review item${blockerCount === 1 ? "" : "s"} remain visible in the packet workflow.`
+          : "Configured public sources returned evidence for the Discovery review.",
       blockerCount ? "blocked" : "ready",
       true,
       { row, source: flow.title }
@@ -7552,33 +7542,63 @@ function renderCrmImportModal({ focus = true } = {}) {
   if (focus) requestAnimationFrame(() => mount.querySelector(isBatch ? "#crmImportBatchRows" : "#crmImportEstate")?.focus());
 }
 
+const crmBatchImportLimit = 250;
+
 function splitCrmBatchLine(line) {
-  const raw = String(line || "");
-  const delimiter = raw.includes("|") ? "|" : raw.includes("\t") ? "\t" : raw.includes(";") ? ";" : ",";
-  const parts = [];
-  let current = "";
+  if (line.includes("|")) return line.split("|").map((part) => part.trim());
+  if (line.includes("\t")) return line.split("\t").map((part) => part.trim());
+  if (line.includes(";")) return line.split(";").map((part) => part.trim());
+  return line.split(",").map((part) => part.trim());
+}
+
+function parseDelimitedRows(text, delimiter) {
+  const rows = [];
+  let row = [];
+  let cell = "";
   let quoted = false;
-  for (let index = 0; index < raw.length; index += 1) {
-    const character = raw[index];
-    const next = raw[index + 1];
-    if (character === '"' && quoted && next === '"') {
-      current += '"';
-      index += 1;
-      continue;
-    }
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
     if (character === '"') {
-      quoted = !quoted;
-      continue;
+      if (quoted && text[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (character === delimiter && !quoted) {
+      row.push(cell.trim());
+      cell = "";
+    } else if ((character === "\n" || character === "\r") && !quoted) {
+      if (character === "\r" && text[index + 1] === "\n") index += 1;
+      row.push(cell.trim());
+      if (row.some(Boolean)) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += character;
     }
-    if (character === delimiter && !quoted) {
-      parts.push(cleanCrmImportCell(current));
-      current = "";
-      continue;
-    }
-    current += character;
   }
-  parts.push(cleanCrmImportCell(current));
-  return parts;
+  row.push(cell.trim());
+  if (row.some(Boolean)) rows.push(row);
+  return rows;
+}
+
+function csvDelimiter(text) {
+  const firstLine = text.split(/\r?\n/, 1)[0] || "";
+  return [";", "\t", ","].reduce((selected, delimiter) => {
+    const occurrences = firstLine.split(delimiter).length - 1;
+    const selectedOccurrences = firstLine.split(selected).length - 1;
+    return occurrences > selectedOccurrences ? delimiter : selected;
+  }, ",");
+}
+
+function crmColumnKey(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function rowValueByColumn(row, headerIndex, names) {
+  const index = names.map(crmColumnKey).map((name) => headerIndex.get(name)).find(Number.isInteger);
+  return index === undefined ? "" : String(row[index] || "").trim();
 }
 
 function cleanCrmImportCell(value) {
@@ -7611,6 +7631,45 @@ function csvImportItem(line, index, sourceUrl, notes) {
     sourceUrl,
     notes
   };
+}
+
+function csvFileImportItems(text, fileName = "CSV file") {
+  const rows = parseDelimitedRows(String(text || ""), csvDelimiter(String(text || "")));
+  if (rows.length < 2) throw new Error("The CSV needs a header row and at least one estate row.");
+  const headerIndex = new Map(rows[0].map((header, index) => [crmColumnKey(header), index]));
+  const hasContactAddressHeaders = ["firstname", "lastname", "address"].every((column) => headerIndex.has(column));
+  const hasEstateHeaders = ["estatename", "ownername", "propertyaddress"].some((column) => headerIndex.has(column));
+  if (!hasContactAddressHeaders && !hasEstateHeaders) {
+    throw new Error("The CSV needs estate fields or First Name, Last Name, and Address columns.");
+  }
+  const imports = rows.slice(1).map((row, index) => {
+    const firstName = rowValueByColumn(row, headerIndex, ["first name", "first"]);
+    const lastName = rowValueByColumn(row, headerIndex, ["last name", "last"]);
+    const ownerName = rowValueByColumn(row, headerIndex, ["owner name", "owner", "seller"]) || [firstName, lastName].filter(Boolean).join(" ");
+    const estateName = rowValueByColumn(row, headerIndex, ["estate name", "estate"]) || ownerName;
+    const street = rowValueByColumn(row, headerIndex, ["property address", "address", "street address"]);
+    const city = rowValueByColumn(row, headerIndex, ["city"]);
+    const stateValue = rowValueByColumn(row, headerIndex, ["state"]);
+    const zip = rowValueByColumn(row, headerIndex, ["zip code", "zip", "postal code"]);
+    const cityLine = [city, stateValue, zip].filter(Boolean).join(" ");
+    const propertyAddress = [street, cityLine].filter(Boolean).join(", ");
+    if (!ownerName || !propertyAddress) {
+      throw new Error(`Row ${index + 2} needs an owner and property address before it can be imported.`);
+    }
+    return normalizeCrmImport({
+      provider: "csv",
+      estateName,
+      ownerName,
+      propertyAddress,
+      county: rowValueByColumn(row, headerIndex, ["county"]),
+      parcelId: rowValueByColumn(row, headerIndex, ["folio", "parcel", "parcel id"]),
+      sourceRecordId: `${fileName}:row-${index + 2}`,
+      notes: `Imported from ${fileName} row ${index + 2}.`,
+    });
+  });
+  if (!imports.length) throw new Error("The CSV did not contain any estate rows.");
+  if (imports.length > crmBatchImportLimit) throw new Error(`This import has ${imports.length} rows. Import up to ${crmBatchImportLimit} at a time.`);
+  return imports;
 }
 
 function batchImportItems(formData) {
@@ -8815,6 +8874,48 @@ function rerenderAssetDiscoverySurface() {
   renderCurrentLoopView();
 }
 
+async function runExternalSourceSearchForRow(row = selectedRow(), payload = sourceCaptureForRow(row)) {
+  if (!row) throw new Error("Select an estate before running the public sources.");
+  const key = assetDiscoveryKey(row);
+  const previousCapture = cloneSourceCaptureRecord(state.sourceCaptures[key]);
+  try {
+    const result = await postJson("/api/discovery/external-source-run", externalSourceRunPayload(row, payload, key));
+    if (result.persistence?.readbackStatus !== "verified") {
+      throw new Error("Source evidence returned, but the shared Discovery File did not pass storage readback. Retry before continuing.");
+    }
+    applyExternalSourceRunResult(row, payload, result);
+    const summaries = Array.isArray(result.sourceSummaries) ? result.sourceSummaries : [];
+    const factSources = summaries.filter((summary) => Number(summary.factCount) > 0).length;
+    const blockers = Array.isArray(result.blockers) ? result.blockers.length : 0;
+    addShellEvent(
+      "Source search ran",
+      `${factSources} county/source check${factSources === 1 ? "" : "s"} returned evidence. ${blockers ? `${blockers} review item${blockers === 1 ? "" : "s"} remain visible in Doc Prep.` : "No source blockers returned."}`,
+      blockers ? "blocked" : "ready",
+      true,
+      { row, source: "Discovery source review" }
+    );
+    return result;
+  } catch (error) {
+    state.sourceCaptures[key] = {
+      ...(previousCapture ?? {}),
+      sourceApiRun: {
+        ok: false,
+        mode: "external_source_run",
+        runId: "",
+        generatedAt: new Date().toISOString(),
+        sourceSummaries: [],
+        blockers: [error instanceof Error ? error.message : "Source search could not run."],
+        message: "Source search could not run. Keep Discovery blocked until the county source checks are reviewed."
+      },
+      updatedAt: Date.now()
+    };
+    addShellEvent("Source search blocked", error instanceof Error ? error.message : "The source search could not run.", "blocked", true, { row, source: "Discovery source review" });
+    throw error;
+  } finally {
+    rerenderAssetDiscoverySurface();
+  }
+}
+
 function wireAssetDiscoveryControls(content, row = selectedRow()) {
   if (!content || !row) return;
   content.querySelector("[data-save-source-capture]")?.addEventListener("click", async (event) => {
@@ -8848,45 +8949,15 @@ function wireAssetDiscoveryControls(content, row = selectedRow()) {
     event.preventDefault();
     const button = event.currentTarget;
     const payload = collectSourceCapturePayload(content, row);
-    const key = assetDiscoveryKey(row);
-    const previousCapture = cloneSourceCaptureRecord(state.sourceCaptures[key]);
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
     try {
-      const result = await postJson("/api/discovery/external-source-run", externalSourceRunPayload(row, payload, key));
-      if (result.persistence?.readbackStatus !== "verified") {
-        throw new Error("Source evidence returned, but the shared Discovery File did not pass storage readback. Retry before continuing.");
-      }
-      applyExternalSourceRunResult(row, payload, result);
-      const summaries = Array.isArray(result.sourceSummaries) ? result.sourceSummaries : [];
-      const factSources = summaries.filter((summary) => Number(summary.factCount) > 0).length;
-      const blockers = Array.isArray(result.blockers) ? result.blockers.length : 0;
-      addShellEvent(
-        "Source search ran",
-        `${factSources} county/source check${factSources === 1 ? "" : "s"} returned evidence. ${blockers ? `${blockers} review item${blockers === 1 ? "" : "s"} remain visible in Doc Prep.` : "No source blockers returned."}`,
-        blockers ? "blocked" : "ready",
-        true,
-        { row, source: "Discovery source review" }
-      );
-    } catch (error) {
-      state.sourceCaptures[key] = {
-        ...(previousCapture ?? {}),
-        sourceApiRun: {
-          ok: false,
-          mode: "external_source_run",
-          runId: "",
-          generatedAt: new Date().toISOString(),
-          sourceSummaries: [],
-          blockers: [error instanceof Error ? error.message : "Source search could not run."],
-          message: "Source search could not run. Keep Discovery blocked until the county source checks are reviewed."
-        },
-        updatedAt: Date.now()
-      };
-      addShellEvent("Source search blocked", error instanceof Error ? error.message : "The source search could not run.", "blocked", true, { row, source: "Discovery source review" });
+      await runExternalSourceSearchForRow(row, payload);
+    } catch {
+      // The shared runner records the truthful source blocker and preserves the prior verified capture.
     } finally {
       button.disabled = false;
       button.removeAttribute("aria-busy");
-      rerenderAssetDiscoverySurface();
     }
   });
 
@@ -14962,7 +15033,7 @@ function renderLoadedState(data, dossier) {
   state.rows = buildRows(data, dossier);
   migrateUnambiguousLegacyEstateState(state.rows);
   pruneBatchSets();
-  seedDemoEstatePreviewState();
+  synchronizeImportedEstateState();
   state.selectedId = state.selectedId ?? state.rows[0]?.id ?? null;
   document.getElementById("topStatus").textContent = `${data.facts?.length ?? 0} evidence items loaded from the latest lead review.`;
   updateFooterLeadContext(selectedRow());
@@ -15065,7 +15136,7 @@ async function loadRun() {
     state.selectedId = state.rows[0]?.id ?? null;
     state.selectedIds.clear();
     state.queueIds.clear();
-    seedDemoEstatePreviewState();
+    synchronizeImportedEstateState();
     document.getElementById("topStatus").textContent = error.message;
     document.getElementById("resultsBody").innerHTML = state.rows.length
       ? ""
@@ -16677,6 +16748,9 @@ function legacyPublicSnapshot() {
       googleHandoffReady: googleWorkspaceDeliveryReady(),
       googleHandoffDestination: cleanDisplayValue(state.googleWorkspace?.destinationName || ""),
       contactReview: publicContactReview(row),
+      sourceCapture: row
+        ? cloneSourceCaptureRecord(sourceCapturePersistenceSnapshot({ [assetDiscoveryKey(row)]: sourceCaptureForRow(row) })[assetDiscoveryKey(row)]) || {}
+        : {},
       automation: stream ? {
         status: cleanDisplayValue(stream.status || "pending"),
         updatedAt: Number(stream.updatedAt || 0),
@@ -17288,6 +17362,10 @@ async function dispatchLegacyCommand(command, payload = {}) {
       await runFullDiscovery(row, payload.source || null, payload.flowId || "discovery", {
         correctionNote: payload.correctionNote,
       });
+    } else if (id === "run-source-search") {
+      const row = estateForLegacyCommand(payload);
+      if (!row) throw new Error("Select an available estate.");
+      await runExternalSourceSearchForRow(row);
     } else if (id === "upload-idi-report") {
       const row = estateForLegacyCommand(payload);
       if (!row) throw new Error("Select an available estate.");
@@ -17316,6 +17394,13 @@ async function dispatchLegacyCommand(command, payload = {}) {
         throw new Error("The selected estate changed before this contact decision could be saved.");
       }
       await saveContactCandidateReview(row, payload.candidateId, payload.status, payload.reportRevision);
+    } else if (id === "save-source-capture") {
+      const row = estateForLegacyCommand(payload);
+      if (!row) throw new Error("Select an available estate.");
+      if (String(payload.estateId || "") !== String(state.selectedId || "")) {
+        throw new Error("The selected estate changed before this source evidence could be saved.");
+      }
+      await saveSourceCaptureForRow(row, payload.capture);
     } else if (id === "remove-from-queue") {
       const row = estateForLegacyCommand(payload);
       if (!row) throw new Error("Select an available estate.");

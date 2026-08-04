@@ -1,10 +1,23 @@
 import { runtime } from "../../core/feature-registry.js";
 import { resolveDisposition } from "../case-journey/case-journey.js";
 import { timelineState } from "./automation-timeline.js";
+import {
+  caseForEstate,
+  exportVerifiedPdfToGoogleDrive,
+  hydrateProcessCase,
+  processDetail,
+  processStateLabel,
+  processStateTone,
+  requestCaseAction,
+  startProcessCase,
+  verifiedPdf,
+} from "./cloud-process.js";
 import { escapeFor, mountDocumentRows, renderDocumentRow } from "./document-row.js";
 import { mountIdiUploadControl, renderIdiControlState, uiStateFor } from "./idi-upload-control.js";
 
 let activeDocPrepMount = null;
+const cloudActionByEstate = new Set();
+const cloudErrorByEstate = new Map();
 
 function docPrepFlowMeta(snapshot = {}) {
   const source = snapshot.docPrep?.flow;
@@ -82,7 +95,10 @@ function displayedProgress(snapshot, state) {
 
 function estateOptions(snapshot, bridge) {
   const escape = (value) => escapeFor(bridge, value);
-  return (snapshot.estates || []).map((estate) => `
+  const estates = Array.isArray(snapshot.estates) ? snapshot.estates : [];
+  const importedEstates = estates.filter((estate) => String(estate?.id || "") !== "estate");
+  const visibleEstates = importedEstates.length ? importedEstates : estates;
+  return visibleEstates.map((estate) => `
     <option value="${escape(estate.id)}" ${estate.id === snapshot.selectedEstateId ? "selected" : ""}>
       ${escape(estate.title)} - ${escape(estate.address)}
     </option>
@@ -95,6 +111,44 @@ function emptyDocPrepView(bridge) {
       <h1>Select an estate to begin</h1>
       <p>Open Estates, choose the property file, then return here to run Discovery or upload an approved IDI report.</p>
       <wa-button variant="brand" appearance="filled" data-open-estates>${buttonStartIcon(bridge, "search-estate", 17)}<span>Open Estates</span></wa-button>
+    </section>
+  `;
+}
+
+function renderCloudProcessStatus(snapshot, bridge) {
+  const estateId = String(snapshot.selectedEstateId || "");
+  if (!estateId) return "";
+  const escape = (value) => escapeFor(bridge, value);
+  const processCase = caseForEstate(estateId);
+  const busy = cloudActionByEstate.has(estateId);
+  const error = cloudErrorByEstate.get(estateId) || "";
+  const status = processCase ? processStateLabel(processCase) : "Cloud packet not started";
+  const detail = error || (processCase
+    ? processDetail(processCase)
+    : "After Discovery evidence is persisted, start the durable cloud packet process. Browser controls never own its progress.");
+  const tone = error ? "blocked" : processStateTone(processCase);
+  const actions = !processCase
+    ? `<wa-button class="beui-button" variant="brand" appearance="outlined" data-start-cloud-docprep ${busy ? "disabled loading" : ""}>
+        ${buttonStartIcon(bridge, "magnifier-route", 17)}<span>${busy ? "Starting cloud packet" : "Start cloud packet"}</span>
+      </wa-button>`
+    : `<button type="button" class="hr-text-command" data-refresh-cloud-docprep ${busy ? "disabled" : ""}>${busy ? "Refreshing" : "Refresh status"}</button>
+      ${["blocked", "failed"].includes(processCase.state)
+        ? `<button type="button" class="hr-text-command" data-retry-cloud-docprep ${busy ? "disabled" : ""}>Retry cloud packet</button>`
+        : ""}
+      ${["queued", "sourcing", "rendering", "review_required"].includes(processCase.state)
+        ? `<button type="button" class="hr-text-command hr-danger-command" data-cancel-cloud-docprep ${busy ? "disabled" : ""}>Stop cloud packet</button>`
+        : ""}
+      ${verifiedPdf(processCase)
+        ? `<button type="button" class="hr-text-command" data-export-cloud-docprep ${busy ? "disabled" : ""}>${busy ? "Exporting to Google Drive" : "Export verified PDF to Google Drive"}</button>
+          <a class="hr-text-command" href="/api/doc-prep/cases/${encodeURIComponent(processCase.id)}/view">Open verified PDF</a>`
+        : ""}`;
+  return `
+    <section class="hr-cloud-process" data-cloud-docprep-state="${escape(processCase?.state || "not_started")}" data-tone="${escape(tone)}" aria-live="polite">
+      <div class="hr-cloud-process-copy">
+        <strong>${escape(status)}</strong>
+        <span>${escape(detail)}</span>
+      </div>
+      <div class="hr-inline-actions">${actions}</div>
     </section>
   `;
 }
@@ -162,6 +216,13 @@ function renderDocPrepView({ bridge }) {
             ${buttonStartIcon(bridge, "estates", 17)}<span>${escape(disposition.next.label)}</span>
           </wa-button>
           ` : `${flow.isDiscovery ? `<button
+            class="hr-upload-command hr-public-sources-command"
+            type="button"
+            data-run-public-sources
+            data-beui-component="button"
+            aria-label="Run configured public sources for ${escape(estate.title)}"
+          >${icon(bridge, "search-estate", 17)}<span>Run Public Sources</span></button>
+          <button
             class="hr-upload-command hr-idi-report-command"
             type="button"
             data-idi-picker
@@ -186,6 +247,7 @@ function renderDocPrepView({ bridge }) {
           <wa-progress-bar class="beui-progress" value="${escape(progress)}" aria-label="${escape(flow.label)} progress"></wa-progress-bar>
         </div>
         ${moveOn ? "" : renderIdiControlState(snapshot, state, bridge)}
+        ${moveOn || !flow.isDiscovery ? "" : renderCloudProcessStatus(snapshot, bridge)}
         ${packetComplete && !moveOn ? `
           <div class="hr-local-completion" data-local-packet-complete>
             <span>${icon(bridge, "check-circle", 18)}</span>
@@ -228,11 +290,96 @@ async function openDocumentContext({ bridge, estateId, documentId }) {
   runtime.rails.activate("doc-prep-context", { tab: "document", open: true });
 }
 
+async function startPublicSourceSearch({ bridge, snapshot, refresh }) {
+  const estateId = snapshot?.selectedEstateId;
+  if (!estateId) throw new Error("Select an estate before running the public sources.");
+  try {
+    const result = await bridge.dispatch("run-source-search", { estateId });
+    bridge.emit(
+      "Public source review finished",
+      "The current estate now shows the returned evidence and any truthful source blockers.",
+      "ready",
+    );
+    return result;
+  } catch (error) {
+    bridge.emit(
+      "Public source review needs attention",
+      error instanceof Error ? error.message : "The configured public sources could not run.",
+      "blocked",
+    );
+    throw error;
+  } finally {
+    refresh?.();
+  }
+}
+
+async function runCloudProcessAction({ bridge, snapshot, action, refresh }) {
+  const estateId = String(snapshot?.selectedEstateId || "");
+  if (!estateId || cloudActionByEstate.has(estateId)) return;
+  cloudActionByEstate.add(estateId);
+  cloudErrorByEstate.delete(estateId);
+  refresh();
+  try {
+    const processCase = action === "start"
+      ? await startProcessCase(snapshot)
+      : action === "refresh"
+        ? await hydrateProcessCase(estateId, { force: true })
+        : await requestCaseAction(caseForEstate(estateId), action);
+    const detail = processCase
+      ? `${processStateLabel(processCase)}. ${processDetail(processCase)}`
+      : "No durable cloud case exists for this estate yet.";
+    bridge.emit(
+      action === "start" ? "Cloud packet started" : action === "retry" ? "Cloud packet retried" : action === "cancel" ? "Cloud packet stopped" : "Cloud packet status refreshed",
+      detail,
+      processStateTone(processCase),
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Cloud document preparation needs attention.";
+    cloudErrorByEstate.set(estateId, message);
+    bridge.emit("Cloud packet needs attention", message, "blocked");
+  } finally {
+    cloudActionByEstate.delete(estateId);
+    refresh();
+  }
+}
+
+async function runCloudDriveExport({ bridge, snapshot, refresh }) {
+  const estateId = String(snapshot?.selectedEstateId || "");
+  const processCase = caseForEstate(estateId);
+  if (!estateId || !processCase || cloudActionByEstate.has(estateId)) return;
+  cloudActionByEstate.add(estateId);
+  cloudErrorByEstate.delete(estateId);
+  refresh();
+  try {
+    const exported = await exportVerifiedPdfToGoogleDrive(processCase);
+    bridge.emit(
+      exported.idempotent ? "Google Drive export already verified" : "Verified PDF exported to Google Drive",
+      `${String(exported.name || "The verified PDF")} passed Google Drive readback.`,
+      "ready",
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Google Drive export needs attention.";
+    cloudErrorByEstate.set(estateId, message);
+    bridge.emit("Google Drive export needs attention", message, "blocked");
+  } finally {
+    cloudActionByEstate.delete(estateId);
+    refresh();
+  }
+}
+
 function mountDocPrepView(mount, bridge) {
   if (!mount || !bridge) return;
   activeDocPrepMount = mount;
   mount.classList.add("hr-docprep-mount");
   const snapshot = bridge.readState();
+  const estateId = String(snapshot.selectedEstateId || "");
+  if (estateId) {
+    void hydrateProcessCase(estateId).then((processCase) => {
+      if (processCase) refreshDocPrepView(bridge);
+    }).catch(() => {
+      // The visible Cloud Packet action reports setup and transport failures.
+    });
+  }
   mount.querySelector("[data-open-estates]")?.addEventListener("click", () => bridge.navigate("find-estates"));
   mount.querySelector("[data-docprep-estate-select]")?.addEventListener("change", (event) => {
     const select = event.currentTarget;
@@ -334,6 +481,34 @@ function mountDocPrepView(mount, bridge) {
       },
     },
   );
+  mount.querySelector("[data-run-public-sources]")?.addEventListener("click", (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    void startPublicSourceSearch({
+      bridge,
+      snapshot,
+      refresh: () => refreshDocPrepView(bridge),
+    }).catch(() => {
+      // The shared runner and the bridge event retain the blocker. The refreshed
+      // view restores a usable control without losing the prior verified capture.
+    });
+  });
+  mount.querySelector("[data-start-cloud-docprep]")?.addEventListener("click", () => {
+    void runCloudProcessAction({ bridge, snapshot, action: "start", refresh: () => refreshDocPrepView(bridge) });
+  });
+  mount.querySelector("[data-refresh-cloud-docprep]")?.addEventListener("click", () => {
+    void runCloudProcessAction({ bridge, snapshot, action: "refresh", refresh: () => refreshDocPrepView(bridge) });
+  });
+  mount.querySelector("[data-retry-cloud-docprep]")?.addEventListener("click", () => {
+    void runCloudProcessAction({ bridge, snapshot, action: "retry", refresh: () => refreshDocPrepView(bridge) });
+  });
+  mount.querySelector("[data-cancel-cloud-docprep]")?.addEventListener("click", () => {
+    void runCloudProcessAction({ bridge, snapshot, action: "cancel", refresh: () => refreshDocPrepView(bridge) });
+  });
+  mount.querySelector("[data-export-cloud-docprep]")?.addEventListener("click", () => {
+    void runCloudDriveExport({ bridge, snapshot, refresh: () => refreshDocPrepView(bridge) });
+  });
   mountIdiUploadControl(mount, {
     bridge,
     snapshot,
@@ -346,4 +521,4 @@ function unmountDocPrepView(mount) {
   if (activeDocPrepMount === mount) activeDocPrepMount = null;
 }
 
-export { displayedProgress, docPrepFlowMeta, mountDocPrepView, nextDocPrepFlowIndex, refreshDocPrepView, renderDocPrepView, unmountDocPrepView };
+export { displayedProgress, docPrepFlowMeta, mountDocPrepView, nextDocPrepFlowIndex, refreshDocPrepView, renderCloudProcessStatus, runCloudDriveExport, renderDocPrepView, runCloudProcessAction, startPublicSourceSearch, unmountDocPrepView };
