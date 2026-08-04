@@ -272,6 +272,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(html, /data-local-packet-complete/);
   assert.match(html, /Google Workspace is an optional handoff and can be set up afterward/);
   assert.match(html, /data-start-cloud-docprep/);
+  assert.doesNotMatch(html, /data-export-cloud-docprep/, "Google Drive delivery must stay unavailable until the cloud PDF is verified");
   assert.match(html, /Cloud packet not started/);
   assert.match(html, /Browser controls never own its progress/);
   assert.equal((html.match(/class="hr-document-row"/g) || []).length, 2);

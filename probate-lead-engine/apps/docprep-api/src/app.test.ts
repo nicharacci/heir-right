@@ -37,7 +37,8 @@ test("downloads and Google Drive exports only use a byte-verified PDF", async ()
   const sourcing = await exportRepository.transition(intake.case.id, intake.case.revision, "sourcing", "source");
   const rendering = await exportRepository.transition(sourcing.id, sourcing.revision, "rendering", "render");
   const ready = await exportRepository.recordArtifact(rendering.id, rendering.revision, { objectKey: "docprep/export.pdf", contentType: "application/pdf", bytes: pdf.byteLength, sha256: hash, readbackStatus: "verified", verifiedAt: new Date().toISOString(), url: "https://public.example.test/docprep/export.pdf" });
-  const requests: Array<{ url: string; method: string }> = [];
+  const requests: Array<{ url: string; method: string; authorization: string }> = [];
+  const credentialRefreshes: boolean[] = [];
   const artifactStoreReads: string[] = [];
   const artifactStore = {
     async get(objectKey: string) {
@@ -47,7 +48,10 @@ test("downloads and Google Drive exports only use a byte-verified PDF", async ()
     },
   };
   const fetcher = async (input: string | URL, init?: RequestInit) => {
-    const url = String(input); requests.push({ url, method: init?.method || "GET" });
+    const url = String(input);
+    const authorization = String((init?.headers as Record<string, string> | undefined)?.authorization || "");
+    requests.push({ url, method: init?.method || "GET", authorization });
+    if (authorization === "Bearer expired-drive-token") return Response.json({ error: "expired" }, { status: 401 });
     if (url.includes("drive/v3/files?q=")) return Response.json({ files: [] });
     if (url.includes("upload/drive/v3/files")) return Response.json({ id: "drive-pdf-1", name: "EST of Morgan Bell.pdf 08-04-2026", mimeType: "application/pdf", md5Checksum: md5, webViewLink: "https://drive.example/drive-pdf-1" });
     return Response.json({ id: "drive-pdf-1", name: "EST of Morgan Bell.pdf 08-04-2026", mimeType: "application/pdf", md5Checksum: md5, appProperties: { heirrightDocprepCaseId: ready.id, heirrightPdfSha256: hash }, webViewLink: "https://drive.example/drive-pdf-1" });
@@ -55,7 +59,18 @@ test("downloads and Google Drive exports only use a byte-verified PDF", async ()
   const publicOnlyApp = createApp({ serviceToken: "test-service-token", repository: exportRepository, fetcher: fetcher as typeof fetch });
   const deniedPublicFallback = await publicOnlyApp.request(`http://api/v1/doc-prep/cases/${ready.id}/download`, { headers });
   assert.equal(deniedPublicFallback.status, 409, "the API must not retrieve a packet through a public storage URL");
-  const exportApp = createApp({ serviceToken: "test-service-token", repository: exportRepository, artifactStore, fetcher: fetcher as typeof fetch, googleDrive: { accessToken: "drive-token" } });
+  const exportApp = createApp({
+    serviceToken: "test-service-token",
+    repository: exportRepository,
+    artifactStore,
+    fetcher: fetcher as typeof fetch,
+    googleDrive: {
+      getCredentials: async ({ forceRefresh = false } = {}) => {
+        credentialRefreshes.push(forceRefresh);
+        return { accessToken: forceRefresh ? "refreshed-drive-token" : "expired-drive-token" };
+      },
+    },
+  });
   const visibleCase = await exportApp.request(`http://api/v1/doc-prep/cases/${ready.id}`, { headers });
   assert.equal((await visibleCase.json() as any).case.artifact.url, undefined, "the case JSON must not expose the R2 artifact URL");
   const download = await exportApp.request(`http://api/v1/doc-prep/cases/${ready.id}/download`, { headers });
@@ -69,5 +84,8 @@ test("downloads and Google Drive exports only use a byte-verified PDF", async ()
   assert.equal(repeatExport.status, 200);
   assert.equal((await repeatExport.json() as any).exports[0].idempotent, true, "the durable export ledger must reuse a completed Drive export");
   assert.deepEqual(artifactStoreReads, ["docprep/export.pdf", "docprep/export.pdf", "docprep/export.pdf", "docprep/export.pdf"]);
-  assert.deepEqual(requests.map((request) => request.method), ["GET", "POST", "GET"]);
+  assert.deepEqual(credentialRefreshes, [false, true], "a Drive 401 must force one broker refresh before retrying");
+  assert.deepEqual(requests.map((request) => request.method), ["GET", "GET", "POST", "GET"]);
+  assert.equal(requests[0].authorization, "Bearer expired-drive-token");
+  assert.equal(requests[1].authorization, "Bearer refreshed-drive-token");
 });
