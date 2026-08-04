@@ -40,3 +40,11 @@ The tests prove request ownership, idempotent intake, retry/cancel revision hand
 ## Execution caveat
 
 The original S41 checkpoint refs were unavailable, so work continued from the current `2026-08-03` integration checkout under the user-authorized workaround. The external canonical checkout remains read-only and untouched. Docker is installed but its daemon is unavailable on this workstation, whose data volume has about 8 GiB free; container-image proof remains a Cloud gate rather than a local claim.
+
+## Final review
+
+- Re-ran `pnpm turbo run build --force` and `pnpm turbo run test --force` after the retry-delivery repair: all 6 build packages and all 11 test tasks passed without remote cache reuse.
+- Re-ran `pnpm audit --prod`: no known vulnerabilities remain after upgrading the affected Drizzle, Hono Node adapter, and DOMPurify resolutions.
+- Inspected the deployed `surface.heirright.com` Document Prep view in the Codex in-app browser. Its signed-in production session loads, navigation to Document Prep works, and the existing surface correctly shows a disabled run control while its source evidence is incomplete. It does not contain this un-deployed S41 process API, so it is evidence of the current deployed boundary, not S41 live acceptance.
+- Re-read the added UI behavior against the project design canon: the change reuses the existing Doc Prep control language, keeps the rare process state as plain status text, avoids fabricated success, requires a real verified PDF before the open action appears, and leaves review/legal blocks explicit. No new visual metaphor, font, palette, animation, or generic component system was introduced.
+- The final source review found and repaired retry delivery before acceptance. Retry now writes a new durable outbox event, and lifecycle changes update durable steps. No unresolved source-level control or fake-completion issue remains in the implementation lane.
