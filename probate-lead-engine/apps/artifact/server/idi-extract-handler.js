@@ -232,8 +232,39 @@ async function extractDocx(bytes) {
   };
 }
 
+function decodeCsvText(bytes) {
+  const source = Buffer.from(bytes);
+  if (!source.length) {
+    const emptyError = new Error("Choose a non-empty CSV.");
+    emptyError.code = "estate_upload_empty";
+    throw emptyError;
+  }
+  if (source.includes(0)) {
+    const binaryError = new Error("The selected CSV contains binary data.");
+    binaryError.code = "estate_upload_invalid_csv";
+    throw binaryError;
+  }
+
+  let text;
+  let encoding = "utf-8";
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(source);
+  } catch {
+    text = new TextDecoder("windows-1252").decode(source);
+    encoding = "windows-1252";
+  }
+
+  if (/\u0000|[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text)) {
+    const binaryError = new Error("The selected CSV contains binary data.");
+    binaryError.code = "estate_upload_invalid_csv";
+    throw binaryError;
+  }
+  return { text: text.replace(/^\uFEFF/, ""), encoding };
+}
+
 function extractCsv(bytes) {
-  const rows = parseCsv(Buffer.from(bytes).toString("utf8"), {
+  const decoded = decodeCsvText(bytes);
+  const rows = parseCsv(decoded.text, {
     bom: true,
     relax_column_count: true,
     skip_empty_lines: true,
@@ -384,3 +415,4 @@ async function idiExtractHandler(request, response) {
 
 module.exports = idiExtractHandler;
 module.exports.extractEstateUpload = extractEstateUpload;
+module.exports.decodeCsvText = decodeCsvText;
