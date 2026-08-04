@@ -2133,6 +2133,7 @@ const sharedWorkspaceStateKeys = new Set([
   "heirright:document-files-state",
   "heirright:closing-field-values",
   "heirright:closing-export-state",
+  "heirright:estate-workflow-state",
   "heirright:outreach-workspace",
 ]);
 
