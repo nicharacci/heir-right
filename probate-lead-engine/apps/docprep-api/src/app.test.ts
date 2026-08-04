@@ -46,10 +46,17 @@ test("downloads and Google Drive exports only use a byte-verified PDF", async ()
     return Response.json({ id: "drive-pdf-1", name: "EST of Morgan Bell.pdf 08-04-2026", mimeType: "application/pdf", md5Checksum: md5, appProperties: { heirrightDocprepCaseId: ready.id, heirrightPdfSha256: hash }, webViewLink: "https://drive.example/drive-pdf-1" });
   };
   const exportApp = createApp({ serviceToken: "test-service-token", repository: exportRepository, fetcher: fetcher as typeof fetch, googleDrive: { accessToken: "drive-token" } });
+  const visibleCase = await exportApp.request(`http://api/v1/doc-prep/cases/${ready.id}`, { headers });
+  assert.equal((await visibleCase.json() as any).case.artifact.url, undefined, "the case JSON must not expose the R2 artifact URL");
   const download = await exportApp.request(`http://api/v1/doc-prep/cases/${ready.id}/download`, { headers });
   assert.equal(download.status, 200); assert.equal(download.headers.get("content-type"), "application/pdf"); assert.match(download.headers.get("content-disposition") || "", /EST of Morgan Bell\.pdf/);
+  const view = await exportApp.request(`http://api/v1/doc-prep/cases/${ready.id}/view`, { headers });
+  assert.equal(view.status, 200); assert.match(view.headers.get("content-disposition") || "", /^inline;/, "opening a verified PDF must remain an inline authenticated response");
   const exported = await exportApp.request("http://api/v1/doc-prep/exports/google-drive", { method: "POST", headers, body: JSON.stringify({ caseIds: [ready.id], operatorIntent: "export_verified_pdfs_to_google_drive" }) });
   assert.equal(exported.status, 200); const exportedBody = await exported.json() as any;
   assert.equal(exportedBody.readbackStatus, "verified"); assert.equal(exportedBody.exports[0].name, "EST of Morgan Bell.pdf 08-04-2026");
-  assert.deepEqual(requests.map((request) => request.method), ["GET", "GET", "GET", "POST", "GET"]);
+  const repeatExport = await exportApp.request("http://api/v1/doc-prep/exports/google-drive", { method: "POST", headers, body: JSON.stringify({ caseIds: [ready.id], operatorIntent: "export_verified_pdfs_to_google_drive" }) });
+  assert.equal(repeatExport.status, 200);
+  assert.equal((await repeatExport.json() as any).exports[0].idempotent, true, "the durable export ledger must reuse a completed Drive export");
+  assert.deepEqual(requests.map((request) => request.method), ["GET", "GET", "GET", "GET", "POST", "GET", "GET"]);
 });

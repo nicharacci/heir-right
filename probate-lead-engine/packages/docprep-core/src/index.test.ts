@@ -29,3 +29,14 @@ test("a retry moves the durable source-review step back to running without bypas
   const review = await repository.transition(retried.id, retried.revision, "review_required", "Human evidence review is required", undefined, "Human evidence review is required", "Complete evidence review.");
   await assert.rejects(() => repository.retry(review.id, review.revision), ProcessTransitionError);
 });
+test("the durable Drive export claim prevents concurrent duplicate uploads", async () => {
+  const repository = new InMemoryProcessRepository();
+  const processCase = (await repository.intake(intake, "idem-key-000004"))[0].case;
+  const sha256 = "b".repeat(64);
+  assert.equal((await repository.claimDriveExport(processCase.id, sha256)).status, "claimed");
+  assert.equal((await repository.claimDriveExport(processCase.id, sha256)).status, "in_progress");
+  await repository.completeDriveExport(processCase.id, sha256, { caseId: processCase.id, estateId: processCase.estate.estateId, name: "EST of Jordan Lee.pdf 08-04-2026", url: "https://drive.example/file", readbackStatus: "verified", idempotent: false });
+  const completed = await repository.claimDriveExport(processCase.id, sha256);
+  assert.equal(completed.status, "completed");
+  if (completed.status === "completed") assert.equal(completed.export.idempotent, true);
+});

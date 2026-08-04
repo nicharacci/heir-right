@@ -15731,7 +15731,7 @@ function docPrepRunControlsHtml(row = selectedRow(), flowId = state.activeDocPre
       ${canRetry ? `<button class="docprep-rerun-button" type="button" data-docprep-process-action="retry">Retry</button>` : ""}
       ${canCancel ? `<button class="docprep-rerun-button" type="button" data-docprep-process-action="cancel">Stop</button>` : ""}
       ${blockedByReview ? `<span class="secondary-text">${escapeHtml(processCase.blocker || processCase.nextAction || "A reviewer must clear the source evidence before the process can continue.")}</span>` : ""}
-      ${verifiedPdf ? `<a class="docprep-main-run-button is-complete" href="${escapeHtml(processCase.artifact.url)}" target="_blank" rel="noopener">Open verified PDF</a>` : ""}
+      ${verifiedPdf ? `<a class="docprep-main-run-button is-complete" href="/api/doc-prep/cases/${encodeURIComponent(processCase.id)}/view" target="_blank" rel="noopener">Open verified PDF</a>` : ""}
     </div>
   `;
 }

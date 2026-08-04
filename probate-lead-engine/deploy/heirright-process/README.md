@@ -11,7 +11,7 @@ The Fly API service uses `deploy/heirright-process/fly.api.toml` and needs:
 - `GOOGLE_WORKSPACE_ACCESS_TOKEN`
 - `GOOGLE_DRIVE_PARENT_FOLDER_ID` when exports belong in a specific shared folder
 
-The API exposes readiness at `/readyz`. Its Google Drive route accepts only durable cases with a verified R2 PDF, checks the source bytes and SHA-256, then reads the Drive PDF metadata and checksum back. A repeated request for the same case and content hash reuses the prior verified Drive file.
+The API exposes readiness at `/readyz`. Its Google Drive route accepts only durable cases with a verified R2 PDF, checks the source bytes and SHA-256, then reads the Drive PDF metadata and checksum back. A durable claim ledger allows one upload owner for each case/PDF hash, rejects concurrent duplicate uploads, and reuses a completed verified Drive file on later requests.
 
 ## Worker service
 
@@ -35,11 +35,11 @@ The existing authenticated artifact deployment needs:
 - `HEIRRIGHT_PROCESS_API_URL`
 - `HEIRRIGHT_PROCESS_API_TOKEN`
 
-It forwards the signed operator identity to the process API. The browser never holds the process token.
+It forwards the signed operator identity to the process API. The browser never holds the process token or receives the storage URL: verified PDFs open and download only through the authenticated artifact proxy.
 
 ## Controlled production smoke
 
-1. Apply `packages/docprep-core/migrations/0001_docprep_process.sql` to the selected production Postgres database.
+1. Apply `packages/docprep-core/migrations/0001_docprep_process.sql`, then `packages/docprep-core/migrations/0002_docprep_drive_exports.sql`, to the selected production Postgres database.
 2. Deploy API and worker, then set the artifact service process URL/token and redeploy it.
 3. Run `PROCESS_API_URL=<api-url> node scripts/s41-cloud-smoke.mjs` for health/readiness/auth proof.
 4. Only for the named approved estate, set `S41_CONTROLLED_ESTATE_APPROVED=approved`, `S41_SMOKE_ACTOR_EMAIL`, and `S41_SMOKE_ESTATE_JSON`. The smoke then requires the terminal `packet_ready` state and a matching PDF byte/hash readback.

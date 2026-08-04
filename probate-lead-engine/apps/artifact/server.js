@@ -480,7 +480,7 @@ async function proxyProcessBinary(pathname, { req, session, method = "GET", body
 
 async function handleDocPrepProcessRoute(req, res, url, session) {
   const path = url.pathname;
-  const caseMatch = path.match(/^\/api\/doc-prep\/cases\/([^/]+)(\/download|\/events|\/actions\/(retry|cancel))?$/);
+  const caseMatch = path.match(/^\/api\/doc-prep\/cases\/([^/]+)(\/download|\/view|\/events|\/actions\/(retry|cancel))?$/);
   const apiPath = path === "/api/doc-prep/cases"
     ? `/v1/doc-prep/cases${url.search}`
     : path === "/api/doc-prep/exports/google-drive"
@@ -503,7 +503,7 @@ async function handleDocPrepProcessRoute(req, res, url, session) {
       } : {}),
     })
     : undefined;
-  if (apiPath.endsWith("/download")) {
+  if (apiPath.endsWith("/download") || apiPath.endsWith("/view")) {
     const proxied = await proxyProcessBinary(apiPath, { req, session, method: req.method, body });
     res.writeHead(proxied.status, { "content-type": proxied.contentType, "content-disposition": proxied.disposition, "cache-control": "private, no-store" });
     res.end(proxied.bytes);

@@ -30,6 +30,8 @@ export type ProcessArtifact = { id: string; caseId: string; objectKey: string; o
 export type ProcessEvent = { id: number; caseId: string; type: string; state: CaseState; occurredAt: string; detail: string; actorEmail?: string };
 export type ProcessCase = { id: string; estate: EstateSnapshot; state: CaseState; revision: number; createdAt: string; updatedAt: string; blocker?: string; nextAction?: string; steps: ProcessStep[]; artifact?: ProcessArtifact; events: ProcessEvent[] };
 export type CommandResult = { created: boolean; idempotent: boolean; case: ProcessCase };
+export type DriveExport = { caseId: string; estateId: string; name: string; url: string; readbackStatus: "verified"; idempotent: boolean };
+export type DriveExportClaim = { status: "claimed" } | { status: "in_progress" } | { status: "completed"; export: DriveExport };
 
 const terminalStates = new Set<CaseState>(["packet_ready", "blocked", "failed", "cancelled"]);
 const legalTransitions: Record<CaseState, ReadonlySet<CaseState>> = {
@@ -90,6 +92,9 @@ export interface ProcessRepository {
   retry(caseId: string, expectedRevision: number, actorEmail?: string): Promise<ProcessCase>;
   cancel(caseId: string, expectedRevision: number, actorEmail?: string): Promise<ProcessCase>;
   recordArtifact(caseId: string, expectedRevision: number, artifact: Omit<ProcessArtifact, "id" | "caseId">): Promise<ProcessCase>;
+  claimDriveExport(caseId: string, sha256: string): Promise<DriveExportClaim>;
+  completeDriveExport(caseId: string, sha256: string, result: DriveExport): Promise<void>;
+  releaseDriveExport(caseId: string, sha256: string): Promise<void>;
 }
 
 /** In-memory conformance adapter. Production supplies the Postgres adapter in the process API. */
@@ -97,6 +102,7 @@ export class InMemoryProcessRepository implements ProcessRepository {
   private readonly cases = new Map<string, ProcessCase>();
   private readonly estateIndex = new Map<string, string>();
   private readonly idempotency = new Map<string, { fingerprint: string; results: CommandResult[] }>();
+  private readonly driveExports = new Map<string, { state: "pending" | "completed"; result?: DriveExport }>();
   private eventSequence = 0;
 
   async ready() {}
@@ -158,6 +164,14 @@ export class InMemoryProcessRepository implements ProcessRepository {
     this.append(processCase, "packet_verified", "Verified PDF is ready to open.");
     return clone(processCase);
   }
+  async claimDriveExport(caseId: string, sha256: string): Promise<DriveExportClaim> {
+    const key = `${caseId}:${sha256}`; const existing = this.driveExports.get(key);
+    if (!existing) { this.driveExports.set(key, { state: "pending" }); return { status: "claimed" }; }
+    if (existing.state === "completed" && existing.result) return { status: "completed", export: { ...clone(existing.result), idempotent: true } };
+    return { status: "in_progress" };
+  }
+  async completeDriveExport(caseId: string, sha256: string, result: DriveExport) { this.driveExports.set(`${caseId}:${sha256}`, { state: "completed", result: clone(result) }); }
+  async releaseDriveExport(caseId: string, sha256: string) { const key = `${caseId}:${sha256}`; if (this.driveExports.get(key)?.state === "pending") this.driveExports.delete(key); }
   private append(processCase: ProcessCase, type: string, detail: string, actorEmail?: string) { processCase.events.push({ id: ++this.eventSequence, caseId: processCase.id, type, state: processCase.state, detail, actorEmail, occurredAt: now() }); }
   private requireCase(caseId: string) { const processCase = this.cases.get(caseId); if (!processCase) throw new ProcessConflictError("Document-prep case was not found."); return processCase; }
   private requireRevision(caseId: string, expectedRevision: number) { const processCase = this.requireCase(caseId); if (processCase.revision !== expectedRevision) throw new ProcessConflictError("This case changed in another session. Refresh before trying again."); return processCase; }
@@ -241,6 +255,25 @@ export class PostgresProcessRepository implements ProcessRepository {
       await client.query("INSERT INTO docprep_artifacts (id, case_id, object_key, object_version, content_type, bytes, sha256, readback_status, verified_at, artifact_url) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [randomUUID(), caseId, artifact.objectKey, artifact.objectVersion || null, artifact.contentType, artifact.bytes, artifact.sha256, artifact.readbackStatus, artifact.verifiedAt || now(), artifact.url || null]);
       await client.query("UPDATE docprep_cases SET state = 'packet_ready', revision = revision + 1, updated_at = now() WHERE id = $1", [caseId]); await applyDbSteps(client, caseId, "packet_ready"); await client.query("INSERT INTO docprep_events (case_id, event_type, state, detail) VALUES ($1, 'packet_verified', 'packet_ready', 'Verified PDF is ready to open.')", [caseId]); const done = await toCase(client, caseId); await client.query("COMMIT"); if (!done) throw new ProcessConflictError("Document-prep case was not found."); return done;
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); } }
+  async claimDriveExport(caseId: string, sha256: string): Promise<DriveExportClaim> {
+    const inserted = await this.pool.query("INSERT INTO docprep_drive_exports (case_id, artifact_sha256, state, claimed_at) VALUES ($1, $2, 'pending', now()) ON CONFLICT (case_id, artifact_sha256) DO NOTHING RETURNING case_id", [caseId, sha256]);
+    if (inserted.rowCount) return { status: "claimed" };
+    const existing = await this.pool.query("SELECT state, name, web_view_link FROM docprep_drive_exports WHERE case_id = $1 AND artifact_sha256 = $2", [caseId, sha256]);
+    if (!existing.rowCount) return this.claimDriveExport(caseId, sha256);
+    const row = existing.rows[0];
+    if (row.state === "completed" && row.name !== null) {
+      const processCase = await this.get(caseId);
+      if (!processCase) throw new ProcessConflictError("Document-prep case was not found.");
+      return { status: "completed", export: { caseId, estateId: processCase.estate.estateId, name: row.name, url: row.web_view_link || "", readbackStatus: "verified", idempotent: true } };
+    }
+    const reclaimed = await this.pool.query("UPDATE docprep_drive_exports SET claimed_at = now(), attempts = attempts + 1 WHERE case_id = $1 AND artifact_sha256 = $2 AND state = 'pending' AND claimed_at < now() - interval '5 minutes' RETURNING case_id", [caseId, sha256]);
+    return reclaimed.rowCount ? { status: "claimed" } : { status: "in_progress" };
+  }
+  async completeDriveExport(caseId: string, sha256: string, result: DriveExport) {
+    const completed = await this.pool.query("UPDATE docprep_drive_exports SET state = 'completed', name = $3, web_view_link = $4, completed_at = now() WHERE case_id = $1 AND artifact_sha256 = $2 AND state = 'pending'", [caseId, sha256, result.name, result.url || null]);
+    if (!completed.rowCount) throw new ProcessConflictError("Google Drive export ownership was lost before completion.");
+  }
+  async releaseDriveExport(caseId: string, sha256: string) { await this.pool.query("DELETE FROM docprep_drive_exports WHERE case_id = $1 AND artifact_sha256 = $2 AND state = 'pending'", [caseId, sha256]); }
   private async requireCurrent(caseId: string, revision: number) { const current = await this.get(caseId); if (!current) throw new ProcessConflictError("Document-prep case was not found."); if (current.revision !== revision) throw new ProcessConflictError("This case changed in another session. Refresh before trying again."); return current; }
   private async lock(client: PoolClient, caseId: string, revision: number) { const result = await client.query("SELECT state, revision FROM docprep_cases WHERE id = $1 FOR UPDATE", [caseId]); if (!result.rowCount) throw new ProcessConflictError("Document-prep case was not found."); if (result.rows[0].revision !== revision) throw new ProcessConflictError("This case changed in another session. Refresh before trying again."); return { state: CaseState.parse(result.rows[0].state) }; }
   private async mutate(caseId: string, revision: number, target: CaseState, detail: string, actorEmail?: string, blocker?: string, nextAction?: string, options: { enqueue?: boolean; eventType?: string } = {}) { const client = await this.pool.connect(); try { await client.query("BEGIN"); const current = await this.lock(client, caseId, revision); if (!legalTransitions[current.state].has(target) && !(target === "sourcing" && ["blocked", "failed", "review_required"].includes(current.state))) throw new ProcessTransitionError(`Cannot move ${current.state} to ${target}.`); await client.query("UPDATE docprep_cases SET state = $2, blocker = $3, next_action = $4, revision = revision + 1, updated_at = now() WHERE id = $1", [caseId, target, blocker || null, nextAction || null]); await applyDbSteps(client, caseId, target, blocker, nextAction); await client.query("INSERT INTO docprep_events (case_id, event_type, state, detail, actor_email) VALUES ($1, $2, $3, $4, $5)", [caseId, options.eventType || `case_${target}`, target, detail, actorEmail || null]); if (options.enqueue) await client.query("INSERT INTO docprep_outbox (id, case_id, topic, payload) VALUES ($1, $2, 'docprep.case.queued', $3::jsonb)", [randomUUID(), caseId, JSON.stringify({ caseId })]); const result = await toCase(client, caseId); await client.query("COMMIT"); if (!result) throw new ProcessConflictError("Document-prep case was not found."); return result; } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); } }

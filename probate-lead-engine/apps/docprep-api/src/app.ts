@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { createHash } from "node:crypto";
-import { IntakeCommand, ProcessConflictError, ProcessRepository, ProcessTransitionError } from "@ple/docprep-core";
+import { DriveExport, IntakeCommand, ProcessConflictError, ProcessRepository, ProcessTransitionError } from "@ple/docprep-core";
 
 export type ApiConfig = {
   serviceToken: string;
@@ -13,6 +13,10 @@ export type ApiConfig = {
 const jsonError = (error: unknown) => ({ ok: false, error: error instanceof Error ? error.message : "The document-prep request could not be completed." });
 const actorEmail = (request: Request) => String(request.headers.get("x-heirright-actor-email") || "").trim().toLowerCase();
 const validActor = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 320;
+const publicCase = (processCase: NonNullable<Awaited<ReturnType<ProcessRepository["get"]>>>) => ({
+  ...processCase,
+  artifact: processCase.artifact ? { ...processCase.artifact, url: undefined } : undefined,
+});
 
 const newYorkDate = (at: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "2-digit", day: "2-digit", year: "numeric" }).format(at).replaceAll("/", "-");
 const cleanEstateName = (value: string) => value.replace(/^\s*(?:estate|est)\s+of\s+/i, "").replace(/[^a-z0-9 .'-]/gi, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Estate";
@@ -39,7 +43,7 @@ async function uploadVerifiedPdfToGoogleDrive({ processCase, verified, token, pa
   token: string;
   parentFolderId?: string;
   fetcher: typeof fetch;
-}) {
+}): Promise<DriveExport> {
   const sourceSha256 = processCase.artifact?.sha256 || "";
   const sourceMd5 = pdfMd5(verified.bytes);
   const metadata = {
@@ -93,17 +97,20 @@ export const createApp = ({ serviceToken, repository, now = () => Date.now(), fe
       const trustedActor = actorEmail(context.req.raw);
       const command = { ...body, estates: body.estates.map((estate) => ({ ...estate, actor: { email: trustedActor } })) };
       const result = await repository.intake(command, idempotencyKey);
-      return context.json({ ok: true, cases: result }, result.every((entry) => entry.created && !entry.idempotent) ? 201 : 200);
+      return context.json({ ok: true, cases: result.map((entry) => ({ ...entry, case: publicCase(entry.case) })) }, result.every((entry) => entry.created && !entry.idempotent) ? 201 : 200);
     }
     catch (error) { return context.json(jsonError(error), error instanceof ProcessConflictError ? 409 : 400); }
   });
-  app.get("/v1/doc-prep/cases", async (context) => { const estateId = context.req.query("estateId"); if (!estateId) return context.json({ ok: false, error: "estate_id_required" }, 400); const processCase = await repository.findByEstate(estateId); return processCase ? context.json({ ok: true, case: processCase }) : context.json({ ok: false, error: "not_found" }, 404); });
-  app.get("/v1/doc-prep/cases/:caseId", async (context) => { const processCase = await repository.get(context.req.param("caseId")); return processCase ? context.json({ ok: true, case: processCase }) : context.json({ ok: false, error: "not_found" }, 404); });
-  app.get("/v1/doc-prep/cases/:caseId/download", async (context) => {
+  app.get("/v1/doc-prep/cases", async (context) => { const estateId = context.req.query("estateId"); if (!estateId) return context.json({ ok: false, error: "estate_id_required" }, 400); const processCase = await repository.findByEstate(estateId); return processCase ? context.json({ ok: true, case: publicCase(processCase) }) : context.json({ ok: false, error: "not_found" }, 404); });
+  app.get("/v1/doc-prep/cases/:caseId", async (context) => { const processCase = await repository.get(context.req.param("caseId")); return processCase ? context.json({ ok: true, case: publicCase(processCase) }) : context.json({ ok: false, error: "not_found" }, 404); });
+  app.get("/v1/doc-prep/cases/:caseId/:artifactAction", async (context) => {
+    const artifactAction = context.req.param("artifactAction");
+    if (artifactAction !== "download" && artifactAction !== "view") return context.json({ ok: false, error: "not_found" }, 404);
     const processCase = await repository.get(context.req.param("caseId"));
     const verified = await verifiedArtifactBytes(processCase, fetcher).catch(() => null);
     if (!verified) return context.json({ ok: false, error: "verified_pdf_not_available" }, 409);
-    return new Response(verified.bytes as unknown as BodyInit, { headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="${verified.filename.replace(/"/g, "")}"`, "cache-control": "private, no-store" } });
+    const disposition = artifactAction === "view" ? "inline" : "attachment";
+    return new Response(verified.bytes as unknown as BodyInit, { headers: { "content-type": "application/pdf", "content-disposition": `${disposition}; filename="${verified.filename.replace(/"/g, "")}"`, "cache-control": "private, no-store" } });
   });
   app.get("/v1/doc-prep/cases/:caseId/events", async (context) => {
     const lastEventId = Number(context.req.header("last-event-id") || context.req.query("after") || 0);
@@ -112,7 +119,7 @@ export const createApp = ({ serviceToken, repository, now = () => Date.now(), fe
   });
   app.post("/v1/doc-prep/cases/:caseId/actions/:action", async (context) => {
     const body = await context.req.json().catch(() => ({})) as { revision?: unknown }; const revision = Number(body.revision); if (!Number.isInteger(revision) || revision < 1) return context.json({ ok: false, error: "revision_required" }, 400);
-    try { const processCase = context.req.param("action") === "retry" ? await repository.retry(context.req.param("caseId"), revision, actorEmail(context.req.raw)) : context.req.param("action") === "cancel" ? await repository.cancel(context.req.param("caseId"), revision, actorEmail(context.req.raw)) : null; if (!processCase) return context.json({ ok: false, error: "unknown_action" }, 404); return context.json({ ok: true, case: processCase }); }
+    try { const processCase = context.req.param("action") === "retry" ? await repository.retry(context.req.param("caseId"), revision, actorEmail(context.req.raw)) : context.req.param("action") === "cancel" ? await repository.cancel(context.req.param("caseId"), revision, actorEmail(context.req.raw)) : null; if (!processCase) return context.json({ ok: false, error: "unknown_action" }, 404); return context.json({ ok: true, case: publicCase(processCase) }); }
     catch (error) { return context.json(jsonError(error), error instanceof ProcessConflictError ? 409 : error instanceof ProcessTransitionError ? 422 : 500); }
   });
   app.post("/v1/doc-prep/exports/google-drive", async (context) => {
@@ -123,12 +130,21 @@ export const createApp = ({ serviceToken, repository, now = () => Date.now(), fe
     if (!googleDrive.accessToken) return context.json({ ok: false, error: "google_drive_not_configured" }, 503);
     const resolved = await Promise.all(caseIds.map((caseId) => repository.get(caseId)));
     if (resolved.some((processCase) => !processCase)) return context.json({ ok: false, error: "case_not_found" }, 404);
-    const completed: Array<{ caseId: string; estateId: string; name: string; url: string; readbackStatus: string }> = [];
+    const completed: DriveExport[] = [];
     for (const processCase of resolved as NonNullable<typeof resolved[number]>[]) {
       const verified = await verifiedArtifactBytes(processCase, fetcher).catch(() => null);
       if (!verified) return context.json({ ok: false, error: "verified_pdf_not_available", caseId: processCase.id }, 409);
-      try { completed.push(await uploadVerifiedPdfToGoogleDrive({ processCase, verified, token: googleDrive.accessToken, parentFolderId: googleDrive.parentFolderId, fetcher })); }
-      catch (error) { return context.json({ ok: false, error: error instanceof Error ? error.message : "google_drive_export_failed", completed }, 502); }
+      const claim = await repository.claimDriveExport(processCase.id, processCase.artifact!.sha256);
+      if (claim.status === "completed") { completed.push(claim.export); continue; }
+      if (claim.status === "in_progress") return context.json({ ok: false, error: "google_drive_export_in_progress", caseId: processCase.id, completed }, 409);
+      try {
+        const exported = await uploadVerifiedPdfToGoogleDrive({ processCase, verified, token: googleDrive.accessToken, parentFolderId: googleDrive.parentFolderId, fetcher });
+        await repository.completeDriveExport(processCase.id, processCase.artifact!.sha256, exported);
+        completed.push(exported);
+      } catch (error) {
+        await repository.releaseDriveExport(processCase.id, processCase.artifact!.sha256);
+        return context.json({ ok: false, error: error instanceof Error ? error.message : "google_drive_export_failed", completed }, 502);
+      }
     }
     return context.json({ ok: true, exports: completed, readbackStatus: "verified" });
   });
