@@ -1,0 +1,17 @@
+FROM node:20-alpine AS build
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY apps/docprep-api ./apps/docprep-api
+COPY packages/docprep-core ./packages/docprep-core
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @ple/docprep-api build
+
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps/docprep-api ./apps/docprep-api
+COPY --from=build /app/packages/docprep-core ./packages/docprep-core
+EXPOSE 8080
+CMD ["node", "apps/docprep-api/dist/index.js"]

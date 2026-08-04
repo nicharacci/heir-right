@@ -1,0 +1,23 @@
+app = "heirright-docprep-api"
+primary_region = "mia"
+
+[build]
+  dockerfile = "deploy/heirright-process/Dockerfile.api"
+
+[env]
+  PORT = "8080"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.http_checks]]
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "20s"
+    method = "get"
+    path = "/readyz"
