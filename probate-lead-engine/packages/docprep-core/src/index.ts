@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
+export * from "./schema.js";
 
 export const CaseState = z.enum(["queued", "sourcing", "review_required", "rendering", "packet_ready", "blocked", "failed", "cancelled"]);
 export const StepState = z.enum(["pending", "running", "succeeded", "review_required", "blocked", "failed", "cancelled"]);
@@ -53,6 +54,7 @@ export class ProcessConflictError extends Error { constructor(message: string) {
 export class ProcessTransitionError extends Error { constructor(message: string) { super(message); this.name = "ProcessTransitionError"; } }
 
 export interface ProcessRepository {
+  ready(): Promise<void>;
   intake(command: IntakeCommand, idempotencyKey: string): Promise<CommandResult[]>;
   get(caseId: string): Promise<ProcessCase | null>;
   findByEstate(estateId: string): Promise<ProcessCase | null>;
@@ -69,6 +71,8 @@ export class InMemoryProcessRepository implements ProcessRepository {
   private readonly estateIndex = new Map<string, string>();
   private readonly idempotency = new Map<string, { fingerprint: string; results: CommandResult[] }>();
   private eventSequence = 0;
+
+  async ready() {}
 
   async intake(raw: IntakeCommand, idempotencyKey: string): Promise<CommandResult[]> {
     const command = IntakeCommand.parse(raw);
@@ -154,6 +158,7 @@ const toCase = async (db: Queryable, caseId: string): Promise<ProcessCase | null
 /** PostgreSQL adapter. Every mutation is transactional and guards the optimistic revision. */
 export class PostgresProcessRepository implements ProcessRepository {
   constructor(private readonly pool: Pool) {}
+  async ready() { await this.pool.query("SELECT 1"); }
   async intake(raw: IntakeCommand, idempotencyKey: string): Promise<CommandResult[]> {
     const command = IntakeCommand.parse(raw); const fingerprint = requestFingerprint(command);
     if (!/^[A-Za-z0-9._:-]{12,200}$/.test(idempotencyKey)) throw new ProcessConflictError("A valid idempotency key is required.");

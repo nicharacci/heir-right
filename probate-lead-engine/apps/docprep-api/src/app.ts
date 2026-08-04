@@ -17,7 +17,7 @@ export const createApp = ({ serviceToken, repository, now = () => Date.now() }: 
     await next();
   });
   app.get("/healthz", (context) => context.json({ ok: true, status: "live" }));
-  app.get("/readyz", async (context) => { try { await repository.events("00000000-0000-0000-0000-000000000000"); } catch (error) { if (error instanceof ProcessConflictError) return context.json({ ok: true, status: "ready" }); return context.json({ ok: false, error: "database_not_ready" }, 503); } return context.json({ ok: true, status: "ready" }); });
+  app.get("/readyz", async (context) => { try { await repository.ready(); return context.json({ ok: true, status: "ready" }); } catch { return context.json({ ok: false, error: "database_not_ready" }, 503); } });
   app.post("/v1/doc-prep/cases", async (context) => {
     const idempotencyKey = context.req.header("idempotency-key") || "";
     try { const body = IntakeCommand.parse(await context.req.json()); const result = await repository.intake(body, idempotencyKey); return context.json({ ok: true, cases: result }, result.every((entry) => entry.created && !entry.idempotent) ? 201 : 200); }

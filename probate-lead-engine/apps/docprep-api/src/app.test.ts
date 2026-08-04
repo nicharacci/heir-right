@@ -12,3 +12,9 @@ test("the API authenticates durable intake and returns the same case for a dupli
   assert.equal(firstBody.cases[0].case.id, repeatBody.cases[0].case.id);
 });
 test("the API denies unauthenticated process commands", async () => { const response = await app.request("http://api/v1/doc-prep/cases", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }); assert.equal(response.status, 401); });
+test("readiness checks the repository connection instead of treating a missing case as healthy", async () => {
+  assert.equal((await app.request("http://api/readyz")).status, 200);
+  class OfflineRepository extends InMemoryProcessRepository { override async ready() { throw new Error("database unavailable"); } }
+  const offlineApp = createApp({ serviceToken: "test-service-token", repository: new OfflineRepository() });
+  assert.equal((await offlineApp.request("http://api/readyz")).status, 503);
+});
