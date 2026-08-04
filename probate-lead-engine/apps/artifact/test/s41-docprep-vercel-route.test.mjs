@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const handler = require("../api/doc-prep/[...path].js");
+const handler = require("../../../api/doc-prep/[...path].js");
 const { createSessionToken } = require("../api/auth/_shared.js");
 
 function call(options = {}) {
