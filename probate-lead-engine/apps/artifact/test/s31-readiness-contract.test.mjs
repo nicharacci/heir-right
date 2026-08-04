@@ -5,9 +5,15 @@ import { readArtifactSource } from "./helpers/artifact-source.mjs";
 const bundle = readArtifactSource();
 const server = readFileSync(new URL("../server.js", import.meta.url), "utf8");
 
-for (const tab of ["Access", "Integrations", "Sources", "Outreach", "Audit", "Preferences"]) {
+for (const tab of ["Access", "Integrations", "Sources", "Outreach", "Preferences"]) {
   assert.ok(bundle.includes(`label: "${tab}"`), `Settings tab missing: ${tab}`);
 }
+
+assert.doesNotMatch(
+  bundle,
+  /\{ id: "audit", label: "Audit" \}|function renderAuditSettingsPanel|Activity and audit log|Recent workspace activity|Template controls|settings-(?:readiness-band|readiness-tile|audit-grid|audit-card)/,
+  "Settings must not restore the retired audit readiness destination or its dead presentation styles.",
+);
 
 for (const copy of [
   "Team access",
@@ -72,7 +78,7 @@ assert.doesNotMatch(bundle, /Embed Builder|activepieces\.com\/docs|cdn\.activepi
 console.log(JSON.stringify({
   ok: true,
   checks: [
-    "settings_access_integrations_sources_outreach_audit_preferences_tabs",
+    "settings_access_integrations_sources_outreach_preferences_tabs_without_audit",
     "google_only_auth_gate_and_account_menu_contract",
     "idi_core_team_default_and_personal_override_copy",
     "tax_collector_bottom_right_receipt_controls",

@@ -12041,7 +12041,6 @@ const settingsTabs = [
   { id: "support", label: "Support" },
   { id: "sources", label: "Sources" },
   { id: "outreach", label: "Outreach" },
-  { id: "audit", label: "Audit" },
   { id: "preferences", label: "Preferences" },
   { id: "admin", label: "Admin" },
 ];
@@ -12331,35 +12330,6 @@ function renderOutreachSettingsPanel() {
   `;
 }
 
-function renderAuditSettingsPanel() {
-  const recentEvents = (state.shellEvents || []).slice(0, 4);
-  const auditEvents = (state.outreachWorkspace?.audit || []).slice(0, 3);
-  return `
-    ${settingsSectionShell("Activity and audit log", "Admin", "Review trail", `
-      <div class="settings-audit-grid">
-        <article class="settings-audit-card">
-          <strong>Recent workspace activity</strong>
-          <span>Use this as the operator-facing setup trail before filing a support ticket.</span>
-          <ul class="audit-list">
-            ${recentEvents.length ? recentEvents.map((event) => `<li class="audit-item"><strong>${escapeHtml(event.title || "Activity")}</strong><span>${escapeHtml(event.copy || "")}</span></li>`).join("") : `<li class="audit-item"><strong>No activity yet</strong><span>Connection checks and approval actions will appear here.</span></li>`}
-          </ul>
-        </article>
-        <article class="settings-audit-card">
-          <strong>Template controls</strong>
-          <span>Outreach templates retain approval owner, variable readiness, archive state, and Podio package status.</span>
-          <ul class="audit-list">
-            ${auditEvents.length ? auditEvents.map((event) => `<li class="audit-item"><strong>${escapeHtml(event.action || "Template event")}</strong><span>${escapeHtml(event.summary || "")}</span></li>`).join("") : `<li class="audit-item"><strong>No template audit events yet</strong><span>Edit, approve, archive, or sync a template to create review history.</span></li>`}
-          </ul>
-          <div class="settings-action-row">
-            <button class="btn quick solvys-liquid-glass" type="button" data-settings-open-view="drips">Review templates</button>
-            <button class="btn quick solvys-liquid-glass" type="button" data-settings-open-view="admin">File setup ticket</button>
-          </div>
-        </article>
-      </div>
-    `)}
-  `;
-}
-
 function renderPreferencesSettingsPanel() {
   return `
     ${settingsSectionShell("Discovery and review preferences", "Preferences", "Office policy", `
@@ -12416,7 +12386,6 @@ function settingsTabPanelHtml(tab) {
   if (tab === "support") return renderSupportSettingsPanel();
   if (tab === "sources") return renderSourceSettingsPanel();
   if (tab === "outreach") return renderOutreachSettingsPanel();
-  if (tab === "audit") return renderAuditSettingsPanel();
   if (tab === "preferences") return renderPreferencesSettingsPanel();
   if (tab === "admin") return renderAdminSettingsPanel();
   return renderAccessSettingsPanel();
