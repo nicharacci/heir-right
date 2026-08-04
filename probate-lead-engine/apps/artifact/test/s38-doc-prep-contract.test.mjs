@@ -1271,7 +1271,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(canonicalLegacyImport.id, /^crm-/, "a CRM row without an upstream record ID must receive a unique internal estate ID");
   assert.equal(crmIdentityApi.canonicalCrmImportStateText(canonicalLegacyImports), canonicalLegacyImports, "the one-time generated estate ID must remain stable after canonical persistence");
   assert.notEqual(canonicalLegacyImport.id, canonicalLegacyImport.propertyAddress, "display address must never become the storage identity");
-  assert.match(legacy, /const canonicalValue = canonicalCrmImportStateText\(storedValue \|\| "\[\]"\);[\s\S]*storageSetItem\(crmImportStateKey, canonicalValue, \{ sync: false \}\)/, "local legacy CRM IDs must be persisted after one-time normalization");
+  assert.match(legacy, /const canonicalValue = canonicalCrmImportStateText\(storedValue \|\| "\[\]"\);[\s\S]*storageSetItem\(crmImportStateKey, mergedValue, \{ sync: false \}\)/, "local legacy CRM IDs must be persisted after one-time normalization");
   assert.match(legacy, /if \(key === crmImportStateKey\) safeValue = canonicalCrmImportStateText\(safeValue\);[\s\S]*if \(safeValue !== payload\.value\) await persistServerState\(key, safeValue\);/, "shared legacy CRM IDs must be written back under optimistic concurrency after hydration");
   const ownerEvidenceBoundary = legacy.slice(legacy.indexOf("function propertyAppraiserEvidenceComplete"), legacy.indexOf("function initials"));
   const reviewedEvidenceBoundary = legacy.slice(legacy.indexOf("function hasReviewedEvidenceValue"), legacy.indexOf("function publicEstateEvidenceGroups"));

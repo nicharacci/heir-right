@@ -1,4 +1,5 @@
 import { installLegacyBridge, renderView, runLifecycle, runtime, uninstallLegacyBridge } from "../core/feature-registry.js";
+import { clientDefaultEstatesCsv, clientDefaultEstatesFileName } from "../data/client-default-estates.mjs";
 import { normalizePublicConnection } from "../core/public-connection.js";
 import { setTheme as setRuntimeTheme } from "../core/theme-store.js";
 import { verifiedArtifactHref } from "../core/verified-artifact-link.js";
@@ -1049,8 +1050,9 @@ function loadCrmImports() {
       return;
     }
     const canonicalValue = canonicalCrmImportStateText(storedValue || "[]");
-    state.crmImports = JSON.parse(canonicalValue);
-    if (canonicalValue !== storedValue) storageSetItem(crmImportStateKey, canonicalValue, { sync: false });
+    state.crmImports = mergeClientDefaultEstateImports(JSON.parse(canonicalValue));
+    const mergedValue = JSON.stringify(state.crmImports);
+    if (mergedValue !== storedValue) storageSetItem(crmImportStateKey, mergedValue, { sync: false });
     state.demoEstateLeadsActive = state.crmImports.some(isDemoEstateImport);
   } catch {
     state.crmImports = initialCrmImports();
@@ -2428,8 +2430,20 @@ const demoEstateLeadMeta = {
   }
 };
 
+function clientDefaultEstateImports() {
+  return csvFileImportItems(clientDefaultEstatesCsv, clientDefaultEstatesFileName);
+}
+
+function mergeClientDefaultEstateImports(imports = []) {
+  const current = Array.isArray(imports) ? imports.map(normalizeCrmImport) : [];
+  const sourceKey = (item) => String(item.provider || "") + ":" + String(item.sourceRecordId || "");
+  const existingSources = new Set(current.map(sourceKey));
+  const missing = clientDefaultEstateImports().filter((item) => !existingSources.has(sourceKey(item)));
+  return missing.length ? [...current, ...missing] : current;
+}
+
 function initialCrmImports() {
-  return [];
+  return clientDefaultEstateImports();
 }
 
 function isDemoEstateImport(item = {}) {
@@ -2998,7 +3012,7 @@ function runFloatingListControl(action, source = null) {
   syncFloatingListControls();
 }
 
-function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
+async function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
   const validRows = rows.filter(Boolean);
   if (!validRows.length) {
     nudgeDeniedAction(
@@ -3007,7 +3021,7 @@ function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
       "Select an estate before adding it to the batch queue.",
       { pill: true, source: "selected-lead-controls" }
     );
-    return;
+    return false;
   }
   const stoppedRow = validRows.find((row) => canonicalStopReasonsForRow(row).length > 0);
   if (stoppedRow) {
@@ -3015,23 +3029,16 @@ function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
     nudgeDeniedAction(source, "Queue blocked by stop rule", `${docPrepEstateLabel(stoppedRow)}: ${message}`, { pill: true, source: "selected-lead-controls" });
     document.getElementById("topStatus").textContent = message;
     addShellEvent("Queue handoff blocked", message, "blocked", true);
-    return;
+    return false;
   }
-  validRows.forEach((row) => {
-    const current = estateWorkflowForRow(row);
-    if (current.state === "active") {
-      setEstateWorkflowState(row, "queued", {
-        exportEligible: false,
-        blocker: "",
-        blockerStage: "",
-        stages: [],
-        artifact: null,
-        handoff: null,
-        queuedAt: isoNow(),
-      });
-    }
-  });
-  void persistEstateWorkflow();
+  try {
+    await queueEstatesForDocPrep(validRows);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    nudgeDeniedAction(source, "Queue blocked", message, { pill: true, source: "selected-lead-controls" });
+    document.getElementById("topStatus").textContent = message;
+    return false;
+  }
   const count = validRows.length;
   state.railPreview = {
     title: `${count} lead${count === 1 ? "" : "s"} added to Queue`,
@@ -3041,13 +3048,14 @@ function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
   document.getElementById("statusExport").textContent = `export: [${count} QUEUED]`;
   document.getElementById("topStatus").textContent = `${count} lead${count === 1 ? "" : "s"} added to Queue for batch export review.`;
   addShellEvent("Leads added to Queue", `${count} dossier packet${count === 1 ? "" : "s"} staged for batch export review. Live writes remain locked.`, "review", true);
-  renderCurrentLoopView();
+  setActiveShellView("dossiers", "Doc Prep");
   renderShellPanels();
   renderRail();
   if (source) source.blur?.();
+  return true;
 }
 
-function queueRowFromButton(button, event = null) {
+async function queueRowFromButton(button, event = null) {
   if (event) {
     event.preventDefault();
     event.stopPropagation();
@@ -3065,15 +3073,14 @@ function queueRowFromButton(button, event = null) {
     return false;
   }
   state.selectedId = row.id;
-  addRowsToQueue([row], button);
-  return true;
+  return addRowsToQueue([row], button);
 }
 
 document.addEventListener("click", (event) => {
   if (event.heirRightQueueHandled) return;
   const button = event.target.closest?.("[data-add-row-to-queue]");
   if (!button || !document.body.contains(button)) return;
-  queueRowFromButton(button, event);
+  void queueRowFromButton(button, event);
 });
 
 function wireBatchSelection(root, rowSelector, scope = "results") {
@@ -7643,30 +7650,31 @@ function csvFileImportItems(text, fileName = "CSV file") {
     throw new Error("The CSV needs estate fields or First Name, Last Name, and Address columns.");
   }
   const imports = rows.slice(1).map((row, index) => {
-    const firstName = rowValueByColumn(row, headerIndex, ["first name", "first"]);
-    const lastName = rowValueByColumn(row, headerIndex, ["last name", "last"]);
-    const ownerName = rowValueByColumn(row, headerIndex, ["owner name", "owner", "seller"]) || [firstName, lastName].filter(Boolean).join(" ");
-    const estateName = rowValueByColumn(row, headerIndex, ["estate name", "estate"]) || ownerName;
-    const street = rowValueByColumn(row, headerIndex, ["property address", "address", "street address"]);
-    const city = rowValueByColumn(row, headerIndex, ["city"]);
-    const stateValue = rowValueByColumn(row, headerIndex, ["state"]);
-    const zip = rowValueByColumn(row, headerIndex, ["zip code", "zip", "postal code"]);
+    const clean = (names) => cleanCrmImportCell(rowValueByColumn(row, headerIndex, names));
+    if (!row.some((cell) => cleanCrmImportCell(cell))) return null;
+    const firstName = clean(["first name", "first"]);
+    const lastName = clean(["last name", "last"]);
+    const sourceOwner = clean(["owner name", "owner", "seller"]);
+    const ownerName = sourceOwner || cleanCrmImportCell([firstName, lastName].filter(Boolean).join(" ")) || `Imported estate ${index + 2}`;
+    const estateName = clean(["estate name", "estate"]) || ownerName;
+    const street = clean(["property address", "address", "street address"]);
+    const city = clean(["city"]);
+    const stateValue = clean(["state"]);
+    const zip = clean(["zip code", "zip", "postal code"]);
     const cityLine = [city, stateValue, zip].filter(Boolean).join(" ");
-    const propertyAddress = [street, cityLine].filter(Boolean).join(", ");
-    if (!ownerName || !propertyAddress) {
-      throw new Error(`Row ${index + 2} needs an owner and property address before it can be imported.`);
-    }
+    const propertyAddress = cleanCrmImportCell([street, cityLine].filter(Boolean).join(", ")) || "Address needs review";
+    const incompleteFields = [!sourceOwner && !firstName && !lastName ? "owner" : "", !street ? "address" : ""].filter(Boolean);
     return normalizeCrmImport({
       provider: "csv",
       estateName,
       ownerName,
       propertyAddress,
-      county: rowValueByColumn(row, headerIndex, ["county"]),
-      parcelId: rowValueByColumn(row, headerIndex, ["folio", "parcel", "parcel id"]),
+      county: clean(["county"]),
+      parcelId: clean(["folio", "parcel", "parcel id"]),
       sourceRecordId: `${fileName}:row-${index + 2}`,
-      notes: `Imported from ${fileName} row ${index + 2}.`,
+      notes: `Imported from ${fileName} row ${index + 2}.${incompleteFields.length ? ` Needs review: missing ${incompleteFields.join(" and ")} field${incompleteFields.length === 1 ? "" : "s"}.` : ""}`,
     });
-  });
+  }).filter(Boolean);
   if (!imports.length) throw new Error("The CSV did not contain any estate rows.");
   if (imports.length > crmBatchImportLimit) throw new Error(`This import has ${imports.length} rows. Import up to ${crmBatchImportLimit} at a time.`);
   return imports;
@@ -10260,7 +10268,7 @@ function renderDossiersView() {
     button.addEventListener("click", (event) => generateClosingPdf(event.currentTarget));
   });
   target.querySelector("[data-queue-stage]")?.addEventListener("click", () => {
-    addRowsToQueue(rowsForBatchAction());
+    void addRowsToQueue(rowsForBatchAction());
   });
   target.querySelectorAll("[data-prepare-chatgpt-work]").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -14054,7 +14062,9 @@ function renderResultsPage({ animate = false } = {}) {
   body.addEventListener("click", (event) => {
     const button = event.target.closest?.("[data-add-row-to-queue]");
     if (!button || !body.contains(button) || event.heirRightQueueHandled) return;
-    if (queueRowFromButton(button, event)) renderResults();
+    void queueRowFromButton(button, event).then((queued) => {
+      if (queued) renderResults();
+    });
   });
   body.querySelectorAll("[data-estate-lifecycle]").forEach((button) => {
     button.addEventListener("click", (event) => {
@@ -14143,8 +14153,8 @@ function renderSearchPopup() {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       const row = rowById(button.dataset.searchQueue);
-      if (row) addRowsToQueue([row], button);
-      renderSearchPopup();
+      if (row) void addRowsToQueue([row], button).then(() => renderSearchPopup());
+      else renderSearchPopup();
     });
   });
 }
