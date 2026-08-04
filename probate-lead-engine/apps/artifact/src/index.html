@@ -11303,6 +11303,7 @@ const state = {
   selectedId: null,
   selectedIds: new Set(),
   queueIds: new Set(),
+  docPrepProcessCases: {},
   summaryMetricsOpen: false,
   railOpen: false,
   railMode: "report",
@@ -13758,20 +13759,42 @@ function addRowsToQueue(rows = rowsForBatchAction(), source = null) {
     );
     return;
   }
-  validRows.forEach((row) => state.queueIds.add(row.id));
-  const count = validRows.length;
-  state.railPreview = {
-    title: `${count} lead${count === 1 ? "" : "s"} added to Queue`,
-    markdown: "The selected dossier packets are staged for batch export review. No live Podio card, Google Doc, Google Sheet row, email, or SMS was created.",
-    updatedAt: Date.now()
+  queueRowsWithCloudProcess(validRows, source);
+}
+
+function processSnapshotForRow(row) {
+  const dossier = dossierForRow(row);
+  return {
+    estateId: String(row.id), name: docPrepEstateLabel(row), owner: row.owner || row.title || undefined,
+    address: row.address || claimValue(dossier?.property?.address, "Address needs review"), county: dossier?.property?.county?.value || "Miami-Dade",
+    parcelId: dossier?.property?.parcelId?.value || row.data?.seed?.parcelId || undefined,
+    caseReference: dossier?.case?.number?.value || row.data?.seed?.caseNumber || undefined,
+    sourceFileReferences: [assetDiscoveryKey(row)].filter(Boolean), actor: { email: state.session?.user?.email || "team@heirright.com", name: state.session?.user?.name || undefined }
   };
-  document.getElementById("statusExport").textContent = `export: [${count} QUEUED]`;
-  document.getElementById("topStatus").textContent = `${count} lead${count === 1 ? "" : "s"} added to Queue for batch export review.`;
-  addShellEvent("Leads added to Queue", `${count} dossier packet${count === 1 ? "" : "s"} staged for batch export review. Live writes remain locked.`, "review", true);
-  renderCurrentLoopView();
-  renderShellPanels();
-  renderRail();
-  if (source) source.blur?.();
+}
+
+function docPrepIdempotencyKey(rows) {
+  return `docprep-${rows.map((row) => row.id).sort().join("-")}-${Date.now().toString(36)}`;
+}
+
+async function queueRowsWithCloudProcess(validRows, source = null) {
+  source?.setAttribute?.("disabled", "disabled");
+  try {
+    const response = await fetch("/api/doc-prep/cases", { method: "POST", headers: { "content-type": "application/json", "idempotency-key": docPrepIdempotencyKey(validRows) }, body: JSON.stringify({ estates: validRows.map(processSnapshotForRow) }) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result?.ok || !Array.isArray(result.cases)) throw new Error(result.error || "Document preparation could not start.");
+    result.cases.forEach((entry) => { const processCase = entry?.case; if (processCase?.estate?.estateId) { state.docPrepProcessCases[processCase.estate.estateId] = processCase; state.queueIds.add(processCase.estate.estateId); } });
+    const count = result.cases.length;
+    state.railPreview = { title: `${count} estate${count === 1 ? "" : "s"} added to Doc Prep`, markdown: "Document preparation is now owned by the cloud process. Review blockers and verified PDFs appear here as the process updates.", updatedAt: Date.now() };
+    document.getElementById("statusExport").textContent = `doc prep: [${count} QUEUED]`;
+    document.getElementById("topStatus").textContent = `${count} estate${count === 1 ? "" : "s"} added to cloud document preparation.`;
+    addShellEvent("Estates added to Doc Prep", `${count} estate${count === 1 ? "" : "s"} now have durable document-prep cases.`, "review", true);
+    renderCurrentLoopView(); renderShellPanels(); renderRail();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Document preparation could not start.";
+    document.getElementById("topStatus").textContent = message;
+    addShellEvent("Document preparation blocked", message, "blocked", true);
+  } finally { source?.removeAttribute?.("disabled"); source?.blur?.(); }
 }
 
 function queueRowFromButton(button, event = null) {
@@ -16244,6 +16267,8 @@ async function runFullDiscovery(row = selectedRow(), source = null, flowId = sta
     nudgeDeniedAction(source, `${flow.shortTitle} blocked`, "Sample estates stay isolated from production source runs and packet export.", { pill: true, source: "docprep-run" });
     return;
   }
+  addRowsToQueue([row], source);
+  return;
   state.discoveryOpen = false;
   state.docPrepManualFix = null;
   state.railMode = "dossier";
