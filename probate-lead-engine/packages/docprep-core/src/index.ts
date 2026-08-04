@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 
 export const CaseState = z.enum(["queued", "sourcing", "review_required", "rendering", "packet_ready", "blocked", "failed", "cancelled"]);
@@ -128,4 +129,72 @@ export class InMemoryProcessRepository implements ProcessRepository {
   private append(processCase: ProcessCase, type: string, detail: string, actorEmail?: string) { processCase.events.push({ id: ++this.eventSequence, caseId: processCase.id, type, state: processCase.state, detail, actorEmail, occurredAt: now() }); }
   private requireCase(caseId: string) { const processCase = this.cases.get(caseId); if (!processCase) throw new ProcessConflictError("Document-prep case was not found."); return processCase; }
   private requireRevision(caseId: string, expectedRevision: number) { const processCase = this.requireCase(caseId); if (processCase.revision !== expectedRevision) throw new ProcessConflictError("This case changed in another session. Refresh before trying again."); return processCase; }
+}
+
+type Queryable = Pick<Pool, "query"> | Pick<PoolClient, "query">;
+const toCase = async (db: Queryable, caseId: string): Promise<ProcessCase | null> => {
+  const caseResult = await db.query("SELECT c.*, e.snapshot FROM docprep_cases c JOIN docprep_estates e ON e.estate_id = c.estate_id WHERE c.id = $1", [caseId]);
+  if (!caseResult.rowCount) return null;
+  const row = caseResult.rows[0];
+  const [steps, events, artifact] = await Promise.all([
+    db.query("SELECT id, name, state, blocker, next_action, updated_at FROM docprep_steps WHERE case_id = $1 ORDER BY position", [caseId]),
+    db.query("SELECT id, case_id, event_type, state, detail, actor_email, occurred_at FROM docprep_events WHERE case_id = $1 ORDER BY id", [caseId]),
+    db.query("SELECT id, case_id, object_key, object_version, content_type, bytes, sha256, readback_status, verified_at, artifact_url FROM docprep_artifacts WHERE case_id = $1 ORDER BY verified_at DESC NULLS LAST LIMIT 1", [caseId]),
+  ]);
+  const sourceArtifact = artifact.rows[0];
+  return {
+    id: row.id, estate: EstateSnapshot.parse(row.snapshot), state: CaseState.parse(row.state), revision: row.revision,
+    createdAt: row.created_at.toISOString(), updatedAt: row.updated_at.toISOString(), blocker: row.blocker || undefined, nextAction: row.next_action || undefined,
+    steps: steps.rows.map((step) => ({ id: step.id, name: step.name, state: StepState.parse(step.state), blocker: step.blocker || undefined, nextAction: step.next_action || undefined, updatedAt: step.updated_at.toISOString() })),
+    events: events.rows.map((event) => ({ id: Number(event.id), caseId: event.case_id, type: event.event_type, state: CaseState.parse(event.state), detail: event.detail, actorEmail: event.actor_email || undefined, occurredAt: event.occurred_at.toISOString() })),
+    artifact: sourceArtifact ? { id: sourceArtifact.id, caseId: sourceArtifact.case_id, objectKey: sourceArtifact.object_key, objectVersion: sourceArtifact.object_version || undefined, contentType: "application/pdf", bytes: Number(sourceArtifact.bytes), sha256: sourceArtifact.sha256, readbackStatus: sourceArtifact.readback_status, verifiedAt: sourceArtifact.verified_at?.toISOString(), url: sourceArtifact.artifact_url || undefined } : undefined,
+  };
+};
+
+/** PostgreSQL adapter. Every mutation is transactional and guards the optimistic revision. */
+export class PostgresProcessRepository implements ProcessRepository {
+  constructor(private readonly pool: Pool) {}
+  async intake(raw: IntakeCommand, idempotencyKey: string): Promise<CommandResult[]> {
+    const command = IntakeCommand.parse(raw); const fingerprint = requestFingerprint(command);
+    if (!/^[A-Za-z0-9._:-]{12,200}$/.test(idempotencyKey)) throw new ProcessConflictError("A valid idempotency key is required.");
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const previous = await client.query("SELECT fingerprint, response FROM docprep_idempotency_keys WHERE idempotency_key = $1 FOR UPDATE", [idempotencyKey]);
+      if (previous.rowCount) {
+        if (previous.rows[0].fingerprint !== fingerprint) throw new ProcessConflictError("This idempotency key was already used for different estates.");
+        await client.query("COMMIT");
+        return (previous.rows[0].response as CommandResult[]).map((value) => ({ ...value, idempotent: true }));
+      }
+      const intakeRows: Array<{ id: string; created: boolean }> = [];
+      for (const estate of command.estates) {
+        await client.query("INSERT INTO docprep_estates (estate_id, snapshot) VALUES ($1, $2::jsonb) ON CONFLICT (estate_id) DO UPDATE SET snapshot = EXCLUDED.snapshot, updated_at = now()", [estate.estateId, JSON.stringify(estate)]);
+        const active = await client.query("SELECT id FROM docprep_cases WHERE estate_id = $1 AND state NOT IN ('packet_ready','blocked','failed','cancelled') FOR UPDATE", [estate.estateId]);
+        if (active.rowCount) { intakeRows.push({ id: active.rows[0].id, created: false }); continue; }
+        const caseId = randomUUID(); intakeRows.push({ id: caseId, created: true });
+        await client.query("INSERT INTO docprep_cases (id, estate_id, state) VALUES ($1, $2, 'queued')", [caseId, estate.estateId]);
+        for (const [position, step] of defaultSteps().entries()) await client.query("INSERT INTO docprep_steps (id, case_id, name, state, position) VALUES ($1, $2, $3, $4, $5)", [step.id, caseId, step.name, step.state, position]);
+        await client.query("INSERT INTO docprep_events (case_id, event_type, state, detail, actor_email) VALUES ($1, 'case_queued', 'queued', 'Estate was added to cloud document preparation.', $2)", [caseId, estate.actor.email]);
+        await client.query("INSERT INTO docprep_outbox (id, case_id, topic, payload) VALUES ($1, $2, 'docprep.case.queued', $3::jsonb)", [randomUUID(), caseId, JSON.stringify({ caseId })]);
+      }
+      const result = await Promise.all(intakeRows.map(async ({ id, created }) => { const processCase = await toCase(client, id); if (!processCase) throw new ProcessConflictError("Document-prep case was not found."); return { created, idempotent: !created, case: processCase }; }));
+      await client.query("INSERT INTO docprep_idempotency_keys (idempotency_key, fingerprint, response) VALUES ($1, $2, $3::jsonb)", [idempotencyKey, fingerprint, JSON.stringify(result)]);
+      await client.query("COMMIT"); return result;
+    } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
+  }
+  async get(caseId: string) { return toCase(this.pool, caseId); }
+  async findByEstate(estateId: string) { const result = await this.pool.query("SELECT id FROM docprep_cases WHERE estate_id = $1 ORDER BY created_at DESC LIMIT 1", [estateId]); return result.rowCount ? this.get(result.rows[0].id) : null; }
+  async events(caseId: string, afterId = 0) { const processCase = await this.get(caseId); if (!processCase) throw new ProcessConflictError("Document-prep case was not found."); return processCase.events.filter((event) => event.id > afterId); }
+  async transition(caseId: string, expectedRevision: number, target: CaseState, detail: string, actorEmail?: string, blocker?: string, nextAction?: string) { return this.mutate(caseId, expectedRevision, target, detail, actorEmail, blocker, nextAction); }
+  async retry(caseId: string, expectedRevision: number, actorEmail?: string) { const current = await this.requireCurrent(caseId, expectedRevision); if (!["blocked", "failed", "review_required"].includes(current.state) || (current.state === "review_required" && current.blocker)) throw new ProcessTransitionError("Resolve the review blocker before retrying this case."); return this.mutate(caseId, expectedRevision, "sourcing", "Document preparation was restarted.", actorEmail); }
+  async cancel(caseId: string, expectedRevision: number, actorEmail?: string) { const current = await this.requireCurrent(caseId, expectedRevision); if (terminalStates.has(current.state)) throw new ProcessTransitionError("This completed or stopped case cannot be cancelled."); return this.mutate(caseId, expectedRevision, "cancelled", "Document preparation was stopped by the operator.", actorEmail, undefined, "Review the estate before starting a new document-prep case."); }
+  async recordArtifact(caseId: string, expectedRevision: number, artifact: Omit<ProcessArtifact, "id" | "caseId">) {
+    if (artifact.contentType !== "application/pdf" || artifact.bytes < 1 || !/^[a-f0-9]{64}$/i.test(artifact.sha256) || artifact.readbackStatus !== "verified") throw new ProcessTransitionError("Only a verified PDF with SHA-256 readback may complete a case.");
+    const client = await this.pool.connect(); try { await client.query("BEGIN"); const current = await this.lock(client, caseId, expectedRevision); if (current.state !== "rendering") throw new ProcessTransitionError("A PDF can only be recorded while the packet is rendering.");
+      await client.query("INSERT INTO docprep_artifacts (id, case_id, object_key, object_version, content_type, bytes, sha256, readback_status, verified_at, artifact_url) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [randomUUID(), caseId, artifact.objectKey, artifact.objectVersion || null, artifact.contentType, artifact.bytes, artifact.sha256, artifact.readbackStatus, artifact.verifiedAt || now(), artifact.url || null]);
+      await client.query("UPDATE docprep_cases SET state = 'packet_ready', revision = revision + 1, updated_at = now() WHERE id = $1", [caseId]); await client.query("INSERT INTO docprep_events (case_id, event_type, state, detail) VALUES ($1, 'packet_verified', 'packet_ready', 'Verified PDF is ready to open.')", [caseId]); const done = await toCase(client, caseId); await client.query("COMMIT"); if (!done) throw new ProcessConflictError("Document-prep case was not found."); return done;
+    } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); } }
+  private async requireCurrent(caseId: string, revision: number) { const current = await this.get(caseId); if (!current) throw new ProcessConflictError("Document-prep case was not found."); if (current.revision !== revision) throw new ProcessConflictError("This case changed in another session. Refresh before trying again."); return current; }
+  private async lock(client: PoolClient, caseId: string, revision: number) { const result = await client.query("SELECT state, revision FROM docprep_cases WHERE id = $1 FOR UPDATE", [caseId]); if (!result.rowCount) throw new ProcessConflictError("Document-prep case was not found."); if (result.rows[0].revision !== revision) throw new ProcessConflictError("This case changed in another session. Refresh before trying again."); return { state: CaseState.parse(result.rows[0].state) }; }
+  private async mutate(caseId: string, revision: number, target: CaseState, detail: string, actorEmail?: string, blocker?: string, nextAction?: string) { const client = await this.pool.connect(); try { await client.query("BEGIN"); const current = await this.lock(client, caseId, revision); if (!legalTransitions[current.state].has(target) && !(target === "sourcing" && ["blocked", "failed", "review_required"].includes(current.state))) throw new ProcessTransitionError(`Cannot move ${current.state} to ${target}.`); await client.query("UPDATE docprep_cases SET state = $2, blocker = $3, next_action = $4, revision = revision + 1, updated_at = now() WHERE id = $1", [caseId, target, blocker || null, nextAction || null]); await client.query("INSERT INTO docprep_events (case_id, event_type, state, detail, actor_email) VALUES ($1, $2, $3, $4, $5)", [caseId, `case_${target}`, target, detail, actorEmail || null]); const result = await toCase(client, caseId); await client.query("COMMIT"); if (!result) throw new ProcessConflictError("Document-prep case was not found."); return result; } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); } }
 }

@@ -11,6 +11,11 @@ CREATE TABLE IF NOT EXISTS docprep_events (
   id bigserial PRIMARY KEY, case_id uuid NOT NULL REFERENCES docprep_cases(id), event_type text NOT NULL, state text NOT NULL, detail text NOT NULL,
   actor_email text, occurred_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS docprep_steps (
+  id text NOT NULL, case_id uuid NOT NULL REFERENCES docprep_cases(id), name text NOT NULL, state text NOT NULL, position integer NOT NULL,
+  blocker text, next_action text, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (case_id, id),
+  CONSTRAINT docprep_step_state CHECK (state IN ('pending','running','succeeded','review_required','blocked','failed','cancelled'))
+);
 CREATE TABLE IF NOT EXISTS docprep_idempotency_keys (
   idempotency_key text PRIMARY KEY, fingerprint text NOT NULL, response jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
 );
