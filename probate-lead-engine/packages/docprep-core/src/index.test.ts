@@ -17,4 +17,15 @@ test("a verified PDF is the only packet-ready transition", async () => {
   await assert.rejects(() => repository.recordArtifact(rendering.id, rendering.revision, { objectKey: "packets/a.pdf", contentType: "application/pdf", bytes: 4, sha256: "a".repeat(64), readbackStatus: "pending" }), ProcessTransitionError);
   const done = await repository.recordArtifact(rendering.id, rendering.revision, { objectKey: "packets/a.pdf", contentType: "application/pdf", bytes: 4, sha256: "a".repeat(64), readbackStatus: "verified", verifiedAt: new Date().toISOString(), url: "/v1/doc-prep/artifacts/a" });
   assert.equal(done.state, "packet_ready");
+  assert.equal(done.steps.find((step) => step.id === "packet-render")?.state, "succeeded");
+  assert.equal(done.steps.find((step) => step.id === "artifact-readback")?.state, "succeeded");
+});
+test("a retry moves the durable source-review step back to running without bypassing review blockers", async () => {
+  const repository = new InMemoryProcessRepository(); const result = (await repository.intake(intake, "idem-key-000003"))[0].case;
+  const blocked = await repository.transition(result.id, result.revision, "blocked", "Source service unavailable", undefined, "Source service unavailable", "Retry after the source service recovers.");
+  const retried = await repository.retry(blocked.id, blocked.revision, "operator@heirright.com");
+  assert.equal(retried.state, "sourcing");
+  assert.equal(retried.steps.find((step) => step.id === "source-review")?.state, "running");
+  const review = await repository.transition(retried.id, retried.revision, "review_required", "Human evidence review is required", undefined, "Human evidence review is required", "Complete evidence review.");
+  await assert.rejects(() => repository.retry(review.id, review.revision), ProcessTransitionError);
 });
