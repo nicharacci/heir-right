@@ -5999,13 +5999,6 @@
       padding: 0 2px 2px;
     }
 
-    .settings-readiness-band {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin: 4px 0 16px;
-    }
-
     .settings-unified-card > .loop-panel-head .settings-tabs {
       width: min(100%, 38rem);
       grid-template-columns: repeat(7, minmax(max-content, 1fr));
@@ -6028,9 +6021,7 @@
       flex: 0 0 auto;
     }
 
-    .settings-readiness-tile,
     .settings-control-card,
-    .settings-audit-card,
     .source-control-card,
     .outreach-control-card {
       min-width: 0;
@@ -6045,9 +6036,7 @@
         color-mix(in srgb, var(--ios-fill) 76%, transparent);
     }
 
-    .settings-readiness-tile strong,
     .settings-control-card strong,
-    .settings-audit-card strong,
     .source-control-card strong,
     .outreach-control-card strong {
       min-width: 0;
@@ -6057,9 +6046,7 @@
       overflow-wrap: anywhere;
     }
 
-    .settings-readiness-tile span,
     .settings-control-card span,
-    .settings-audit-card span,
     .source-control-card span,
     .outreach-control-card span {
       min-width: 0;
@@ -6083,8 +6070,7 @@
 
     .settings-control-grid,
     .source-control-grid,
-    .outreach-control-grid,
-    .settings-audit-grid {
+    .outreach-control-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
@@ -10432,14 +10418,12 @@
       .workbench-body { grid-template-columns: minmax(0, 1fr); }
       .detail { display: none; }
       .app[data-active-view="admin"] .detail { display: grid; }
-      .settings-readiness-band,
       .outreach-pipeline {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .settings-control-grid,
       .source-control-grid,
-      .outreach-control-grid,
-      .settings-audit-grid {
+      .outreach-control-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -10539,7 +10523,6 @@
         min-width: 0;
         max-width: 100%;
       }
-      .settings-readiness-band,
       .outreach-pipeline,
       .settings-field-grid {
         grid-template-columns: 1fr;
