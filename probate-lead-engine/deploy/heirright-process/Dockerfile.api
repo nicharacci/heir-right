@@ -5,7 +5,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/docprep-api ./apps/docprep-api
 COPY packages/docprep-core ./packages/docprep-core
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @ple/docprep-api build
+RUN pnpm --filter @ple/docprep-core build && pnpm --filter @ple/docprep-api build
 
 FROM node:20-alpine
 WORKDIR /app
