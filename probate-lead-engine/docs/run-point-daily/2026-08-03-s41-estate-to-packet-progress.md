@@ -16,6 +16,8 @@ The Estate Search to Doc Prep handoff now creates a durable document-preparation
 - `27122e4` and `5d29a39`: authenticated artifact proxy, server-owned actor identity, stable idempotency, case hydration, retry/cancel controls, and removal of the 680ms browser process sequencer.
 - `45733e1` and `3595fe7`: typed durable schema, repository readiness probe, request size bound, and API actor normalization.
 - `fc019a2`: isolated API/worker Docker and Fly manifests plus a Cloud smoke command that refuses controlled-estate intake until an explicit approval variable is present.
+- `657ac09`: source-to-PDF readback repair, durable queue status surface, individual download, and verified Google Drive PDF export path.
+- `e334719`: idempotent Google Drive export keyed to the durable case and verified PDF hash.
 
 ## Fresh local proof
 
@@ -33,7 +35,7 @@ The tests prove request ownership, idempotent intake, retry/cancel revision hand
 
 - Apply `packages/docprep-core/migrations/0001_docprep_process.sql` to the approved managed Postgres instance.
 - Set the named process, database, R2, and existing Worker environment variables in the approved provider stores. No values belong in the repository.
-- Build/deploy the API and worker with the Docker/Fly manifests, then run `PROCESS_API_URL=... node scripts/s41-cloud-smoke.mjs`.
+- Build/deploy the API and worker with the Docker/Fly manifests, then run `PROCESS_API_URL=... node scripts/s41-cloud-smoke.mjs`. The explicitly approved branch now requires `packet_ready`, PDF byte/hash readback, and optionally the Drive readback before it reports success.
 - Configure the artifact process URL/token in the approved deployment, authenticate an approved operator, and run a controlled estate only after `S41_CONTROLLED_ESTATE_APPROVED=approved` is intentionally supplied.
 - Confirm an R2 object readback, verified PDF open, restart behavior, cancel behavior, and export eligibility in the deployed surface.
 
