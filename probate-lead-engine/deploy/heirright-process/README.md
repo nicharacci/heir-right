@@ -4,7 +4,7 @@ Deploy the API and worker only after the approved provider records exist. Keep e
 
 ## API service
 
-The Fly API service uses `deploy/heirright-process/fly.api.toml` and needs:
+The Fly API service uses the repository-root `fly.toml` (or `deploy/heirright-process/fly.api.toml` for a named config) and needs:
 
 - `DATABASE_URL`
 - `HEIRRIGHT_PROCESS_API_TOKEN`
@@ -15,7 +15,7 @@ The API exposes readiness at `/readyz`. Its Google Drive route accepts only dura
 
 ## Worker service
 
-The Fly worker uses `deploy/heirright-process/fly.worker.toml` and needs:
+The Fly worker uses `fly.worker.toml` (or `deploy/heirright-process/fly.worker.toml` for a named config) and needs:
 
 - `DATABASE_URL`
 - `HEIRRIGHT_WORKER_URL`
