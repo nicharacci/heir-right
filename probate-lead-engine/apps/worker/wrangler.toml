@@ -2,7 +2,6 @@ name = "heirright-probate-lead-engine"
 main = "src/cloudflare.ts"
 compatibility_date = "2026-05-18"
 compatibility_flags = ["nodejs_compat"]
-account_id = "e7a583857399cb19fd86f879c3a4629f"
 
 [vars]
 DEPLOYMENT_KEY = "heirright"
@@ -21,18 +20,21 @@ PODIO_DURABLE_AUTH_REQUIRED = "false"
 MIAMI_DADE_CLERK_API_BASE = "https://www2.miamidadeclerk.gov/Developers/api"
 # Set IDI_CORE_API_TOKEN as a Wrangler secret, not a plain var:
 # wrangler secret put IDI_CORE_API_TOKEN
-# Set Browserbase and the shared Podio OAuth client secret as Wrangler secrets, not plain vars:
+# Set Browserbase, Google OAuth, and scoped S41 Drive broker credentials as Wrangler secrets, not plain vars:
 # wrangler secret put BROWSERBASE_API_KEY
 # wrangler secret put PODIO_CLIENT_SECRET
 # wrangler secret put MIAMI_DADE_CLERK_AUTH_KEY
+# wrangler secret put GOOGLE_OAUTH_CLIENT_ID
+# wrangler secret put GOOGLE_OAUTH_CLIENT_SECRET
+# wrangler secret put HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN
 
 [[kv_namespaces]]
 binding = "PODIO_TOKEN_STORE"
-id = "d21d2926fe3e4e12ae17bc89e0907a93"
+id = "f7a8ec04d2334721805c1bdc215f5451"
 
 [[kv_namespaces]]
 binding = "PACKET_ARTIFACTS"
-id = "23c96c2fed534d8b86e36139f44230f7"
+id = "33d20655799e4e1ab024e2409adbeeb1"
 
 [durable_objects]
 bindings = [

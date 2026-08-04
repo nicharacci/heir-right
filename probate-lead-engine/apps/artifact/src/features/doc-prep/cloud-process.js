@@ -131,6 +131,27 @@ async function requestCaseAction(processCase, action) {
   return storeCase(body.case);
 }
 
+async function exportVerifiedPdfToGoogleDrive(processCase) {
+  const caseId = asDisplayText(processCase?.id);
+  if (!caseId || !verifiedPdf(processCase)) {
+    throw new Error("Wait for the cloud packet's verified PDF before exporting it to Google Drive.");
+  }
+  const response = await fetch("/api/doc-prep/exports/google-drive", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      caseIds: [caseId],
+      operatorIntent: "export_verified_pdfs_to_google_drive",
+    }),
+  });
+  const body = await parseProcessResponse(response, "Google Drive export could not start.");
+  const exported = Array.isArray(body.exports) ? body.exports[0] : null;
+  if (!exported || exported.readbackStatus !== "verified") {
+    throw new Error("Google Drive did not verify the exported PDF.");
+  }
+  return exported;
+}
+
 function clearProcessCase(estateId) {
   const key = asDisplayText(estateId);
   if (!key) return;
@@ -141,6 +162,7 @@ function clearProcessCase(estateId) {
 export {
   caseForEstate,
   clearProcessCase,
+  exportVerifiedPdfToGoogleDrive,
   hydrateProcessCase,
   idempotencyKey,
   processDetail,

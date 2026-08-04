@@ -84,7 +84,9 @@ interface CloudflareEnv {
   AUTH_ALLOWED_EMAILS?: string;
   SOLVYS_ADMIN_EMAILS?: string;
   HEIRRIGHT_API_TOKEN?: string;
+  HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN?: string;
   GOOGLE_WORKSPACE_ACCESS_TOKEN?: string;
+  GOOGLE_WORKSPACE_DESTINATION_EMAIL?: string;
   GOOGLE_TRACKING_SHEET_ID?: string;
   GOOGLE_DRIVE_PARENT_FOLDER_ID?: string;
   GOOGLE_TRACKING_SHEET_RANGE?: string;
@@ -1793,6 +1795,11 @@ function storedSupportingDocument(value: string | null | undefined): StoredSuppo
 function internalBearerAuthorized(request: Request, env: CloudflareEnv): boolean {
   const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
   return Boolean(env.HEIRRIGHT_API_TOKEN && timingSafeStringEqual(bearer, env.HEIRRIGHT_API_TOKEN));
+}
+
+function docPrepDriveBrokerAuthorized(request: Request, env: CloudflareEnv): boolean {
+  const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
+  return Boolean(env.HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN && timingSafeStringEqual(bearer, env.HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN));
 }
 
 async function loadStoredSupportingDocument(env: CloudflareEnv, attachmentId: string): Promise<StoredSupportingDocument | null> {
@@ -4536,6 +4543,39 @@ async function googleWorkspaceDestinationsResponse(request: Request, url: URL, e
   const data = await response.json().catch(() => ({})) as { files?: Array<{ id?: string; name?: string; webViewLink?: string }> };
   if (!response.ok) return json({ ok: false, error: "google_workspace_destinations_failed", message: "Google Workspace could not load Drive folders." }, { status: 502 });
   return json({ ok: true, folders: (data.files || []).filter((folder) => folder.id && folder.name).map((folder) => ({ id: folder.id, name: folder.name, url: folder.webViewLink || null })) }, { headers: { "cache-control": "no-store" } });
+}
+
+/**
+ * A narrow service-to-service handoff for the S41 Fly API. The selected user's
+ * refresh token stays encrypted in PACKET_ARTIFACTS; the broker emits only a
+ * short-lived access token and the already-selected destination folder.
+ */
+async function docPrepGoogleDriveCredentialsResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "POST") return methodNotAllowed("POST");
+  if (!docPrepDriveBrokerAuthorized(request, env)) {
+    return json({ ok: false, error: "unauthorized" }, { status: 401, headers: { "cache-control": "no-store" } });
+  }
+  const email = stringValue(env.GOOGLE_WORKSPACE_DESTINATION_EMAIL).toLowerCase();
+  if (!email || !emailAllowed(email, env)) {
+    return json({ ok: false, error: "google_drive_export_account_not_configured" }, { status: 503, headers: { "cache-control": "no-store" } });
+  }
+  const connection = await googleWorkspaceConnectionForEmail(env, email);
+  if (!connection) {
+    return json({ ok: false, error: "google_workspace_connection_required" }, { status: 428, headers: { "cache-control": "no-store" } });
+  }
+  if (!connection.destinationId) {
+    return json({ ok: false, error: "google_workspace_destination_required" }, { status: 428, headers: { "cache-control": "no-store" } });
+  }
+  const access = await refreshGoogleWorkspaceAccessToken(connection, env);
+  if (!access.ok) {
+    return json({ ok: false, error: "google_workspace_connection_expired" }, { status: 428, headers: { "cache-control": "no-store" } });
+  }
+  return json({
+    ok: true,
+    accessToken: access.token,
+    parentFolderId: access.record.destinationId,
+    expiresAt: access.record.expiresAt,
+  }, { headers: { "cache-control": "no-store" } });
 }
 
 type StoredGoogleWorkspaceDelivery = {
@@ -7595,6 +7635,10 @@ export default {
         deploymentKey: env.DEPLOYMENT_KEY || "heirright",
         endpoints: routeList(),
       });
+    }
+
+    if (url.pathname === "/internal/doc-prep/google-drive-credentials") {
+      return docPrepGoogleDriveCredentialsResponse(request, env);
     }
 
     if (url.pathname === "/api/health/deep") {

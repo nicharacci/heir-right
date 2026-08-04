@@ -3,6 +3,7 @@ import { resolveDisposition } from "../case-journey/case-journey.js";
 import { timelineState } from "./automation-timeline.js";
 import {
   caseForEstate,
+  exportVerifiedPdfToGoogleDrive,
   hydrateProcessCase,
   processDetail,
   processStateLabel,
@@ -138,7 +139,8 @@ function renderCloudProcessStatus(snapshot, bridge) {
         ? `<button type="button" class="hr-text-command hr-danger-command" data-cancel-cloud-docprep ${busy ? "disabled" : ""}>Stop cloud packet</button>`
         : ""}
       ${verifiedPdf(processCase)
-        ? `<a class="hr-text-command" href="/api/doc-prep/cases/${encodeURIComponent(processCase.id)}/view">Open verified PDF</a>`
+        ? `<button type="button" class="hr-text-command" data-export-cloud-docprep ${busy ? "disabled" : ""}>${busy ? "Exporting to Google Drive" : "Export verified PDF to Google Drive"}</button>
+          <a class="hr-text-command" href="/api/doc-prep/cases/${encodeURIComponent(processCase.id)}/view">Open verified PDF</a>`
         : ""}`;
   return `
     <section class="hr-cloud-process" data-cloud-docprep-state="${escape(processCase?.state || "not_started")}" data-tone="${escape(tone)}" aria-live="polite">
@@ -341,6 +343,30 @@ async function runCloudProcessAction({ bridge, snapshot, action, refresh }) {
   }
 }
 
+async function runCloudDriveExport({ bridge, snapshot, refresh }) {
+  const estateId = String(snapshot?.selectedEstateId || "");
+  const processCase = caseForEstate(estateId);
+  if (!estateId || !processCase || cloudActionByEstate.has(estateId)) return;
+  cloudActionByEstate.add(estateId);
+  cloudErrorByEstate.delete(estateId);
+  refresh();
+  try {
+    const exported = await exportVerifiedPdfToGoogleDrive(processCase);
+    bridge.emit(
+      exported.idempotent ? "Google Drive export already verified" : "Verified PDF exported to Google Drive",
+      `${String(exported.name || "The verified PDF")} passed Google Drive readback.`,
+      "ready",
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Google Drive export needs attention.";
+    cloudErrorByEstate.set(estateId, message);
+    bridge.emit("Google Drive export needs attention", message, "blocked");
+  } finally {
+    cloudActionByEstate.delete(estateId);
+    refresh();
+  }
+}
+
 function mountDocPrepView(mount, bridge) {
   if (!mount || !bridge) return;
   activeDocPrepMount = mount;
@@ -480,6 +506,9 @@ function mountDocPrepView(mount, bridge) {
   mount.querySelector("[data-cancel-cloud-docprep]")?.addEventListener("click", () => {
     void runCloudProcessAction({ bridge, snapshot, action: "cancel", refresh: () => refreshDocPrepView(bridge) });
   });
+  mount.querySelector("[data-export-cloud-docprep]")?.addEventListener("click", () => {
+    void runCloudDriveExport({ bridge, snapshot, refresh: () => refreshDocPrepView(bridge) });
+  });
   mountIdiUploadControl(mount, {
     bridge,
     snapshot,
@@ -492,4 +521,4 @@ function unmountDocPrepView(mount) {
   if (activeDocPrepMount === mount) activeDocPrepMount = null;
 }
 
-export { displayedProgress, docPrepFlowMeta, mountDocPrepView, nextDocPrepFlowIndex, refreshDocPrepView, renderCloudProcessStatus, renderDocPrepView, runCloudProcessAction, startPublicSourceSearch, unmountDocPrepView };
+export { displayedProgress, docPrepFlowMeta, mountDocPrepView, nextDocPrepFlowIndex, refreshDocPrepView, renderCloudProcessStatus, runCloudDriveExport, renderDocPrepView, runCloudProcessAction, startPublicSourceSearch, unmountDocPrepView };

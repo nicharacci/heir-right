@@ -3,6 +3,7 @@ import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Pool } from "pg";
 import { PostgresProcessRepository } from "@ple/docprep-core";
 import { createApp } from "./app.js";
+import { createGoogleDriveCredentialProvider } from "./google-drive.js";
 
 const required = (name: string) => { const value = process.env[name]; if (!value) throw new Error(`${name} is required.`); return value; };
 const port = Number(process.env.PORT || 3000);
@@ -12,6 +13,10 @@ const r2 = new S3Client({
   endpoint: required("R2_ENDPOINT"),
   region: "auto",
   credentials: { accessKeyId: required("R2_ACCESS_KEY_ID"), secretAccessKey: required("R2_SECRET_ACCESS_KEY") },
+});
+const googleDriveCredentials = createGoogleDriveCredentialProvider({
+  workerUrl: process.env.HEIRRIGHT_WORKER_URL,
+  brokerToken: process.env.HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN,
 });
 const app = createApp({
   serviceToken: required("HEIRRIGHT_PROCESS_API_TOKEN"),
@@ -23,7 +28,7 @@ const app = createApp({
       return new Uint8Array(await response.Body.transformToByteArray());
     },
   },
-  googleDrive: { accessToken: process.env.GOOGLE_WORKSPACE_ACCESS_TOKEN, parentFolderId: process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID },
+  googleDrive: { getCredentials: googleDriveCredentials },
 });
 const server = serve({ fetch: app.fetch, port });
 const shutdown = async () => { server.close(); await pool.end(); process.exit(0); };

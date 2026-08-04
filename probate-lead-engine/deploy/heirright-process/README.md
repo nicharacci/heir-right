@@ -12,10 +12,10 @@ The Fly API service uses the repository-root `fly.toml` (or `deploy/heirright-pr
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
 - `R2_BUCKET_NAME`
-- `GOOGLE_WORKSPACE_ACCESS_TOKEN`
-- `GOOGLE_DRIVE_PARENT_FOLDER_ID` when exports belong in a specific shared folder
+- `HEIRRIGHT_WORKER_URL`
+- `HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN`
 
-The API release command applies the checked-in Doc Prep migrations under a Postgres advisory lock before its machines start. The API exposes readiness at `/readyz`. It reads verified PDFs from the private R2 bucket by object key, checks the source bytes and SHA-256, then reads Drive PDF metadata and checksum back. A durable claim ledger allows one upload owner for each case/PDF hash, rejects concurrent duplicate uploads, and reuses a completed verified Drive file on later requests.
+The API release command applies the checked-in Doc Prep migrations under a Postgres advisory lock before its machines start. The API exposes readiness at `/readyz`. It reads verified PDFs from the private R2 bucket by object key, checks the source bytes and SHA-256, then requests a short-lived Drive access token and selected folder from the internal Cloudflare broker. The broker retains the encrypted refresh token; Fly never stores it. Drive metadata and checksums are read back, and a durable claim ledger allows one upload owner for each case/PDF hash, rejects concurrent duplicate uploads, and reuses a completed verified Drive file on later requests.
 
 ## Worker service
 
@@ -46,6 +46,6 @@ It forwards the signed operator identity to the process API. The browser never h
 2. Deploy API and worker, then set the artifact service process URL/token and redeploy it.
 3. Run `PROCESS_API_URL=<api-url> node scripts/s41-cloud-smoke.mjs` for health/readiness/auth proof.
 4. Only for the named approved estate, set `S41_CONTROLLED_ESTATE_APPROVED=approved`, `S41_SMOKE_ACTOR_EMAIL`, and `S41_SMOKE_ESTATE_JSON`. The smoke then requires the terminal `packet_ready` state and a matching PDF byte/hash readback.
-5. Set `S41_VERIFY_GOOGLE_DRIVE=approved` only when the single approved estate may create its separate Drive PDF. This adds Drive readback proof.
+5. Connect the approved Google Workspace account from HeirRight Settings, select its dedicated Drive folder, and install the same scoped `HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN` in Cloudflare and the Fly API. Set `S41_VERIFY_GOOGLE_DRIVE=approved` only when the single approved estate may create its separate Drive PDF. This adds Drive readback proof.
 
 Do not place estate payloads, API tokens, R2 credentials, or Google tokens in source control or receipts.

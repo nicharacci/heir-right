@@ -60,6 +60,18 @@ const requests = [];
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   requests.push({ url: String(url), init });
+  if (String(url) === "/api/doc-prep/exports/google-drive") {
+    return Response.json({
+      ok: true,
+      readbackStatus: "verified",
+      exports: [{
+        caseId: readyCase.id,
+        name: "EST of Morgan Reyes.pdf 08-04-2026",
+        readbackStatus: "verified",
+        idempotent: false,
+      }],
+    });
+  }
   if (String(url).includes("/actions/retry")) return Response.json({ ok: true, case: readyCase });
   if (String(url).startsWith("/api/doc-prep/cases?")) return Response.json({ ok: true, case: readyCase });
   return Response.json({ ok: true, cases: [{ created: true, case: readyCase }] }, { status: 201 });
@@ -86,6 +98,19 @@ try {
   assert.equal(client.processDetail(readyCase), "Verified PDF stored after R2 readback.");
   assert.equal(client.verifiedPdf(readyCase), true);
   assert.equal(client.verifiedPdf({ ...readyCase, artifact: { ...readyCase.artifact, readbackStatus: "pending" } }), false);
+
+  await assert.rejects(
+    client.exportVerifiedPdfToGoogleDrive({ ...readyCase, state: "rendering" }),
+    /Wait for the cloud packet's verified PDF/,
+    "the client must refuse Google delivery before the packet is byte-verified",
+  );
+  const delivered = await client.exportVerifiedPdfToGoogleDrive(readyCase);
+  assert.equal(delivered.readbackStatus, "verified");
+  assert.equal(requests[3].url, "/api/doc-prep/exports/google-drive");
+  assert.deepEqual(JSON.parse(requests[3].init.body), {
+    caseIds: ["case-cloud"],
+    operatorIntent: "export_verified_pdfs_to_google_drive",
+  });
 } finally {
   globalThis.fetch = originalFetch;
 }
@@ -97,5 +122,6 @@ console.log(JSON.stringify({
     "cloud_case_hydrates_after_reload",
     "cloud_actions_carry_durable_revision",
     "cloud_pdf_requires_verified_readback",
+    "cloud_drive_export_requires_verified_pdf",
   ],
 }));
