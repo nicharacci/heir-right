@@ -31,6 +31,7 @@ test("readiness checks the repository connection instead of treating a missing c
 test("downloads and Google Drive exports only use a byte-verified PDF", async () => {
   const pdf = new TextEncoder().encode("%PDF-1.7\nverified\n");
   const hash = createHash("sha256").update(pdf).digest("hex");
+  const md5 = createHash("md5").update(pdf).digest("hex");
   const exportRepository = new InMemoryProcessRepository();
   const [intake] = await exportRepository.intake({ estates: [{ estateId: "estate-api-export", name: "Estate of Morgan Bell", address: "9 Palm Rd, Miami, FL", county: "Miami-Dade", sourceFileReferences: [], actor: { email: "operator@heirright.com" } }] }, "api-export-idempotency-001");
   const sourcing = await exportRepository.transition(intake.case.id, intake.case.revision, "sourcing", "source");
@@ -40,8 +41,9 @@ test("downloads and Google Drive exports only use a byte-verified PDF", async ()
   const fetcher = async (input: string | URL, init?: RequestInit) => {
     const url = String(input); requests.push({ url, method: init?.method || "GET" });
     if (url === "https://r2.example/docprep/export.pdf") return new Response(pdf, { headers: { "content-type": "application/pdf" } });
-    if (url.includes("upload/drive/v3/files")) return Response.json({ id: "drive-pdf-1", name: "EST of Morgan Bell.pdf 08-04-2026", mimeType: "application/pdf", webViewLink: "https://drive.example/drive-pdf-1" });
-    return Response.json({ id: "drive-pdf-1", name: "EST of Morgan Bell.pdf 08-04-2026", mimeType: "application/pdf", webViewLink: "https://drive.example/drive-pdf-1" });
+    if (url.includes("drive/v3/files?q=")) return Response.json({ files: [] });
+    if (url.includes("upload/drive/v3/files")) return Response.json({ id: "drive-pdf-1", name: "EST of Morgan Bell.pdf 08-04-2026", mimeType: "application/pdf", md5Checksum: md5, webViewLink: "https://drive.example/drive-pdf-1" });
+    return Response.json({ id: "drive-pdf-1", name: "EST of Morgan Bell.pdf 08-04-2026", mimeType: "application/pdf", md5Checksum: md5, appProperties: { heirrightDocprepCaseId: ready.id, heirrightPdfSha256: hash }, webViewLink: "https://drive.example/drive-pdf-1" });
   };
   const exportApp = createApp({ serviceToken: "test-service-token", repository: exportRepository, fetcher: fetcher as typeof fetch, googleDrive: { accessToken: "drive-token" } });
   const download = await exportApp.request(`http://api/v1/doc-prep/cases/${ready.id}/download`, { headers });
@@ -49,5 +51,5 @@ test("downloads and Google Drive exports only use a byte-verified PDF", async ()
   const exported = await exportApp.request("http://api/v1/doc-prep/exports/google-drive", { method: "POST", headers, body: JSON.stringify({ caseIds: [ready.id], operatorIntent: "export_verified_pdfs_to_google_drive" }) });
   assert.equal(exported.status, 200); const exportedBody = await exported.json() as any;
   assert.equal(exportedBody.readbackStatus, "verified"); assert.equal(exportedBody.exports[0].name, "EST of Morgan Bell.pdf 08-04-2026");
-  assert.deepEqual(requests.map((request) => request.method), ["GET", "GET", "POST", "GET"]);
+  assert.deepEqual(requests.map((request) => request.method), ["GET", "GET", "GET", "POST", "GET"]);
 });

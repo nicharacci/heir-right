@@ -18,6 +18,7 @@ const newYorkDate = (at: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "
 const cleanEstateName = (value: string) => value.replace(/^\s*(?:estate|est)\s+of\s+/i, "").replace(/[^a-z0-9 .'-]/gi, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Estate";
 export const estatePdfFileName = (estateName: string, at = new Date()) => `EST of ${cleanEstateName(estateName)}.pdf ${newYorkDate(at)}`;
 const pdfHash = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+const pdfMd5 = (bytes: Uint8Array) => createHash("md5").update(bytes).digest("hex");
 
 async function verifiedArtifactBytes(processCase: Awaited<ReturnType<ProcessRepository["get"]>>, fetcher: typeof fetch): Promise<{ bytes: Uint8Array; filename: string } | null> {
   const artifact = processCase?.artifact;
@@ -39,12 +40,20 @@ async function uploadVerifiedPdfToGoogleDrive({ processCase, verified, token, pa
   parentFolderId?: string;
   fetcher: typeof fetch;
 }) {
+  const sourceSha256 = processCase.artifact?.sha256 || "";
+  const sourceMd5 = pdfMd5(verified.bytes);
   const metadata = {
     name: verified.filename,
     mimeType: "application/pdf",
     ...(parentFolderId ? { parents: [parentFolderId] } : {}),
-    appProperties: { heirrightDocprepCaseId: processCase.id, heirrightPdfSha256: processCase.artifact?.sha256 || "" },
+    appProperties: { heirrightDocprepCaseId: processCase.id, heirrightPdfSha256: sourceSha256 },
   };
+  const driveHeaders = { authorization: `Bearer ${token}` };
+  const query = `appProperties has { key='heirrightDocprepCaseId' and value='${processCase.id}' } and appProperties has { key='heirrightPdfSha256' and value='${sourceSha256}' } and trashed = false`;
+  const existingResponse = await fetcher(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive&fields=files(id,name,mimeType,md5Checksum,webViewLink,appProperties)&supportsAllDrives=true&includeItemsFromAllDrives=true`, { headers: driveHeaders });
+  const existing = await existingResponse.json().catch(() => ({})) as { files?: Array<{ id?: string; name?: string; mimeType?: string; md5Checksum?: string; webViewLink?: string; appProperties?: Record<string, string> }> };
+  const prior = existingResponse.ok ? existing.files?.find((file) => file.id && file.name === verified.filename && file.mimeType === "application/pdf" && file.md5Checksum === sourceMd5 && file.appProperties?.heirrightDocprepCaseId === processCase.id && file.appProperties?.heirrightPdfSha256 === sourceSha256) : undefined;
+  if (prior?.id) return { caseId: processCase.id, estateId: processCase.estate.estateId, name: prior.name || verified.filename, url: prior.webViewLink || "", readbackStatus: "verified", idempotent: true };
   const boundary = `heirright-${processCase.id.replace(/[^a-z0-9]/gi, "")}`;
   const body = Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`),
@@ -54,15 +63,15 @@ async function uploadVerifiedPdfToGoogleDrive({ processCase, verified, token, pa
   ]);
   const upload = await fetcher("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink&supportsAllDrives=true", {
     method: "POST",
-    headers: { authorization: `Bearer ${token}`, "content-type": `multipart/related; boundary=${boundary}` },
+    headers: { ...driveHeaders, "content-type": `multipart/related; boundary=${boundary}` },
     body,
   });
-  const created = await upload.json().catch(() => ({})) as { id?: string; name?: string; mimeType?: string; webViewLink?: string };
+  const created = await upload.json().catch(() => ({})) as { id?: string; name?: string; mimeType?: string; md5Checksum?: string; webViewLink?: string; appProperties?: Record<string, string> };
   if (!upload.ok || !created.id) throw new Error(`Google Drive PDF upload failed (${upload.status}).`);
-  const readback = await fetcher(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(created.id)}?fields=id,name,mimeType,webViewLink&supportsAllDrives=true`, { headers: { authorization: `Bearer ${token}` } });
+  const readback = await fetcher(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(created.id)}?fields=id,name,mimeType,md5Checksum,webViewLink,appProperties&supportsAllDrives=true`, { headers: driveHeaders });
   const stored = await readback.json().catch(() => ({})) as typeof created;
-  if (!readback.ok || stored.id !== created.id || stored.name !== verified.filename || stored.mimeType !== "application/pdf") throw new Error(`Google Drive PDF readback failed (${readback.status}).`);
-  return { caseId: processCase.id, estateId: processCase.estate.estateId, name: stored.name, url: stored.webViewLink || created.webViewLink || "", readbackStatus: "verified" };
+  if (!readback.ok || stored.id !== created.id || stored.name !== verified.filename || stored.mimeType !== "application/pdf" || stored.md5Checksum !== sourceMd5 || stored.appProperties?.heirrightDocprepCaseId !== processCase.id || stored.appProperties?.heirrightPdfSha256 !== sourceSha256) throw new Error(`Google Drive PDF readback failed (${readback.status}).`);
+  return { caseId: processCase.id, estateId: processCase.estate.estateId, name: stored.name, url: stored.webViewLink || created.webViewLink || "", readbackStatus: "verified", idempotent: false };
 }
 
 export const createApp = ({ serviceToken, repository, now = () => Date.now(), fetcher = fetch, googleDrive = {} }: ApiConfig) => {
