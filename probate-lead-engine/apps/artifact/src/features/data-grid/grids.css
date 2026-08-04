@@ -609,7 +609,7 @@
   color: var(--hr-danger);
   background: var(--hr-action-surface);
   border: 1px solid color-mix(in srgb, var(--hr-danger) 36%, var(--hr-action-border));
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
   font: inherit;
   font-size: var(--hr-type-xs);

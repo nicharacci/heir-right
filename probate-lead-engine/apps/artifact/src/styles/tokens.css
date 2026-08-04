@@ -92,6 +92,8 @@
   --hr-space-10: 2.5rem;
 
   --hr-radius-control: 0.75rem;
+  /* Status and action chips keep a firm corner instead of a capsule. */
+  --hr-radius-chip: 0.45rem;
   --hr-radius-panel: 1rem;
   --hr-radius-main: 1.5rem;
   --hr-focus-width: 2px;
