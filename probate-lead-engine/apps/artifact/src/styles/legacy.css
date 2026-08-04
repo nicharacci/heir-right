@@ -6605,6 +6605,73 @@
       border-top: 1px solid color-mix(in srgb, var(--line-strong) 44%, transparent);
     }
 
+    /* The directory is a quiet two-column index, not a stacked status rail.
+       Keep each card self-contained so folder controls and actions share a
+       baseline without the legacy filter-field margins leaking into them. */
+    .integration-directory {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      min-width: 0;
+      overflow: visible;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .integration-directory .integration-card {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 100%;
+      padding: 16px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 54%, transparent);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+    }
+
+    .integration-directory .integration-card + .integration-card {
+      border-top: 1px solid color-mix(in srgb, var(--line-strong) 54%, transparent);
+    }
+
+    .integration-directory .integration-card .field {
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .integration-directory .integration-card .field label {
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .integration-directory .integration-card .field select {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .integration-directory .integration-card-actions {
+      margin-top: auto;
+      padding-top: 4px;
+    }
+
+    .integration-directory .integration-card-actions > .field {
+      flex: 1 1 15rem;
+    }
+
+    .integration-directory .integration-card-actions > .btn {
+      flex: 0 0 auto;
+    }
+
+    @media (max-width: 900px) {
+      .integration-directory {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .integration-card-head,
     .integration-card-actions {
       display: flex;

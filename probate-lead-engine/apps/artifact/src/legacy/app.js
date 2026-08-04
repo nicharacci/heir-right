@@ -11917,7 +11917,7 @@ function integrationOnboardingCardHtml(kind) {
     },
     browserbase: {
       name: "Browserbase Usage",
-      title: "Browserbase Usage",
+      title: "Browserbase (Public Records)",
       action: "Review browser usage",
       steps: ["Single-estate source capture can run only after credentials, functions, and billing readiness are verified", "Paid batch runs require explicit batch approval", "Split large batches at the configured session cap before capture starts"]
     },
@@ -11944,15 +11944,17 @@ function integrationOnboardingCardHtml(kind) {
   const connected = isGoogle
     ? Boolean(workspaceConnected && workspace?.destinationId)
     : Boolean(connection?.ok && connection?.mode === "live");
+  const publicRecordsReady = kind === "web";
+  const displayConnected = connected || publicRecordsReady;
   const browserbaseSetupRequired = kind === "browserbase" && !connection?.ok;
   const browserbaseBlocked = kind === "browserbase" && Boolean(connection?.ok) && connectionTone(connection) === "blocked";
   const sessionReady = Boolean(state.session?.auth?.configured);
-  const actionLabel = connected ? "Connected" : meta.action;
+  const actionLabel = displayConnected ? (publicRecordsReady ? "Ready" : "Connected") : meta.action;
   const statusLabel = isGoogle
     ? connected ? "Ready" : workspaceConnected ? "Choose folder" : "Setup required"
-    : connected ? "Live" : browserbaseSetupRequired ? "Setup required" : browserbaseBlocked ? "Blocked" : connection?.mode ? displayStatus(connection.mode) : "Setup required";
-  const statusTone = connected ? "ready" : browserbaseBlocked ? "blocked" : "review";
-  const steps = meta.steps.map((step, index) => index === 0 && connected ? `${meta.title} setup present` : step);
+    : publicRecordsReady ? "Ready" : connected ? "Live" : browserbaseSetupRequired ? "Setup required" : browserbaseBlocked ? "Blocked" : connection?.mode ? displayStatus(connection.mode) : "Setup required";
+  const statusTone = displayConnected ? "ready" : browserbaseBlocked ? "blocked" : "review";
+  const steps = meta.steps.map((step, index) => index === 0 && displayConnected ? `${meta.title} ready` : step);
   const idiPortalUrl = connection?.portal?.searchUrl || "https://idicore.com/search/PropertySearch";
   const googleWorkspaceControl = isGoogle ? (() => {
     if (!sessionReady) return `<span class="copy">Google OAuth needs to be configured before the Drive connection can start.</span>`;
@@ -11971,17 +11973,18 @@ function integrationOnboardingCardHtml(kind) {
     ? `<a class="btn primary solvys-liquid-glass" href="${escapeHtml(idiPortalUrl)}" target="_blank" rel="noreferrer">Open idiCORE</a>`
     : isGoogle
     ? googleWorkspaceControl
-    : `<button class="btn ${connected ? "" : "primary solvys-liquid-glass"}" type="button" data-integration-onboarding="${escapeHtml(kind)}" ${connected ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>`;
+    : `<button class="btn ${displayConnected ? "" : "primary solvys-liquid-glass"}" type="button" data-integration-onboarding="${escapeHtml(kind)}" ${displayConnected ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>`;
   return `
-    <article class="integration-card" data-connected="${connected ? "true" : "false"}">
+    <article class="integration-card" data-connected="${displayConnected ? "true" : "false"}">
       <div class="integration-card-head">
         <div>
-          <p class="eyebrow">Integration</p>
           <h3>${escapeHtml(meta.title)}</h3>
         </div>
         <div class="integration-card-status"><span class="pill ${statusTone}">${escapeHtml(statusLabel)}</span><button class="integration-refresh" type="button" data-settings-refresh-integration="${escapeHtml(kind)}" aria-label="Refresh ${escapeHtml(meta.title)} status" title="Refresh status">↻</button></div>
       </div>
-      <p class="copy">${escapeHtml(isGoogle && workspaceConnected
+      <p class="copy">${escapeHtml(publicRecordsReady
+        ? "Public record source checks are ready and reported per run."
+        : isGoogle && workspaceConnected
         ? workspace.destinationName ? `Drive folder selected: ${workspace.destinationName}. An operator can explicitly send an approved Discovery PDF here from Completion.` : "Google Workspace is connected. Choose a Drive folder for optional approved-packet handoff."
         : operatorConnectionMessage(connection, meta.name))}</p>
       <p class="integration-scope">${isUserScoped ? "Per-user connection" : "Shared team connection"}</p>
@@ -12141,7 +12144,7 @@ function renderIntegrationSettingsPanel() {
     ${settingsSectionShell("Integration status", "Workspace", "Reconnect / Review setup", `
       <p class="copy">Connector setup, approval, and readback status live here so Batch Queue and Outreach show only deal-work blockers.</p>
       <div class="settings-integrations-layout">
-        <div class="integration-onboarding settings-integrations-list">
+        <div class="integration-directory settings-integrations-list" aria-label="Workspace integrations">
           ${integrationOnboardingCardHtml("podio")}
           ${integrationOnboardingCardHtml("google")}
           ${integrationOnboardingCardHtml("idi")}
@@ -12149,9 +12152,7 @@ function renderIntegrationSettingsPanel() {
           ${integrationOnboardingCardHtml("clerk")}
           ${integrationOnboardingCardHtml("vital")}
           ${integrationOnboardingCardHtml("browserbase")}
-          ${integrationOnboardingCardHtml("activepieces")}
           ${integrationOnboardingCardHtml("web")}
-          ${integrationOnboardingCardHtml("leads")}
           ${integrationOnboardingCardHtml("resend")}
           ${integrationOnboardingCardHtml("sms")}
         </div>
@@ -14933,14 +14934,14 @@ function updateConnectionStatuses() {
   if (podioConnection || googleConnection || webConnection) {
     setConnectionChip("podioStatus", connectionTone(podioConnection), operatorConnectionMessage(podioConnection, "Podio"), displayStatus(podioConnection?.mode));
     setConnectionChip("googleStatus", connectionTone(googleConnection), operatorConnectionMessage(googleConnection, "Google"), displayStatus(googleConnection?.mode));
-    setConnectionChip("webSearchStatus", connectionTone(webConnection), operatorConnectionMessage(webConnection, "Web Search"), displayStatus(webConnection?.mode));
+    setConnectionChip("webSearchStatus", "ready", "Public record source checks are ready and reported per run.", "Ready");
     return;
   }
 
   if (!dossier) {
     setConnectionChip("podioStatus", "neutral", "Podio status unknown until a lead packet is loaded.");
     setConnectionChip("googleStatus", "neutral", "Google status unknown until a lead packet is loaded.");
-    setConnectionChip("webSearchStatus", "neutral", "Web Search status unknown until a lead packet is loaded.");
+    setConnectionChip("webSearchStatus", "ready", "Public record source checks are ready and reported per run.", "Ready");
     return;
   }
   const podio = dossier.crm?.payload?.podioReadiness ?? {};
@@ -14963,9 +14964,9 @@ function updateConnectionStatuses() {
   });
   setConnectionChip(
     "webSearchStatus",
-    publicSourceOk ? "ready" : "review",
-    publicSourceOk ? "Public web search sources are reachable in the latest packet." : "Public web search needs source validation.",
-    publicSourceOk ? "Sources checked" : "Needs check"
+    "ready",
+    publicSourceOk ? "Public web search sources are reachable in the latest packet." : "Public record source checks are ready and reported per run.",
+    publicSourceOk ? "Sources checked" : "Ready"
   );
 }
 

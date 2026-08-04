@@ -130,6 +130,8 @@ assert.match(docPrepView, /data-s40-stream-estate/);
 assert.match(docPrepView, /Live report streams/);
 assert.match(docPrepView, /aria-pressed/);
 assert.match(docPrepView, /data-s40-stream-window/);
+assert.match(docPrepView, /data-s40-queue-search/);
+assert.match(docPrepView, /setGridQuickFilter/);
 assert.match(docPrepView, /renderDynamicIsland/);
 assert.match(docPrepView, /data-state=\"\$\{escape\(bridge, step\.state\)\}\"/);
 assert.match(docPrepView, /IDI report uploaded/);
@@ -188,6 +190,12 @@ const settingsRenderBody = legacy.slice(legacy.indexOf("function renderSettingsV
 assert.doesNotMatch(settingsRenderBody, /settingsReadinessBandHtml/);
 const integrationPanelBody = legacy.slice(legacy.indexOf("function renderIntegrationSettingsPanel"), legacy.indexOf("function renderSupportSettingsPanel"));
 assert.doesNotMatch(integrationPanelBody, /integrationStatusRowsHtml/);
+assert.match(integrationPanelBody, /integration-directory/);
+assert.doesNotMatch(integrationPanelBody, /integrationOnboardingCardHtml\("activepieces"\)/);
+assert.doesNotMatch(integrationPanelBody, /integrationOnboardingCardHtml\("leads"\)/);
+assert.match(legacy, /title: "Browserbase \(Public Records\)"/);
+assert.match(legacy, /public record source checks are ready and reported per run/i);
+assert.doesNotMatch(integrationPanelBody, /<p class="eyebrow">Integration<\/p>/);
 
 assert.match(exportRegister, /id: "s40-estate-export"/);
 assert.match(exportRegister, /id: "export"/);

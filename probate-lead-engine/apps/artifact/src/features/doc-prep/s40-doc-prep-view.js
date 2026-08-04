@@ -1,5 +1,5 @@
 import { escapeFor } from "./document-row.js";
-import { createCommunityGrid, destroyCommunityGrid } from "../data-grid/community-grid.js";
+import { createCommunityGrid, destroyCommunityGrid, setGridQuickFilter } from "../data-grid/community-grid.js";
 import { estateWorkflowStateLabels } from "../estate-export/workflow-model.js";
 
 const stageLabels = Object.freeze({
@@ -403,7 +403,7 @@ function emptyDocPrepView(bridge) {
     "<section class=\"s40-docprep s40-docprep-empty\" data-feature=\"s40-doc-prep\">",
     "  <div class=\"s40-workbench\">",
     "    <aside class=\"s40-selector\" aria-label=\"Doc Prep estate selector\">",
-    "      <header><div><span class=\"s40-column-kicker\">Queued estates</span><h2>Select files</h2></div><span>0</span></header>",
+    "      <header><div><span class=\"s40-column-kicker\">Queued estates</span><label class=\"s40-quick-search\"><span class=\"s40-visually-hidden\">Quick search queued estates</span><input type=\"search\" data-s40-queue-search aria-label=\"Quick search queued estates\" placeholder=\"Quick search\"></label></div><span>0</span></header>",
     "      <div class=\"s40-empty-selector\"><strong>Nothing is queued</strong><span>Queue an eligible estate from Estates to start Doc Prep.</span><button type=\"button\" class=\"s40-link-button\" data-open-estates>Open Estates</button></div>",
     "    </aside>",
     "    <article class=\"s40-artifact-rail s40-artifact-rail-empty\" aria-label=\"Doc Prep artifact and status rail\">",
@@ -432,7 +432,7 @@ function renderS40DocPrepView({ bridge }) {
       </header>
       <div class="s40-workbench">
         <aside class="s40-selector" aria-label="Doc Prep estate selector">
-          <header><div><span class="s40-column-kicker">Queued estates</span><h2>Select files</h2></div><span>${rows.length}</span></header>
+          <header><div><span class="s40-column-kicker">Queued estates</span><label class="s40-quick-search"><span class="s40-visually-hidden">Quick search queued estates</span><input type="search" data-s40-queue-search aria-label="Quick search queued estates" placeholder="Quick search"></label></div><span>${rows.length}</span></header>
           ${renderEstateSelector(rows)}
         </aside>
         <article class="s40-artifact-rail" aria-label="Doc Prep artifact rail">
@@ -490,8 +490,9 @@ function mountS40DocPrepView(root, bridge) {
     }
     if (stopControl) stopControl.disabled = !nextRows.some((row) => workflowState(row) === "processing");
   };
+  let gridApi = null;
   if (selector) {
-    createCommunityGrid(selector, {
+    gridApi = createCommunityGrid(selector, {
       key: "docprep",
       rows,
       columns: [
@@ -517,6 +518,9 @@ function mountS40DocPrepView(root, bridge) {
       },
     });
   }
+  root?.querySelector?.("[data-s40-queue-search]")?.addEventListener("input", (event) => {
+    setGridQuickFilter(gridApi, event.currentTarget.value);
+  });
   updateRunControl(rows);
   const idiUpload = root?.querySelector?.("[data-s40-idi-upload]");
   const idiFile = root?.querySelector?.("[data-s40-idi-file]");
