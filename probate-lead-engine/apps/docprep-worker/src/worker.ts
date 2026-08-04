@@ -5,7 +5,7 @@ import { ProcessCase, ProcessRepository } from "@ple/docprep-core";
 
 export type SourceResult = { kind: "ready"; pdf: Uint8Array } | { kind: "review_required"; detail: string; nextAction: string } | { kind: "blocked"; detail: string; nextAction: string };
 export type SourceRunner = (processCase: ProcessCase) => Promise<SourceResult>;
-export interface ObjectStore { put(key: string, bytes: Uint8Array): Promise<void>; get(key: string): Promise<Uint8Array>; publicUrl(key: string): string; }
+export interface ObjectStore { put(key: string, bytes: Uint8Array): Promise<void>; get(key: string): Promise<Uint8Array>; }
 export type WorkerDependencies = { repository: ProcessRepository; sourceRunner: SourceRunner; objectStore: ObjectStore };
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 
@@ -25,15 +25,14 @@ export class DocumentPrepWorker {
     const readback = await this.dependencies.objectStore.get(key);
     const expectedHash = sha256(result.pdf); const readbackHash = sha256(readback);
     if (expectedHash !== readbackHash || readback.byteLength !== result.pdf.byteLength) return this.dependencies.repository.transition(rendering.id, rendering.revision, "failed", "Stored PDF did not pass readback verification.", undefined, "Stored PDF did not pass readback verification.", "Retry document preparation after storage is available.");
-    return this.dependencies.repository.recordArtifact(rendering.id, rendering.revision, { objectKey: key, contentType: "application/pdf", bytes: readback.byteLength, sha256: readbackHash, readbackStatus: "verified", verifiedAt: new Date().toISOString(), url: this.dependencies.objectStore.publicUrl(key) });
+    return this.dependencies.repository.recordArtifact(rendering.id, rendering.revision, { objectKey: key, contentType: "application/pdf", bytes: readback.byteLength, sha256: readbackHash, readbackStatus: "verified", verifiedAt: new Date().toISOString() });
   }
 }
 
 export class R2ObjectStore implements ObjectStore {
-  constructor(private readonly client: S3Client, private readonly bucket: string, private readonly baseUrl: string) {}
+  constructor(private readonly client: S3Client, private readonly bucket: string) {}
   async put(key: string, bytes: Uint8Array) { await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: bytes, ContentType: "application/pdf" })); }
   async get(key: string) { const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key })); if (!response.Body) throw new Error("R2 returned an empty PDF object."); return new Uint8Array(await response.Body.transformToByteArray()); }
-  publicUrl(key: string) { return `${this.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(key)}`; }
 }
 
 /** Claims the transactional outbox without a browser or request process owning the sequence. */

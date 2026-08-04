@@ -6,6 +6,7 @@ import { DriveExport, IntakeCommand, ProcessConflictError, ProcessRepository, Pr
 export type ApiConfig = {
   serviceToken: string;
   repository: ProcessRepository;
+  artifactStore?: { get(objectKey: string): Promise<Uint8Array> };
   now?: () => number;
   fetcher?: typeof fetch;
   googleDrive?: { accessToken?: string; parentFolderId?: string };
@@ -24,15 +25,10 @@ export const estatePdfFileName = (estateName: string, at = new Date()) => `EST o
 const pdfHash = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const pdfMd5 = (bytes: Uint8Array) => createHash("md5").update(bytes).digest("hex");
 
-async function verifiedArtifactBytes(processCase: Awaited<ReturnType<ProcessRepository["get"]>>, fetcher: typeof fetch): Promise<{ bytes: Uint8Array; filename: string } | null> {
+async function verifiedArtifactBytes(processCase: Awaited<ReturnType<ProcessRepository["get"]>>, artifactStore?: ApiConfig["artifactStore"]): Promise<{ bytes: Uint8Array; filename: string } | null> {
   const artifact = processCase?.artifact;
-  if (!processCase || processCase.state !== "packet_ready" || artifact?.contentType !== "application/pdf" || artifact.readbackStatus !== "verified" || !artifact.url || !/^[a-f0-9]{64}$/i.test(artifact.sha256)) return null;
-  let url: URL;
-  try { url = new URL(artifact.url); } catch { return null; }
-  if (url.protocol !== "https:") return null;
-  const response = await fetcher(url, { headers: { accept: "application/pdf" } });
-  if (!response.ok || !response.headers.get("content-type")?.toLowerCase().startsWith("application/pdf")) return null;
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (!processCase || processCase.state !== "packet_ready" || artifact?.contentType !== "application/pdf" || artifact.readbackStatus !== "verified" || !artifact.objectKey || !/^[a-f0-9]{64}$/i.test(artifact.sha256) || !artifactStore) return null;
+  const bytes = await artifactStore.get(artifact.objectKey);
   if (bytes.byteLength < 5 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46 || bytes[4] !== 0x2d || pdfHash(bytes) !== artifact.sha256) return null;
   return { bytes, filename: estatePdfFileName(processCase.estate.name) };
 }
@@ -78,7 +74,7 @@ async function uploadVerifiedPdfToGoogleDrive({ processCase, verified, token, pa
   return { caseId: processCase.id, estateId: processCase.estate.estateId, name: stored.name, url: stored.webViewLink || created.webViewLink || "", readbackStatus: "verified", idempotent: false };
 }
 
-export const createApp = ({ serviceToken, repository, now = () => Date.now(), fetcher = fetch, googleDrive = {} }: ApiConfig) => {
+export const createApp = ({ serviceToken, repository, artifactStore, now = () => Date.now(), fetcher = fetch, googleDrive = {} }: ApiConfig) => {
   const app = new Hono();
   app.use("/v1/*", async (context, next) => {
     if (Number(context.req.header("content-length") || 0) > 1_000_000) return context.json({ ok: false, error: "request_too_large" }, 413);
@@ -107,7 +103,7 @@ export const createApp = ({ serviceToken, repository, now = () => Date.now(), fe
     const artifactAction = context.req.param("artifactAction");
     if (artifactAction !== "download" && artifactAction !== "view") return context.json({ ok: false, error: "not_found" }, 404);
     const processCase = await repository.get(context.req.param("caseId"));
-    const verified = await verifiedArtifactBytes(processCase, fetcher).catch(() => null);
+    const verified = await verifiedArtifactBytes(processCase, artifactStore).catch(() => null);
     if (!verified) return context.json({ ok: false, error: "verified_pdf_not_available" }, 409);
     const disposition = artifactAction === "view" ? "inline" : "attachment";
     return new Response(verified.bytes as unknown as BodyInit, { headers: { "content-type": "application/pdf", "content-disposition": `${disposition}; filename="${verified.filename.replace(/"/g, "")}"`, "cache-control": "private, no-store" } });
@@ -132,7 +128,7 @@ export const createApp = ({ serviceToken, repository, now = () => Date.now(), fe
     if (resolved.some((processCase) => !processCase)) return context.json({ ok: false, error: "case_not_found" }, 404);
     const completed: DriveExport[] = [];
     for (const processCase of resolved as NonNullable<typeof resolved[number]>[]) {
-      const verified = await verifiedArtifactBytes(processCase, fetcher).catch(() => null);
+      const verified = await verifiedArtifactBytes(processCase, artifactStore).catch(() => null);
       if (!verified) return context.json({ ok: false, error: "verified_pdf_not_available", caseId: processCase.id }, 409);
       const claim = await repository.claimDriveExport(processCase.id, processCase.artifact!.sha256);
       if (claim.status === "completed") { completed.push(claim.export); continue; }

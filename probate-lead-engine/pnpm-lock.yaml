@@ -51,6 +51,9 @@ importers:
 
   apps/docprep-api:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.797.0
+        version: 3.1102.0
       '@hono/node-server':
         specifier: ^2.0.5
         version: 2.1.0(hono@4.13.0)

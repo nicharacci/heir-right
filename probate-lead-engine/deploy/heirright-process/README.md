@@ -8,10 +8,14 @@ The Fly API service uses the repository-root `fly.toml` (or `deploy/heirright-pr
 
 - `DATABASE_URL`
 - `HEIRRIGHT_PROCESS_API_TOKEN`
+- `R2_ENDPOINT`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET_NAME`
 - `GOOGLE_WORKSPACE_ACCESS_TOKEN`
 - `GOOGLE_DRIVE_PARENT_FOLDER_ID` when exports belong in a specific shared folder
 
-The API exposes readiness at `/readyz`. Its Google Drive route accepts only durable cases with a verified R2 PDF, checks the source bytes and SHA-256, then reads the Drive PDF metadata and checksum back. A durable claim ledger allows one upload owner for each case/PDF hash, rejects concurrent duplicate uploads, and reuses a completed verified Drive file on later requests.
+The API exposes readiness at `/readyz`. It reads verified PDFs from the private R2 bucket by object key, checks the source bytes and SHA-256, then reads Drive PDF metadata and checksum back. A durable claim ledger allows one upload owner for each case/PDF hash, rejects concurrent duplicate uploads, and reuses a completed verified Drive file on later requests.
 
 ## Worker service
 
@@ -24,9 +28,8 @@ The Fly worker uses `fly.worker.toml` (or `deploy/heirright-process/fly.worker.t
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
 - `R2_BUCKET_NAME`
-- `R2_PUBLIC_BASE_URL`
 
-The worker reads the persisted Discovery File, retrieves or renders a Discovery PDF through the existing source authority, verifies PDF bytes, writes to R2, reads the object back, and only then records `packet_ready`.
+The worker reads the persisted Discovery File, retrieves or renders a Discovery PDF through the existing source authority, verifies PDF bytes, writes to private R2, reads the object back, and only then records `packet_ready`. R2 must not have a public bucket domain or public development URL enabled.
 
 ## Artifact service
 
@@ -35,7 +38,7 @@ The existing authenticated artifact deployment needs:
 - `HEIRRIGHT_PROCESS_API_URL`
 - `HEIRRIGHT_PROCESS_API_TOKEN`
 
-It forwards the signed operator identity to the process API. The browser never holds the process token or receives the storage URL: verified PDFs open and download only through the authenticated artifact proxy.
+It forwards the signed operator identity to the process API. The browser never holds the process token or receives a storage URL: verified PDFs open and download only through the authenticated artifact proxy.
 
 ## Controlled production smoke
 
