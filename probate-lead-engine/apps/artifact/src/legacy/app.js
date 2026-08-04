@@ -7316,7 +7316,7 @@ function renderCrmImportUpload() {
     '<label class="crm-upload-dropzone" for="estateFileInput" tabindex="0" role="button" data-estate-upload-dropzone>' +
       '<span class="crm-upload-kicker">Estate source</span>' +
       '<strong>Browse PDF or CSV, or drop it here</strong>' +
-      '<span class="field-note">Searchable PDF or UTF-8 CSV, up to 3 MB. Parsing stays review-required.</span>' +
+      '<span class="field-note">Searchable PDF or CSV (UTF-8 or Windows-1252), up to 3 MB. Parsing stays review-required.</span>' +
     '</label>' +
     '<input id="estateFileInput" class="crm-upload-input" type="file" accept=".pdf,.csv,application/pdf,text/csv" aria-describedby="estateFileInputNote">' +
     '<p id="estateFileInputNote" class="field-note crm-upload-message" aria-live="polite">' + escapeHtml(crmImportUploadStatusText(upload)) + '</p>' +

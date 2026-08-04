@@ -45,6 +45,14 @@ assert.equal(extraction.fileKind, "csv");
 assert.equal(extraction.method, "csv_rows");
 assert.match(extraction.text, /Estate of Ada Example/);
 assert.ok(extraction.sourceLocators.length >= 2, "CSV extraction must preserve source-row locators");
+const windows1252Csv = Buffer.from("Estate Name,Owner Name\nEstate of Ren\xe9e Example,Ren\xe9e Example\n", "latin1");
+const windows1252Extraction = await extractionRuntime.extractEstateUpload("text/csv", windows1252Csv);
+assert.match(windows1252Extraction.text, /Estate of Ren\u00e9e Example/, "common Windows CSV exports must decode without replacement characters");
+await assert.rejects(
+  extractionRuntime.extractEstateUpload("text/csv", Buffer.from([0x61, 0x2c, 0x62, 0x0a, 0x63, 0x00, 0x64])),
+  (error) => error?.code === "estate_upload_invalid_csv",
+  "binary-looking CSV payloads must remain blocked",
+);
 await assert.rejects(
   extractionRuntime.extractEstateUpload("application/octet-stream", Buffer.from("binary")),
   (error) => error?.code === "estate_upload_type_unsupported",
@@ -165,7 +173,8 @@ assert.match(apiSource, /MAX_ESTATE_FILE_BYTES = 3_000_000/);
 assert.match(apiSource, /createHash\("sha256"\)/);
 assert.match(apiSource, /extractEstateUpload/);
 assert.match(apiSource, /proxyWorkerHttp[\s\S]*\/api\/agentic\/estate-import/);
-assert.match(apiSource, /new TextDecoder\("utf-8", \{ fatal: true \}\)/);
+assert.match(apiSource, /decodeCsvText\(bytes\)/);
+assert.match(readArtifact("server/idi-extract-handler.js"), /new TextDecoder\("windows-1252"\)/);
 assert.match(workerSource, /"\/api\/agentic\/estate-import"/);
 assert.match(workerSource, /credential\.verifiedFreeModels\.includes\(model\)/);
 assert.match(workerSource, /freeModelVerified: true/);
@@ -208,6 +217,7 @@ console.log(JSON.stringify({
   ok: true,
   checks: [
     "searchable_csv_extraction_with_row_locators",
+    "utf8_and_windows1252_client_csv_decoding",
     "strict_authenticated_hashing_proxy_boundary",
     "file_type_method_and_worker_unavailable_fail_closed",
     "extracted_client_text_not_returned_to_browser",

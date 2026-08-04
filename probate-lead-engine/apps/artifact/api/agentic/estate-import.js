@@ -1,6 +1,6 @@
 const { createHash } = require("node:crypto");
 const { readJsonBody, requireApiAuth, sendJson, proxyWorkerHttp } = require("../_shared");
-const { extractEstateUpload } = require("../../runtime-functions/idi-extract.cjs");
+const { extractEstateUpload, decodeCsvText } = require("../../runtime-functions/idi-extract.cjs");
 
 const MAX_ESTATE_FILE_BYTES = 3_000_000;
 const MAX_BASE64_CHARACTERS = 4_100_000;
@@ -57,9 +57,9 @@ function validateFileBytes(contentType, bytes) {
     throw intakeError("The selected CSV contains binary data.", "estate_upload_invalid_csv", 422);
   }
   try {
-    new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
-    throw intakeError("Save the CSV as UTF-8, then upload it again.", "estate_upload_invalid_csv", 422);
+    decodeCsvText(bytes);
+  } catch (error) {
+    throw intakeError(error.message || "The selected CSV could not be decoded safely.", "estate_upload_invalid_csv", 422);
   }
 }
 
