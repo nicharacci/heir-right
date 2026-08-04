@@ -31,6 +31,8 @@ assert.match(communityGrid, /resizable: column\?\.resizable === false \? false :
 assert.match(communityGrid, /selectionColumnDef/);
 assert.match(communityGrid, /data-hr-table-edge-resize/);
 assert.match(gridCss, /ag-header-row \.ag-header-cell:first-child[\s\S]*ag-header-cell:last-child/);
+assert.match(gridCss, /\.hr-grid-controls[\s\S]*flex-wrap: wrap/);
+assert.match(gridCss, /\.hr-grid-action-status[\s\S]*flex: 1 1 100%/);
 for (const [surface, source] of [["Estates", estates], ["Doc Prep", docPrepView], ["Queue", queueGrid], ["Export", exportView], ["Admin", adminAuditGrid]]) {
   assert.match(source, /createCommunityGrid/, `${surface} must use the shared table primitive`);
 }
@@ -116,7 +118,15 @@ assert.match(docPrepView, /data-s40-stream-estate/);
 assert.match(docPrepView, /Live report streams/);
 assert.match(docPrepView, /aria-pressed/);
 assert.match(docPrepView, /data-s40-stream-window/);
-assert.match(docPrepView, /s40-stage-issue/);
+assert.match(docPrepView, /renderDynamicIsland/);
+assert.match(docPrepView, /data-state=\"\$\{escape\(bridge, step\.state\)\}\"/);
+assert.match(docPrepView, /IDI report uploaded/);
+assert.match(docPrepView, /source === \"IDI report upload\"/);
+assert.match(docPrepView, /function recentManualUpload\(snapshot, estateId\)/);
+assert.match(docPrepView, /String\(candidate\?\.estateId \|\| \"\"\)\.trim\(\) === selectedEstateId/);
+assert.match(docPrepView, /event\.updatedAt \|\| event\.at/);
+assert.match(docPrepView, /recentManualUpload\(snapshot, row\.id\)/);
+assert.doesNotMatch(docPrepView, /s40-stage-strip/);
 assert.match(docPrepView, /select-estate.*estateId: control\.dataset\.s40StreamEstate/s);
 assert.match(docPrepCss, /grid-template-columns: minmax\(0, 30%\) minmax\(0, 70%\)/);
 assert.match(docPrepCss, /\.s40-docprep-empty > \.s40-workbench/);
@@ -124,6 +134,10 @@ assert.match(docPrepCss, /max-width: none/);
 assert.match(docPrepCss, /@media \(max-width: 700px\)/);
 assert.match(docPrepCss, /\.s40-stream-switcher/);
 assert.match(docPrepCss, /\.s40-stream-switch\[aria-pressed="true"\]/);
+assert.match(docPrepCss, /\.s40-dynamic-island[\s\S]*margin: 15px 0 0/);
+assert.match(docPrepCss, /width: min\(100%, 39\.675rem\)/);
+assert.match(docPrepCss, /@keyframes s40-island-spin/);
+assert.doesNotMatch(docPrepCss, /\.s40-stage-strip/);
 assert.match(docPrepCss, /@media \(prefers-reduced-motion: reduce\)/);
 assert.match(docPrepCss, /#researchRail/);
 assert.match(docPrepCss, /\.s40-artifact-surface[\s\S]*border-radius: var\(--hr-radius-panel\)/);

@@ -3816,7 +3816,12 @@ async function idiAssetImportResponse(request: Request, url: URL, env: Cloudflar
   if (request.method !== "POST") return methodNotAllowed("GET, POST");
   if (!env.PACKET_ARTIFACTS) return json({ ok: false, error: "idi_import_store_unavailable", message: "IDI import storage is unavailable." }, { status: 503 });
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-  const wantsLiveRun = body.runMode === "live_idi_core" || body.mode === "live_idi_core" || body.paidRun === true;
+  // A report selected and uploaded from Doc Prep is the source of truth for
+  // this estate. Resolve that intake mode before considering any paid/provider
+  // request flags so a stale or malformed client flag cannot buy a second run.
+  const manualUploadedReport = stringValue(body.mode) === "uploaded_file";
+  const wantsLiveRun = !manualUploadedReport
+    && (body.runMode === "live_idi_core" || body.mode === "live_idi_core" || body.paidRun === true);
   if ((wantsLiveRun || stringValue(body.adminOverrideReason)) && !internalBearerAuthorized(request, env)) {
     return json({
       ok: false,

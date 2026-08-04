@@ -16,6 +16,12 @@ const idiExtractRouteSource = readFileSync(new URL("../server/idi-extract-handle
 const contactReviewRouteSource = readFileSync(new URL("../api/discovery/contact-candidates/[id]/review.js", import.meta.url), "utf8");
 const localServerSource = readFileSync(new URL("../server.js", import.meta.url), "utf8");
 const rootIdiImportWrapperSource = readFileSync(new URL("../../../api/discovery/idi-asset-search/import.js", import.meta.url), "utf8");
+const workerSource = readFileSync(new URL("../../worker/src/cloudflare.ts", import.meta.url), "utf8");
+assert.match(
+  workerSource,
+  /const manualUploadedReport = stringValue\(body\.mode\) === "uploaded_file";[\s\S]*const wantsLiveRun = !manualUploadedReport\s*\n\s*&&/,
+  "a Doc Prep manual upload must take precedence before provider-run flags are evaluated",
+);
 for (const source of [idiImportRouteSource, localServerSource]) {
   assert.doesNotMatch(source, /body\.liveRunApproved|liveRunApproved\s*===/, "client approval flags must never authorize a paid IDI request");
   assert.match(source, /wantsLiveRun[\s\S]{0,220}requireApiAdmin/, "paid IDI requests must pass the shared administrator gate");

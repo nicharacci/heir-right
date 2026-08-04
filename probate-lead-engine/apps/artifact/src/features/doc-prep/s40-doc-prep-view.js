@@ -52,13 +52,6 @@ function workflowLabel(row) {
   return label === "Queued for Doc Prep" ? "" : label;
 }
 
-function stageStatusLabel(status) {
-  if (status === "complete") return "Complete";
-  if (status === "active") return "In progress";
-  if (status === "blocked") return "Blocked";
-  return "Waiting";
-}
-
 function discoveryPreviewFallback(preview, completed = discoveryMissingLabel) {
   const state = String(preview?.workflowState || "queued");
   if (state === "processing") return discoveryFetchingLabel;
@@ -123,10 +116,10 @@ function renderDiscoveryOfferTable(preview, bridge) {
       : index >= 17 && index <= 18
         ? { ...row, tone: "yellow" }
         : row);
-  return "<table class=\"s40-discovery-offer\">"
+  return "<table class=\"s40-discovery-offer\" aria-label=\"Offer and profit calculations\" aria-colcount=\"3\">"
     + "<colgroup><col class=\"s40-discovery-offer-description\"><col class=\"s40-discovery-offer-percentage\"><col class=\"s40-discovery-offer-total\"></colgroup>"
-    + "<tbody><tr class=\"s40-discovery-offer-bar\"><th colspan=\"3\">Offer/Profit</th></tr>"
-    + "<tr><th>Description</th><th>Percentage</th><th>Total</th></tr>"
+    + "<thead><tr class=\"s40-discovery-offer-bar\"><th colspan=\"3\">Offer/Profit</th></tr>"
+    + "<tr><th scope=\"col\">Description</th><th scope=\"col\">Percentage</th><th scope=\"col\">Total</th></tr></thead><tbody>"
     + rows.map((row) => {
       const tone = ["blue", "yellow"].includes(row.tone) ? " " + row.tone : "";
       const strong = ["As-Is Value", "Post Equity Value", "Profit", "Min Profit"].includes(row.label) ? " s40-discovery-strong" : "";
@@ -198,14 +191,6 @@ function renderDiscoveryTemplatePreview(row, bridge) {
     + (contactMarkup ? "<section class=\"s40-discovery-contact-detail\"><h2>Heir detail review</h2>" + contactMarkup + "</section>" : "")
     + "</main></div></div>";
 }
-function stageMaterial(row) {
-  const stages = Array.isArray(row?.workflowStages) ? row.workflowStages : [];
-  return workflowState(row) !== "queued"
-    || Boolean(row?.workflowArtifact)
-    || Boolean(row?.workflowBlocker)
-    || stages.some((stage) => stage.status !== "pending");
-}
-
 function verifiedArtifactHref(artifact) {
   const candidate = String(artifact?.artifactUrl || "").trim();
   if (!candidate) return "";
@@ -228,23 +213,52 @@ function verifiedArtifactDownloadName(row) {
   return `${title}-discovery-packet.pdf`;
 }
 
-function renderStageStrip(row, bridge) {
-  if (!stageMaterial(row)) return "";
+function dynamicIslandStep(row) {
   const stages = Array.isArray(row?.workflowStages) ? row.workflowStages : [];
-  return `
-    <ol class="s40-stage-strip" aria-label="Doc Prep stages">
-      ${stages.map((stage) => {
-        const blocked = stage.status === "blocked";
-        const label = stageLabels[stage.id] || stage.label || "Doc Prep stage";
-        const issue = blocked ? `<span class="s40-stage-issue" role="img" aria-label="Blocked: ${escape(bridge, stage.blocker || label)}">!</span>` : "";
-        return `<li class="s40-stage" data-state="${escape(bridge, stage.status)}">
-          <span class="s40-stage-marker" aria-hidden="true">${blocked ? "!" : stage.status === "complete" ? "✓" : ""}</span>
-          <span class="s40-stage-copy"><strong>${escape(bridge, label)}</strong><span>${escape(bridge, stageStatusLabel(stage.status))}</span></span>
-          ${issue}
-        </li>`;
-      }).join("")}
-    </ol>
-  `;
+  const active = stages.find((stage) => stage.status === "active");
+  const blocked = stages.find((stage) => stage.status === "blocked");
+  const pending = stages.find((stage) => stage.status === "pending");
+  const stage = active || blocked || pending || stages[stages.length - 1];
+  if (!stage) {
+    return row
+      ? { state: "pending", label: stageLabels["source-review"], detail: "Waiting to start" }
+      : { state: "pending", label: "Waiting for an estate", detail: "Select a queued file to begin" };
+  }
+  const label = stageLabels[stage.id] || stage.label || "Doc Prep stage";
+  if (active) return { state: "active", label, detail: "In progress" };
+  if (blocked) return { state: "blocked", label, detail: "Blocked - retry available" };
+  if (pending && workflowState(row) === "completed-awaiting-export" && stage.id === "export-handoff") {
+    return { state: "pending", label, detail: "Waiting for approval" };
+  }
+  if (pending && workflowState(row) === "processing") return { state: "active", label, detail: "In progress" };
+  if (pending) return { state: "pending", label, detail: workflowState(row) === "queued" ? "Waiting to start" : "Waiting" };
+  return { state: "complete", label, detail: "Complete" };
+}
+
+function recentManualUpload(snapshot, estateId) {
+  const selectedEstateId = String(estateId || "").trim();
+  if (!selectedEstateId) return false;
+  const event = (Array.isArray(snapshot?.activity) ? snapshot.activity : []).find((candidate) => (
+    String(candidate?.estateId || "").trim() === selectedEstateId
+    && candidate?.source === "IDI report upload"
+    && candidate?.title === "IDI report ready"
+    && candidate?.tone !== "blocked"
+  ));
+  if (!event) return false;
+  const updatedAt = Number(event.updatedAt || event.at || 0);
+  return updatedAt > 0 && Date.now() - updatedAt < 8_000;
+}
+
+function renderDynamicIsland(row, snapshot, bridge) {
+  const uploadConfirmed = Boolean(row && recentManualUpload(snapshot, row.id) && workflowState(row) !== "blocked");
+  const step = uploadConfirmed
+    ? { state: "success", label: "IDI report uploaded", detail: "Verified and ready for Discovery" }
+    : dynamicIslandStep(row);
+  const ariaLabel = `Doc Prep current step: ${step.label}. ${step.detail}.`;
+  return `<div class="s40-dynamic-island" data-state="${escape(bridge, step.state)}" role="status" aria-live="polite" aria-atomic="true" aria-label="${escape(bridge, ariaLabel)}">
+    <span class="s40-island-loader" aria-hidden="true"><span></span></span>
+    <span class="s40-island-copy"><strong>${escape(bridge, step.label)}</strong><span>${escape(bridge, step.detail)}</span></span>
+  </div>`;
 }
 
 function streamStatusLabel(row) {
@@ -287,7 +301,7 @@ function renderEstateSelector(rows) {
     : `<div class="s40-empty-selector"><strong>No estates are queued.</strong><span>Return to Estates to choose the next files for Doc Prep.</span><button type="button" class="s40-link-button" data-open-estates>Open Estates</button></div>`;
 }
 
-function renderArtifactRail(row, bridge, rows = []) {
+function renderArtifactRail(row, bridge, rows = [], snapshot = {}) {
   if (!row) {
     return `<div class="s40-rail-empty"><strong>Select a queued estate</strong><span>The selected packet and its stage evidence will appear here.</span></div>`;
   }
@@ -318,7 +332,7 @@ function renderArtifactRail(row, bridge, rows = []) {
       </div>
     </header>
     ${blocker ? `<p class="s40-blocker" role="alert">${escape(bridge, blocker)}</p>` : ""}
-    ${renderStageStrip(row, bridge)}
+    ${renderDynamicIsland(row, snapshot, bridge)}
     <section class="s40-artifact-surface" data-s40-stream-window="${escape(bridge, row.id)}" data-preview-state="${escape(bridge, hasVerifiedArtifact ? "verified" : preview.state || "template")}" aria-live="polite" aria-label="${escape(bridge, hasVerifiedArtifact ? "Verified packet preview" : previewStateLabel)}">
       <div class="s40-artifact-topline"><span>Artifact rail</span><span>${escape(bridge, hasVerifiedArtifact ? row.workflowArtifact?.fileName || "Internal packet" : previewStateLabel)}</span></div>
       ${packet}
@@ -356,7 +370,7 @@ function renderExportQueue(snapshot, bridge) {
   `;
 }
 
-function emptyDocPrepView() {
+function emptyDocPrepView(bridge) {
   return [
     "<section class=\"s40-docprep s40-docprep-empty\" data-feature=\"s40-doc-prep\">",
     "  <div class=\"s40-workbench\">",
@@ -366,7 +380,7 @@ function emptyDocPrepView() {
     "    </aside>",
     "    <article class=\"s40-artifact-rail s40-artifact-rail-empty\" aria-label=\"Doc Prep artifact and status rail\">",
     "      <header class=\"s40-empty-rail-head\"><div><p class=\"s40-rail-kicker\">Per-file and batch status</p><h2>Doc Prep status</h2><p>Select queued files to inspect each packet and phase.</p></div><div class=\"s40-docprep-type-strip\" aria-label=\"Doc Prep types\"><span aria-current=\"true\">Discovery</span><span>Closing Prep</span></div></header>",
-    "      <ol class=\"s40-empty-stage-list\" aria-label=\"Doc Prep phases waiting for a queued estate\"><li><strong>Selected files</strong><span>Waiting for an estate or batch selection</span></li><li><strong>Source evidence</strong><span>Waiting for a selected file</span></li><li><strong>Packet render</strong><span>Waiting for a Doc Prep run</span></li><li><strong>PDF readback</strong><span>Waiting for a rendered packet</span></li></ol>",
+    `      ${renderDynamicIsland(null, {}, bridge)}`,
     "    </article>",
     "  </div>",
     "</section>",
@@ -394,7 +408,7 @@ function renderS40DocPrepView({ bridge }) {
           ${renderEstateSelector(rows)}
         </aside>
         <article class="s40-artifact-rail" aria-label="Doc Prep artifact rail">
-          ${renderArtifactRail(current, bridge, rows)}
+          ${renderArtifactRail(current, bridge, rows, snapshot)}
         </article>
       </div>
       ${renderExportQueue(snapshot, bridge)}
@@ -457,6 +471,7 @@ function mountS40DocPrepView(root, bridge) {
       selectionMode: "multi",
       selectedIds: [...selectedEstateIds],
       pageSize: 8,
+      pagination: false,
       emptyMessage: "No queued estates.",
       onSelect: async (row) => {
         try {
