@@ -26,6 +26,6 @@ try {
   assert.equal(upstreamRequest.headers.authorization, "Bearer test-process-token");
   assert.equal(upstreamRequest.headers["x-heirright-actor-email"], "local-dev@heirright.com");
   assert.equal(upstreamRequest.headers["idempotency-key"], "artifact-idempotency-0001");
-  assert.equal(upstreamRequest.body.estates[0].actor.email, "forged@outside.example", "the API contract validates snapshot provenance while the server owns the trusted actor header");
+  assert.equal(upstreamRequest.body.estates[0].actor.email, "local-dev@heirright.com", "the artifact server replaces browser-supplied actor data with its authenticated session");
 } finally { await close(artifact); await close(upstream); }
 console.log(JSON.stringify({ ok: true, checks: ["artifact_process_proxy_hides_service_token", "artifact_process_proxy_sets_trusted_actor", "artifact_process_proxy_preserves_idempotency"] }));

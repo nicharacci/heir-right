@@ -11304,6 +11304,7 @@ const state = {
   selectedIds: new Set(),
   queueIds: new Set(),
   docPrepProcessCases: {},
+  docPrepProcessHydrated: new Set(),
   summaryMetricsOpen: false,
   railOpen: false,
   railMode: "report",
@@ -11464,7 +11465,6 @@ const walkthroughStateKey = "heirright:guided-walkthrough-seen";
 let walkthroughAutoTimer = null;
 let shellViewTransitionTimer = null;
 const documentAutomationTimers = new Map();
-const docPrepRunTimers = new Map();
 const serverBackedStateKeys = new Set([
   crmImportStateKey,
   docPrepEstateStateKey,
@@ -12229,9 +12229,8 @@ function seedSearchHistoryFromCurrentRows() {
 }
 
 function rowInDocPrepQueue(rowId) {
-  const row = rowById(rowId);
-  if (!row) return false;
-  return Object.keys(docPrepFlows).some((flowId) => docPrepFlowHasWork(row, flowId));
+  const processCase = state.docPrepProcessCases[String(rowId)];
+  return Boolean(processCase && !["packet_ready", "blocked", "failed", "cancelled"].includes(processCase.state));
 }
 
 function availableHistoryProspects(item) {
@@ -13774,7 +13773,78 @@ function processSnapshotForRow(row) {
 }
 
 function docPrepIdempotencyKey(rows) {
-  return `docprep-${rows.map((row) => row.id).sort().join("-")}-${Date.now().toString(36)}`;
+  return `docprep-${rows.map((row) => row.id).sort().join("-")}`;
+}
+
+function docPrepCaseForRow(row = selectedRow()) {
+  return row ? state.docPrepProcessCases[String(row.id)] || null : null;
+}
+
+function docPrepCaseLabel(processCase) {
+  return {
+    queued: "Queued in cloud",
+    sourcing: "Checking source evidence",
+    review_required: "Needs evidence review",
+    rendering: "Rendering packet",
+    packet_ready: "Verified PDF ready",
+    blocked: "Blocked",
+    failed: "Needs retry",
+    cancelled: "Stopped",
+  }[processCase?.state] || "Not started";
+}
+
+function verifiedDocPrepPdf(processCase) {
+  const artifact = processCase?.artifact;
+  return Boolean(
+    processCase?.state === "packet_ready"
+    && artifact?.contentType === "application/pdf"
+    && artifact?.readbackStatus === "verified"
+    && /^[a-f0-9]{64}$/i.test(String(artifact?.sha256 || ""))
+    && artifact?.url
+  );
+}
+
+async function hydrateDocPrepProcessCase(row = selectedRow(), { rerender = true } = {}) {
+  if (!row) return null;
+  try {
+    const response = await fetch(`/api/doc-prep/cases?estateId=${encodeURIComponent(row.id)}`, { headers: { accept: "application/json" } });
+    if (response.status === 404) return null;
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result?.ok || !result?.case) throw new Error(result.error || "Document preparation status is unavailable.");
+    state.docPrepProcessCases[String(row.id)] = result.case;
+    state.docPrepProcessHydrated.add(String(row.id));
+    if (rerender && state.activeView === "dossiers" && selectedRow()?.id === row.id) renderDossiersView();
+    return result.case;
+  } catch (error) {
+    state.docPrepProcessHydrated.add(String(row.id));
+    if (String(error?.message || "").includes("not configured")) return null;
+    return null;
+  }
+}
+
+async function requestDocPrepCaseAction(row, action, source = null) {
+  const processCase = docPrepCaseForRow(row);
+  if (!processCase) return;
+  source?.setAttribute?.("disabled", "disabled");
+  try {
+    const response = await fetch(`/api/doc-prep/cases/${encodeURIComponent(processCase.id)}/actions/${action}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ revision: processCase.revision }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result?.ok || !result?.case) throw new Error(result.error || `Could not ${action} document preparation.`);
+    state.docPrepProcessCases[String(row.id)] = result.case;
+    document.getElementById("topStatus").textContent = action === "cancel"
+      ? "Cloud document preparation was stopped."
+      : "Cloud document preparation was restarted.";
+    addShellEvent(action === "cancel" ? "Document preparation stopped" : "Document preparation restarted", docPrepEstateLabel(row), action === "cancel" ? "review" : "ready", true);
+    renderDossiersView(); renderCurrentLoopView(); renderShellPanels();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `Could not ${action} document preparation.`;
+    document.getElementById("topStatus").textContent = message;
+    addShellEvent("Document preparation action blocked", message, "blocked", true);
+  } finally { source?.removeAttribute?.("disabled"); source?.blur?.(); }
 }
 
 async function queueRowsWithCloudProcess(validRows, source = null) {
@@ -13783,7 +13853,7 @@ async function queueRowsWithCloudProcess(validRows, source = null) {
     const response = await fetch("/api/doc-prep/cases", { method: "POST", headers: { "content-type": "application/json", "idempotency-key": docPrepIdempotencyKey(validRows) }, body: JSON.stringify({ estates: validRows.map(processSnapshotForRow) }) });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result?.ok || !Array.isArray(result.cases)) throw new Error(result.error || "Document preparation could not start.");
-    result.cases.forEach((entry) => { const processCase = entry?.case; if (processCase?.estate?.estateId) { state.docPrepProcessCases[processCase.estate.estateId] = processCase; state.queueIds.add(processCase.estate.estateId); } });
+    result.cases.forEach((entry) => { const processCase = entry?.case; if (processCase?.estate?.estateId) { state.docPrepProcessCases[processCase.estate.estateId] = processCase; state.docPrepProcessHydrated.add(processCase.estate.estateId); } });
     const count = result.cases.length;
     state.railPreview = { title: `${count} estate${count === 1 ? "" : "s"} added to Doc Prep`, markdown: "Document preparation is now owned by the cloud process. Review blockers and verified PDFs appear here as the process updates.", updatedAt: Date.now() };
     document.getElementById("statusExport").textContent = `doc prep: [${count} QUEUED]`;
@@ -15564,18 +15634,20 @@ function docPrepMainRunLabel(row = selectedRow(), flowId = "discovery") {
 }
 
 function docPrepRunControlsHtml(row = selectedRow(), flowId = state.activeDocPrepFlow) {
-  const flow = docPrepFlow(flowId);
-  const running = docPrepMainRunActive(row, flow.id);
-  const complete = docPrepFlowIsComplete(row, flow.id);
+  const processCase = docPrepCaseForRow(row);
+  const label = docPrepCaseLabel(processCase);
+  const blockedByReview = processCase?.state === "review_required";
+  const canRetry = ["blocked", "failed"].includes(processCase?.state);
+  const canCancel = ["queued", "sourcing", "rendering", "review_required"].includes(processCase?.state);
+  const verifiedPdf = verifiedDocPrepPdf(processCase);
   return `
     <div class="docprep-run-actions">
-      ${complete ? `<button class="docprep-rerun-button" type="button" data-docprep-rerun-review="${escapeHtml(flow.id)}">Run again</button>` : ""}
-      <button
-        class="docprep-main-run-button ${running ? "is-running" : ""} ${complete ? "is-complete" : ""}"
-        type="button"
-        data-docprep-main-run="${escapeHtml(flow.id)}"
-        ${complete ? "disabled aria-disabled=\"true\"" : ""}
-      >${escapeHtml(docPrepMainRunLabel(row, flow.id))}</button>
+      <span class="pill ${blockedByReview || processCase?.state === "blocked" ? "review" : verifiedPdf ? "ready" : ""}">${escapeHtml(label)}</span>
+      ${processCase ? "" : `<button class="docprep-main-run-button" type="button" data-docprep-main-run="${escapeHtml(flowId)}">Start cloud preparation</button>`}
+      ${canRetry ? `<button class="docprep-rerun-button" type="button" data-docprep-process-action="retry">Retry</button>` : ""}
+      ${canCancel ? `<button class="docprep-rerun-button" type="button" data-docprep-process-action="cancel">Stop</button>` : ""}
+      ${blockedByReview ? `<span class="secondary-text">${escapeHtml(processCase.blocker || processCase.nextAction || "A reviewer must clear the source evidence before the process can continue.")}</span>` : ""}
+      ${verifiedPdf ? `<a class="docprep-main-run-button is-complete" href="${escapeHtml(processCase.artifact.url)}" target="_blank" rel="noopener">Open verified PDF</a>` : ""}
     </div>
   `;
 }
@@ -16061,90 +16133,6 @@ function renderDocPrepRunSurfaces() {
   renderRail();
 }
 
-function stopFullDiscoveryRun(row = selectedRow(), flowId = "discovery", { silent = false } = {}) {
-  if (!row) return;
-  const flow = docPrepFlow(flowId);
-  const key = docPrepRunKey(row, flowId);
-  const timer = docPrepRunTimers.get(key);
-  if (timer) window.clearTimeout(timer);
-  docPrepRunTimers.delete(key);
-  setDocPrepRunState(row, flowId, "");
-  pauseDocPrepStream(row, flowId);
-  if (!silent) {
-    document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} ${flow.shortTitle} run stopped.`;
-    addShellEvent(`${flow.shortTitle} stopped`, `${docPrepEstateLabel(row)} ${flow.shortTitle} was stopped before the next phase completed.`, "review", false);
-  }
-  renderDocPrepRunSurfaces();
-}
-
-async function finishFullDiscoveryRun(row = selectedRow(), flowId = "discovery", finalPhase = null) {
-  if (!row) return;
-  const flow = docPrepFlow(flowId);
-  const key = docPrepRunKey(row, flowId);
-  docPrepRunTimers.delete(key);
-  document.getElementById("topStatus").textContent = `Building and verifying the ${flow.shortTitle} PDF for ${docPrepEstateLabel(row)}...`;
-  const packet = await generatePacketPreview(row, null, { flowId, render: false });
-  if (!packet?.verification?.verified || !docPrepMainRunActive(row, flowId)) {
-    setDocPrepRunState(row, flowId, "");
-    if (finalPhase) setDocPrepStreamPhase(row, flowId, finalPhase, "blocked", "The packet did not pass artifact and storage readback verification.");
-    document.getElementById("topStatus").textContent = `${flow.shortTitle} packet verification blocked. Review the packet blocker and retry.`;
-    addShellEvent(`${flow.shortTitle} packet blocked`, "The generated PDF did not pass artifact and storage readback verification, so no document was marked complete.", "blocked", true);
-    renderDocPrepRunSurfaces();
-    return;
-  }
-  if (finalPhase) {
-    markDocPrepPhaseComplete(row, flowId, finalPhase.id);
-    setDocPrepStreamPhase(row, flowId, finalPhase, "complete");
-  }
-  const linkedCount = linkGeneratedDocPrepPackets(row, flowId);
-  setDocPrepRunState(row, flowId, "");
-  completeDocPrepStream(row, flowId, linkedCount);
-  const finalIndex = Math.max(0, docPrepPhases(flowId).length - 1);
-  setDocPrepPhaseIndex(row, flowId, finalIndex, { persist: false });
-  persistDiscoveryState();
-  document.getElementById("topStatus").textContent = `${docPrepEstateLabel(row)} ${flow.shortTitle} run complete.`;
-  addShellEvent(`${flow.shortTitle} complete`, `${docPrepEstateLabel(row)} completed the ${flow.shortTitle} run. One verified PDF contains ${linkedCount} reviewed packet section${linkedCount === 1 ? "" : "s"}.`, "ready", false);
-  renderDocPrepRunSurfaces();
-}
-
-function scheduleNextFullDiscoveryPhase(row = selectedRow(), flowId = state.activeDocPrepFlow, phaseIndex = 0) {
-  if (!row) return;
-  const key = docPrepRunKey(row, flowId);
-  const phases = docPrepPhases(flowId);
-  const phase = phases[phaseIndex];
-  if (!phase) {
-    finishFullDiscoveryRun(row, flowId);
-    return;
-  }
-  setDocPrepPhaseIndex(row, flowId, phaseIndex, { persist: false });
-  setDocPrepStreamPhase(row, flowId, phase, "writing");
-  persistDiscoveryState();
-  document.getElementById("topStatus").textContent = `${phase.label} running for ${docPrepEstateLabel(row)}.`;
-  renderDocPrepRunSurfaces();
-  const timer = window.setTimeout(() => {
-    docPrepRunTimers.delete(key);
-    if (!docPrepMainRunActive(row, flowId)) return;
-    const blocker = docPrepPhaseBlocker(row, flowId, phase);
-    if (blocker) {
-      setDocPrepRunState(row, flowId, "");
-      setDocPrepStreamPhase(row, flowId, phase, "blocked", blocker);
-      document.getElementById("topStatus").textContent = blocker;
-      addShellEvent(`${phase.label} needs review`, blocker, "blocked", true);
-      renderDocPrepRunSurfaces();
-      return;
-    }
-    if (phaseIndex === phases.length - 1) {
-      finishFullDiscoveryRun(row, flowId, phase);
-      return;
-    }
-    markDocPrepPhaseComplete(row, flowId, phase.id);
-    setDocPrepStreamPhase(row, flowId, phase, "complete");
-    addShellEvent(`${phase.label} complete`, `${phase.summary} ${docPrepFlow(flowId).shortTitle} continued automatically.`, "ready", false);
-    scheduleNextFullDiscoveryPhase(row, flowId, phaseIndex + 1);
-  }, 680);
-  docPrepRunTimers.set(key, timer);
-}
-
 async function runAutonomousDiscoverySources(row = selectedRow()) {
   if (!row) return { ok: false, message: "Select an estate before running Discovery." };
   const key = assetDiscoveryKey(row);
@@ -16262,63 +16250,22 @@ async function hydratePersistedDiscoveryFile(row = selectedRow()) {
 
 async function runFullDiscovery(row = selectedRow(), source = null, flowId = state.activeDocPrepFlow) {
   if (!row) return;
-  const flow = docPrepFlow(flowId);
   if (isDemoEstateImport(row)) {
-    nudgeDeniedAction(source, `${flow.shortTitle} blocked`, "Sample estates stay isolated from production source runs and packet export.", { pill: true, source: "docprep-run" });
+    nudgeDeniedAction(source, "Cloud preparation blocked", "Sample estates stay isolated from production source runs and packet export.", { pill: true, source: "docprep-run" });
     return;
   }
   addRowsToQueue([row], source);
-  return;
-  state.discoveryOpen = false;
-  state.docPrepManualFix = null;
-  state.railMode = "dossier";
-  ensureDocPrepStarted(row, flowId, { persist: false });
-  setActiveDocPrepFlow(flowId, { persist: false, rerender: false });
-  setDocPrepRunState(row, flowId, "running");
-  beginDocPrepStream(row, flowId);
-  addShellEvent(`${flow.shortTitle} started`, `${docPrepEstateLabel(row)} is running each ${flow.shortTitle} phase in order. Use ${flow.id === "discovery" ? "Stop Discovery" : `Stop ${flow.shortTitle}`} to pause before the next phase completes.`, "review", false);
-  if (flow.id === "discovery") {
-    document.getElementById("topStatus").textContent = `Searching configured public sources for ${docPrepEstateLabel(row)}...`;
-    renderDocPrepRunSurfaces();
-    const sourceRun = await runAutonomousDiscoverySources(row);
-    if (!docPrepMainRunActive(row, flow.id)) return;
-    if (!sourceRun.ok) {
-      setDocPrepRunState(row, flow.id, "");
-      const phase = currentDiscoveryPhase(flow.id, row) || docPrepPhases(flow.id)[0];
-      setDocPrepStreamPhase(row, flow.id, phase, "blocked", sourceRun.message);
-      document.getElementById("topStatus").textContent = `Discovery source search blocked: ${sourceRun.message}`;
-      addShellEvent("Discovery source search blocked", sourceRun.message, "blocked", true);
-      renderDocPrepRunSurfaces();
-      return;
-    }
-    const blockerCount = Array.isArray(sourceRun.result?.blockers) ? sourceRun.result.blockers.length : 0;
-    addShellEvent(
-      "Discovery sources checked",
-      blockerCount
-        ? `${blockerCount} source review item${blockerCount === 1 ? "" : "s"} remain visible in the packet workflow.`
-        : "Configured public sources returned evidence for the Discovery review.",
-      blockerCount ? "blocked" : "ready",
-      true
-    );
-  }
-  const firstIndex = docPrepPhases(flowId).findIndex((phase) => !docPrepPhaseMarkedComplete(row, flowId, phase.id));
-  scheduleNextFullDiscoveryPhase(row, flowId, firstIndex < 0 ? 0 : firstIndex);
-  setRailOpen(true, source);
 }
 
 function toggleFullDiscoveryRun(source = null, flowId = state.activeDocPrepFlow) {
   const row = selectedRow();
   if (!row) return;
-  const flow = docPrepFlow(flowId);
-  if (docPrepMainRunActive(row, flow.id)) {
-    stopFullDiscoveryRun(row, flow.id);
+  const processCase = docPrepCaseForRow(row);
+  if (processCase && ["queued", "sourcing", "rendering", "review_required"].includes(processCase.state)) {
+    requestDocPrepCaseAction(row, "cancel", source);
     return;
   }
-  if (docPrepFlowIsComplete(row, flow.id)) {
-    openDocPrepRerunReview(flow.id, source);
-    return;
-  }
-  runFullDiscovery(row, source, flow.id);
+  runFullDiscovery(row, source, flowId);
 }
 
 function dossierChecklistHtml(docs, { compact = false } = {}) {
@@ -19409,6 +19356,7 @@ function renderDossiersView() {
   const missingDocs = docs.filter((doc) => !documentFileRecord(doc.id, row));
   const dealStatus = dealStatusMeta(dealStatusForRow(row));
   const estateTitle = row ? docPrepEstateLabel(row) : "Current estate";
+  if (row && !state.docPrepProcessHydrated.has(String(row.id))) void hydrateDocPrepProcessCase(row);
   target.innerHTML = `
     <div class="document-prep">
       <div class="document-prep-topline">
@@ -19515,6 +19463,9 @@ function renderDossiersView() {
   });
   target.querySelectorAll("[data-docprep-main-run]").forEach((button) => {
     button.addEventListener("click", (event) => toggleFullDiscoveryRun(event.currentTarget, button.dataset.docprepMainRun || state.activeDocPrepFlow));
+  });
+  target.querySelectorAll("[data-docprep-process-action]").forEach((button) => {
+    button.addEventListener("click", (event) => requestDocPrepCaseAction(selectedRow(), button.dataset.docprepProcessAction, event.currentTarget));
   });
   target.querySelectorAll("[data-docprep-rerun-review]").forEach((button) => {
     button.addEventListener("click", (event) => openDocPrepRerunReview(button.dataset.docprepRerunReview || state.activeDocPrepFlow, event.currentTarget));

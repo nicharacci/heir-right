@@ -45,15 +45,16 @@ const latestRunRows = source.slice(
 assert.match(latestRunRows, /id: "estate"/);
 assert.doesNotMatch(latestRunRows, /id: "lead-report"|id: "property-title"|id: "outreach-prep"/, "Internal artifacts must remain inside one estate workflow instead of rendering as duplicate estate rows.");
 
-const fullDiscoveryRun = source.slice(
-  source.indexOf("async function runAutonomousDiscoverySources"),
+const cloudDocumentPreparation = source.slice(
+  source.indexOf("function processSnapshotForRow"),
   source.indexOf("function toggleFullDiscoveryRun"),
 );
-assert.match(fullDiscoveryRun, /postJson\("\/api\/discovery\/external-source-run", externalSourceRunPayload\(row, capture, key\)\)/, "Run Full Discovery must invoke the source orchestrator from the selected estate facts.");
-assert.match(fullDiscoveryRun, /await runAutonomousDiscoverySources\(row\)/, "Packet streaming must wait for the source run result.");
-assert.match(fullDiscoveryRun, /Sample estates stay isolated from production source runs and packet export/, "Sample estates must not invoke production source runs.");
-assert.match(fullDiscoveryRun, /result\.persistence\?\.readbackStatus !== "verified"/, "Discovery must stop when shared storage readback is not verified.");
-assert.match(fullDiscoveryRun, /fetch\(`\/api\/discovery\/file\?estateId=/, "Opening Doc Prep must hydrate the team-persisted Discovery File.");
+assert.match(cloudDocumentPreparation, /fetch\("\/api\/doc-prep\/cases"/, "Run Full Discovery must create a durable cloud document-prep case from the selected estate facts.");
+assert.match(cloudDocumentPreparation, /"idempotency-key": docPrepIdempotencyKey\(validRows\)/, "Cloud intake must carry an idempotency key.");
+assert.match(cloudDocumentPreparation, /fetch\(`\/api\/doc-prep\/cases\?estateId=/, "Opening Doc Prep must hydrate the durable case after a refresh or second session.");
+assert.match(cloudDocumentPreparation, /Sample estates stay isolated from production source runs and packet export/, "Sample estates must not invoke production source runs.");
+assert.match(cloudDocumentPreparation, /artifact\?\.readbackStatus === "verified"/, "The UI may open only a verified PDF artifact.");
+assert.doesNotMatch(source, /scheduleNextFullDiscoveryPhase|docPrepRunTimers|\}, 680\)/, "Browser timers cannot own cloud document preparation progress.");
 
 const closingRoute = fs.readFileSync(path.resolve(here, "../../worker/src/cloudflare.ts"), "utf8");
 assert.match(closingRoute, /buildClosingPacketModel\(dossiers, closingPacketOptions\)/);
@@ -73,10 +74,10 @@ console.log(JSON.stringify({
     "queued_estate_can_be_removed",
     "fresh_estate_reruns_are_deduplicated",
     "latest_run_renders_one_estate_row",
-    "full_discovery_invokes_source_orchestrator",
+    "full_discovery_creates_durable_cloud_case",
     "sample_estates_cannot_run_sources",
-    "discovery_requires_shared_storage_readback",
-    "docprep_hydrates_team_discovery_file",
+    "docprep_requires_verified_artifact_readback",
+    "docprep_hydrates_durable_case",
     "single_and_batch_download_actions",
     "single_pdf_api_contract",
     "closing_uses_immutable_legal_templates",

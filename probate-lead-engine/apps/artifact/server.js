@@ -465,7 +465,20 @@ async function handleDocPrepProcessRoute(req, res, url, session) {
   if (!apiPath) return false;
   if (!processApiBase()) { sendJson(res, 503, { ok: false, error: "Document preparation is not configured yet. Ask an administrator to complete the cloud process setup." }, { "cache-control": "no-store" }); return true; }
   if (!(["GET", "POST"].includes(req.method || ""))) { sendMethodNotAllowed(res, "GET, POST"); return true; }
-  const body = req.method === "POST" ? JSON.stringify(await readJsonBody(req)) : undefined;
+  const requestBody = req.method === "POST" ? await readJsonBody(req) : undefined;
+  // The browser may describe the estate snapshot, but never its authority. The
+  // signed artifact session is the only source for the actor recorded downstream.
+  const body = requestBody
+    ? JSON.stringify({
+      ...requestBody,
+      ...(Array.isArray(requestBody.estates) ? {
+        estates: requestBody.estates.map((estate) => ({
+          ...estate,
+          actor: { email: session.email, name: session.name || session.email },
+        })),
+      } : {}),
+    })
+    : undefined;
   const proxied = await proxyProcessJson(apiPath, { req, session, method: req.method, body });
   res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
   res.end(proxied.body);
