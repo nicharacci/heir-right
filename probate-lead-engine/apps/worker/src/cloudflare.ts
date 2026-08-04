@@ -4034,6 +4034,7 @@ const GOOGLE_DRIVE_MARKER_PROPERTY = "heirrightMarker";
 const GOOGLE_DRIVE_PURPOSE_PROPERTY = "heirrightPurpose";
 const GOOGLE_DRIVE_CONTENT_PROPERTY = "heirrightContent";
 const GOOGLE_DRIVE_ATTEMPT_PROPERTY = "heirrightAttempt";
+const GOOGLE_DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 const GOOGLE_DRIVE_READBACK_DELAYS_MS = [0, 60, 180] as const;
 
 async function googleDriveRetryDelay(attempt: number): Promise<void> {
@@ -4184,6 +4185,82 @@ async function googleDriveFileMetadata(
     return response.ok && file.id === fileId ? { state: "found", file } : { state: "transient" };
   } catch {
     return { state: "transient" };
+  }
+}
+
+type GoogleDriveTeamFolder = { id: string; name: string };
+
+function googleDriveTeamFolderName(actorName: string): string | null {
+  const parts = stringValue(actorName).replace(/[^a-z .'-]/gi, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (parts.length < 2) return null;
+  return `${parts[0][0].toUpperCase()} ${parts.at(-1)}`;
+}
+
+function googleDriveEstatePdfName(estateName: string): string {
+  const estate = stringValue(estateName)
+    .replace(/^\s*(?:estate|est)\s+of\s+/i, "")
+    .replace(/[^a-z0-9 .'-]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120) || "Estate";
+  const date = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "2-digit", day: "2-digit", year: "numeric" }).format(new Date()).replaceAll("/", "-");
+  return `EST of ${estate} (${date}).pdf`;
+}
+
+async function ensureGoogleDriveTeamFolder(
+  env: CloudflareEnv,
+  accessToken: string,
+  rootFolderId: string,
+  actorName: string,
+): Promise<{ ok: true; folder: GoogleDriveTeamFolder } | { ok: false; response: Response }> {
+  const folderName = googleDriveTeamFolderName(actorName);
+  if (!folderName) {
+    return {
+      ok: false,
+      response: json({ ok: false, error: "google_workspace_operator_name_required", message: "A signed-in operator first and last name is required for the Google Drive team folder." }, { status: 400, headers: { "cache-control": "no-store" } }),
+    };
+  }
+  const operationHash = await sha256Hex(`google-drive-team-folder:${rootFolderId}:${folderName}`);
+  const reserved = await reserveGoogleDriveOperation(env, operationHash);
+  if (!reserved.ok) return reserved;
+  const release = async () => finalizeGoogleDriveOperation(env, reserved.reservation, "release");
+  const review = async () => finalizeGoogleDriveOperation(env, reserved.reservation, "review");
+  const failure = async (error: string, message: string, status = 503, uncertain = true) => {
+    await (uncertain ? review() : release());
+    return { ok: false as const, response: json({ ok: false, error, message }, { status, headers: { "cache-control": "no-store" } }) };
+  };
+  const query = `name = '${folderName.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' and mimeType = '${GOOGLE_DRIVE_FOLDER_MIME_TYPE}' and '${rootFolderId.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' in parents and trashed = false`;
+  try {
+    const existingResponse = await fetch(`https://www.googleapis.com/drive/v3/files?${new URLSearchParams({
+      q: query,
+      spaces: "drive",
+      fields: "files(id,name,mimeType,parents)",
+      supportsAllDrives: "true",
+      includeItemsFromAllDrives: "true",
+    }).toString()}`, { headers: { authorization: `Bearer ${accessToken}` } });
+    const existing = await existingResponse.json().catch(() => ({})) as { files?: GoogleDriveFileMetadata[] };
+    if (!existingResponse.ok) return failure("google_workspace_team_folder_lookup_failed", "Google Drive could not verify the operator folder under the shared root.");
+    const matching = (existing.files || []).filter((folder) => folder.id && folder.name === folderName && folder.mimeType === GOOGLE_DRIVE_FOLDER_MIME_TYPE && folder.parents?.includes(rootFolderId));
+    if (matching.length > 1) return failure("google_workspace_team_folder_duplicate", `Google Drive has more than one '${folderName}' folder under the shared root.`, 409, true);
+    if (matching[0]?.id) {
+      if (!await release()) return failure("google_workspace_team_folder_lock_failed", "Google Drive operator-folder verification could not be finalized.");
+      return { ok: true, folder: { id: matching[0].id, name: folderName } };
+    }
+    const createdResponse = await fetch("https://www.googleapis.com/drive/v3/files?fields=id,name,mimeType,parents&supportsAllDrives=true", {
+      method: "POST",
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ name: folderName, mimeType: GOOGLE_DRIVE_FOLDER_MIME_TYPE, parents: [rootFolderId], appProperties: { heirrightTeamFolder: folderName } }),
+    });
+    const created = await createdResponse.json().catch(() => ({})) as GoogleDriveFileMetadata;
+    if (!createdResponse.ok || !created.id) return failure("google_workspace_team_folder_create_failed", "Google Drive did not create the operator folder safely.");
+    const readback = await googleDriveFileMetadata(accessToken, created.id);
+    if (readback.state !== "found" || readback.file.name !== folderName || readback.file.mimeType !== GOOGLE_DRIVE_FOLDER_MIME_TYPE || !readback.file.parents?.includes(rootFolderId)) {
+      return failure("google_workspace_team_folder_readback_failed", "Google Drive did not verify the operator folder under the shared root.");
+    }
+    if (!await release()) return failure("google_workspace_team_folder_lock_failed", "Google Drive operator-folder verification could not be finalized.");
+    return { ok: true, folder: { id: created.id, name: folderName } };
+  } catch {
+    return failure("google_workspace_team_folder_unavailable", "Google Drive could not prepare the operator folder.");
   }
 }
 
@@ -5051,6 +5128,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const email = stringValue(body.email).toLowerCase();
   const actorEmail = stringValue(body.actorEmail).toLowerCase();
+  const actorName = stringValue(body.actorName);
   if (!email || !actorEmail || actorEmail !== email) {
     return json({
       ok: false,
@@ -5234,17 +5312,23 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
   } catch {
     return json({ ok: false, error: "packet_render_failed", message: "The approved packet could not be rendered safely. Google Drive was not contacted." }, { status: 422 });
   }
-  const connection = await googleWorkspaceConnectionForEmail(env, email);
-  if (!connection?.destinationId || !connection.destinationName) return json({ ok: false, error: "google_workspace_destination_required", message: "Connect Google Workspace and choose a Drive folder before packet delivery." }, { status: 428 });
+  const sharedDestinationEmail = stringValue(env.GOOGLE_WORKSPACE_DESTINATION_EMAIL).toLowerCase();
+  if (!sharedDestinationEmail) return json({ ok: false, error: "google_workspace_root_required", message: "Configure the shared Google Drive root before packet delivery." }, { status: 428 });
+  const connection = await googleWorkspaceConnectionForEmail(env, sharedDestinationEmail);
+  if (!connection?.destinationId || !connection.destinationName) return json({ ok: false, error: "google_workspace_destination_required", message: "Connect Google Workspace and choose the shared Drive root before packet delivery." }, { status: 428 });
   const access = await refreshGoogleWorkspaceAccessToken(connection, env);
   if (!access.ok) return json({ ok: false, error: "google_workspace_connection_expired", message: access.message }, { status: 428 });
+  const teamFolder = await ensureGoogleDriveTeamFolder(env, access.token, connection.destinationId, actorName);
+  if (!teamFolder.ok) return teamFolder.response;
+  const destination = { id: teamFolder.folder.id, name: teamFolder.folder.name };
+  const deliveryConnection = { ...connection, destinationId: destination.id, destinationName: destination.name };
   const pdfHash = await sha256ByteHex(pdf);
   const userHash = await sha256Hex(email);
-  const marker = await sha256Hex(`packet_export:${userHash}:${approval.estateId}:${approval.flow}:${approval.packetRevision}:${artifactId}:${deliveryArtifact.id}:${deliveryDocumentId || "full-packet"}:${connection.destinationId}:${deliveryArtifact.contentHash}`);
+  const marker = await sha256Hex(`packet_export:${userHash}:${approval.estateId}:${approval.flow}:${approval.packetRevision}:${artifactId}:${deliveryArtifact.id}:${deliveryDocumentId || "full-packet"}:${destination.id}:${deliveryArtifact.contentHash}`);
   const reserved = await reserveGoogleDriveOperation(env, marker);
   if (!reserved.ok) return reserved.response;
   const reservation = reserved.reservation;
-  const deliveryKey = googleWorkspaceDeliveryKey(artifactId, connection.destinationId, deliveryDocumentId);
+  const deliveryKey = googleWorkspaceDeliveryKey(artifactId, destination.id, deliveryDocumentId);
   const loadedPrior = await loadGoogleWorkspaceDelivery(env, deliveryKey);
   if (!loadedPrior.ok) {
     await finalizeGoogleDriveOperation(env, reservation, "release");
@@ -5259,7 +5343,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     if (prior.artifactId !== artifactId
       || prior.deliveryArtifactId !== deliveryArtifact.id
       || prior.deliveryDocumentId !== (deliveryDocumentId || null)
-      || prior.destinationId !== connection.destinationId) {
+      || prior.destinationId !== destination.id) {
       await finalizeGoogleDriveOperation(env, reservation, "release");
       return json({
         ok: false,
@@ -5269,7 +5353,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     }
     let priorVerification = await verifyGoogleDrivePdf(access.token, prior.fileId, {
       marker,
-      destinationId: connection.destinationId,
+      destinationId: destination.id,
       contentHash: prior.pdfHash,
       byteLength: prior.bytes,
       allowLegacyMarker: !prior.marker,
@@ -5283,7 +5367,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
       priorVerification = adopted
         ? await verifyGoogleDrivePdf(access.token, prior.fileId, {
           marker,
-          destinationId: connection.destinationId,
+          destinationId: destination.id,
           contentHash: prior.pdfHash,
           byteLength: prior.bytes,
         })
@@ -5335,7 +5419,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
         }, { status: 503, headers: { "cache-control": "no-store" } });
       }
       await finalizeGoogleDriveOperation(env, reservation, "release");
-      return googleWorkspaceDeliveryResponse(connection, verifiedPrior, { idempotent: true });
+      return googleWorkspaceDeliveryResponse(deliveryConnection, verifiedPrior, { idempotent: true });
     }
     if (priorVerification.state === "transient") {
       await finalizeGoogleDriveOperation(env, reservation, "release");
@@ -5397,7 +5481,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     }
     const verification = await verifyGoogleDrivePdf(access.token, fileId, {
       marker,
-      destinationId: connection.destinationId,
+      destinationId: destination.id,
       contentHash: candidateHash,
       byteLength: candidateBytes,
     });
@@ -5466,20 +5550,18 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
       }, { status: 503, headers: { "cache-control": "no-store" } });
     }
     await finalizeGoogleDriveOperation(env, reservation, "release");
-    return googleWorkspaceDeliveryResponse(connection, recoveredDelivery, { reconciled: true });
+    return googleWorkspaceDeliveryResponse(deliveryConnection, recoveredDelivery, { reconciled: true });
   }
 
   const estateLabel = stringValue(deliveryArtifact.model.estates?.[0]?.displayName)
     || deliveryArtifact.model.estateIds[0]
     || artifactId;
-  const fileName = deliveryDocumentId === "completed-report"
-    ? `${estateLabel} Family Tree.pdf`
-    : `${artifact.model.flow === "closing-docs" ? "Closing Prep" : "Discovery"} - ${estateLabel}.pdf`;
+  const fileName = googleDriveEstatePdfName(estateLabel);
   const appProperties = googleDriveAppProperties("packet_export", marker, pdfHash, reservation.reservationId);
   const upload = googleMultipartPayload({
     name: fileName,
     mimeType: "application/pdf",
-    parents: [connection.destinationId],
+    parents: [destination.id],
     appProperties,
   }, "application/pdf", pdf);
   let created: Response;
@@ -5516,7 +5598,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
   }
   const verification = await verifyGoogleDrivePdf(access.token, fileId, {
     marker,
-    destinationId: connection.destinationId,
+    destinationId: destination.id,
     contentHash: pdfHash,
     byteLength: pdf.byteLength,
   });
@@ -5567,7 +5649,7 @@ async function googleWorkspaceExportResponse(request: Request, env: CloudflareEn
     }, { status: 503, headers: { "cache-control": "no-store" } });
   }
   await finalizeGoogleDriveOperation(env, reservation, "release");
-  return googleWorkspaceDeliveryResponse(connection, delivery);
+  return googleWorkspaceDeliveryResponse(deliveryConnection, delivery);
 }
 
 async function sourceCaptureResponse(request: Request, env: CloudflareEnv): Promise<Response> {

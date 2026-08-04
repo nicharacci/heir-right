@@ -14,6 +14,7 @@ export type ApiConfig = {
 };
 const jsonError = (error: unknown) => ({ ok: false, error: error instanceof Error ? error.message : "The document-prep request could not be completed." });
 const actorEmail = (request: Request) => String(request.headers.get("x-heirright-actor-email") || "").trim().toLowerCase();
+const actorName = (request: Request) => String(request.headers.get("x-heirright-actor-name") || "").trim();
 const validActor = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 320;
 const publicCase = (processCase: NonNullable<Awaited<ReturnType<ProcessRepository["get"]>>>) => ({
   ...processCase,
@@ -22,7 +23,15 @@ const publicCase = (processCase: NonNullable<Awaited<ReturnType<ProcessRepositor
 
 const newYorkDate = (at: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "2-digit", day: "2-digit", year: "numeric" }).format(at).replaceAll("/", "-");
 const cleanEstateName = (value: string) => value.replace(/^\s*(?:estate|est)\s+of\s+/i, "").replace(/[^a-z0-9 .'-]/gi, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Estate";
-export const estatePdfFileName = (estateName: string, at = new Date()) => `EST of ${cleanEstateName(estateName)}.pdf ${newYorkDate(at)}`;
+const cleanOperatorName = (value: string) => value.replace(/[^a-z .'-]/gi, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+const driveFolderMimeType = "application/vnd.google-apps.folder";
+const driveQueryLiteral = (value: string) => value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+export const estatePdfFileName = (estateName: string, at = new Date()) => `EST of ${cleanEstateName(estateName)} (${newYorkDate(at)}).pdf`;
+export const operatorDriveFolderName = (name: string) => {
+  const parts = cleanOperatorName(name).split(" ").filter(Boolean);
+  if (parts.length < 2) throw new Error("A signed-in operator first and last name is required for the Google Drive team folder.");
+  return `${parts[0][0].toUpperCase()} ${parts.at(-1)}`;
+};
 const pdfHash = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const pdfMd5 = (bytes: Uint8Array) => createHash("md5").update(bytes).digest("hex");
 
@@ -40,26 +49,63 @@ class GoogleDriveUnauthorizedError extends Error {
   }
 }
 
-async function uploadVerifiedPdfToGoogleDrive({ processCase, verified, credentials, fetcher }: {
+type DriveFile = { id?: string; name?: string; mimeType?: string; parents?: string[]; md5Checksum?: string; webViewLink?: string; appProperties?: Record<string, string> };
+
+async function ensureOperatorDriveFolder({ credentials, operatorName, fetcher }: {
+  credentials: GoogleDriveCredentials;
+  operatorName: string;
+  fetcher: typeof fetch;
+}): Promise<{ id: string; name: string }> {
+  const rootFolderId = String(credentials.parentFolderId || "").trim();
+  if (!rootFolderId) throw new Error("The shared Google Drive root folder is not configured.");
+  const name = operatorDriveFolderName(operatorName);
+  const headers = { authorization: `Bearer ${credentials.accessToken}` };
+  const query = `name = '${driveQueryLiteral(name)}' and mimeType = '${driveFolderMimeType}' and '${driveQueryLiteral(rootFolderId)}' in parents and trashed = false`;
+  const existingResponse = await fetcher(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive&fields=files(id,name,mimeType,parents)&supportsAllDrives=true&includeItemsFromAllDrives=true`, { headers });
+  if (existingResponse.status === 401) throw new GoogleDriveUnauthorizedError();
+  if (!existingResponse.ok) throw new Error(`Google Drive team-folder lookup failed (${existingResponse.status}).`);
+  const existing = await existingResponse.json().catch(() => ({})) as { files?: DriveFile[] };
+  const matching = (existing.files || []).filter((folder) => folder.id && folder.name === name && folder.mimeType === driveFolderMimeType && folder.parents?.includes(rootFolderId));
+  if (matching.length > 1) throw new Error(`Google Drive has more than one '${name}' team folder under the shared root.`);
+  if (matching[0]?.id) return { id: matching[0].id, name };
+
+  const createdResponse = await fetcher("https://www.googleapis.com/drive/v3/files?fields=id,name,mimeType,parents&supportsAllDrives=true", {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify({ name, mimeType: driveFolderMimeType, parents: [rootFolderId], appProperties: { heirrightDocprepOperatorFolder: name } }),
+  });
+  if (createdResponse.status === 401) throw new GoogleDriveUnauthorizedError();
+  const created = await createdResponse.json().catch(() => ({})) as DriveFile;
+  if (!createdResponse.ok || !created.id) throw new Error(`Google Drive team-folder creation failed (${createdResponse.status}).`);
+  const readback = await fetcher(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(created.id)}?fields=id,name,mimeType,parents&supportsAllDrives=true`, { headers });
+  if (readback.status === 401) throw new GoogleDriveUnauthorizedError();
+  const stored = await readback.json().catch(() => ({})) as DriveFile;
+  if (!readback.ok || stored.id !== created.id || stored.name !== name || stored.mimeType !== driveFolderMimeType || !stored.parents?.includes(rootFolderId)) throw new Error(`Google Drive team-folder readback failed (${readback.status}).`);
+  return { id: stored.id, name };
+}
+
+async function uploadVerifiedPdfToGoogleDrive({ processCase, verified, credentials, operatorName, fetcher }: {
   processCase: NonNullable<Awaited<ReturnType<ProcessRepository["get"]>>>;
   verified: { bytes: Uint8Array; filename: string };
   credentials: GoogleDriveCredentials;
+  operatorName: string;
   fetcher: typeof fetch;
 }): Promise<DriveExport> {
   const sourceSha256 = processCase.artifact?.sha256 || "";
   const sourceMd5 = pdfMd5(verified.bytes);
+  const teamFolder = await ensureOperatorDriveFolder({ credentials, operatorName, fetcher });
   const metadata = {
     name: verified.filename,
     mimeType: "application/pdf",
-    ...(credentials.parentFolderId ? { parents: [credentials.parentFolderId] } : {}),
-    appProperties: { heirrightDocprepCaseId: processCase.id, heirrightPdfSha256: sourceSha256 },
+    parents: [teamFolder.id],
+    appProperties: { heirrightDocprepCaseId: processCase.id, heirrightPdfSha256: sourceSha256, heirrightDocprepOperatorFolder: teamFolder.name },
   };
   const driveHeaders = { authorization: `Bearer ${credentials.accessToken}` };
-  const query = `appProperties has { key='heirrightDocprepCaseId' and value='${processCase.id}' } and appProperties has { key='heirrightPdfSha256' and value='${sourceSha256}' } and trashed = false`;
+  const query = `appProperties has { key='heirrightDocprepCaseId' and value='${processCase.id}' } and appProperties has { key='heirrightPdfSha256' and value='${sourceSha256}' } and '${driveQueryLiteral(teamFolder.id)}' in parents and trashed = false`;
   const existingResponse = await fetcher(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive&fields=files(id,name,mimeType,md5Checksum,webViewLink,appProperties)&supportsAllDrives=true&includeItemsFromAllDrives=true`, { headers: driveHeaders });
   if (existingResponse.status === 401) throw new GoogleDriveUnauthorizedError();
   if (!existingResponse.ok) throw new Error(`Google Drive PDF lookup failed (${existingResponse.status}).`);
-  const existing = await existingResponse.json().catch(() => ({})) as { files?: Array<{ id?: string; name?: string; mimeType?: string; md5Checksum?: string; webViewLink?: string; appProperties?: Record<string, string> }> };
+  const existing = await existingResponse.json().catch(() => ({})) as { files?: DriveFile[] };
   const prior = existing.files?.find((file) => file.id && file.name === verified.filename && file.mimeType === "application/pdf" && file.md5Checksum === sourceMd5 && file.appProperties?.heirrightDocprepCaseId === processCase.id && file.appProperties?.heirrightPdfSha256 === sourceSha256);
   if (prior?.id) return { caseId: processCase.id, estateId: processCase.estate.estateId, name: prior.name || verified.filename, url: prior.webViewLink || "", readbackStatus: "verified", idempotent: true };
   const boundary = `heirright-${processCase.id.replace(/[^a-z0-9]/gi, "")}`;
@@ -88,17 +134,19 @@ async function exportVerifiedPdfToGoogleDrive({
   processCase,
   verified,
   credentialProvider,
+  operatorName,
   fetcher,
 }: {
   processCase: NonNullable<Awaited<ReturnType<ProcessRepository["get"]>>>;
   verified: { bytes: Uint8Array; filename: string };
   credentialProvider: GoogleDriveCredentialProvider;
+  operatorName: string;
   fetcher: typeof fetch;
 }): Promise<DriveExport> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const credentials = await credentialProvider({ forceRefresh: attempt === 1 });
     try {
-      return await uploadVerifiedPdfToGoogleDrive({ processCase, verified, credentials, fetcher });
+      return await uploadVerifiedPdfToGoogleDrive({ processCase, verified, credentials, operatorName, fetcher });
     } catch (error) {
       if (error instanceof GoogleDriveUnauthorizedError && attempt === 0) continue;
       throw error;
@@ -157,6 +205,9 @@ export const createApp = ({ serviceToken, repository, artifactStore, now = () =>
     const caseIds = Array.isArray(body.caseIds) ? [...new Set(body.caseIds.filter((value): value is string => typeof value === "string" && /^[a-f0-9-]{36}$/i.test(value)))].slice(0, 50) : [];
     if (!caseIds.length) return context.json({ ok: false, error: "verified_cases_required" }, 400);
     if (!googleDrive.getCredentials) return context.json({ ok: false, error: "google_drive_not_configured" }, 503);
+    const operatorName = actorName(context.req.raw);
+    try { operatorDriveFolderName(operatorName); }
+    catch (error) { return context.json({ ok: false, error: error instanceof Error ? error.message : "trusted_operator_name_required" }, 400); }
     const resolved = await Promise.all(caseIds.map((caseId) => repository.get(caseId)));
     if (resolved.some((processCase) => !processCase)) return context.json({ ok: false, error: "case_not_found" }, 404);
     const completed: DriveExport[] = [];
@@ -167,7 +218,7 @@ export const createApp = ({ serviceToken, repository, artifactStore, now = () =>
       if (claim.status === "completed") { completed.push(claim.export); continue; }
       if (claim.status === "in_progress") return context.json({ ok: false, error: "google_drive_export_in_progress", caseId: processCase.id, completed }, 409);
       try {
-        const exported = await exportVerifiedPdfToGoogleDrive({ processCase, verified, credentialProvider: googleDrive.getCredentials, fetcher });
+        const exported = await exportVerifiedPdfToGoogleDrive({ processCase, verified, credentialProvider: googleDrive.getCredentials, operatorName, fetcher });
         await repository.completeDriveExport(processCase.id, processCase.artifact!.sha256, exported);
         completed.push(exported);
       } catch (error) {

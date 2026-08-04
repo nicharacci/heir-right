@@ -86,7 +86,7 @@ assert.equal(storedConnection.email, "operator@heirright.com");
 assert.equal(storedConnection.accessToken, "access-token-never-returned-to-browser", "Only the server-to-worker request receives the access token");
 assert.doesNotMatch(callbackResponse.text, /access-token|refresh-token/, "OAuth tokens must not be returned to the browser");
 
-const signedSession = createSessionToken({ email: "operator@heirright.com", name: "Operator" });
+const signedSession = createSessionToken({ email: "operator@heirright.com", name: "Operator Heirright" });
 let workspaceRequest = null;
 globalThis.fetch = async (url, options = {}) => {
   workspaceRequest = { url: String(url), options };
@@ -190,6 +190,7 @@ assert.equal(JSON.parse(workspaceRequest.options.body).email, "operator@heirrigh
 assert.deepEqual(JSON.parse(workspaceRequest.options.body), {
   email: "operator@heirright.com",
   actorEmail: "operator@heirright.com",
+  actorName: "Operator Heirright",
   ...approval,
   deliveryDocumentId: "completed-report",
 }, "The server must derive the approving actor from the signed session and forward the exact estate, flow, revision, parent artifact, and client-report binding");

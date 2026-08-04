@@ -66,7 +66,7 @@ globalThis.fetch = async (url, init = {}) => {
       readbackStatus: "verified",
       exports: [{
         caseId: readyCase.id,
-        name: "EST of Morgan Reyes.pdf 08-04-2026",
+        name: "EST of Morgan Reyes (08-04-2026).pdf",
         readbackStatus: "verified",
         idempotent: false,
       }],
