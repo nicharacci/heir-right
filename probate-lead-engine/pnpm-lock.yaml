@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  dompurify: 3.4.11
+  dompurify: 3.4.12
 
 importers:
 
@@ -37,8 +37,8 @@ importers:
   apps/docprep-api:
     dependencies:
       '@hono/node-server':
-        specifier: ^1.19.0
-        version: 1.19.17(hono@4.13.0)
+        specifier: ^2.0.5
+        version: 2.1.0(hono@4.13.0)
       '@ple/docprep-core':
         specifier: workspace:*
         version: link:../../packages/docprep-core
@@ -121,8 +121,8 @@ importers:
   packages/docprep-core:
     dependencies:
       drizzle-orm:
-        specifier: ^0.44.7
-        version: 0.44.7(@types/pg@8.20.3)(pg@8.22.0)
+        specifier: ^0.45.2
+        version: 0.45.2(@types/pg@8.20.3)(pg@8.22.0)
       pg:
         specifier: ^8.16.3
         version: 8.22.0
@@ -463,9 +463,9 @@ packages:
       react: ^18 || ^19 || ^19.0.0-rc
       react-dom: ^18 || ^19 || ^19.0.0-rc
 
-  '@hono/node-server@1.19.17':
-    resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
-    engines: {node: '>=18.14.1'}
+  '@hono/node-server@2.1.0':
+    resolution: {integrity: sha512-XovyyCCnBzW+zKu+z/zq8hwNs4KOR5rEMAOxo2f40Q5xoOI37IMm6MIg2COOUtUApo0i6850MTBKH2u4QLGIqg==}
+    engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
 
@@ -1133,11 +1133,11 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  dompurify@3.4.11:
-    resolution: {integrity: sha512-zhlUV12GsaRzMsf9q5M254YhA4+VuF0fG+QFqu6aYpoGlKtz+w8//jBcGVYBgQkR5GHjUomejY84AV+/uPbWdw==}
+  dompurify@3.4.12:
+    resolution: {integrity: sha512-zQvGet8Z2sWbQhCmfFz/T5QWH2oBmjnqK3qvOjaqaNLrLEF912WamU+ohnTp0TCep/MFVHpdJuCZEdFOdTnEFg==}
 
-  drizzle-orm@0.44.7:
-    resolution: {integrity: sha512-quIpnYznjU9lHshEOAYLoZ9s3jweleHlZIAWR/jX9gAWNg/JhQ1wj0KGRf7/Zm+obRrYd9GjPVJg790QY9N5AQ==}
+  drizzle-orm@0.45.2:
+    resolution: {integrity: sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -2163,7 +2163,7 @@ snapshots:
       react-dom: 19.2.6(react@19.2.6)
       use-sync-external-store: 1.6.0(react@19.2.6)
 
-  '@hono/node-server@1.19.17(hono@4.13.0)':
+  '@hono/node-server@2.1.0(hono@4.13.0)':
     dependencies:
       hono: 4.13.0
 
@@ -2827,11 +2827,11 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  dompurify@3.4.11:
+  dompurify@3.4.12:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
-  drizzle-orm@0.44.7(@types/pg@8.20.3)(pg@8.22.0):
+  drizzle-orm@0.45.2(@types/pg@8.20.3)(pg@8.22.0):
     optionalDependencies:
       '@types/pg': 8.20.3
       pg: 8.22.0
@@ -3186,7 +3186,7 @@ snapshots:
       d3-sankey: 0.12.3
       dagre-d3-es: 7.0.14
       dayjs: 1.11.21
-      dompurify: 3.4.11
+      dompurify: 3.4.12
       es-toolkit: 1.47.0
       katex: 0.16.47
       khroma: 2.1.0
