@@ -53,6 +53,15 @@ try {
   assert.equal(requests[0].init.headers.authorization, "Bearer s41-process-token");
   assert.equal(requests[0].init.headers["x-heirright-actor-email"], "sam@heirright.com");
 
+  const intakeResult = await call({
+    method: "POST",
+    url: "/api/doc-prep/cases",
+    body: { estates: [{ estateId: "estate-1", name: "Estate One", address: "1 Main St", county: "Miami-Dade" }] },
+    headers: { cookie: `hr_session=${encodeURIComponent(session)}` },
+  });
+  assert.equal(intakeResult.statusCode, 200);
+  assert.equal(requests[1].init.headers["idempotency-key"], "docprep-intake-estate-1", "the authenticated Vercel proxy supplies a stable case key when the browser header is absent");
+
   const viewed = await call({
     url: "/api/doc-prep/cases/case-1/view",
     headers: { cookie: `hr_session=${encodeURIComponent(session)}` },

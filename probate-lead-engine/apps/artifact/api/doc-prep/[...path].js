@@ -27,6 +27,15 @@ function publicOrigin(request) {
   return `${proto}://${host}`;
 }
 
+function intakeIdempotencyKey(request, body, path) {
+  const supplied = request.headers["idempotency-key"] || request.headers["Idempotency-Key"];
+  if (typeof supplied === "string" && supplied) return supplied;
+  if (path !== "/v1/doc-prep/cases") return "";
+  const estateId = String(body?.estates?.[0]?.estateId || "").trim();
+  const normalized = estateId.replace(/[^A-Za-z0-9._:-]+/g, "-").replace(/^-+|-+$/g, "");
+  return normalized ? `docprep-intake-${normalized}` : "";
+}
+
 module.exports = async function handler(request, response) {
   if (!(["GET", "POST"].includes(request.method || ""))) {
     response.setHeader("Allow", "GET, POST");
@@ -54,6 +63,7 @@ module.exports = async function handler(request, response) {
       ...requestBody,
       ...(Array.isArray(requestBody.estates) ? { estates: requestBody.estates.map((estate) => ({ ...estate, actor: { email: session.email, name: session.name || session.email } })) } : {}),
     }) : undefined;
+    const idempotencyKey = intakeIdempotencyKey(request, requestBody, path);
     const upstream = await fetch(`${base}${path}`, {
       method: request.method,
       body,
@@ -63,7 +73,7 @@ module.exports = async function handler(request, response) {
         "x-heirright-actor-email": session.email,
         "x-heirright-actor-name": session.name || session.email,
         "x-heirright-public-origin": publicOrigin(request),
-        ...(request.headers["idempotency-key"] ? { "idempotency-key": request.headers["idempotency-key"] } : {}),
+        ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
         ...(request.headers["last-event-id"] ? { "last-event-id": request.headers["last-event-id"] } : {}),
       },
     });
