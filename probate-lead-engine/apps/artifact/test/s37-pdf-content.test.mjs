@@ -248,12 +248,19 @@ assert.equal(firstPageItem("Obituary")?.transform?.[4], 72, "the source-linked o
 for (const value of ["$300,000.00", "8", "50%", "$14,312.50", "$15,000.00"]) {
   assert.ok(firstPageItem(value), `the client-format Offer/Profit table must render ${value} from the report model`);
 }
+assert.ok(firstPageText.some((item) => item.str === `1 of ${renderedDiscovery.numPages}`), "the first Discovery page must carry a right-aligned page footer");
+for (let pageNumber = 1; pageNumber <= renderedDiscovery.numPages; pageNumber += 1) {
+  const textContent = await (await renderedDiscovery.getPage(pageNumber)).getTextContent();
+  const pageCopy = textContent.items.map((item) => item.str).filter(Boolean);
+  assert.ok(pageCopy.includes(`${pageNumber} of ${renderedDiscovery.numPages}`), `Discovery page ${pageNumber} must carry its page footer`);
+}
 const familyTreeText = [];
 for (let pageNumber = 2; pageNumber <= Math.min(3, renderedDiscovery.numPages); pageNumber += 1) {
   const textContent = await (await renderedDiscovery.getPage(pageNumber)).getTextContent();
   familyTreeText.push(...textContent.items.map((item) => item.str).filter(Boolean));
 }
 const familyTreeCopy = familyTreeText.join(" ");
+assert.ok(familyTreeText.some((item) => /\/ Continued$/.test(item)), "continued Discovery pages must carry a breadcrumb header");
 for (const required of [
   "Back Story:",
   "Back Story evidence:",
@@ -285,6 +292,11 @@ for (const document of single.body.documentArtifacts) {
   const documentPdf = await PDFDocument.load(documentBytes);
   assert.ok(documentPdf.getPageCount() >= 1);
   assert.match(documentPdf.getTitle() || "", new RegExp(document.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  const documentRender = await getDocument({ data: documentBytes.slice(), disableWorker: true }).promise;
+  for (let pageNumber = 1; pageNumber <= documentRender.numPages; pageNumber += 1) {
+    const pageText = (await (await documentRender.getPage(pageNumber)).getTextContent()).items.map((item) => item.str).filter(Boolean);
+    assert.ok(pageText.includes(`${pageNumber} of ${documentRender.numPages}`), `${document.documentId} page ${pageNumber} must carry its page footer`);
+  }
 }
 const completedReportPdf = await PDFDocument.load(completedReportPdfBytes);
 assert.ok(

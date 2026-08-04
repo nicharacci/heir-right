@@ -132,7 +132,7 @@
   color: var(--hr-action-ink);
   background: var(--hr-pearl-selected);
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   box-shadow: none;
 }
 
@@ -436,7 +436,7 @@
   padding: 0.25rem 0.5rem;
   color: var(--hr-text);
   background: var(--hr-surface-selected);
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   font-size: var(--hr-type-xs);
   font-weight: 720;
 }
@@ -540,7 +540,7 @@
   color: var(--hr-action-ink);
   background: var(--hr-action-pearl);
   border: 1px solid var(--hr-action-border);
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
   font-size: var(--hr-type-sm);
   font-weight: 760;
@@ -781,7 +781,7 @@
   color: var(--hr-action-ink);
   background: var(--hr-action-surface);
   border: 1px solid var(--hr-action-border);
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
   font: inherit;
   text-align: center;
@@ -854,7 +854,7 @@
   color: var(--hr-action-ink);
   background: var(--hr-action-surface);
   border: 1px solid var(--hr-action-border);
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
   opacity: 0;
   overflow: hidden;
@@ -1660,7 +1660,7 @@ body[data-s38-shell="case-journey"] button:not(:where(.dashboard-estate-row, .jo
   color: var(--hr-action-ink);
   background: var(--hr-action-surface);
   border: 1px solid var(--hr-action-border);
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -1709,7 +1709,7 @@ body[data-s38-shell="case-journey"] wa-button::part(base) {
   color: var(--hr-action-ink);
   background: var(--hr-action-surface);
   border: 1px solid var(--hr-action-border);
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
   transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard), opacity var(--hr-motion-feedback) var(--hr-ease-standard);
 }
@@ -1750,7 +1750,7 @@ body[data-s38-shell="case-journey"] a.btn:not(.icon-only) {
   color: var(--hr-action-ink);
   background: var(--hr-action-surface);
   border: 1px solid var(--hr-action-border);
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
   transition: color var(--hr-motion-feedback) var(--hr-ease-standard), background-color var(--hr-motion-feedback) var(--hr-ease-standard), border-color var(--hr-motion-feedback) var(--hr-ease-standard), box-shadow var(--hr-motion-feedback) var(--hr-ease-standard);
 }
@@ -1766,7 +1766,7 @@ body[data-s38-shell="case-journey"] a.btn:not(.icon-only):is(:hover, :focus-visi
   color: var(--hr-action-ink);
   background: var(--hr-action-surface);
   border: 1px solid var(--hr-action-border);
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
 }
 

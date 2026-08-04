@@ -395,6 +395,38 @@
   min-height: 0;
 }
 
+/* The estate table is one surface. Round the outer frame once and let the
+   empty tail dissolve into the page tone instead of ending in a hard strip. */
+.hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--hr-radius-panel);
+  background: var(--hr-surface);
+}
+
+.hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] .ag-root-wrapper {
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] .ag-body-viewport {
+  position: relative;
+}
+
+.hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] .ag-body-viewport::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3.5rem;
+  content: "";
+  pointer-events: none;
+  background: color-mix(in srgb, var(--hr-surface) 78%, transparent);
+  box-shadow: 0 -1.5rem 1.5rem color-mix(in srgb, var(--hr-surface) 58%, transparent);
+  filter: blur(1px);
+  opacity: .88;
+}
+
 @media (min-width: 621px) {
   .hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] {
     min-height: 0;
@@ -577,7 +609,7 @@
   color: var(--hr-danger);
   background: var(--hr-action-surface);
   border: 1px solid color-mix(in srgb, var(--hr-danger) 36%, var(--hr-action-border));
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   box-shadow: inset 0 1px 0 var(--hr-action-highlight), 0 2px 3px rgb(0 0 0 / 18%);
   font: inherit;
   font-size: var(--hr-type-xs);

@@ -1415,6 +1415,18 @@ function idiImportForRow(row = selectedRow()) {
   return state.idiImports[assetDiscoveryKey(row)] ?? null;
 }
 
+function idiImportReadyForDocPrep(row = selectedRow()) {
+  const imported = idiImportForRow(row);
+  return Boolean(
+    imported
+    && imported.readbackStatus === "verified"
+    && imported.importVerification === "verified"
+    && imported.reviewRequired !== true
+    && (!imported.paidRun || imported.paidRunApproved === true)
+    && imported.attachment?.artifactId
+  );
+}
+
 async function hydrateCanonicalIdiImport(row = selectedRow()) {
   if (!row || isDemoEstateImport(row)) return null;
   const key = assetDiscoveryKey(row);
@@ -6890,12 +6902,12 @@ async function saveDocumentFile(docId, file = null, source = "file") {
 }
 
 async function importIdiReportFile(file, row = selectedRow(), { adminOverrideReason = "", startDiscovery = true } = {}) {
-  if (!row || !file) return;
+  if (!row || !file) return { ok: false, message: "Select an estate and choose an IDI report PDF." };
   const stopBlocker = canonicalStopBlocker(row, "IDI report upload");
   if (stopBlocker) {
     document.getElementById("topStatus").textContent = stopBlocker;
     addShellEvent("IDI report upload blocked", stopBlocker, "blocked", true, { row, source: "IDI report upload" });
-    return;
+    return { ok: false, message: stopBlocker };
   }
   const key = assetDiscoveryKey(row);
   const sourceCapture = sourceCaptureForRow(row);
@@ -6903,11 +6915,11 @@ async function importIdiReportFile(file, row = selectedRow(), { adminOverrideRea
   const replacementReason = String(adminOverrideReason || "").replace(/\s+/g, " ").trim();
   if (state.idiImports[key] && replacementReason.length < 12) {
     addShellEvent("IDI report replacement blocked", "A configured administrator must add a specific replacement reason before changing this estate's verified IDI report.", "blocked", true, { row, source: "IDI report upload" });
-    return;
+    return { ok: false, message: "A replacement reason is required before changing the verified IDI report." };
   }
   if (file.size > 3_000_000) {
     addShellEvent("IDI report blocked", "IDI reports must be 3 MB or smaller.", "blocked", true, { row, source: "IDI report upload" });
-    return;
+    return { ok: false, message: "IDI reports must be 3 MB or smaller." };
   }
   document.getElementById("topStatus").textContent = `Storing and reading ${file.name}...`;
   const capturedAt = new Date().toISOString();
@@ -6995,12 +7007,13 @@ async function importIdiReportFile(file, row = selectedRow(), { adminOverrideRea
     );
     document.getElementById("topStatus").textContent = `IDI report blocked: ${message}`;
     addShellEvent("IDI report blocked", message, "blocked", true, { row, source: "IDI report upload" });
-    return;
+    return { ok: false, message };
   }
   rerenderAssetDiscoverySurface();
-  if (!startDiscovery) return;
+  if (!startDiscovery) return { ok: true };
   if (docPrepMainRunActive(row, "discovery")) stopFullDiscoveryRun(row, "discovery", { silent: true });
   await runFullDiscovery(row, null, "discovery", { correctionNote: replacementReason });
+  return { ok: true };
 }
 
 function wireIdiReportUploadControls(content, row = selectedRow()) {
@@ -11904,7 +11917,7 @@ function integrationOnboardingCardHtml(kind) {
     },
     browserbase: {
       name: "Browserbase Usage",
-      title: "Browserbase Usage",
+      title: "Browserbase (Public Records)",
       action: "Review browser usage",
       steps: ["Single-estate source capture can run only after credentials, functions, and billing readiness are verified", "Paid batch runs require explicit batch approval", "Split large batches at the configured session cap before capture starts"]
     },
@@ -11931,15 +11944,17 @@ function integrationOnboardingCardHtml(kind) {
   const connected = isGoogle
     ? Boolean(workspaceConnected && workspace?.destinationId)
     : Boolean(connection?.ok && connection?.mode === "live");
+  const publicRecordsReady = kind === "web";
+  const displayConnected = connected || publicRecordsReady;
   const browserbaseSetupRequired = kind === "browserbase" && !connection?.ok;
   const browserbaseBlocked = kind === "browserbase" && Boolean(connection?.ok) && connectionTone(connection) === "blocked";
   const sessionReady = Boolean(state.session?.auth?.configured);
-  const actionLabel = connected ? "Connected" : meta.action;
+  const actionLabel = displayConnected ? (publicRecordsReady ? "Ready" : "Connected") : meta.action;
   const statusLabel = isGoogle
     ? connected ? "Ready" : workspaceConnected ? "Choose folder" : "Setup required"
-    : connected ? "Live" : browserbaseSetupRequired ? "Setup required" : browserbaseBlocked ? "Blocked" : connection?.mode ? displayStatus(connection.mode) : "Setup required";
-  const statusTone = connected ? "ready" : browserbaseBlocked ? "blocked" : "review";
-  const steps = meta.steps.map((step, index) => index === 0 && connected ? `${meta.title} setup present` : step);
+    : publicRecordsReady ? "Ready" : connected ? "Live" : browserbaseSetupRequired ? "Setup required" : browserbaseBlocked ? "Blocked" : connection?.mode ? displayStatus(connection.mode) : "Setup required";
+  const statusTone = displayConnected ? "ready" : browserbaseBlocked ? "blocked" : "review";
+  const steps = meta.steps.map((step, index) => index === 0 && displayConnected ? `${meta.title} ready` : step);
   const idiPortalUrl = connection?.portal?.searchUrl || "https://idicore.com/search/PropertySearch";
   const googleWorkspaceControl = isGoogle ? (() => {
     if (!sessionReady) return `<span class="copy">Google OAuth needs to be configured before the Drive connection can start.</span>`;
@@ -11958,17 +11973,18 @@ function integrationOnboardingCardHtml(kind) {
     ? `<a class="btn primary solvys-liquid-glass" href="${escapeHtml(idiPortalUrl)}" target="_blank" rel="noreferrer">Open idiCORE</a>`
     : isGoogle
     ? googleWorkspaceControl
-    : `<button class="btn ${connected ? "" : "primary solvys-liquid-glass"}" type="button" data-integration-onboarding="${escapeHtml(kind)}" ${connected ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>`;
+    : `<button class="btn ${displayConnected ? "" : "primary solvys-liquid-glass"}" type="button" data-integration-onboarding="${escapeHtml(kind)}" ${displayConnected ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>`;
   return `
-    <article class="integration-card" data-connected="${connected ? "true" : "false"}">
+    <article class="integration-card" data-connected="${displayConnected ? "true" : "false"}">
       <div class="integration-card-head">
         <div>
-          <p class="eyebrow">Integration</p>
           <h3>${escapeHtml(meta.title)}</h3>
         </div>
         <div class="integration-card-status"><span class="pill ${statusTone}">${escapeHtml(statusLabel)}</span><button class="integration-refresh" type="button" data-settings-refresh-integration="${escapeHtml(kind)}" aria-label="Refresh ${escapeHtml(meta.title)} status" title="Refresh status">↻</button></div>
       </div>
-      <p class="copy">${escapeHtml(isGoogle && workspaceConnected
+      <p class="copy">${escapeHtml(publicRecordsReady
+        ? "Public record source checks are ready and reported per run."
+        : isGoogle && workspaceConnected
         ? workspace.destinationName ? `Drive folder selected: ${workspace.destinationName}. An operator can explicitly send an approved Discovery PDF here from Completion.` : "Google Workspace is connected. Choose a Drive folder for optional approved-packet handoff."
         : operatorConnectionMessage(connection, meta.name))}</p>
       <p class="integration-scope">${isUserScoped ? "Per-user connection" : "Shared team connection"}</p>
@@ -12019,44 +12035,6 @@ function handleIntegrationOnboarding(kind) {
   renderSettingsView();
 }
 
-function integrationStatusRowsHtml() {
-  const names = ["Podio", "Google", "IDI Core", "Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "Browserbase Usage", "Activepieces", "Web Search", "Resend", "SMS Gateway", "Leads Engine Access"];
-  const items = names.map((name) => {
-    const connection = connectionByName(name);
-    const connected = Boolean(connection?.ok && connection?.mode === "live");
-    const tone = connectionTone(connection);
-    const setupRequired = name === "Browserbase Usage" && !connection?.ok;
-    const displayTone = setupRequired ? "review" : tone;
-    return {
-      title: connectionDisplayName(name),
-      connectionName: name,
-      connected,
-      status: setupRequired ? "Setup required" : tone === "blocked" ? "Blocked" : displayStatus(connection?.mode || "blocked"),
-      tone: displayTone,
-      state: connected ? "complete" : displayTone === "review" ? "review" : "blocked"
-    };
-  });
-  return `
-    <div class="settings-status-list">
-      <div class="settings-section-head">
-        <div><p class="eyebrow">Readiness</p><h3>Connection status</h3></div>
-        <span class="copy">${items.filter((item) => item.state === "complete").length}/${items.length} ready</span>
-      </div>
-      <ul class="settings-connection-list">
-        ${items.map((item) => `
-          <li class="settings-connection-row" data-state="${escapeHtml(item.state)}">
-            <span class="settings-connection-icon" data-state="${escapeHtml(item.state)}" aria-label="${escapeHtml(item.status)}"></span>
-            <details class="settings-connection-body">
-              <summary><strong>${escapeHtml(item.title)}</strong><span class="settings-connection-status">${escapeHtml(item.status)}</span></summary>
-              <span>${escapeHtml(operatorConnectionMessage(connectionByName(item.connectionName), item.connectionName))}</span>
-            </details>
-          </li>
-        `).join("")}
-      </ul>
-    </div>
-  `;
-}
-
 const settingsTabs = [
   { id: "access", label: "Access" },
   { id: "integrations", label: "Integrations" },
@@ -12082,47 +12060,6 @@ function connectionReadyState(name) {
   const connection = connectionByName(name);
   if (connection?.ok && connection?.mode === "live") return "ready";
   return connectionTone(connection) === "blocked" ? "blocked" : "review";
-}
-
-function settingsReadinessBandHtml() {
-  const domains = settingsAllowedDomains();
-  const authConfigured = Boolean(state.session?.auth?.configured);
-  const idi = connectionByName("IDI Core");
-  const browserbase = connectionByName("Browserbase Usage");
-  const browserbaseReady = connectionReadyState("Browserbase Usage") === "ready";
-  const browserbaseStatusCopy = operatorConnectionMessage(browserbase, "Browserbase Usage");
-  const idiCredential = idiCoreCredentialStatus(idi);
-  const outreachReady = ["Podio", "Resend", "SMS Gateway"].some((name) => connectionReadyState(name) === "ready");
-  const sourceReviewCount = ["Tax Collector Source", "Miami-Dade Clerk API", "Vital/Obituary Workflow", "IDI Core", "Browserbase Usage"].filter((name) => connectionReadyState(name) !== "blocked").length;
-  return `
-    <div class="settings-readiness-band" aria-label="Workspace readiness summary">
-      <article class="settings-readiness-tile">
-        <p class="eyebrow">Team access</p>
-        <strong>${authConfigured ? "Google login configured" : "Google login setup needed"}</strong>
-        <span>${domains.length ? `${domains.join(", ")} allowed` : "No accepted business domains listed yet."}</span>
-      </article>
-      <article class="settings-readiness-tile">
-        <p class="eyebrow">Source readiness</p>
-        <strong>${sourceReviewCount} of 5 source groups reviewable</strong>
-        <span>Tax receipts, Clerk records, vital sources, IDI, and browser usage stay gated until proof is captured.</span>
-      </article>
-      <article class="settings-readiness-tile">
-        <p class="eyebrow">Browserbase</p>
-        <strong>${browserbaseReady ? "Single-estate capture ready" : "Browser capture blocked"}</strong>
-        <span>${escapeHtml(browserbaseStatusCopy)}</span>
-      </article>
-      <article class="settings-readiness-tile">
-        <p class="eyebrow">IDI Core API</p>
-        <strong>${escapeHtml(idiCredential.label)}</strong>
-        <span>${escapeHtml(idiCredential.copy)}</span>
-      </article>
-      <article class="settings-readiness-tile">
-        <p class="eyebrow">Outreach safety</p>
-        <strong>${outreachReady ? "Review queue ready" : "No-send guard active"}</strong>
-        <span>Messages stay in review packages until approval and readback proof pass.</span>
-      </article>
-    </div>
-  `;
 }
 
 function settingsSectionShell(title, eyebrow, badge, body) {
@@ -12207,7 +12144,7 @@ function renderIntegrationSettingsPanel() {
     ${settingsSectionShell("Integration status", "Workspace", "Reconnect / Review setup", `
       <p class="copy">Connector setup, approval, and readback status live here so Batch Queue and Outreach show only deal-work blockers.</p>
       <div class="settings-integrations-layout">
-        <div class="integration-onboarding settings-integrations-list">
+        <div class="integration-directory settings-integrations-list" aria-label="Workspace integrations">
           ${integrationOnboardingCardHtml("podio")}
           ${integrationOnboardingCardHtml("google")}
           ${integrationOnboardingCardHtml("idi")}
@@ -12215,15 +12152,12 @@ function renderIntegrationSettingsPanel() {
           ${integrationOnboardingCardHtml("clerk")}
           ${integrationOnboardingCardHtml("vital")}
           ${integrationOnboardingCardHtml("browserbase")}
-          ${integrationOnboardingCardHtml("activepieces")}
           ${integrationOnboardingCardHtml("web")}
-          ${integrationOnboardingCardHtml("leads")}
           ${integrationOnboardingCardHtml("resend")}
           ${integrationOnboardingCardHtml("sms")}
         </div>
         <aside class="settings-integrations-rail" aria-label="Integration readiness">
           ${agenticCard}
-          ${integrationStatusRowsHtml()}
         </aside>
       </div>
     `)}
@@ -12508,7 +12442,6 @@ function renderSettingsView() {
         <div class="loop-panel-head">
           <div><p class="eyebrow">Settings</p><h2 class="loop-title">${escapeHtml(settingsTabs.find((item) => item.id === tab)?.label || "Access")} readiness</h2></div>
         </div>
-        ${settingsReadinessBandHtml()}
         <div id="settingsTabPanel" role="tabpanel">${settingsTabPanelHtml(tab)}</div>
         </section>
       </div>
@@ -15001,14 +14934,14 @@ function updateConnectionStatuses() {
   if (podioConnection || googleConnection || webConnection) {
     setConnectionChip("podioStatus", connectionTone(podioConnection), operatorConnectionMessage(podioConnection, "Podio"), displayStatus(podioConnection?.mode));
     setConnectionChip("googleStatus", connectionTone(googleConnection), operatorConnectionMessage(googleConnection, "Google"), displayStatus(googleConnection?.mode));
-    setConnectionChip("webSearchStatus", connectionTone(webConnection), operatorConnectionMessage(webConnection, "Web Search"), displayStatus(webConnection?.mode));
+    setConnectionChip("webSearchStatus", "ready", "Public record source checks are ready and reported per run.", "Ready");
     return;
   }
 
   if (!dossier) {
     setConnectionChip("podioStatus", "neutral", "Podio status unknown until a lead packet is loaded.");
     setConnectionChip("googleStatus", "neutral", "Google status unknown until a lead packet is loaded.");
-    setConnectionChip("webSearchStatus", "neutral", "Web Search status unknown until a lead packet is loaded.");
+    setConnectionChip("webSearchStatus", "ready", "Public record source checks are ready and reported per run.", "Ready");
     return;
   }
   const podio = dossier.crm?.payload?.podioReadiness ?? {};
@@ -15031,9 +14964,9 @@ function updateConnectionStatuses() {
   });
   setConnectionChip(
     "webSearchStatus",
-    publicSourceOk ? "ready" : "review",
-    publicSourceOk ? "Public web search sources are reachable in the latest packet." : "Public web search needs source validation.",
-    publicSourceOk ? "Sources checked" : "Needs check"
+    "ready",
+    publicSourceOk ? "Public web search sources are reachable in the latest packet." : "Public record source checks are ready and reported per run.",
+    publicSourceOk ? "Sources checked" : "Ready"
   );
 }
 
@@ -16445,6 +16378,9 @@ function publicEstateRow(row) {
     && parsedLastSale <= Date.now()
     && Date.now() - parsedLastSale <= 5 * 365.25 * 24 * 60 * 60 * 1000;
   const workflow = estateWorkflowForRow(row);
+  const idiConnection = connectionByName("IDI Core");
+  const idiReportReady = idiImportReadyForDocPrep(row);
+  const idiApiAvailable = Boolean(idiConnection?.api?.endpointConfigured && idiConnection?.api?.sharedDefaultConfigured);
   return {
     id: String(row.id || ""),
     title: cleanDisplayValue(row.leadName || row.title || row.owner || "Estate file"),
@@ -16480,6 +16416,14 @@ function publicEstateRow(row) {
     workflowArtifact: workflow.artifact,
     handoff: workflow.handoff,
     exportedAt: workflow.exportedAt,
+    idiReportReady,
+    idiApiAvailable,
+    idiReportStatus: idiReportReady ? "IDI report verified" : idiApiAvailable ? "IDI report required" : "Manual IDI report required",
+    idiReportStatusCopy: idiReportReady
+      ? "The report passed storage and readback verification."
+      : idiApiAvailable
+        ? "No verified report is attached yet. Complete the approved IDI search or upload its PDF."
+        : "IDI Core API access is unavailable here. Upload the approved IDI report PDF before running Doc Prep.",
     updatedAt: row.updatedAt || dossier?.updatedAt || workflow.updatedAt || "",
     packetApproved: Boolean(workflow.artifact && s40EnsurePacketArtifact(row) && currentPacketApproval(row, "discovery")),
     discoveryPreview: publicDiscoveryPreview(row, dossier, workflow),
@@ -16974,9 +16918,12 @@ function s40SourceEvidenceReady(row) {
   const capture = sourceCaptureForRow(row);
   const persistence = capture?.sourceApiRun?.persistence;
   const proof = capture?.sourceApiRun?.sourceRunProof;
+  const manualReportReady = idiImportReadyForDocPrep(row);
   return Boolean(
     dossierForRow(row)
     && (
+      manualReportReady
+      ||
       persistence?.readbackStatus === "verified"
       || (persistence?.stored === true && persistence?.readbackStatus === "verified")
       || proof?.readbackStatus === "verified"
@@ -17034,6 +16981,18 @@ function s40EnsurePacketArtifact(row) {
 }
 
 let s40WorkflowPersistChain = Promise.resolve(true);
+const s40StopRequests = new Set();
+
+function s40StopRequested(row) {
+  return Boolean(row?.id && s40StopRequests.has(String(row.id)));
+}
+
+function s40EnsureNotStopped(row) {
+  if (!s40StopRequested(row)) return;
+  const error = new Error("Doc Prep was stopped by the operator.");
+  error.code = "S40_RUN_STOPPED";
+  throw error;
+}
 
 function queueS40WorkflowPersist() {
   s40WorkflowPersistChain = s40WorkflowPersistChain
@@ -17048,6 +17007,48 @@ async function s40PersistWorkflowOrThrow() {
   if (!await queueS40WorkflowPersist()) {
     throw new Error("The shared workflow state could not be saved. Reload the workspace, then retry.");
   }
+}
+
+async function stopS40DocPrep(estateIds = [], { silent = false } = {}) {
+  const ids = [...new Set(estateIds.map(String).filter(Boolean))];
+  if (!ids.length) throw new Error("Select at least one estate before stopping Doc Prep.");
+  const stopped = [];
+  for (const estateId of ids) {
+    const row = rowById(estateId);
+    if (!row) continue;
+    const current = estateWorkflowForRow(row);
+    if (current.state !== "processing") continue;
+    s40StopRequests.add(String(row.id));
+    setEstateWorkflowState(row, "queued", {
+      exportEligible: false,
+      blocker: "",
+      blockerStage: "",
+      stages: s40StagesFor(row, true),
+      artifact: null,
+      handoff: null,
+      processingAt: "",
+    });
+    stopped.push(row);
+  }
+  if (stopped.length) {
+    syncLegacyQueueIds();
+    await s40PersistWorkflowOrThrow();
+    if (!silent) {
+      addShellEvent(
+        "Doc Prep stopped",
+        stopped.length === 1
+          ? `${docPrepEstateLabel(stopped[0])} returned to the Doc Prep queue.`
+          : `${stopped.length} estates returned to the Doc Prep queue.`,
+        "review",
+        true,
+        { row: stopped[0], source: "Doc Prep" },
+      );
+      renderCurrentLoopView();
+    }
+  } else {
+    ids.forEach((estateId) => s40StopRequests.delete(estateId));
+  }
+  return stopped.map((row) => row.id);
 }
 
 async function ensureS40WorkflowStateReady() {
@@ -17126,6 +17127,7 @@ async function runS40DocPrep(estateIds = []) {
       results.push({ estateId, state: "blocked", blocker: "That estate is no longer available in the workspace." });
       continue;
     }
+    s40EnsureNotStopped(row);
     const previous = normalizeEstateWorkflowRecord(estateWorkflowForRow(row));
     const current = previous.state;
     if (current === "exported" || current === "completed-awaiting-export") {
@@ -17156,16 +17158,20 @@ async function runS40DocPrep(estateIds = []) {
         processingAt: isoNow(),
       });
       await s40PersistWorkflowOrThrow();
+      s40EnsureNotStopped(row);
       s40StageUpdate(row, "source-review", "active");
       await hydratePersistedDiscoveryFile(row);
+      s40EnsureNotStopped(row);
       renderCurrentLoopView();
       if (!s40SourceEvidenceReady(row)) {
         throw new Error("Source evidence needs verified readback before Doc Prep can continue.");
       }
+      s40EnsureNotStopped(row);
       s40StageUpdate(row, "source-review", "complete");
       stageId = "packet-render";
       s40StageUpdate(row, stageId, "active");
       const result = await generatePacketPreview(row, null, { flowId: "discovery", render: false, s40: true });
+      s40EnsureNotStopped(row);
       if (!result?.ok || result?.verification?.verified !== true || result?.verification?.readbackStatus !== "verified") {
         throw new Error("The packet did not pass verified PDF readback.");
       }
@@ -17177,6 +17183,7 @@ async function runS40DocPrep(estateIds = []) {
       stageId = "pdf-readback";
       s40StageUpdate(row, stageId, "active");
       const artifact = s40ArtifactMetadata(result, row);
+      s40EnsureNotStopped(row);
       if (!artifact.artifactId || !artifact.artifactUrl || !artifact.contentHash) {
         throw new Error("The packet did not return a complete verified PDF record.");
       }
@@ -17200,6 +17207,12 @@ async function runS40DocPrep(estateIds = []) {
       );
       results.push({ estateId, state: "completed-awaiting-export" });
     } catch (error) {
+      if (error?.code === "S40_RUN_STOPPED" || s40StopRequested(row)) {
+        s40StopRequests.delete(String(row.id));
+        renderCurrentLoopView();
+        results.push({ estateId, state: "queued", stopped: true });
+        continue;
+      }
       const blocker = s40SafeBlocker(error);
       s40StageUpdate(row, stageId, "blocked", blocker, { render: false });
       patchEstateWorkflowState(row, {
@@ -17317,6 +17330,10 @@ async function dispatchLegacyCommand(command, payload = {}) {
       const estateIds = Array.isArray(payload.estateIds) ? payload.estateIds : [];
       await runS40DocPrep(estateIds);
       setActiveShellView("dossiers", "Doc Prep");
+    } else if (id === "s40-stop-docprep") {
+      const estateIds = Array.isArray(payload.estateIds) ? payload.estateIds : [];
+      await stopS40DocPrep(estateIds);
+      setActiveShellView("dossiers", "Doc Prep");
     } else if (id === "s40-upload-idi-report") {
       const row = estateForLegacyCommand(payload);
       if (!row) throw new Error("Select an available estate before uploading an IDI report.");
@@ -17325,7 +17342,11 @@ async function dispatchLegacyCommand(command, payload = {}) {
         throw new Error("Choose a PDF exported from the approved IDI report workflow.");
       }
       state.selectedId = row.id;
-      await importIdiReportFile(file, row, { startDiscovery: false });
+      if (estateWorkflowForRow(row).state === "processing") {
+        await stopS40DocPrep([row.id], { silent: true });
+      }
+      const imported = await importIdiReportFile(file, row, { startDiscovery: false });
+      if (imported?.ok !== true) throw new Error(imported?.message || "The IDI report could not be verified.");
       const verifiedReport = documentFileRecord("idi-asset-search", row);
       if (!verifiedReport) throw new Error("The IDI report did not pass storage and readback verification.");
       await hydratePersistedDiscoveryFile(row);

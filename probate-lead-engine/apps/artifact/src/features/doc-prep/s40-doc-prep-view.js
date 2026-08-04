@@ -1,18 +1,18 @@
 import { escapeFor } from "./document-row.js";
-import { createCommunityGrid, destroyCommunityGrid } from "../data-grid/community-grid.js";
+import { createCommunityGrid, destroyCommunityGrid, setGridQuickFilter } from "../data-grid/community-grid.js";
 import { estateWorkflowStateLabels } from "../estate-export/workflow-model.js";
 
 const stageLabels = Object.freeze({
-  "source-review": "Source evidence",
-  "packet-render": "Packet render",
-  "pdf-readback": "PDF readback",
-  "export-handoff": "Export handoff",
+  "source-review": "Checking source records",
+  "packet-render": "Building the Discovery packet",
+  "pdf-readback": "Checking the finished PDF",
+  "export-handoff": "Preparing the export",
 });
 
-const discoveryFetchLabel = "Run report to fetch";
-const discoveryFetchingLabel = "Fetching from report...";
-const discoveryRetryLabel = "Run report to retry";
-const discoveryMissingLabel = "Not returned by report";
+const discoveryFetchLabel = "";
+const discoveryFetchingLabel = "Gathering report data...";
+const discoveryRetryLabel = "Report needs review";
+const discoveryMissingLabel = "";
 
 let activeMount = null;
 const selectedEstateIds = new Set();
@@ -44,7 +44,8 @@ function selectedRows(rows) {
 
 function runEligible(row) {
   const state = workflowState(row);
-  return state === "queued" || (state === "blocked" && row.workflowBlockerStage !== "export-handoff");
+  return row?.idiReportReady === true
+    && (state === "queued" || (state === "blocked" && row.workflowBlockerStage !== "export-handoff"));
 }
 
 function workflowLabel(row) {
@@ -167,10 +168,7 @@ function renderDiscoveryTemplatePreview(row, bridge) {
   const contactMarkup = contacts.length
     ? contacts.map((contact, index) => renderDiscoveryContact(contact, bridge, index, preview)).join("")
     : "";
-  return "<div class=\"s40-preview-viewport\" data-preview-state=\"" + (live ? "live" : "template") + "\" aria-label=\"" + escape(bridge, live ? "Live Discovery packet preview" : "Discovery packet template") + "\">"
-    + "<div class=\"s40-discovery-paper\">"
-    + "<main class=\"s40-discovery-template-page\">"
-    + "<h1 class=\"s40-discovery-title\">" + discoveryPreviewValue(bridge, title, "Estate file") + "</h1>"
+  const firstPageContent = "<h1 class=\"s40-discovery-title\">" + discoveryPreviewValue(bridge, title, "Estate file") + "</h1>"
     + "<p class=\"s40-discovery-subtitle\">Family Tree</p>"
     + "<p class=\"s40-discovery-date\">Date added: " + discoveryPreviewValue(bridge, preview.dateAdded, missing) + "</p>"
     + "<p class=\"s40-discovery-property\">Property Address: " + discoveryPreviewValue(bridge, preview.propertyAddress, missing) + "</p>"
@@ -181,15 +179,32 @@ function renderDiscoveryTemplatePreview(row, bridge) {
     + "</p><p>DOD: " + discoveryPreviewValue(bridge, preview.dateOfDeath, missing)
     + "</p><p>" + discoveryPreviewValue(bridge, preview.obituary, missing) + "</p>"
     + "<p>Folio: " + discoveryPreviewValue(bridge, preview.folio, missing) + "</p>"
-    + "</section>"
-    + "<section class=\"s40-discovery-story\"><p><strong>Back Story:</strong></p>"
+    + "</section>";
+  const continuationContent = "<section class=\"s40-discovery-story\"><p><strong>Back Story:</strong></p>"
     + discoveryPreviewParagraphs(bridge, preview.backStory, missing)
     + "<p class=\"s40-discovery-evidence\"><strong>Property tax website:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.propertyTaxUrl || preview.sourceLink, missingLink) + "</p>"
     + "<p class=\"s40-discovery-evidence\"><strong>Tax receipt copy:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.taxReceiptUrl, missingLink) + "</p>"
     + "<p class=\"s40-discovery-evidence\"><strong>Obituary:</strong> " + discoveryPreviewLink(bridge, "Open source", preview.obituaryUrl, missingLink) + "</p></section>"
-    + renderPossibleHeirsTable(preview, bridge)
-    + (contactMarkup ? "<section class=\"s40-discovery-contact-detail\"><h2>Heir detail review</h2>" + contactMarkup + "</section>" : "")
-    + "</main></div></div>";
+    + renderPossibleHeirsTable(preview, bridge);
+  const pages = [firstPageContent, continuationContent];
+  const pageSections = ["Family Tree", "Back Story and Heirs"];
+  if (contactMarkup) {
+    pages.push("<section class=\"s40-discovery-contact-detail\"><h2>Heir detail review</h2>" + contactMarkup + "</section>");
+    pageSections.push("Heir detail review");
+  }
+  const pageMarkup = pages.map((content, index) => {
+    const continuation = index > 0;
+    const breadcrumb = continuation
+      ? "<div class=\"s40-discovery-page-header\"><span>" + escape(bridge, title) + "</span><span> / " + escape(bridge, pageSections[index]) + " / Continued</span></div>"
+      : "<div class=\"s40-discovery-page-header\"><span>HeirRight Discovery packet</span><span>" + escape(bridge, pageSections[index]) + "</span></div>";
+    return "<main class=\"s40-discovery-template-page\" data-page-number=\"" + (index + 1) + "\">"
+      + breadcrumb
+      + "<div class=\"s40-discovery-page-content\">" + content + "</div>"
+      + "<footer class=\"s40-discovery-page-footer\"><span>HeirRight Discovery</span><span>" + (index + 1) + " of " + pages.length + "</span></footer>"
+      + "</main>";
+  }).join("");
+  return "<div class=\"s40-preview-viewport\" data-preview-state=\"" + (live ? "live" : "template") + "\" aria-label=\"" + escape(bridge, live ? "Live Discovery packet preview" : "Discovery packet template") + "\">"
+    + "<div class=\"s40-discovery-paper\">" + pageMarkup + "</div></div>";
 }
 function verifiedArtifactHref(artifact) {
   const candidate = String(artifact?.artifactUrl || "").trim();
@@ -225,14 +240,14 @@ function dynamicIslandStep(row) {
       : { state: "pending", label: "Waiting for an estate", detail: "Select a queued file to begin" };
   }
   const label = stageLabels[stage.id] || stage.label || "Doc Prep stage";
-  if (active) return { state: "active", label, detail: "In progress" };
-  if (blocked) return { state: "blocked", label, detail: "Blocked - retry available" };
+  if (active) return { state: "active", label, detail: "Working through the estate file" };
+  if (blocked) return { state: "blocked", label, detail: "Review required before continuing" };
   if (pending && workflowState(row) === "completed-awaiting-export" && stage.id === "export-handoff") {
     return { state: "pending", label, detail: "Waiting for approval" };
   }
-  if (pending && workflowState(row) === "processing") return { state: "active", label, detail: "In progress" };
+  if (pending && workflowState(row) === "processing") return { state: "active", label, detail: "Working through the estate file" };
   if (pending) return { state: "pending", label, detail: workflowState(row) === "queued" ? "Waiting to start" : "Waiting" };
-  return { state: "complete", label, detail: "Complete" };
+  return { state: "complete", label, detail: "Finished" };
 }
 
 function recentManualUpload(snapshot, estateId) {
@@ -255,9 +270,16 @@ function renderDynamicIsland(row, snapshot, bridge) {
     ? { state: "success", label: "IDI report uploaded", detail: "Verified and ready for Discovery" }
     : dynamicIslandStep(row);
   const ariaLabel = `Doc Prep current step: ${step.label}. ${step.detail}.`;
+  const processing = workflowState(row) === "processing";
+  const action = processing
+    ? `<button type="button" class="s40-secondary-button s40-island-action" data-s40-stop data-stop-docprep="${escape(bridge, row?.id || "")}">Stop</button>`
+    : row
+      ? `<button type="button" class="s40-primary-button s40-island-action" data-s40-run data-run-docprep data-estate-id="${escape(bridge, row.id)}" ${runEligible(row) ? "" : "disabled title=\"Upload a verified IDI report before running Doc Prep.\""}>Run Doc Prep</button>`
+      : "";
   return `<div class="s40-dynamic-island" data-state="${escape(bridge, step.state)}" role="status" aria-live="polite" aria-atomic="true" aria-label="${escape(bridge, ariaLabel)}">
     <span class="s40-island-loader" aria-hidden="true"><span></span></span>
     <span class="s40-island-copy"><strong>${escape(bridge, step.label)}</strong><span>${escape(bridge, step.detail)}</span></span>
+    ${action ? `<span class="s40-island-controls">${action}</span>` : ""}
   </div>`;
 }
 
@@ -311,6 +333,11 @@ function renderArtifactRail(row, bridge, rows = [], snapshot = {}) {
   const packetApproved = row.packetApproved === true;
   const hasVerifiedArtifact = Boolean(artifactHref && row.workflowArtifact?.artifactId);
   const preview = row.discoveryPreview || { title: row.title, propertyAddress: row.address, state: "template" };
+  const idiReady = row.idiReportReady === true;
+  const idiStatus = idiReady ? "IDI report ready" : row.idiReportStatus || "IDI report required";
+  const idiStatusCopy = idiReady
+    ? row.idiReportStatusCopy || "The report passed storage and readback verification."
+    : row.idiReportStatusCopy || "Upload the approved IDI report PDF before running Doc Prep.";
   const previewStateLabel = hasVerifiedArtifact ? "Verified internal PDF" : preview.state === "live" ? "Live Discovery packet" : "Discovery packet template";
   const packet = hasVerifiedArtifact
     ? `<div class="s40-pdf-frame"><iframe src="${escape(bridge, artifactHref)}" title="Verified internal PDF for ${escape(bridge, row.title)}" loading="lazy"></iframe></div>
@@ -326,9 +353,10 @@ function renderArtifactRail(row, bridge, rows = [], snapshot = {}) {
     <header class="s40-rail-head">
       <div><p class="s40-rail-kicker">Current</p><h2>${escape(bridge, row.title || "Estate file")}</h2><p>${escape(bridge, row.address || "Address unavailable")}</p></div>
       <div class="s40-rail-head-commands">
+        <span class="s40-idi-status" data-state="${idiReady ? "ready" : "required"}"><strong>${escape(bridge, idiStatus)}</strong><span>${escape(bridge, idiStatusCopy)}</span></span>
         <button type="button" class="s40-secondary-button" data-s40-idi-upload aria-label="Upload IDI Report PDF for ${escape(bridge, row.title || "this estate")}">Upload IDI Report PDF</button>
         <input type="file" hidden data-s40-idi-file accept=".pdf,application/pdf" aria-label="Choose an IDI Report PDF">
-        ${workflowLabel(row) ? `<span class="s40-state-label" data-state="${escape(bridge, workflow)}">${escape(bridge, workflowLabel(row))}</span>` : ""}
+        ${workflow !== "processing" && workflowLabel(row) ? `<span class="s40-state-label" data-state="${escape(bridge, workflow)}">${escape(bridge, workflowLabel(row))}</span>` : ""}
       </div>
     </header>
     ${blocker ? `<p class="s40-blocker" role="alert">${escape(bridge, blocker)}</p>` : ""}
@@ -375,7 +403,7 @@ function emptyDocPrepView(bridge) {
     "<section class=\"s40-docprep s40-docprep-empty\" data-feature=\"s40-doc-prep\">",
     "  <div class=\"s40-workbench\">",
     "    <aside class=\"s40-selector\" aria-label=\"Doc Prep estate selector\">",
-    "      <header><div><span class=\"s40-column-kicker\">Queued estates</span><h2>Select files</h2></div><span>0</span></header>",
+    "      <header><div><span class=\"s40-column-kicker\">Queued estates</span><label class=\"s40-quick-search\"><span class=\"s40-visually-hidden\">Quick search queued estates</span><input type=\"search\" data-s40-queue-search aria-label=\"Quick search queued estates\" placeholder=\"Quick search\"></label></div><span>0</span></header>",
     "      <div class=\"s40-empty-selector\"><strong>Nothing is queued</strong><span>Queue an eligible estate from Estates to start Doc Prep.</span><button type=\"button\" class=\"s40-link-button\" data-open-estates>Open Estates</button></div>",
     "    </aside>",
     "    <article class=\"s40-artifact-rail s40-artifact-rail-empty\" aria-label=\"Doc Prep artifact and status rail\">",
@@ -400,11 +428,11 @@ function renderS40DocPrepView({ bridge }) {
     <section class="s40-docprep" data-feature="s40-doc-prep" data-estate-id="${escape(bridge, current?.id || "")}">
       <header class="s40-docprep-head">
         <div><p class="s40-rail-kicker">Doc Prep workbench</p><h1>Review packets, then hand off</h1></div>
-        <div class="s40-docprep-command"><span aria-live="polite" data-s40-selected-count>${escape(bridge, countLabel)}</span><button type="button" class="s40-primary-button" data-s40-run data-run-docprep ${runnable.length ? "" : "disabled"}>${runnable.length > 1 ? `Run Doc Prep for ${runnable.length}` : "Run Doc Prep"}</button></div>
+        <div class="s40-docprep-command"><span aria-live="polite" data-s40-selected-count>${escape(bridge, countLabel)}</span></div>
       </header>
       <div class="s40-workbench">
         <aside class="s40-selector" aria-label="Doc Prep estate selector">
-          <header><div><span class="s40-column-kicker">Queued estates</span><h2>Select files</h2></div><span>${rows.length}</span></header>
+          <header><div><span class="s40-column-kicker">Queued estates</span><label class="s40-quick-search"><span class="s40-visually-hidden">Quick search queued estates</span><input type="search" data-s40-queue-search aria-label="Quick search queued estates" placeholder="Quick search"></label></div><span>${rows.length}</span></header>
           ${renderEstateSelector(rows)}
         </aside>
         <article class="s40-artifact-rail" aria-label="Doc Prep artifact rail">
@@ -451,6 +479,7 @@ function mountS40DocPrepView(root, bridge) {
   const selector = root?.querySelector?.('[data-community-grid="docprep"]');
   const selectedCount = root?.querySelector?.("[data-s40-selected-count]");
   const runControl = root?.querySelector?.("[data-s40-run], [data-run-docprep]");
+  const stopControl = root?.querySelector?.("[data-s40-stop], [data-stop-docprep]");
   const updateRunControl = (nextRows = rows) => {
     const selected = nextRows.filter((row) => selectedEstateIds.has(String(row.id)));
     const runnable = selected.filter(runEligible);
@@ -459,9 +488,11 @@ function mountS40DocPrepView(root, bridge) {
       runControl.disabled = runnable.length === 0;
       runControl.textContent = runnable.length > 1 ? `Run Doc Prep for ${runnable.length}` : "Run Doc Prep";
     }
+    if (stopControl) stopControl.disabled = !nextRows.some((row) => workflowState(row) === "processing");
   };
+  let gridApi = null;
   if (selector) {
-    createCommunityGrid(selector, {
+    gridApi = createCommunityGrid(selector, {
       key: "docprep",
       rows,
       columns: [
@@ -487,6 +518,9 @@ function mountS40DocPrepView(root, bridge) {
       },
     });
   }
+  root?.querySelector?.("[data-s40-queue-search]")?.addEventListener("input", (event) => {
+    setGridQuickFilter(gridApi, event.currentTarget.value);
+  });
   updateRunControl(rows);
   const idiUpload = root?.querySelector?.("[data-s40-idi-upload]");
   const idiFile = root?.querySelector?.("[data-s40-idi-file]");
@@ -514,6 +548,10 @@ function mountS40DocPrepView(root, bridge) {
   });
   root?.querySelector("[data-s40-run], [data-run-docprep]")?.addEventListener("click", (event) => {
     void dispatchAction(bridge, "s40-run-docprep", { estateIds: [...selectedEstateIds] }, event.currentTarget);
+  });
+  root?.querySelector("[data-s40-stop], [data-stop-docprep]")?.addEventListener("click", (event) => {
+    const estateId = event.currentTarget.dataset.stopDocprep || root.dataset.estateId;
+    void dispatchAction(bridge, "s40-stop-docprep", { estateIds: estateId ? [estateId] : [...selectedEstateIds] }, event.currentTarget);
   });
   root?.querySelectorAll?.("[data-s40-approve], [data-approve-packet]").forEach((control) => {
     control.addEventListener("click", (event) => {

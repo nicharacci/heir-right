@@ -241,7 +241,7 @@ body[data-theme] :is(button, a, input, select, textarea, [tabindex]):focus-visib
   min-height: 34px;
   padding: 0.42rem 0.78rem;
   border: 1px solid var(--hr-control-boundary);
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   color: var(--hr-text);
   background: transparent;
   box-shadow: none;
@@ -263,7 +263,7 @@ body[data-theme] :is(button, a, input, select, textarea, [tabindex]):focus-visib
 .hr-grid-filter-toggle [data-estate-filter-count] {
   min-width: 1.2rem;
   padding-inline: 0.28rem;
-  border-radius: 999px;
+  border-radius: var(--hr-radius-chip);
   text-align: center;
 }
 

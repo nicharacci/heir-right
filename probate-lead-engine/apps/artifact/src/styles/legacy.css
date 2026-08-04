@@ -539,7 +539,7 @@
       color: var(--text);
       background: color-mix(in srgb, var(--page-2) 78%, transparent);
       border: 1px solid color-mix(in srgb, var(--line-strong) 76%, transparent);
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       box-shadow:
         0 12px 28px rgba(0,0,0,.18),
         inset 0 1px 0 rgba(255,255,255,.14);
@@ -1207,7 +1207,7 @@
       align-items: center;
       justify-content: center;
       border: 1px solid rgba(142,200,255,.34);
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       padding: 0 11px;
       color: #f5faff;
       background:
@@ -1269,7 +1269,7 @@
       align-items: stretch;
       overflow: hidden;
       border: 1px solid color-mix(in srgb, var(--line-strong) 84%, transparent);
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       background: rgba(44,44,46,.72);
       color: var(--text);
     }
@@ -3415,7 +3415,7 @@
     .docprep-main-run-button {
       min-height: 26px;
       border: 0;
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       background: transparent;
       box-shadow: none;
       color: var(--accent);
@@ -3483,7 +3483,7 @@
     .docprep-rerun-button {
       min-height: 30px;
       border: 1px solid color-mix(in srgb, var(--line-strong) 56%, transparent);
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       padding: 5px 12px;
       color: var(--text);
       background: color-mix(in srgb, var(--surface-strong) 58%, transparent);
@@ -3684,7 +3684,7 @@
       min-height: 28px;
       display: inline-flex;
       align-items: center;
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       padding: 4px 9px;
       color: var(--muted);
       background: rgba(255,255,255,.62);
@@ -5628,7 +5628,7 @@
       color: var(--accent);
       background: var(--ios-fill);
       border: 1px solid rgba(16,24,40,.08);
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       padding: 5px 9px;
       font-weight: 720;
       font-size: 12px;
@@ -5866,7 +5866,7 @@
       align-items: center;
       width: fit-content;
       min-height: 24px;
-      border-radius: 10px;
+      border-radius: var(--hr-radius-chip);
       padding: 4px 8px;
       font-size: 11px;
       font-weight: 760;
@@ -6603,6 +6603,73 @@
 
     .settings-integrations-list .integration-card + .integration-card {
       border-top: 1px solid color-mix(in srgb, var(--line-strong) 44%, transparent);
+    }
+
+    /* The directory is a quiet two-column index, not a stacked status rail.
+       Keep each card self-contained so folder controls and actions share a
+       baseline without the legacy filter-field margins leaking into them. */
+    .integration-directory {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      min-width: 0;
+      overflow: visible;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .integration-directory .integration-card {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 100%;
+      padding: 16px;
+      border: 1px solid color-mix(in srgb, var(--line-strong) 54%, transparent);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+    }
+
+    .integration-directory .integration-card + .integration-card {
+      border-top: 1px solid color-mix(in srgb, var(--line-strong) 54%, transparent);
+    }
+
+    .integration-directory .integration-card .field {
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .integration-directory .integration-card .field label {
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .integration-directory .integration-card .field select {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .integration-directory .integration-card-actions {
+      margin-top: auto;
+      padding-top: 4px;
+    }
+
+    .integration-directory .integration-card-actions > .field {
+      flex: 1 1 15rem;
+    }
+
+    .integration-directory .integration-card-actions > .btn {
+      flex: 0 0 auto;
+    }
+
+    @media (max-width: 900px) {
+      .integration-directory {
+        grid-template-columns: 1fr;
+      }
     }
 
     .integration-card-head,
@@ -7921,7 +7988,7 @@
       min-height: 52px;
       padding: 7px;
       border: 1px solid rgba(235,235,245,.20);
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       color: var(--text);
       --floating-pill-x: -50%;
       opacity: 0;
@@ -8015,7 +8082,7 @@
       gap: 7px;
       padding: 0 11px;
       border: 0;
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       color: var(--muted);
       background: transparent;
       font-size: 12px;
@@ -8383,7 +8450,7 @@
       min-height: 24px;
       padding: 3px 8px;
       border: 0;
-      border-radius: 0;
+      border-radius: var(--hr-radius-chip);
       background: transparent;
       color: #4b5563;
       font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
@@ -8737,7 +8804,7 @@
       min-height: 30px;
       max-width: 100%;
       padding: 6px 10px;
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       font-size: 11px;
       line-height: 1;
       white-space: nowrap;
@@ -9638,7 +9705,7 @@
       display: inline-flex;
       align-items: center;
       padding: 4px;
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       border: 1px solid rgba(235,235,245,.13);
       background: rgba(255,255,255,.055);
     }
@@ -9646,7 +9713,7 @@
     .template-channel-switch button {
       appearance: none;
       border: 0;
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       background: transparent;
       color: var(--muted);
       font-weight: 800;
@@ -10285,7 +10352,7 @@
         linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,.055)),
         linear-gradient(180deg, rgba(83,159,255,.98), rgba(29,111,225,.94));
       border: 1px solid rgba(165,205,255,.58);
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,.34),
         0 8px 22px rgba(0,113,227,.24);
@@ -11058,7 +11125,7 @@
 
     .document-type-pill {
       border: 1px solid var(--line);
-      border-radius: 999px;
+      border-radius: var(--hr-radius-chip);
       background: transparent;
       font-size: 11px;
     }
