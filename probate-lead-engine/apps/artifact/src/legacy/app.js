@@ -15033,7 +15033,8 @@ function renderLoadedState(data, dossier) {
   state.rows = buildRows(data, dossier);
   migrateUnambiguousLegacyEstateState(state.rows);
   pruneBatchSets();
-  synchronizeImportedEstateState();
+  syncLegacyPlaceholderEstateState();
+  syncLegacyPlaceholderCleanupControl();
   state.selectedId = state.selectedId ?? state.rows[0]?.id ?? null;
   document.getElementById("topStatus").textContent = `${data.facts?.length ?? 0} evidence items loaded from the latest lead review.`;
   updateFooterLeadContext(selectedRow());
@@ -15136,7 +15137,8 @@ async function loadRun() {
     state.selectedId = state.rows[0]?.id ?? null;
     state.selectedIds.clear();
     state.queueIds.clear();
-    synchronizeImportedEstateState();
+    syncLegacyPlaceholderEstateState();
+  syncLegacyPlaceholderCleanupControl();
     document.getElementById("topStatus").textContent = error.message;
     document.getElementById("resultsBody").innerHTML = state.rows.length
       ? ""
