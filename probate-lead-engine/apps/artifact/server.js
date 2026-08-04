@@ -456,12 +456,36 @@ async function proxyProcessJson(pathname, { req, session, method = "GET", body }
   return { status: response.status, body: await response.text(), contentType: response.headers.get("content-type") || "application/json; charset=utf-8" };
 }
 
+async function proxyProcessBinary(pathname, { req, session, method = "GET", body } = {}) {
+  const base = processApiBase();
+  if (!base) return null;
+  if (!session?.email) throw new Error("Sign in with an approved HeirRight account before downloading document preparation artifacts.");
+  const response = await fetch(`${base}${pathname}`, {
+    method,
+    body,
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${process.env.HEIRRIGHT_PROCESS_API_TOKEN || ""}`,
+      "x-heirright-actor-email": session.email,
+      "x-heirright-actor-name": session.name || session.email,
+    },
+  });
+  return {
+    status: response.status,
+    bytes: Buffer.from(await response.arrayBuffer()),
+    contentType: response.headers.get("content-type") || "application/octet-stream",
+    disposition: response.headers.get("content-disposition") || "",
+  };
+}
+
 async function handleDocPrepProcessRoute(req, res, url, session) {
   const path = url.pathname;
-  const caseMatch = path.match(/^\/api\/doc-prep\/cases\/([^/]+)(\/events|\/actions\/(retry|cancel))?$/);
+  const caseMatch = path.match(/^\/api\/doc-prep\/cases\/([^/]+)(\/download|\/events|\/actions\/(retry|cancel))?$/);
   const apiPath = path === "/api/doc-prep/cases"
     ? `/v1/doc-prep/cases${url.search}`
-    : caseMatch ? `/v1/doc-prep/cases/${encodeURIComponent(caseMatch[1])}${caseMatch[2] || ""}${url.search}` : "";
+    : path === "/api/doc-prep/exports/google-drive"
+      ? "/v1/doc-prep/exports/google-drive"
+      : caseMatch ? `/v1/doc-prep/cases/${encodeURIComponent(caseMatch[1])}${caseMatch[2] || ""}${url.search}` : "";
   if (!apiPath) return false;
   if (!processApiBase()) { sendJson(res, 503, { ok: false, error: "Document preparation is not configured yet. Ask an administrator to complete the cloud process setup." }, { "cache-control": "no-store" }); return true; }
   if (!(["GET", "POST"].includes(req.method || ""))) { sendMethodNotAllowed(res, "GET, POST"); return true; }
@@ -479,6 +503,12 @@ async function handleDocPrepProcessRoute(req, res, url, session) {
       } : {}),
     })
     : undefined;
+  if (apiPath.endsWith("/download")) {
+    const proxied = await proxyProcessBinary(apiPath, { req, session, method: req.method, body });
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "content-disposition": proxied.disposition, "cache-control": "private, no-store" });
+    res.end(proxied.bytes);
+    return true;
+  }
   const proxied = await proxyProcessJson(apiPath, { req, session, method: req.method, body });
   res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "no-store" });
   res.end(proxied.body);
@@ -2100,7 +2130,7 @@ function handleRequest(req, res) {
     }
   }
 
-  if (url.pathname === "/api/doc-prep/cases" || url.pathname.startsWith("/api/doc-prep/cases/")) {
+  if (url.pathname === "/api/doc-prep/cases" || url.pathname.startsWith("/api/doc-prep/cases/") || url.pathname === "/api/doc-prep/exports/google-drive") {
     handleDocPrepProcessRoute(req, res, url, session).catch((error) => sendJson(res, 502, { ok: false, error: error.message }));
     return;
   }

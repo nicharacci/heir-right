@@ -3967,6 +3967,39 @@
       overflow: hidden;
     }
 
+    .docprep-process-island {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      margin: 0 0 14px;
+      padding: 14px 16px;
+      border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--shell-surface) 92%, var(--ios-fill-strong));
+      box-shadow: 0 7px 16px rgba(31, 42, 51, .07);
+    }
+
+    .docprep-process-island-copy { min-width: 0; }
+    .docprep-process-island-copy strong { display: block; color: var(--text); font-size: 13px; }
+    .docprep-process-island-copy span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .docprep-process-steps { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .docprep-process-step { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .docprep-process-step[data-state="succeeded"] { color: var(--success); }
+    .docprep-process-step[data-state="running"] { color: var(--accent); font-weight: 700; }
+    .docprep-process-step[data-state="blocked"], .docprep-process-step[data-state="review_required"], .docprep-process-step[data-state="failed"] { color: var(--warning); }
+
+    .docprep-cloud-queue { margin-top: 16px; overflow-x: auto; }
+    .docprep-cloud-queue table { width: 100%; border-collapse: collapse; min-width: 680px; }
+    .docprep-cloud-queue th, .docprep-cloud-queue td { padding: 11px 10px; text-align: left; border-bottom: 1px solid var(--line); font-size: 12px; vertical-align: middle; }
+    .docprep-cloud-queue th:last-child, .docprep-cloud-queue td:last-child { text-align: right; }
+    .docprep-cloud-queue td:last-child .btn { min-height: 32px; }
+
+    @media (max-width: 760px) {
+      .docprep-process-island { grid-template-columns: 1fr; }
+      .docprep-process-steps { justify-content: flex-start; }
+    }
+
     .artifact-stream-head {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -13804,6 +13837,57 @@ function verifiedDocPrepPdf(processCase) {
   );
 }
 
+function docPrepProcessRows() {
+  return state.rows
+    .map((row) => ({ row, processCase: docPrepCaseForRow(row) }))
+    .filter((entry) => Boolean(entry.processCase));
+}
+
+function verifiedDocPrepProcessRows() {
+  return docPrepProcessRows().filter((entry) => verifiedDocPrepPdf(entry.processCase));
+}
+
+function docPrepProcessIslandHtml(row = selectedRow()) {
+  const processCase = docPrepCaseForRow(row);
+  if (!processCase) return "";
+  const latest = Array.isArray(processCase.events) ? processCase.events.at(-1) : null;
+  const detail = latest?.detail || processCase.blocker || processCase.nextAction || "The cloud process owns this preparation and records every state change.";
+  return `
+    <section class="docprep-process-island" role="status" aria-label="Cloud document preparation progress">
+      <div class="docprep-process-island-copy">
+        <strong>${escapeHtml(docPrepCaseLabel(processCase))}</strong>
+        <span>${escapeHtml(detail)}</span>
+      </div>
+      <div class="docprep-process-steps" aria-label="Document preparation steps">
+        ${(processCase.steps || []).map((step) => `<span class="docprep-process-step" data-state="${escapeHtml(step.state)}">${escapeHtml(step.name)}</span>`).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function docPrepCloudQueueHtml() {
+  const rows = docPrepProcessRows();
+  if (!rows.length) return "";
+  return `
+    <section class="document-panel docprep-cloud-queue" aria-label="Cloud document preparation queue">
+      <div class="document-panel-head"><div class="document-panel-title"><h3>Cloud Discovery queue</h3><p class="copy">These are the same estates added from Estates. Verified PDFs move to the Export queue.</p></div></div>
+      <table>
+        <thead><tr><th>Estate</th><th>Preparation</th><th>Latest progress</th><th>Download</th></tr></thead>
+        <tbody>${rows.map(({ row, processCase }) => {
+          const ready = verifiedDocPrepPdf(processCase);
+          const latest = Array.isArray(processCase.events) ? processCase.events.at(-1) : null;
+          return `<tr>
+            <td><strong>${escapeHtml(docPrepEstateLabel(row))}</strong></td>
+            <td>${escapeHtml(docPrepCaseLabel(processCase))}</td>
+            <td>${escapeHtml(latest?.detail || processCase.nextAction || processCase.blocker || "Waiting for a durable process event.")}</td>
+            <td>${ready ? `<a class="btn" href="/api/doc-prep/cases/${encodeURIComponent(processCase.id)}/download" download>Download PDF</a>` : `<span class="secondary-text">Not ready</span>`}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table>
+    </section>
+  `;
+}
+
 async function hydrateDocPrepProcessCase(row = selectedRow(), { rerender = true } = {}) {
   if (!row) return null;
   try {
@@ -19274,6 +19358,13 @@ function docPrepAddModalHtml() {
 function renderDossiersListView(target) {
   const rows = docPrepListRows();
   const flow = docPrepFlow();
+  const casesToHydrate = rows.filter((row) => !state.docPrepProcessHydrated.has(String(row.id)));
+  if (casesToHydrate.length) {
+    void Promise.all(casesToHydrate.map((row) => hydrateDocPrepProcessCase(row, { rerender: false })))
+      .then(() => {
+        if (state.activeView === "dossiers" && state.docPrepListOpen) renderDossiersView();
+      });
+  }
   target.innerHTML = `
     <div class="document-prep">
       <div class="document-prep-topline docprep-list-topline">
@@ -19296,6 +19387,7 @@ function renderDossiersListView(target) {
           ${rows.map(docPrepClientRowHtml).join("") || `<div class="docprep-empty-state"><strong>No active document prep rows.</strong><span class="copy">Use Add prep to start Estate Discovery or Closing Prep from eligible estates.</span></div>`}
         </div>
       </section>
+      ${docPrepCloudQueueHtml()}
     </div>
     ${docPrepAddModalHtml()}
   `;
@@ -19389,6 +19481,7 @@ function renderDossiersView() {
           <button type="button" data-doc-filter="missing" aria-pressed="false">Missing · ${escapeHtml(stats.missing)}</button>
         </div>
       </div>
+      ${docPrepProcessIslandHtml(row)}
       <div class="document-prep-shell">
         <section class="document-panel" aria-label="Dossier Supporting Documents">
           <div class="document-panel-head">
@@ -20607,6 +20700,7 @@ function renderQueueView() {
   if (!target) return;
   const items = queueItems();
   const readiness = queueReadinessItems();
+  const verifiedProcessRows = verifiedDocPrepProcessRows();
   target.innerHTML = `
     <div class="queue-layout">
       <section class="loop-panel queue-panel">
@@ -20625,6 +20719,11 @@ function renderQueueView() {
           ${state.exportResult?.ok && state.exportResult?.artifactUrl ? `<a class="btn primary solvys-liquid-glass" href="${escapeHtml(state.exportResult.artifactUrl)}" download>${nucleoIcon("batch-tray", 15)}<span>Download latest PDF</span></a>` : ""}
         </section>
       </aside>
+      <section class="loop-panel queue-panel" aria-label="Verified PDF export queue">
+        <div class="loop-panel-head"><div><p class="eyebrow">Export queue</p><h2 class="loop-title">Verified Discovery PDFs</h2></div><button class="btn primary solvys-liquid-glass" type="button" data-docprep-drive-export ${verifiedProcessRows.length ? "" : "disabled"}>Export separate PDFs to Google Drive</button></div>
+        <p class="copy">Each completed estate exports as its own verified PDF, named from the estate only, never its address.</p>
+        <div class="docprep-cloud-queue"><table><thead><tr><th>Estate</th><th>Status</th><th>Download</th></tr></thead><tbody>${verifiedProcessRows.map(({ row, processCase }) => `<tr><td><strong>${escapeHtml(docPrepEstateLabel(row))}</strong></td><td>Verified PDF ready</td><td><a class="btn" href="/api/doc-prep/cases/${encodeURIComponent(processCase.id)}/download" download>Download PDF</a></td></tr>`).join("") || `<tr><td colspan="3">Verified Discovery PDFs appear here after cloud readback completes.</td></tr>`}</tbody></table></div>
+      </section>
     </div>
   `;
   target.querySelector("[data-queue-export]")?.addEventListener("click", (event) => {
@@ -20648,6 +20747,23 @@ function renderQueueView() {
       renderQueueView();
       syncBatchExportControls();
     });
+  });
+  target.querySelector("[data-docprep-drive-export]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    const cases = verifiedDocPrepProcessRows().map((entry) => entry.processCase.id);
+    if (!cases.length) return;
+    button.disabled = true;
+    try {
+      const response = await fetch("/api/doc-prep/exports/google-drive", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ caseIds: cases, operatorIntent: "export_verified_pdfs_to_google_drive" }) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.ok) throw new Error(result.error || "Google Drive export could not be completed.");
+      document.getElementById("topStatus").textContent = `${result.exports.length} verified PDF${result.exports.length === 1 ? "" : "s"} exported to Google Drive.`;
+      addShellEvent("Verified PDFs exported to Google Drive", `${result.exports.length} estate PDF${result.exports.length === 1 ? "" : "s"} passed Drive readback.`, "ready", true);
+    } catch (error) {
+      document.getElementById("topStatus").textContent = error instanceof Error ? error.message : "Google Drive export could not be completed.";
+    } finally {
+      button.disabled = false;
+    }
   });
 }
 

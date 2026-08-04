@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { InMemoryProcessRepository } from "@ple/docprep-core";
 import { createApp } from "./app.js";
@@ -26,4 +27,27 @@ test("readiness checks the repository connection instead of treating a missing c
   class OfflineRepository extends InMemoryProcessRepository { override async ready() { throw new Error("database unavailable"); } }
   const offlineApp = createApp({ serviceToken: "test-service-token", repository: new OfflineRepository() });
   assert.equal((await offlineApp.request("http://api/readyz")).status, 503);
+});
+test("downloads and Google Drive exports only use a byte-verified PDF", async () => {
+  const pdf = new TextEncoder().encode("%PDF-1.7\nverified\n");
+  const hash = createHash("sha256").update(pdf).digest("hex");
+  const exportRepository = new InMemoryProcessRepository();
+  const [intake] = await exportRepository.intake({ estates: [{ estateId: "estate-api-export", name: "Estate of Morgan Bell", address: "9 Palm Rd, Miami, FL", county: "Miami-Dade", sourceFileReferences: [], actor: { email: "operator@heirright.com" } }] }, "api-export-idempotency-001");
+  const sourcing = await exportRepository.transition(intake.case.id, intake.case.revision, "sourcing", "source");
+  const rendering = await exportRepository.transition(sourcing.id, sourcing.revision, "rendering", "render");
+  const ready = await exportRepository.recordArtifact(rendering.id, rendering.revision, { objectKey: "docprep/export.pdf", contentType: "application/pdf", bytes: pdf.byteLength, sha256: hash, readbackStatus: "verified", verifiedAt: new Date().toISOString(), url: "https://r2.example/docprep/export.pdf" });
+  const requests: Array<{ url: string; method: string }> = [];
+  const fetcher = async (input: string | URL, init?: RequestInit) => {
+    const url = String(input); requests.push({ url, method: init?.method || "GET" });
+    if (url === "https://r2.example/docprep/export.pdf") return new Response(pdf, { headers: { "content-type": "application/pdf" } });
+    if (url.includes("upload/drive/v3/files")) return Response.json({ id: "drive-pdf-1", name: "EST of Morgan Bell.pdf 08-04-2026", mimeType: "application/pdf", webViewLink: "https://drive.example/drive-pdf-1" });
+    return Response.json({ id: "drive-pdf-1", name: "EST of Morgan Bell.pdf 08-04-2026", mimeType: "application/pdf", webViewLink: "https://drive.example/drive-pdf-1" });
+  };
+  const exportApp = createApp({ serviceToken: "test-service-token", repository: exportRepository, fetcher: fetcher as typeof fetch, googleDrive: { accessToken: "drive-token" } });
+  const download = await exportApp.request(`http://api/v1/doc-prep/cases/${ready.id}/download`, { headers });
+  assert.equal(download.status, 200); assert.equal(download.headers.get("content-type"), "application/pdf"); assert.match(download.headers.get("content-disposition") || "", /EST of Morgan Bell\.pdf/);
+  const exported = await exportApp.request("http://api/v1/doc-prep/exports/google-drive", { method: "POST", headers, body: JSON.stringify({ caseIds: [ready.id], operatorIntent: "export_verified_pdfs_to_google_drive" }) });
+  assert.equal(exported.status, 200); const exportedBody = await exported.json() as any;
+  assert.equal(exportedBody.readbackStatus, "verified"); assert.equal(exportedBody.exports[0].name, "EST of Morgan Bell.pdf 08-04-2026");
+  assert.deepEqual(requests.map((request) => request.method), ["GET", "GET", "POST", "GET"]);
 });

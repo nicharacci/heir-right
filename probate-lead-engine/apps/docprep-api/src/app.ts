@@ -1,13 +1,71 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
+import { createHash } from "node:crypto";
 import { IntakeCommand, ProcessConflictError, ProcessRepository, ProcessTransitionError } from "@ple/docprep-core";
 
-export type ApiConfig = { serviceToken: string; repository: ProcessRepository; now?: () => number };
+export type ApiConfig = {
+  serviceToken: string;
+  repository: ProcessRepository;
+  now?: () => number;
+  fetcher?: typeof fetch;
+  googleDrive?: { accessToken?: string; parentFolderId?: string };
+};
 const jsonError = (error: unknown) => ({ ok: false, error: error instanceof Error ? error.message : "The document-prep request could not be completed." });
 const actorEmail = (request: Request) => String(request.headers.get("x-heirright-actor-email") || "").trim().toLowerCase();
 const validActor = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 320;
 
-export const createApp = ({ serviceToken, repository, now = () => Date.now() }: ApiConfig) => {
+const newYorkDate = (at: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "2-digit", day: "2-digit", year: "numeric" }).format(at).replaceAll("/", "-");
+const cleanEstateName = (value: string) => value.replace(/^\s*(?:estate|est)\s+of\s+/i, "").replace(/[^a-z0-9 .'-]/gi, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Estate";
+export const estatePdfFileName = (estateName: string, at = new Date()) => `EST of ${cleanEstateName(estateName)}.pdf ${newYorkDate(at)}`;
+const pdfHash = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+
+async function verifiedArtifactBytes(processCase: Awaited<ReturnType<ProcessRepository["get"]>>, fetcher: typeof fetch): Promise<{ bytes: Uint8Array; filename: string } | null> {
+  const artifact = processCase?.artifact;
+  if (!processCase || processCase.state !== "packet_ready" || artifact?.contentType !== "application/pdf" || artifact.readbackStatus !== "verified" || !artifact.url || !/^[a-f0-9]{64}$/i.test(artifact.sha256)) return null;
+  let url: URL;
+  try { url = new URL(artifact.url); } catch { return null; }
+  if (url.protocol !== "https:") return null;
+  const response = await fetcher(url, { headers: { accept: "application/pdf" } });
+  if (!response.ok || !response.headers.get("content-type")?.toLowerCase().startsWith("application/pdf")) return null;
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength < 5 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46 || bytes[4] !== 0x2d || pdfHash(bytes) !== artifact.sha256) return null;
+  return { bytes, filename: estatePdfFileName(processCase.estate.name) };
+}
+
+async function uploadVerifiedPdfToGoogleDrive({ processCase, verified, token, parentFolderId, fetcher }: {
+  processCase: NonNullable<Awaited<ReturnType<ProcessRepository["get"]>>>;
+  verified: { bytes: Uint8Array; filename: string };
+  token: string;
+  parentFolderId?: string;
+  fetcher: typeof fetch;
+}) {
+  const metadata = {
+    name: verified.filename,
+    mimeType: "application/pdf",
+    ...(parentFolderId ? { parents: [parentFolderId] } : {}),
+    appProperties: { heirrightDocprepCaseId: processCase.id, heirrightPdfSha256: processCase.artifact?.sha256 || "" },
+  };
+  const boundary = `heirright-${processCase.id.replace(/[^a-z0-9]/gi, "")}`;
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`),
+    Buffer.from(`--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`),
+    Buffer.from(verified.bytes),
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ]);
+  const upload = await fetcher("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink&supportsAllDrives=true", {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": `multipart/related; boundary=${boundary}` },
+    body,
+  });
+  const created = await upload.json().catch(() => ({})) as { id?: string; name?: string; mimeType?: string; webViewLink?: string };
+  if (!upload.ok || !created.id) throw new Error(`Google Drive PDF upload failed (${upload.status}).`);
+  const readback = await fetcher(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(created.id)}?fields=id,name,mimeType,webViewLink&supportsAllDrives=true`, { headers: { authorization: `Bearer ${token}` } });
+  const stored = await readback.json().catch(() => ({})) as typeof created;
+  if (!readback.ok || stored.id !== created.id || stored.name !== verified.filename || stored.mimeType !== "application/pdf") throw new Error(`Google Drive PDF readback failed (${readback.status}).`);
+  return { caseId: processCase.id, estateId: processCase.estate.estateId, name: stored.name, url: stored.webViewLink || created.webViewLink || "", readbackStatus: "verified" };
+}
+
+export const createApp = ({ serviceToken, repository, now = () => Date.now(), fetcher = fetch, googleDrive = {} }: ApiConfig) => {
   const app = new Hono();
   app.use("/v1/*", async (context, next) => {
     if (Number(context.req.header("content-length") || 0) > 1_000_000) return context.json({ ok: false, error: "request_too_large" }, 413);
@@ -32,6 +90,12 @@ export const createApp = ({ serviceToken, repository, now = () => Date.now() }: 
   });
   app.get("/v1/doc-prep/cases", async (context) => { const estateId = context.req.query("estateId"); if (!estateId) return context.json({ ok: false, error: "estate_id_required" }, 400); const processCase = await repository.findByEstate(estateId); return processCase ? context.json({ ok: true, case: processCase }) : context.json({ ok: false, error: "not_found" }, 404); });
   app.get("/v1/doc-prep/cases/:caseId", async (context) => { const processCase = await repository.get(context.req.param("caseId")); return processCase ? context.json({ ok: true, case: processCase }) : context.json({ ok: false, error: "not_found" }, 404); });
+  app.get("/v1/doc-prep/cases/:caseId/download", async (context) => {
+    const processCase = await repository.get(context.req.param("caseId"));
+    const verified = await verifiedArtifactBytes(processCase, fetcher).catch(() => null);
+    if (!verified) return context.json({ ok: false, error: "verified_pdf_not_available" }, 409);
+    return new Response(verified.bytes as unknown as BodyInit, { headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="${verified.filename.replace(/"/g, "")}"`, "cache-control": "private, no-store" } });
+  });
   app.get("/v1/doc-prep/cases/:caseId/events", async (context) => {
     const lastEventId = Number(context.req.header("last-event-id") || context.req.query("after") || 0);
     const events = await repository.events(context.req.param("caseId"), Number.isSafeInteger(lastEventId) && lastEventId > 0 ? lastEventId : 0);
@@ -41,6 +105,23 @@ export const createApp = ({ serviceToken, repository, now = () => Date.now() }: 
     const body = await context.req.json().catch(() => ({})) as { revision?: unknown }; const revision = Number(body.revision); if (!Number.isInteger(revision) || revision < 1) return context.json({ ok: false, error: "revision_required" }, 400);
     try { const processCase = context.req.param("action") === "retry" ? await repository.retry(context.req.param("caseId"), revision, actorEmail(context.req.raw)) : context.req.param("action") === "cancel" ? await repository.cancel(context.req.param("caseId"), revision, actorEmail(context.req.raw)) : null; if (!processCase) return context.json({ ok: false, error: "unknown_action" }, 404); return context.json({ ok: true, case: processCase }); }
     catch (error) { return context.json(jsonError(error), error instanceof ProcessConflictError ? 409 : error instanceof ProcessTransitionError ? 422 : 500); }
+  });
+  app.post("/v1/doc-prep/exports/google-drive", async (context) => {
+    const body = await context.req.json().catch(() => ({})) as { caseIds?: unknown; operatorIntent?: unknown };
+    if (body.operatorIntent !== "export_verified_pdfs_to_google_drive") return context.json({ ok: false, error: "operator_intent_required" }, 400);
+    const caseIds = Array.isArray(body.caseIds) ? [...new Set(body.caseIds.filter((value): value is string => typeof value === "string" && /^[a-f0-9-]{36}$/i.test(value)))].slice(0, 50) : [];
+    if (!caseIds.length) return context.json({ ok: false, error: "verified_cases_required" }, 400);
+    if (!googleDrive.accessToken) return context.json({ ok: false, error: "google_drive_not_configured" }, 503);
+    const resolved = await Promise.all(caseIds.map((caseId) => repository.get(caseId)));
+    if (resolved.some((processCase) => !processCase)) return context.json({ ok: false, error: "case_not_found" }, 404);
+    const completed: Array<{ caseId: string; estateId: string; name: string; url: string; readbackStatus: string }> = [];
+    for (const processCase of resolved as NonNullable<typeof resolved[number]>[]) {
+      const verified = await verifiedArtifactBytes(processCase, fetcher).catch(() => null);
+      if (!verified) return context.json({ ok: false, error: "verified_pdf_not_available", caseId: processCase.id }, 409);
+      try { completed.push(await uploadVerifiedPdfToGoogleDrive({ processCase, verified, token: googleDrive.accessToken, parentFolderId: googleDrive.parentFolderId, fetcher })); }
+      catch (error) { return context.json({ ok: false, error: error instanceof Error ? error.message : "google_drive_export_failed", completed }, 502); }
+    }
+    return context.json({ ok: true, exports: completed, readbackStatus: "verified" });
   });
   return app;
 };
