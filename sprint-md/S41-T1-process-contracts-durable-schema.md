@@ -34,10 +34,10 @@ This track creates the shared process language and PostgreSQL source of truth us
 - **Plan**: this brief, dated 2026-08-03.
 - **Environment**: repository-backed Codex Cloud, label `heir-right`.
 - **Environment ID**: `REQUIRED AT DISPATCH` - exact 32-character lowercase hexadecimal ID. Saved project UUID is not an environment ID.
-- **Repository**: `solvys/heir-right`; saved Cloud project `06565aba-04d7-48e9-9f86-1923ded2ed12`, host `solvys-cloud`, managed path `/workspaces/heir-right`. Dispatch must return exact task attachment proof.
+- **Repository**: canonical `nicharacci/heir-right`; the former `solvys/heir-right` remote redirects there. Saved Cloud project `06565aba-04d7-48e9-9f86-1923ded2ed12`, host `solvys-cloud`, managed path `/workspaces/heir-right`. Dispatch must confirm the attachment follows the canonical repository.
 - **Base**: `4e1d9e11ba4638bca78b01a31d2709024eb6f034` plus accepted remote `refs/sprints/S41/P1`. Stop if absent or mismatched.
 - **Checkpoint**: `refs/sprints/S41/T1/P1`.
-- **Checkout/publication**: clean detached task-owned worktree and managed Cloud Git transport to `git@github.com:solvys/heir-right.git`; receipt must include exact HEAD, status, path, task identity, detached mode, and authenticated publication route.
+- **Checkout/publication**: clean detached task-owned worktree and managed Cloud Git transport to `git@github.com:nicharacci/heir-right.git`; receipt must include exact HEAD, status, path, task identity, detached mode, and authenticated publication route.
 - **Protected zones**: existing artifact and worker files; auth; providers; packet/export; legal templates; outreach; websites/campaigns; every unrelated dirty file.
 - **Secrets (names only)**: `DATABASE_URL`, `DATABASE_URL_TEST`. Exclude all provider/OAuth/client values.
 - **Human gates**: production database provisioning and migration execution.

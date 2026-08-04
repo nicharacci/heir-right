@@ -31,7 +31,7 @@ This required final track integrates T1-T4, creates the one root lock update, wi
 
 - **Date branch/checkpoint**: `2026-08-03` `[created for planning; implementation remains undispatched]`; `refs/sprints/S41/T5/P1`; `main` protected.
 - **Environment**: repository-backed Codex Cloud, label `heir-right`, exact 32-character environment ID required.
-- **Repository**: `solvys/heir-right`; saved project `06565aba-04d7-48e9-9f86-1923ded2ed12`, host `solvys-cloud`, `/workspaces/heir-right`, plus exact task receipt.
+- **Repository**: canonical `nicharacci/heir-right`; former `solvys/heir-right` redirects there. Saved project `06565aba-04d7-48e9-9f86-1923ded2ed12`, host `solvys-cloud`, `/workspaces/heir-right`; dispatch must confirm canonical attachment.
 - **Base/ref**: source `4e1d9e11ba4638bca78b01a31d2709024eb6f034`; start from `refs/sprints/S41/P1` containing accepted bounded PLE dirty overlay, then integrate green T1-T4 refs. Stop on absent refs, overlap, or protected-file loss.
 - **Checkout/publication**: detached task-owned unification worktree; receipt lists HEAD, picked SHAs, clean-start, overlay manifest, path, and managed Git route.
 - **Protected**: site/campaign work; legal templates/field map; provider/auth policy; Podio/Google approvals; outreach no-send; unrelated dirty files; no broad redesign.

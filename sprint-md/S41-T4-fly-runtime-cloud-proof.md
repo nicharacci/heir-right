@@ -29,7 +29,7 @@ Prepare Fly deployment and production-safe smoke tooling while T2/T3 build. Do n
 
 - **Date branch/checkpoint**: `2026-08-03`; `refs/sprints/S41/T4/P1`; `main` protected.
 - **Environment**: repository-backed Codex Cloud, label `heir-right`, exact 32-character environment ID required.
-- **Repository**: `solvys/heir-right`; saved project `06565aba-04d7-48e9-9f86-1923ded2ed12` at `/workspaces/heir-right`, plus task receipt.
+- **Repository**: canonical `nicharacci/heir-right`; former `solvys/heir-right` redirects there. Saved project `06565aba-04d7-48e9-9f86-1923ded2ed12` at `/workspaces/heir-right`; dispatch must confirm canonical attachment.
 - **Base**: `4e1d9e11ba4638bca78b01a31d2709024eb6f034`; start from green `refs/sprints/S41/T1/P1`.
 - **Checkout/publication**: clean detached task worktree and managed Cloud Git receipt.
 - **Protected**: all T1/T2/T3/app/current-worker/root-lock/provider/export/legal/outreach/site/campaign files.

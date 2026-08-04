@@ -29,7 +29,7 @@ Build the Fly-hosted Hono API against T1. The first real seam is idempotent inta
 
 - **Date branch/checkpoint**: `2026-08-03`; `refs/sprints/S41/T2/P1`; `main` protected.
 - **Environment**: repository-backed Codex Cloud, label `heir-right`, exact 32-character environment ID required.
-- **Repository proof**: `solvys/heir-right`; saved project `06565aba-04d7-48e9-9f86-1923ded2ed12` at `/workspaces/heir-right`, plus exact task attachment receipt.
+- **Repository proof**: canonical `nicharacci/heir-right`; former `solvys/heir-right` redirects there. Saved project `06565aba-04d7-48e9-9f86-1923ded2ed12` at `/workspaces/heir-right`; dispatch must confirm canonical attachment.
 - **Base**: source `4e1d9e11ba4638bca78b01a31d2709024eb6f034`; start from green remote `refs/sprints/S41/T1/P1`.
 - **Checkout/publication**: clean detached task-owned worktree and managed Cloud Git receipt required.
 - **Protected**: artifact/worker/provider/deploy/export/outreach/legal/root-lock/site/campaign files.

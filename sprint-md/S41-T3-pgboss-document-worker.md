@@ -30,7 +30,7 @@ Install pg-boss as the sequence runner. Preserve HeirRight's actual script by wr
 
 - **Date branch/checkpoint**: `2026-08-03`; `refs/sprints/S41/T3/P1`; `main` protected.
 - **Environment**: repository-backed Codex Cloud, label `heir-right`, exact 32-character environment ID required.
-- **Repository**: `solvys/heir-right`; saved project `06565aba-04d7-48e9-9f86-1923ded2ed12`, `/workspaces/heir-right`, plus task attachment receipt.
+- **Repository**: canonical `nicharacci/heir-right`; former `solvys/heir-right` redirects there. Saved project `06565aba-04d7-48e9-9f86-1923ded2ed12`, `/workspaces/heir-right`; dispatch must confirm canonical attachment.
 - **Base**: `4e1d9e11ba4638bca78b01a31d2709024eb6f034`; start from green `refs/sprints/S41/T1/P1`.
 - **Checkout/publication**: clean detached task-owned worktree and managed Cloud Git receipt.
 - **Protected**: `apps/worker/src/cloudflare.ts`, provider adapters, artifact UI/server, deploy, legal/export/outreach, sites/campaigns, root lock, unrelated dirty files.
