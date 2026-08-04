@@ -43,6 +43,7 @@ assert.deepEqual(client.processSnapshot(snapshot), {
   actor: { email: "operator@heirright.example", name: "Morgan Operator" },
 });
 assert.throws(() => client.processSnapshot({ ...snapshot, session: { user: null } }), /Sign in with an approved HeirRight account/);
+assert.equal(client.idempotencyKey("estate / 2"), "docprep-estate-2", "intake keys must use only the process API's accepted header characters");
 
 const readyCase = {
   id: "case-cloud",

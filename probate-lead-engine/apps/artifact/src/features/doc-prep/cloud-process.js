@@ -26,7 +26,8 @@ function processSnapshot(snapshot = {}) {
 }
 
 function idempotencyKey(estateId) {
-  return `docprep-${encodeURIComponent(asDisplayText(estateId))}`;
+  const normalized = asDisplayText(estateId).replace(/[^A-Za-z0-9._:-]+/g, "-").replace(/^-+|-+$/g, "");
+  return `docprep-${normalized || "estate"}`;
 }
 
 function caseForEstate(estateId) {
