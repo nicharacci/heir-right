@@ -4,6 +4,9 @@ primary_region = "iad"
 [build]
   dockerfile = "deploy/heirright-process/Dockerfile.api"
 
+[deploy]
+  release_command = "node apps/docprep-api/dist/migrate.js"
+
 [env]
   PORT = "8080"
 

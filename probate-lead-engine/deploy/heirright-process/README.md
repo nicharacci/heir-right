@@ -15,7 +15,7 @@ The Fly API service uses the repository-root `fly.toml` (or `deploy/heirright-pr
 - `GOOGLE_WORKSPACE_ACCESS_TOKEN`
 - `GOOGLE_DRIVE_PARENT_FOLDER_ID` when exports belong in a specific shared folder
 
-The API exposes readiness at `/readyz`. It reads verified PDFs from the private R2 bucket by object key, checks the source bytes and SHA-256, then reads Drive PDF metadata and checksum back. A durable claim ledger allows one upload owner for each case/PDF hash, rejects concurrent duplicate uploads, and reuses a completed verified Drive file on later requests.
+The API release command applies the checked-in Doc Prep migrations under a Postgres advisory lock before its machines start. The API exposes readiness at `/readyz`. It reads verified PDFs from the private R2 bucket by object key, checks the source bytes and SHA-256, then reads Drive PDF metadata and checksum back. A durable claim ledger allows one upload owner for each case/PDF hash, rejects concurrent duplicate uploads, and reuses a completed verified Drive file on later requests.
 
 ## Worker service
 
@@ -42,7 +42,7 @@ It forwards the signed operator identity to the process API. The browser never h
 
 ## Controlled production smoke
 
-1. Apply `packages/docprep-core/migrations/0001_docprep_process.sql`, then `packages/docprep-core/migrations/0002_docprep_drive_exports.sql`, to the selected production Postgres database.
+1. Deploy the API release first. Its release command applies `packages/docprep-core/migrations/` under an advisory lock, records the migration checksums, and fails closed if an applied migration changes.
 2. Deploy API and worker, then set the artifact service process URL/token and redeploy it.
 3. Run `PROCESS_API_URL=<api-url> node scripts/s41-cloud-smoke.mjs` for health/readiness/auth proof.
 4. Only for the named approved estate, set `S41_CONTROLLED_ESTATE_APPROVED=approved`, `S41_SMOKE_ACTOR_EMAIL`, and `S41_SMOKE_ESTATE_JSON`. The smoke then requires the terminal `packet_ready` state and a matching PDF byte/hash readback.
