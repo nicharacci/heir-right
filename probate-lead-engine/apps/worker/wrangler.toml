@@ -6,6 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 DEPLOYMENT_KEY = "heirright"
 COUNTY_LIST = "miami-dade"
+GOOGLE_WORKSPACE_DESTINATION_EMAIL = "sam@heirright.com"
 IDI_CORE_LOGIN_URL = "https://login.idicore.com/"
 IDI_CORE_PORTAL_URL = "https://idicore.com/search/PropertySearch"
 IDI_CORE_LIVE_RUN_APPROVED = "false"
