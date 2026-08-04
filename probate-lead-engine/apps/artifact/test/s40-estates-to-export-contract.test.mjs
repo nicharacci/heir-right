@@ -33,6 +33,9 @@ assert.match(communityGrid, /data-hr-table-edge-resize/);
 assert.match(gridCss, /ag-header-row \.ag-header-cell:first-child[\s\S]*ag-header-cell:last-child/);
 assert.match(gridCss, /\.hr-grid-controls[\s\S]*flex-wrap: wrap/);
 assert.match(gridCss, /\.hr-grid-action-status[\s\S]*flex: 1 1 100%/);
+assert.match(gridCss, /\.hr-grid-header > div:first-child[\s\S]*flex: 0 1 24rem/);
+assert.match(gridCss, /\.hr-grid-header > div:first-child[\s\S]*min-width: 16rem/);
+assert.match(gridCss, /\.hr-grid-controls[\s\S]*flex: 1 1 auto/);
 for (const [surface, source] of [["Estates", estates], ["Doc Prep", docPrepView], ["Queue", queueGrid], ["Export", exportView], ["Admin", adminAuditGrid]]) {
   assert.match(source, /createCommunityGrid/, `${surface} must use the shared table primitive`);
 }

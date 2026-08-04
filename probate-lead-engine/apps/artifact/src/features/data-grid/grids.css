@@ -81,7 +81,8 @@
 .hr-admin-audit-header > div:first-child {
   display: grid;
   gap: var(--hr-space-2);
-  min-width: 0;
+  flex: 0 1 24rem;
+  min-width: 16rem;
 }
 
 .hr-grid-header h1 {
@@ -111,7 +112,7 @@
 
 .hr-grid-controls {
   display: flex;
-  flex: 1 1 52rem;
+  flex: 1 1 auto;
   min-width: 0;
   gap: var(--hr-space-3);
   flex-wrap: wrap;
