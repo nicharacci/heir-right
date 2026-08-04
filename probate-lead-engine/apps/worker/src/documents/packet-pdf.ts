@@ -360,12 +360,17 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
   pdf.setCreator("HeirRight");
   pdf.setCreationDate(new Date(model.generatedAt));
 
-  const addPage = (): PDFPage => pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  const pageMeta: Array<{ estateName: string; sectionTitle: string; continuation: boolean }> = [];
+  const addPage = (estateName = "", sectionTitle = "", continuation = false): PDFPage => {
+    const page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    pageMeta.push({ estateName, sectionTitle, continuation });
+    return page;
+  };
   const drawSection = (estateName: string, section: PacketSection): void => {
-    let page = addPage();
+    let page = addPage(estateName, section.title, false);
     let cursor = PAGE_HEIGHT - 66;
     const newPage = (): void => {
-      page = addPage();
+      page = addPage(estateName, section.title, true);
       cursor = PAGE_HEIGHT - 66;
     };
     for (const titleLine of wrap(section.title, bold, 15, CONTENT_WIDTH)) {
@@ -431,7 +436,7 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
     const familyTreeFormat = Boolean(summary && (offer || backstory || contacts));
 
     if (familyTreeFormat) {
-      let page = addPage();
+      let page = addPage(estate.displayName, "Family Tree", false);
       const addressSuffix = ` - ${estate.propertyAddress}`.toLowerCase();
       const displayName = estate.displayName.toLowerCase().endsWith(addressSuffix)
         ? estate.displayName.slice(0, estate.displayName.length - addressSuffix.length)
@@ -495,14 +500,14 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
       }
 
       if (backstory || contacts) {
-        page = addPage();
+        page = addPage(estate.displayName, "Family Tree", true);
         cursor = 718;
         const familyLeft = 72;
         const familyWidth = 468;
         const familyLineHeight = 17.5;
         const ensureFamilySpace = (height: number): void => {
           if (cursor - height >= 54) return;
-          page = addPage();
+          page = addPage(estate.displayName, "Family Tree", true);
           cursor = 718;
         };
         const drawFamilyText = (text: string, options: {
@@ -660,6 +665,39 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
     for (const section of sections) drawSection(estate.displayName, section);
   }
 
+  const pages = pdf.getPages();
+  pages.forEach((page, index) => {
+    const meta = pageMeta[index] || { estateName: model.title, sectionTitle: "Discovery packet", continuation: false };
+    const breadcrumb = ascii(`${meta.estateName || model.title} / ${meta.sectionTitle || "Discovery packet"}${meta.continuation ? " / Continued" : ""}`).slice(0, 120);
+    page.drawText(breadcrumb, {
+      x: MARGIN,
+      y: PAGE_HEIGHT - 30,
+      size: 8,
+      font: regular,
+      color: rgb(0.36, 0.36, 0.36),
+    });
+    page.drawLine({
+      start: { x: MARGIN, y: PAGE_HEIGHT - 38 },
+      end: { x: PAGE_WIDTH - MARGIN, y: PAGE_HEIGHT - 38 },
+      thickness: 0.45,
+      color: rgb(0.78, 0.78, 0.78),
+    });
+    const pageLabel = `${index + 1} of ${pages.length}`;
+    page.drawText(pageLabel, {
+      x: PAGE_WIDTH - MARGIN - regular.widthOfTextAtSize(pageLabel, 8),
+      y: 28,
+      size: 8,
+      font: regular,
+      color: rgb(0.36, 0.36, 0.36),
+    });
+    page.drawLine({
+      start: { x: MARGIN, y: 40 },
+      end: { x: PAGE_WIDTH - MARGIN, y: 40 },
+      thickness: 0.45,
+      color: rgb(0.78, 0.78, 0.78),
+    });
+  });
+
   return pdf.save({ useObjectStreams: false });
 }
 
@@ -786,6 +824,24 @@ async function renderClosingPacketPdf(model: PacketModel): Promise<Uint8Array> {
       }
     }
   }
+  const pages = pdf.getPages();
+  pages.forEach((page, index) => {
+    const pageLabel = `${index + 1} of ${pages.length}`;
+    const pageWidth = page.getWidth();
+    page.drawText(pageLabel, {
+      x: pageWidth - 48 - regular.widthOfTextAtSize(pageLabel, 7.5),
+      y: 16,
+      size: 7.5,
+      font: regular,
+      color: rgb(0.42, 0.44, 0.43),
+    });
+    page.drawLine({
+      start: { x: 48, y: 28 },
+      end: { x: pageWidth - 48, y: 28 },
+      thickness: 0.45,
+      color: rgb(0.82, 0.83, 0.82),
+    });
+  });
   return pdf.save({ useObjectStreams: false });
 }
 
