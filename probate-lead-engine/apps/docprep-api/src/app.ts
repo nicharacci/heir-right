@@ -10,6 +10,7 @@ const validActor = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) &
 export const createApp = ({ serviceToken, repository, now = () => Date.now() }: ApiConfig) => {
   const app = new Hono();
   app.use("/v1/*", async (context, next) => {
+    if (Number(context.req.header("content-length") || 0) > 1_000_000) return context.json({ ok: false, error: "request_too_large" }, 413);
     const authorization = context.req.header("authorization") || "";
     if (!serviceToken || authorization !== `Bearer ${serviceToken}`) return context.json({ ok: false, error: "unauthorized" }, 401);
     const actor = actorEmail(context.req.raw);
@@ -20,7 +21,13 @@ export const createApp = ({ serviceToken, repository, now = () => Date.now() }: 
   app.get("/readyz", async (context) => { try { await repository.ready(); return context.json({ ok: true, status: "ready" }); } catch { return context.json({ ok: false, error: "database_not_ready" }, 503); } });
   app.post("/v1/doc-prep/cases", async (context) => {
     const idempotencyKey = context.req.header("idempotency-key") || "";
-    try { const body = IntakeCommand.parse(await context.req.json()); const result = await repository.intake(body, idempotencyKey); return context.json({ ok: true, cases: result }, result.every((entry) => entry.created && !entry.idempotent) ? 201 : 200); }
+    try {
+      const body = IntakeCommand.parse(await context.req.json());
+      const trustedActor = actorEmail(context.req.raw);
+      const command = { ...body, estates: body.estates.map((estate) => ({ ...estate, actor: { email: trustedActor } })) };
+      const result = await repository.intake(command, idempotencyKey);
+      return context.json({ ok: true, cases: result }, result.every((entry) => entry.created && !entry.idempotent) ? 201 : 200);
+    }
     catch (error) { return context.json(jsonError(error), error instanceof ProcessConflictError ? 409 : 400); }
   });
   app.get("/v1/doc-prep/cases", async (context) => { const estateId = context.req.query("estateId"); if (!estateId) return context.json({ ok: false, error: "estate_id_required" }, 400); const processCase = await repository.findByEstate(estateId); return processCase ? context.json({ ok: true, case: processCase }) : context.json({ ok: false, error: "not_found" }, 404); });
