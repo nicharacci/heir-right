@@ -29,7 +29,7 @@ function publicOrigin(request) {
 
 function intakeIdempotencyKey(request, body, path) {
   const supplied = request.headers["idempotency-key"] || request.headers["Idempotency-Key"];
-  if (typeof supplied === "string" && supplied) return supplied;
+  if (typeof supplied === "string" && /^[A-Za-z0-9._:-]{12,200}$/.test(supplied)) return supplied;
   if (path !== "/v1/doc-prep/cases") return "";
   const estateId = String(body?.estates?.[0]?.estateId || "").trim();
   const normalized = estateId.replace(/[^A-Za-z0-9._:-]+/g, "-").replace(/^-+|-+$/g, "");

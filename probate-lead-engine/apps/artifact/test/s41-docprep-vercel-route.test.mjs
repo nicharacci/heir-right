@@ -62,6 +62,15 @@ try {
   assert.equal(intakeResult.statusCode, 200);
   assert.equal(requests[1].init.headers["idempotency-key"], "docprep-intake-estate-1", "the authenticated Vercel proxy supplies a stable case key when the browser header is absent");
 
+  const encodedHeaderIntake = await call({
+    method: "POST",
+    url: "/api/doc-prep/cases",
+    body: { estates: [{ estateId: "estate-2", name: "Estate Two", address: "2 Main St", county: "Miami-Dade" }] },
+    headers: { cookie: `hr_session=${encodeURIComponent(session)}`, "idempotency-key": "docprep-estate%2F2" },
+  });
+  assert.equal(encodedHeaderIntake.statusCode, 200);
+  assert.equal(requests[2].init.headers["idempotency-key"], "docprep-intake-estate-2", "the proxy replaces a URL-encoded browser header with a valid stable case key");
+
   const viewed = await call({
     url: "/api/doc-prep/cases/case-1/view",
     headers: { cookie: `hr_session=${encodeURIComponent(session)}` },
