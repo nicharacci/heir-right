@@ -73,7 +73,6 @@ async function discoverServerNousCredential(input: {
   fetcher: typeof fetch;
   baseUrl?: string | null;
 }): Promise<NousFreeModelCredential | null> {
-  const fallback = credentialFromModels(input.token, input.configured, [], input.baseUrl);
   try {
     const response = await input.fetcher(`${serverNousBaseUrl(input.baseUrl)}/models`, {
       headers: {
@@ -83,12 +82,12 @@ async function discoverServerNousCredential(input: {
       redirect: "error",
       signal: AbortSignal.timeout(12_000),
     });
-    if (!response.ok) return fallback;
+    if (!response.ok) return null;
     const body = await response.json().catch(() => null);
     const models = modelEntries(body);
     return credentialFromModels(input.token, input.configured, models, input.baseUrl);
   } catch {
-    return fallback;
+    return null;
   }
 }
 
@@ -102,12 +101,12 @@ function credentialFromModels(
   const freeModels = unique(
     entries.filter(isFreeTextModel).map((entry) => entry.id),
   );
-  const selected = configured ?? freeModels[0] ?? null;
+  const selected = configured && freeModels.includes(configured)
+    ? configured
+    : freeModels[0] ?? null;
   if (!selected) return null;
-  const verifiedModels = unique([...modelIds, selected]);
-  const verifiedFreeModels = unique(
-    configured && !freeModels.length ? [configured] : freeModels,
-  );
+  const verifiedModels = unique(modelIds);
+  const verifiedFreeModels = unique(freeModels);
   if (!verifiedFreeModels.length) return null;
   return {
     provider: "nous",

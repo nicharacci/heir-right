@@ -217,11 +217,11 @@ const dripSettingsKey = "heirright:drip-settings";
 const agenticModelPreferenceKey = "heirright:agentic-model-preference";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
 const walkthroughStateKey = "heirright:guided-walkthrough-seen";
-const crmImportMaxFileBytes = 10 * 1024 * 1024;
+const estateFileImportMaxBytes = 3 * 1024 * 1024;
 let walkthroughAutoTimer = null;
 let shellViewTransitionTimer = null;
-let crmImportFile = null;
-let crmImportUploadToken = 0;
+let estateImportFile = null;
+let estateImportUploadToken = 0;
 const documentAutomationTimers = new Map();
 const serverBackedStateKeys = new Set([
   crmImportStateKey,
@@ -533,9 +533,9 @@ const closingDocPhases = [
     name: "Closing Intake",
     label: "Closing intake",
     source: "Podio or Google Sheets row",
-    summary: "Start from the CRM estate row, confirm the seller file, property address, folio, title company contact, and review owner.",
+    summary: "Start from the imported estate record, confirm the seller file, property address, folio, title company contact, and review owner.",
     steps: ["Confirm the imported estate row and review owner.", "Attach title-company or closing contact notes.", "Lock the source row before drafting closing paperwork."],
-    preferences: ["Use CRM estate row", "Require review owner", "Keep imported fields linked"]
+    preferences: ["Use imported estate record", "Require review owner", "Keep imported fields linked"]
   },
   {
     id: "title-clearance",
@@ -2363,7 +2363,8 @@ function crmProviderLabel(provider = "podio") {
   return {
     podio: "Podio",
     "google-sheets": "Google Sheets",
-    csv: "CSV / pasted CRM row"
+    csv: "CSV",
+    "file-upload": "Uploaded PDF/CSV"
   }[provider] ?? displayStatus(provider, "CRM");
 }
 
@@ -2499,12 +2500,16 @@ function generatedCrmEstateId() {
 }
 
 function normalizeCrmImport(input = {}) {
-  const provider = ["podio", "google-sheets", "csv"].includes(input.provider) ? input.provider : "podio";
-  const estateName = String(input.estateName || input.ownerName || "Imported estate").trim().slice(0, 120);
-  const propertyAddress = String(input.propertyAddress || "Address needs review").trim().slice(0, 180);
-  const ownerName = String(input.ownerName || estateName).trim().slice(0, 120);
-  const county = String(input.county || "miami-dade").trim().slice(0, 80);
-  const parcelId = String(input.parcelId || "Folio needs review").trim().slice(0, 80);
+  const provider = ["podio", "google-sheets", "csv", "file-upload"].includes(input.provider) ? input.provider : "podio";
+  const fileUpload = provider === "file-upload";
+  const estateName = String(input.estateName || input.ownerName || (fileUpload ? "" : "Imported estate")).trim().slice(0, 120);
+  const propertyAddress = String(input.propertyAddress || (fileUpload ? "" : "Address needs review")).trim().slice(0, 180);
+  const ownerName = String(input.ownerName || (fileUpload ? "" : estateName)).trim().slice(0, 120);
+  const county = String(input.county || (fileUpload ? "" : "miami-dade")).trim().slice(0, 80);
+  const parcelId = String(input.parcelId || (fileUpload ? "" : "Folio needs review")).trim().slice(0, 80);
+  const missingFields = Array.isArray(input.missingFields)
+    ? Array.from(new Set(input.missingFields.map((field) => String(field || "").trim()).filter(Boolean))).slice(0, 12)
+    : [];
   const sourceRecordId = String(input.sourceRecordId || "").trim().slice(0, 120);
   const exactEstateId = String(input.id || (sourceRecordId ? `crm:${provider}:${sourceRecordId}` : "")).trim().slice(0, 240);
   return {
@@ -2517,6 +2522,11 @@ function normalizeCrmImport(input = {}) {
     parcelId,
     sourceRecordId,
     sourceUrl: String(input.sourceUrl || "").trim().slice(0, 240),
+    sourceHash: String(input.sourceHash || "").trim().slice(0, 128),
+    sourceFileName: String(input.sourceFileName || "").trim().slice(0, 180),
+    sourceMethod: String(input.sourceMethod || "").trim().slice(0, 80),
+    sourceModel: String(input.sourceModel || "").trim().slice(0, 180),
+    missingFields,
     notes: String(input.notes || "").trim().slice(0, 800),
     importedAt: input.importedAt || isoNow(),
     importedBy: input.importedBy || currentActorEmail(),
@@ -2533,13 +2543,15 @@ function canonicalCrmImportStateText(value = "[]") {
 
 function minimalImportedDossier(imported) {
   const provider = crmProviderLabel(imported.provider);
+  const fileUpload = imported.provider === "file-upload";
+  const sourceLabel = imported.sourceFileName || provider;
   return {
     generatedAt: imported.importedAt,
     workflow: { status: "review_required" },
     summary: {
       estateName: imported.estateName,
       displayName: imported.estateName,
-      caseNumber: imported.sourceRecordId || "CRM row",
+      caseNumber: imported.sourceRecordId || "Source record",
       nextBestAction: "Begin Estate Discovery first; move to Closing Prep after review."
     },
     property: {
@@ -2548,32 +2560,32 @@ function minimalImportedDossier(imported) {
       estateName: { value: imported.estateName },
       county: { value: imported.county },
       parcelId: { value: imported.parcelId },
-      caseNumber: { value: imported.sourceRecordId || "CRM row" }
+      caseNumber: { value: imported.sourceRecordId || "Source record" }
     },
     completedLeadReport: {
       generatedAt: imported.importedAt,
-      missingData: ["Source evidence", "Heir/contact review", "Offer math", "CRM readback"],
+      missingData: ["Source evidence", "Heir/contact review", "Offer math", ...(fileUpload ? [] : ["Source-system readback"])],
       reviewGate: { externalUseBlocked: true },
       offerMath: {},
       formats: {
         html: pageShellHtml("Imported Estate Review Packet", imported.estateName, `
-          <p class="muted">Imported from ${escapeHtml(provider)} into the shared HeirRight workspace. Source evidence, approval, and CRM confirmation are still required.</p>
+          <p class="muted">${fileUpload ? `Parsed from ${escapeHtml(sourceLabel)} with ${escapeHtml(imported.sourceModel || "a verified free Nous model")}. Missing facts remain review-required.` : `Imported from ${escapeHtml(provider)} into the shared HeirRight workspace. Source evidence, approval, and source-system confirmation are still required.`}</p>
           <table>
             <tr><th>Estate</th><td>${escapeHtml(imported.estateName)}</td></tr>
             <tr><th>Owner</th><td>${escapeHtml(imported.ownerName)}</td></tr>
             <tr><th>Property</th><td>${escapeHtml(imported.propertyAddress)}</td></tr>
             <tr><th>County</th><td>${escapeHtml(formatCountyName(imported.county))}</td></tr>
-            <tr><th>CRM source</th><td>${escapeHtml(provider)}${imported.sourceRecordId ? ` - ${escapeHtml(imported.sourceRecordId)}` : ""}</td></tr>
+            <tr><th>${fileUpload ? "Source file" : "Imported source"}</th><td>${escapeHtml(sourceLabel)}${imported.sourceRecordId ? ` - ${escapeHtml(imported.sourceRecordId)}` : ""}</td></tr>
           </table>
         `)
       }
     },
     crm: {
-      status: "not_configured",
+      status: fileUpload ? "not_applicable" : "not_configured",
       payload: {
         appModel: {
           workspace: provider,
-          app: "Imported estate row",
+          app: fileUpload ? "Parsed estate source" : "Imported estate row",
           fields: {
             estate_name: imported.estateName,
             property_address: imported.propertyAddress,
@@ -2583,14 +2595,27 @@ function minimalImportedDossier(imported) {
           },
           pipelineStages: ["Imported", "Estate Discovery", "Closing Prep", "Review"]
         },
-        podioReadiness: {
+        podioReadiness: fileUpload ? {
+          classification: "not_applicable",
+          missingConfig: [],
+          blockers: [],
+          readbackChecks: []
+        } : {
           classification: "prep_only",
           missingConfig: ["Approved access", "Readback proof"],
-          blockers: ["The estate is shared in HeirRight, but its source CRM still needs an approved connection and confirmation check."],
-          readbackChecks: ["Confirm imported estate row", "Confirm linked source facts", "Confirm no duplicate CRM item"]
+          blockers: ["The estate is shared in HeirRight, but its source system still needs an approved connection and confirmation check."],
+          readbackChecks: ["Confirm imported estate row", "Confirm linked source facts", "Confirm no duplicate source record"]
         }
       }
     },
+    sourceUpload: fileUpload ? {
+      fileName: imported.sourceFileName,
+      contentHash: imported.sourceHash,
+      method: imported.sourceMethod,
+      model: imported.sourceModel,
+      missingFields: imported.missingFields,
+      reviewRequired: true,
+    } : null,
     operatorQueue: {
       state: "manual_review",
       items: [{ title: "Imported estate review", nextAction: "Confirm source evidence before outreach or closing docs." }]
@@ -2600,6 +2625,7 @@ function minimalImportedDossier(imported) {
 
 function crmImportRow(imported) {
   const normalized = normalizeCrmImport(imported);
+  const fileUpload = normalized.provider === "file-upload";
   const dossier = minimalImportedDossier(normalized);
   const missing = buildMissingSections(dossier);
   const archived = Boolean(normalized.archivedAt);
@@ -2608,13 +2634,13 @@ function crmImportRow(imported) {
   const estateFileName = isDemoEstateImport(normalized) ? `Sample: ${baseEstateFileName}` : baseEstateFileName;
   const row = {
     id: normalized.id,
-    kind: "CRM Import",
-    sourceKind: "crm-import",
+    kind: fileUpload ? "Estate File" : "Imported Estate",
+    sourceKind: fileUpload ? "file-import" : "crm-import",
     sourceProvider: normalized.provider,
     sourceRecordId: normalized.sourceRecordId,
     isArchived: archived,
     title: estateFileName,
-    file: normalized.sourceRecordId || crmProviderLabel(normalized.provider),
+    file: normalized.sourceFileName || normalized.sourceRecordId || crmProviderLabel(normalized.provider),
     leadName: estateFileName,
     address: normalized.propertyAddress,
     county: normalized.county,
@@ -2625,9 +2651,9 @@ function crmImportRow(imported) {
     evidenceTotal: 9,
     status: archived ? "archived" : (demoMeta.status || "review"),
     next: archived ? "Archived" : (demoMeta.next || "Begin Estate Discovery"),
-    classification: archived ? "Archived Import" : (demoMeta.classification || "CRM Import"),
+    classification: archived ? "Archived Import" : (demoMeta.classification || (fileUpload ? "File Import" : "Imported Estate")),
     missing,
-    search: `${normalized.estateName} ${normalized.ownerName} ${estateFileName} ${normalized.propertyAddress} ${normalized.parcelId} ${normalized.sourceRecordId} ${crmProviderLabel(normalized.provider)} imported crm closing docs discovery sample demo ${demoMeta.classification || ""}`,
+    search: `${normalized.estateName} ${normalized.ownerName} ${estateFileName} ${normalized.propertyAddress} ${normalized.parcelId} ${normalized.sourceRecordId} ${normalized.sourceFileName} ${crmProviderLabel(normalized.provider)} imported ${fileUpload ? "pdf csv file" : "crm"} discovery ${demoMeta.classification || ""}`,
     leadType: "probate",
     dossier,
     data: {
@@ -4642,7 +4668,7 @@ function closingBlockerListHtml(blockers) {
 function closingTemplateSourceRows(row = selectedRow(), dossier = dossierForRow(row)) {
   const report = dossier?.completedLeadReport ?? {};
   return [
-    ["Estate source", row?.sourceProvider || "HeirRight lead packet / CRM import"],
+    ["Estate source", row?.sourceProvider || "HeirRight imported estate record"],
     ["Property", row?.address || dossier?.property?.address?.value || "Needs review"],
     ["Folio / parcel", row?.parcel || dossier?.property?.parcelId?.value || "Needs review"],
     ["Deed evidence", phaseIsComplete("deed", row, "discovery") ? "Captured or source-complete" : "Needs Official Records review"],
@@ -5075,7 +5101,7 @@ function docPrepStreamPhaseLines(row = selectedRow(), dossier = dossierForRow(ro
       `Owner: ${docPrepOwnerLabel(row)}`,
       `Folio: ${cleanDisplayValue(row?.parcel || dossier?.property?.parcelId?.value || "Needs folio review")}`,
       sourceProofDetailLine(capture, "property_appraiser", ["property_identity", "owner_name", "owner_identity"], "Property Appraiser proof"),
-      row?.sourceKind === "crm-import" ? `CRM row: ${row.sourceRecordId || row.file || "linked estate import"}` : "External estate row is being assembled from public source evidence."
+      row?.sourceKind === "crm-import" ? `Imported record: ${row.sourceRecordId || row.file || "linked estate import"}` : "External estate row is being assembled from public source evidence."
     ].filter(Boolean),
     "tax-receipt": [
       `Tax source status: ${cleanDisplayValue(taxStatus)}`,
@@ -7199,14 +7225,9 @@ function wireDocumentActionModal(mount) {
   });
 }
 
-function openCrmImportModal(options = {}) {
+function openCrmImportModal() {
   resetCrmImportUpload();
-  const mode = options.mode === "batch" ? "batch" : "single";
-  const provider = ["podio", "google-sheets", "csv"].includes(options.provider) ? options.provider : "podio";
   state.crmImportModal.open = true;
-  state.crmImportModal.mode = mode;
-  state.crmImportModal.provider = provider;
-  state.crmImportModal.draft = { batchRows: "", sourceUrl: "", notes: "" };
   renderCrmImportModal();
 }
 
@@ -7224,13 +7245,17 @@ function emptyCrmImportUpload() {
     progress: 0,
     message: "",
     failurePhase: "",
-    source: ""
+    source: "",
+    items: [],
+    model: "",
+    sourceHash: "",
+    reviewRequired: true
   };
 }
 
 function resetCrmImportUpload() {
-  crmImportFile = null;
-  crmImportUploadToken += 1;
+  estateImportFile = null;
+  estateImportUploadToken += 1;
   state.crmImportUpload = emptyCrmImportUpload();
 }
 
@@ -7241,32 +7266,20 @@ function formatCrmFileSize(bytes) {
   return (value / (1024 * 1024)).toFixed(1) + " MB";
 }
 
-function countCrmImportRows(text) {
-  return String(text || "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line, index) => {
-      if (index !== 0) return true;
-      const header = splitCrmBatchLine(line).slice(0, 2).join(" ").toLowerCase();
-      return !/first\s+name/.test(header) && !/last\s+name/.test(header);
-    }).length;
-}
-
 function crmImportUploadStatusText(upload) {
   switch (upload.status) {
     case "uploading":
-      return "Reading the CSV file…";
+      return upload.message || "Sending the estate file for secure text extraction…";
     case "importing":
-      return upload.message || "Importing estate records…";
+      return upload.message || "Adding reviewed estate records…";
     case "success":
-      return upload.message || "CSV ready to import.";
+      return upload.message || "Estate records are ready for review.";
     case "error":
-      return upload.message || "The CSV could not be prepared.";
+      return upload.message || "The estate file could not be parsed.";
     case "queued":
-      return upload.message || "CSV queued.";
+      return upload.message || "Estate file queued.";
     default:
-      return "CSV only, up to 10 MB. Browse or drop a file to load estate rows.";
+      return "PDF or CSV, up to 3 MB. A verified zero-cost Nous model parses the source without filling missing facts.";
   }
 }
 
@@ -7285,7 +7298,7 @@ function renderCrmImportUpload() {
     ? '<div class="crm-upload-file" data-crm-upload-file-row>' +
         '<div class="crm-upload-file-meta">' +
           '<strong>' + escapeHtml(upload.name) + '</strong>' +
-          '<span>' + formatCrmFileSize(upload.size) + (upload.rowCount ? " · " + upload.rowCount + " rows" : "") + '</span>' +
+          '<span>' + formatCrmFileSize(upload.size) + (upload.rowCount ? " · " + upload.rowCount + " estate" + (upload.rowCount === 1 ? "" : "s") : "") + '</span>' +
         '</div>' +
         '<div class="crm-upload-file-actions">' +
           '<span class="crm-upload-file-status" data-crm-upload-file-status>' + escapeHtml(upload.status) + '</span>' +
@@ -7295,34 +7308,30 @@ function renderCrmImportUpload() {
       '</div>'
     : "";
   const progressMarkup = showProgress
-    ? '<div class="crm-upload-progress" role="progressbar" aria-label="CSV import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + progress + '">' +
+    ? '<div class="crm-upload-progress" role="progressbar" aria-label="Estate file parsing progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + progress + '">' +
         '<span style="width:' + progress + '%"></span>' +
       '</div>'
     : "";
   return '<div class="crm-upload" data-crm-upload-status="' + escapeHtml(upload.status) + '">' +
-    '<label class="crm-upload-dropzone" for="crmImportCsvFile" tabindex="0" role="button" data-crm-upload-dropzone>' +
-      '<span class="crm-upload-kicker">CSV file</span>' +
-      '<strong>Browse CSV or drop it here</strong>' +
-      '<span class="field-note">UTF-8 CSV, up to 10 MB. The original file stays in this browser.</span>' +
+    '<label class="crm-upload-dropzone" for="estateFileInput" tabindex="0" role="button" data-estate-upload-dropzone>' +
+      '<span class="crm-upload-kicker">Estate source</span>' +
+      '<strong>Browse PDF or CSV, or drop it here</strong>' +
+      '<span class="field-note">Searchable PDF or UTF-8 CSV, up to 3 MB. Parsing stays review-required.</span>' +
     '</label>' +
-    '<input id="crmImportCsvFile" class="crm-upload-input" type="file" accept=".csv,text/csv" aria-describedby="crmImportCsvFileNote">' +
-    '<p id="crmImportCsvFileNote" class="field-note crm-upload-message" aria-live="polite">' + escapeHtml(crmImportUploadStatusText(upload)) + '</p>' +
+    '<input id="estateFileInput" class="crm-upload-input" type="file" accept=".pdf,.csv,application/pdf,text/csv" aria-describedby="estateFileInputNote">' +
+    '<p id="estateFileInputNote" class="field-note crm-upload-message" aria-live="polite">' + escapeHtml(crmImportUploadStatusText(upload)) + '</p>' +
     fileRow +
     progressMarkup +
   '</div>';
 }
 
-function readCrmCsvFile(file, onProgress) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("progress", (event) => {
-      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
-    });
-    reader.addEventListener("load", () => resolve(String(reader.result || "")));
-    reader.addEventListener("error", () => reject(new Error("csv-read-failed")));
-    reader.addEventListener("abort", () => reject(new Error("csv-read-aborted")));
-    reader.readAsText(file);
-  });
+async function base64ForEstateFile(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const chunks = [];
+  for (let offset = 0; offset < bytes.length; offset += 32_768) {
+    chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + 32_768)));
+  }
+  return btoa(chunks.join(""));
 }
 
 function setCrmImportUploadError(message, failurePhase = "processing") {
@@ -7337,75 +7346,74 @@ function setCrmImportUploadError(message, failurePhase = "processing") {
   document.getElementById("topStatus").textContent = message;
 }
 
-async function queueCrmCsvFile(file) {
+async function queueEstateFile(file) {
   if (!file) return;
-  crmImportFile = file;
-  const token = ++crmImportUploadToken;
-  const fileName = String(file.name || "selected.csv");
+  estateImportFile = file;
+  const token = ++estateImportUploadToken;
+  const fileName = String(file.name || "estate-source");
+  const fileType = String(file.type || "").toLowerCase();
+  const contentType = /\.pdf$/i.test(fileName) || fileType === "application/pdf" ? "application/pdf" : "text/csv";
   state.crmImportUpload = {
     ...emptyCrmImportUpload(),
     status: "queued",
     name: fileName,
     size: Number(file.size) || 0,
-    source: "local-file",
-    message: "CSV queued for reading…"
+    source: "file-upload",
+    message: "Estate file queued for parsing…"
   };
   renderCrmImportModal({ focus: false });
   await new Promise((resolve) => requestAnimationFrame(resolve));
-  if (token !== crmImportUploadToken) return;
-  state.crmImportUpload = {
-    ...state.crmImportUpload,
-    status: "uploading",
-    message: "Reading the CSV file…"
-  };
-  renderCrmImportModal({ focus: false });
-  const fileType = String(file.type || "").toLowerCase();
-  if (!/\.csv$/i.test(fileName) && !["text/csv", "application/csv", "text/plain"].includes(fileType)) {
-    setCrmImportUploadError("Choose a CSV file to continue.", "validation");
+  if (token !== estateImportUploadToken) return;
+  const supportedPdf = /\.pdf$/i.test(fileName) || fileType === "application/pdf";
+  const supportedCsv = /\.csv$/i.test(fileName) || ["text/csv", "application/csv"].includes(fileType);
+  if (!supportedPdf && !supportedCsv) {
+    setCrmImportUploadError("Choose a PDF or CSV file to continue.", "validation");
     return;
   }
-  if (Number(file.size) > crmImportMaxFileBytes) {
-    setCrmImportUploadError("That CSV is larger than 10 MB. Choose a smaller export.", "validation");
+  if (!Number(file.size) || Number(file.size) > estateFileImportMaxBytes) {
+    setCrmImportUploadError("Choose a non-empty PDF or CSV no larger than 3 MB.", "validation");
     return;
   }
   try {
-    const text = await readCrmCsvFile(file, (progress) => {
-      if (token !== crmImportUploadToken) return;
-      state.crmImportUpload = { ...state.crmImportUpload, progress };
-      renderCrmImportModal({ focus: false });
+    state.crmImportUpload = { ...state.crmImportUpload, status: "uploading", progress: 20, message: "Reading the selected file…" };
+    renderCrmImportModal({ focus: false });
+    const contentBase64 = await base64ForEstateFile(file);
+    if (token !== estateImportUploadToken) return;
+    state.crmImportUpload = { ...state.crmImportUpload, progress: 55, message: "Extracting text and parsing estate records with a verified free Nous model…" };
+    renderCrmImportModal({ focus: false });
+    const result = await postJson("/api/agentic/estate-import", {
+      fileName,
+      contentType,
+      contentBase64,
+      model: state.agenticModelPreference || "dynamic-free-catalog",
     });
-    if (token !== crmImportUploadToken) return;
-    const rowCount = countCrmImportRows(text);
-    if (!rowCount) {
-      setCrmImportUploadError("That CSV has no estate rows to import.", "validation");
-      return;
-    }
-    const draft = state.crmImportModal.draft || { batchRows: "", sourceUrl: "", notes: "" };
-    state.crmImportModal.draft = {
-      ...draft,
-      batchRows: text,
-      sourceUrl: draft.sourceUrl || fileName
-    };
+    if (token !== estateImportUploadToken) return;
+    const items = Array.isArray(result.estates) ? result.estates.filter((item) => item && typeof item === "object") : [];
+    if (!result.ok || !result.freeModelVerified || !items.length) throw new Error(result.message || "The file did not contain any reviewable estate records.");
     state.crmImportUpload = {
       ...state.crmImportUpload,
       status: "success",
       progress: 100,
-      rowCount,
-      message: fileName + " is ready. Review the rows, then import the batch."
+      rowCount: items.length,
+      items,
+      model: String(result.model || ""),
+      sourceHash: String(result.sourceHash || ""),
+      reviewRequired: result.reviewRequired !== false,
+      message: items.length + " estate" + (items.length === 1 ? "" : "s") + " parsed by " + String(result.model || "the verified free Nous model") + ". Review, then add them to Estates."
     };
     renderCrmImportModal({ focus: false });
-    document.getElementById("topStatus").textContent = fileName + " loaded. Review the rows, then import the batch.";
-  } catch {
-    if (token !== crmImportUploadToken) return;
-    setCrmImportUploadError("That CSV could not be read. Choose a UTF-8 CSV file and try again.", "read");
+    document.getElementById("topStatus").textContent = state.crmImportUpload.message;
+  } catch (error) {
+    if (token !== estateImportUploadToken) return;
+    setCrmImportUploadError(error instanceof Error ? error.message : "That file could not be parsed safely.", "parse");
   }
 }
 
-function removeCrmCsvFile() {
-  const input = document.getElementById("crmImportCsvFile");
+function removeEstateFile() {
+  const input = document.getElementById("estateFileInput");
   if (input) input.value = "";
-  crmImportFile = null;
-  crmImportUploadToken += 1;
+  estateImportFile = null;
+  estateImportUploadToken += 1;
   state.crmImportUpload = emptyCrmImportUpload();
   renderCrmImportModal({ focus: false });
 }
@@ -7417,126 +7425,59 @@ function renderCrmImportModal({ focus = true } = {}) {
     mount.innerHTML = "";
     return;
   }
-  const isBatch = state.crmImportModal.mode === "batch";
-  const provider = ["podio", "google-sheets", "csv"].includes(state.crmImportModal.provider) ? state.crmImportModal.provider : "podio";
-  const draft = state.crmImportModal.draft || { batchRows: "", sourceUrl: "", notes: "" };
-  const isImporting = state.crmImportUpload.status === "importing";
+  const upload = state.crmImportUpload || emptyCrmImportUpload();
+  const isImporting = upload.status === "importing";
+  const parsedItems = Array.isArray(upload.items) ? upload.items : [];
+  const canCommit = upload.status === "success" && parsedItems.length > 0;
+  const preview = parsedItems.length ? `
+    <section class="estate-file-preview" data-estate-file-preview aria-live="polite">
+      <div><strong>${parsedItems.length} estate${parsedItems.length === 1 ? "" : "s"} ready for review</strong><span>Parsed by ${escapeHtml(upload.model || "a verified free Nous model")}. Missing facts stay blank and review-required.</span></div>
+      <ol>
+        ${parsedItems.slice(0, 5).map((item) => `<li><strong>${escapeHtml(item.estateName || item.ownerName || "Estate name needs review")}</strong><span>${escapeHtml(item.propertyAddress || "Address needs review")}</span></li>`).join("")}
+      </ol>
+      ${parsedItems.length > 5 ? `<span class="field-note">${parsedItems.length - 5} more estate${parsedItems.length - 5 === 1 ? "" : "s"} will be added with the same review boundary.</span>` : ""}
+    </section>
+  ` : "";
   mount.innerHTML = `
     <section class="document-modal-layer" role="presentation" data-crm-import-layer>
       <form class="document-modal beui-dialog crm-import-modal" role="dialog" aria-modal="true" aria-labelledby="crmImportTitle" data-crm-import-form>
-        <input type="hidden" name="mode" value="${isBatch ? "batch" : "single"}">
         <div class="document-modal-head">
           <div>
-            <p class="eyebrow">${isBatch ? "CRM batch import" : "CRM estate import"}</p>
-            <h2 id="crmImportTitle" class="rail-title">${isBatch ? "Batch import estates" : "Import estate into DocPrep"}</h2>
-            <p class="copy">${isBatch ? "Paste CRM rows from Podio, Google Sheets, or CSV. Imported estates are saved for the HeirRight team without writing back to the source CRM." : "Add an estate to the shared HeirRight workspace from Podio, Google Sheets, or a pasted CRM row. This does not create a live CRM write."}</p>
+            <p class="eyebrow">Estate files</p>
+            <h2 id="crmImportTitle" class="rail-title">Upload PDF or CSV</h2>
+            <p class="copy">Choose a source document from the client. HeirRight extracts its text, sends only that text to a verified zero-cost Nous model, and keeps every parsed estate in review until you add it.</p>
           </div>
-          <button class="btn icon-only" type="button" data-close-crm-import aria-label="Close CRM import">${nucleoIcon("check-circle", 16)}</button>
+          <button class="btn icon-only" type="button" data-close-crm-import aria-label="Close estate file upload">${nucleoIcon("check-circle", 16)}</button>
         </div>
         <div class="document-modal-body">
           <div class="crm-import-grid">
-            <div class="field">
-              <label for="crmImportProvider">Source</label>
-              <select id="crmImportProvider" name="provider">
-                <option value="podio" ${provider === "podio" ? "selected" : ""}>Podio</option>
-                <option value="google-sheets" ${provider === "google-sheets" ? "selected" : ""}>Google Sheets</option>
-                <option value="csv" ${provider === "csv" ? "selected" : ""}>CSV / pasted CRM row</option>
-              </select>
-            </div>
-            ${isBatch ? `
-              <div class="field full">
-                <label for="crmImportBatchRows">Estate rows</label>
-                <textarea id="crmImportBatchRows" name="batchRows" required placeholder="Estate name | Owner / seller | Property address | County | Folio / parcel | CRM row ID">${escapeHtml(draft.batchRows)}</textarea>
-              </div>
-              <div class="field full">
-                <label for="crmImportCsvFile">Load a CSV file</label>
-                ${renderCrmImportUpload()}
-              </div>
-              <div class="field full">
-                <label for="crmImportUrl">Batch source URL</label>
-                <input id="crmImportUrl" name="sourceUrl" autocomplete="off" placeholder="Optional Podio view, Sheet URL, or CSV source" value="${escapeHtml(draft.sourceUrl)}">
-              </div>
-              <div class="field full">
-                <label for="crmImportNotes">Batch notes</label>
-                <textarea id="crmImportNotes" name="notes" placeholder="Add source context that should apply to each imported estate.">${escapeHtml(draft.notes)}</textarea>
-              </div>
-              <p class="field-note">Use one estate per line. Pipe-separated and tab-separated rows are safest; CSV rows are accepted for simple exports. No live CRM write or readback is attempted.</p>
-            ` : `
-            <div class="field">
-              <label for="crmImportSourceId">CRM row or item ID</label>
-              <input id="crmImportSourceId" name="sourceRecordId" autocomplete="off" placeholder="Lead item, row number, or sheet key">
-            </div>
-            <div class="field">
-              <label for="crmImportEstate">Estate name</label>
-              <input id="crmImportEstate" name="estateName" required autocomplete="off" placeholder="Estate of Jamie Sample">
-            </div>
-            <div class="field">
-              <label for="crmImportOwner">Owner / seller</label>
-              <input id="crmImportOwner" name="ownerName" autocomplete="off" placeholder="JAMIE SAMPLE EST OF">
-            </div>
             <div class="field full">
-              <label for="crmImportAddress">Property address</label>
-              <input id="crmImportAddress" name="propertyAddress" required autocomplete="off" placeholder="100 SAMPLE AVE, Miami, FL 33101">
+              ${renderCrmImportUpload()}
             </div>
-            <div class="field">
-              <label for="crmImportCounty">County</label>
-              <select id="crmImportCounty" name="county">
-                <option value="miami-dade" selected>Miami-Dade County, FL</option>
-                <option value="broward">Broward County, FL</option>
-                <option value="county needs review">County needs review</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="crmImportParcel">Folio / parcel</label>
-              <input id="crmImportParcel" name="parcelId" autocomplete="off" placeholder="0102020001080">
-            </div>
-            <div class="field full">
-              <label for="crmImportUrl">Source URL</label>
-              <input id="crmImportUrl" name="sourceUrl" autocomplete="off" placeholder="Optional Podio item or Sheet URL">
-            </div>
-            <div class="field full">
-              <label for="crmImportNotes">Import notes</label>
-              <textarea id="crmImportNotes" name="notes" placeholder="Paste any CRM context, title-company note, or closing-doc instruction that should travel with this estate."></textarea>
-            </div>
-            <p class="field-note">The imported estate will appear in Estates, Document Prep, Queue, and the report rail. Podio/Sheets readback still requires approved access and a real connection check.</p>
-            `}
+            ${preview}
           </div>
         </div>
         <div class="document-modal-foot">
           <button class="btn" type="button" data-close-crm-import ${isImporting ? "disabled" : ""}>Cancel</button>
-          <button class="btn primary solvys-liquid-glass" type="submit" ${isImporting ? "disabled" : ""} aria-busy="${isImporting ? "true" : "false"}">${isBatch ? "Import Batch" : "Import Estate"}</button>
+          <button class="btn primary solvys-liquid-glass" type="submit" data-estate-file-submit ${canCommit && !isImporting ? "" : "disabled"} aria-busy="${isImporting ? "true" : "false"}">${canCommit ? `Add ${parsedItems.length} estate${parsedItems.length === 1 ? "" : "s"}` : "Parse a file first"}</button>
         </div>
       </form>
     </section>
   `;
-  enhanceSelectMenus(mount);
   mount.querySelectorAll("[data-close-crm-import]").forEach((button) => button.addEventListener("click", closeCrmImportModal));
   mount.querySelector("[data-crm-import-layer]")?.addEventListener("click", (event) => {
     if (event.target === event.currentTarget) closeCrmImportModal();
   });
   mount.querySelector("[data-crm-import-form]")?.addEventListener("submit", (event) => {
     event.preventDefault();
-    submitCrmImport(new FormData(event.currentTarget));
+    void commitEstateFileImports();
   });
-  const batchRowsField = mount.querySelector("#crmImportBatchRows");
-  const sourceUrlField = mount.querySelector("#crmImportUrl");
-  const notesField = mount.querySelector("#crmImportNotes");
-  [batchRowsField, sourceUrlField, notesField].filter(Boolean).forEach((field) => {
-    field.addEventListener("input", (event) => {
-      state.crmImportModal.draft = {
-        ...(state.crmImportModal.draft || { batchRows: "", sourceUrl: "", notes: "" }),
-        batchRows: batchRowsField?.value || "",
-        sourceUrl: sourceUrlField?.value || "",
-        notes: notesField?.value || ""
-      };
-    });
-  });
-  const csvInput = mount.querySelector("#crmImportCsvFile");
-  csvInput?.addEventListener("change", (event) => {
+  const fileInput = mount.querySelector("#estateFileInput");
+  fileInput?.addEventListener("change", (event) => {
     const file = event.currentTarget.files?.[0];
-    if (file) void queueCrmCsvFile(file);
+    if (file) void queueEstateFile(file);
   });
-  const dropzone = mount.querySelector("[data-crm-upload-dropzone]");
+  const dropzone = mount.querySelector("[data-estate-upload-dropzone]");
   dropzone?.addEventListener("dragover", (event) => {
     event.preventDefault();
     dropzone.dataset.dragging = "true";
@@ -7548,28 +7489,21 @@ function renderCrmImportModal({ focus = true } = {}) {
     event.preventDefault();
     delete dropzone.dataset.dragging;
     const file = event.dataTransfer?.files?.[0];
-    if (file) void queueCrmCsvFile(file);
+    if (file) void queueEstateFile(file);
   });
   dropzone?.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    csvInput?.click();
+    fileInput?.click();
   });
   mount.querySelector("[data-crm-upload-retry]")?.addEventListener("click", () => {
-    if (crmImportFile) void queueCrmCsvFile(crmImportFile);
+    if (estateImportFile) void queueEstateFile(estateImportFile);
   });
-  mount.querySelector("[data-crm-upload-remove]")?.addEventListener("click", removeCrmCsvFile);
-  if (focus) requestAnimationFrame(() => mount.querySelector(isBatch ? "#crmImportBatchRows" : "#crmImportEstate")?.focus());
+  mount.querySelector("[data-crm-upload-remove]")?.addEventListener("click", removeEstateFile);
+  if (focus) requestAnimationFrame(() => dropzone?.focus());
 }
 
 const crmBatchImportLimit = 250;
-
-function splitCrmBatchLine(line) {
-  if (line.includes("|")) return line.split("|").map((part) => part.trim());
-  if (line.includes("\t")) return line.split("\t").map((part) => part.trim());
-  if (line.includes(";")) return line.split(";").map((part) => part.trim());
-  return line.split(",").map((part) => part.trim());
-}
 
 function parseDelimitedRows(text, delimiter) {
   const rows = [];
@@ -7629,30 +7563,6 @@ function cleanCrmImportCell(value) {
     .trim();
 }
 
-function csvImportItem(line, index, sourceUrl, notes) {
-  const parts = splitCrmBatchLine(line);
-  const header = parts.slice(0, 2).join(" ").toLowerCase();
-  if (/first\s+name/.test(header) || /last\s+name/.test(header)) return null;
-  const isCsvDelimited = line.includes(";") || line.includes(",") || line.includes("\t");
-  if (parts.length < 6 || !isCsvDelimited) return undefined;
-  const [firstName, lastName, address, city, stateCode, zipCode] = parts;
-  const ownerName = cleanCrmImportCell([firstName, lastName].filter(Boolean).join(" ")) || `Imported estate ${index + 1}`;
-  const estateName = /^estate\s+of\b/i.test(ownerName) ? ownerName : `Estate of ${ownerName}`;
-  const locality = [city, stateCode].filter(Boolean).join(", ");
-  const propertyAddress = [address, locality, zipCode].filter(Boolean).join(", ").replace(/,\s*,/g, ",");
-  return {
-    provider: "csv",
-    estateName,
-    ownerName,
-    propertyAddress: propertyAddress || "Address needs review",
-    county: /^(fl|florida)$/i.test(stateCode) ? "miami-dade" : "County needs review",
-    parcelId: "Folio needs review",
-    sourceRecordId: `csv-${index + 1}`,
-    sourceUrl,
-    notes
-  };
-}
-
 function csvFileImportItems(text, fileName = "CSV file") {
   const rows = parseDelimitedRows(String(text || ""), csvDelimiter(String(text || "")));
   if (rows.length < 2) throw new Error("The CSV needs a header row and at least one estate row.");
@@ -7693,38 +7603,37 @@ function csvFileImportItems(text, fileName = "CSV file") {
   return imports;
 }
 
-function batchImportItems(formData) {
-  const provider = String(formData.get("provider") || "podio");
-  const sourceUrl = String(formData.get("sourceUrl") || "");
-  const notes = String(formData.get("notes") || "");
-  const lines = String(formData.get("batchRows") || "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 200);
-  return lines.map((line, index) => {
-    const importedCsvItem = provider === "csv" ? csvImportItem(line, index, sourceUrl, notes) : undefined;
-    if (importedCsvItem) return normalizeCrmImport(importedCsvItem);
-    if (importedCsvItem === null) return null;
-    const [estateName, ownerName, propertyAddress, county, parcelId, sourceRecordId] = splitCrmBatchLine(line);
+function estateFileImportItems() {
+  const upload = state.crmImportUpload || emptyCrmImportUpload();
+  const sourceHash = String(upload.sourceHash || "").trim();
+  const sourceFileName = String(upload.name || "estate-source").trim();
+  const model = String(upload.model || "").trim();
+  return (Array.isArray(upload.items) ? upload.items : []).slice(0, crmBatchImportLimit).map((item, index) => {
+    const missingFields = Array.isArray(item.missingFields) ? item.missingFields.map((field) => String(field || "").trim()).filter(Boolean) : [];
+    const notes = [
+      String(item.notes || "").trim(),
+      missingFields.length ? `Needs review: missing ${missingFields.join(", ")}.` : "",
+      `Parsed from ${sourceFileName} by verified free Nous model ${model || "automatic selection"}.`,
+    ].filter(Boolean).join(" ");
     return normalizeCrmImport({
-      provider,
-      estateName: estateName || ownerName || `Imported estate ${index + 1}`,
-      ownerName: ownerName || estateName || `Imported estate ${index + 1}`,
-      propertyAddress: propertyAddress || "Address needs review",
-      county: county || "miami-dade",
-      parcelId: parcelId || "Folio needs review",
-      sourceRecordId: sourceRecordId || `batch-${index + 1}`,
-      sourceUrl,
-      notes
+      ...item,
+      provider: "file-upload",
+      sourceRecordId: item.sourceRecordId || `file:${sourceHash || sourceFileName}:record-${index + 1}`,
+      sourceUrl: sourceFileName,
+      sourceHash,
+      sourceFileName,
+      sourceMethod: "nous-free-model",
+      sourceModel: model,
+      notes,
     });
-  }).filter(Boolean);
+  });
 }
 
-async function submitBatchCrmImport(formData) {
-  const imports = batchImportItems(formData);
+async function commitEstateFileImports() {
+  const imports = estateFileImportItems();
+  const sourceFileName = String(state.crmImportUpload?.name || "the uploaded file");
   if (!imports.length) {
-    document.getElementById("topStatus").textContent = "Paste at least one estate row before importing a batch.";
+    document.getElementById("topStatus").textContent = "Parse a PDF or CSV before adding estates.";
     return;
   }
   state.crmImportUpload = {
@@ -7755,10 +7664,10 @@ async function submitBatchCrmImport(formData) {
     state.crmImports = [
       ...prepared,
       ...state.crmImports.filter((item) => !ids.has(item.id))
-    ].slice(0, 200);
+    ].slice(0, crmBatchImportLimit);
     prepared.map(crmImportRow).forEach(seedImportedDealStatus);
     persistDealStatuses();
-    persistCrmImports(prepared.length + " CRM estates imported");
+    persistCrmImports(prepared.length + " estate file records added");
     state.rows = state.data && state.dossier ? buildRows(state.data, state.dossier) : crmImportRows();
     state.selectedId = prepared[0]?.id ?? state.selectedId;
     state.selectedIds.clear();
@@ -7769,12 +7678,12 @@ async function submitBatchCrmImport(formData) {
       ...state.crmImportUpload,
       status: "success",
       progress: 100,
-      message: prepared.length + " estates imported. Opening Estates…"
+      message: prepared.length + " estate" + (prepared.length === 1 ? "" : "s") + " added. Opening Estates…"
     };
     renderCrmImportModal({ focus: false });
     await new Promise((resolve) => setTimeout(resolve, 350));
     closeCrmImportModal();
-    document.querySelector('[data-shell-nav="dossiers"]')?.click();
+    setActiveShellView("find-estates", "Estates");
     const evidenceFilter = document.getElementById("evidenceFilter");
     const statusFilter = document.getElementById("statusFilter");
     const globalSearch = document.getElementById("globalSearch");
@@ -7784,49 +7693,11 @@ async function submitBatchCrmImport(formData) {
     syncAllEnhancedSelects();
     applyFilters();
     updateFooterLeadContext(selectedRow());
-    document.getElementById("topStatus").textContent = prepared.length + " estates imported from " + crmProviderLabel(prepared[0]?.provider) + ". Begin Estate Discovery before Closing Prep.";
-    addShellEvent("CRM batch imported", prepared.length + " estates are available in Estates and DocPrep while shared workspace readback completes. No live CRM write was attempted.", "review", false);
-  } catch {
-    setCrmImportUploadError("The batch import could not be completed. Review the rows and retry.", "import");
+    document.getElementById("topStatus").textContent = prepared.length + " estate" + (prepared.length === 1 ? "" : "s") + " added from " + sourceFileName + ". Review and queue them from Estates.";
+    addShellEvent("Estate file parsed", prepared.length + " review-required estate record" + (prepared.length === 1 ? " is" : "s are") + " available in Estates. Missing fields remain incomplete.", "review", false);
+  } catch (error) {
+    setCrmImportUploadError(error instanceof Error ? error.message : "The parsed estates could not be added. Review the file and retry.", "import");
   }
-}
-
-function submitCrmImport(formData) {
-  if (String(formData.get("mode") || state.crmImportModal.mode) === "batch") {
-    submitBatchCrmImport(formData);
-    return;
-  }
-  const imported = normalizeCrmImport(Object.fromEntries(formData.entries()));
-  state.crmImports = [imported, ...state.crmImports.filter((item) => item.id !== imported.id)].slice(0, 200);
-  const importedRow = crmImportRow(imported);
-  seedImportedDealStatus(importedRow);
-  persistDealStatuses();
-  persistCrmImports(`${crmProviderLabel(imported.provider)} estate imported`);
-  if (state.data && state.dossier) {
-    state.rows = buildRows(state.data, state.dossier);
-  } else {
-    state.rows = crmImportRows();
-  }
-  state.selectedId = importedRow.id;
-  state.selectedIds.clear();
-  state.showArchivedEstates = false;
-  setActiveDocPrepFlow("discovery", { persist: true, rerender: false });
-  state.docPrepListOpen = true;
-  closeCrmImportModal();
-  document.querySelector('[data-shell-nav="dossiers"]')?.click();
-  const evidenceFilter = document.getElementById("evidenceFilter");
-  const statusFilter = document.getElementById("statusFilter");
-  const countyFilter = document.getElementById("countyFilter");
-  const globalSearch = document.getElementById("globalSearch");
-  if (evidenceFilter) evidenceFilter.value = "0";
-  if (statusFilter) statusFilter.value = "all";
-  if (countyFilter && ![...countyFilter.options].some((option) => option.value === imported.county)) countyFilter.value = "all";
-  if (globalSearch) globalSearch.value = "";
-  syncAllEnhancedSelects();
-  applyFilters();
-  updateFooterLeadContext(selectedRow());
-  document.getElementById("topStatus").textContent = `${imported.estateName} imported from ${crmProviderLabel(imported.provider)}. Begin Estate Discovery or switch to Closing Prep in Document Prep.`;
-  addShellEvent("Estate imported from CRM", `${imported.estateName} is available in Estates and DocPrep while shared workspace readback completes. No live CRM write was attempted.`, "review", false);
 }
 
 function closeHeadlessMenu(wrap, immediate = false) {
@@ -8146,7 +8017,7 @@ function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(r
     blockers: selectedClosingTemplateIds(row).includes(template.id) ? closingTemplateBlockers(template, row, dossier).length : 0
   }));
   const rows = [
-    ["CRM estate row", row?.sourceKind === "crm-import" ? `${displayStatus(row.sourceProvider)} import` : "Import from CRM or use current lead packet"],
+    ["Estate source", row?.sourceKind === "crm-import" ? `${displayStatus(row.sourceProvider)} imported record` : "Current estate record"],
     ["Title proof", assetPhaseComplete(row, "title-clearance") ? "Deed and tax evidence captured" : "Needs deed and tax evidence"],
     ["Seller contacts", acceptedContactCandidates(row).length ? `${acceptedContactCandidates(row).length} accepted` : "Needs accepted signer contacts"],
     ["Offer math", offer.offerAmount ? moneyClaimValue(offer.offerAmount) : "Needs underwriting review"],
@@ -8155,7 +8026,7 @@ function closingWorkflowPanelHtml(row = selectedRow(), dossier = dossierForRow(r
   return `
     <section class="glass-card rail-card">
       <h3>Closing package inputs</h3>
-      <p class="copy">Closing Prep reuses the same estate facts, source attachments, CRM row, contact decisions, and offer math. Add source facts once; reuse them across every closing document.</p>
+      <p class="copy">Closing Prep reuses the same estate facts, source attachments, imported record, contact decisions, and offer math. Add source facts once; reuse them across every closing document.</p>
       <ul class="mini-list">
         ${rows.map(([label, value]) => `<li><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></li>`).join("")}
       </ul>
@@ -9715,7 +9586,7 @@ function closingDocHtml(row, dossier, title, rows = []) {
     <div class="section">
       <h2>Source boundary</h2>
       <ul>
-        <li>Estate source: ${escapeHtml(row?.sourceProvider || "HeirRight lead packet / CRM import")}</li>
+        <li>Estate source: ${escapeHtml(row?.sourceProvider || "HeirRight imported estate record")}</li>
         <li>Property source: ${escapeHtml(row?.address || dossier?.property?.address?.value || "Needs review")}</li>
         <li>Review gate: approval required before any external use.</li>
       </ul>
@@ -10414,7 +10285,7 @@ function renderDossierRail(row = selectedRow(), dossier = dossierForRow(row)) {
     bodyHtml = `
       <section class="glass-card rail-card">
         <h3>${escapeHtml(flow.shortTitle)} checklist</h3>
-        <p class="copy">Work the estate in order. Rows turn green after required source evidence, contact review, CRM import, or closing package prep is saved.</p>
+        <p class="copy">Work the estate in order. Rows turn green after required source evidence, contact review, estate import, or closing package prep is saved.</p>
         ${assetDiscoveryChecklistHtml(row)}
       </section>
       ${flow.id === "closing-docs" ? closingWorkflowPanelHtml(row, dossier) : `${assetCaptureFormHtml(row)}${idiImportPanelHtml(row)}${contactReviewPanelHtml(row)}`}
@@ -12039,7 +11910,6 @@ const settingsTabs = [
   { id: "access", label: "Access" },
   { id: "integrations", label: "Integrations" },
   { id: "support", label: "Support" },
-  { id: "sources", label: "Sources" },
   { id: "outreach", label: "Outreach" },
   { id: "preferences", label: "Preferences" },
   { id: "admin", label: "Admin" },
@@ -12384,7 +12254,6 @@ function renderAdminSettingsPanel() {
 function settingsTabPanelHtml(tab) {
   if (tab === "integrations") return renderIntegrationSettingsPanel();
   if (tab === "support") return renderSupportSettingsPanel();
-  if (tab === "sources") return renderSourceSettingsPanel();
   if (tab === "outreach") return renderOutreachSettingsPanel();
   if (tab === "preferences") return renderPreferencesSettingsPanel();
   if (tab === "admin") return renderAdminSettingsPanel();
@@ -12409,7 +12278,7 @@ function renderSettingsView() {
         </aside>
         <section class="loop-panel full settings-unified-card">
         <div class="loop-panel-head">
-          <div><p class="eyebrow">Settings</p><h2 class="loop-title">${escapeHtml(settingsTabs.find((item) => item.id === tab)?.label || "Access")} readiness</h2></div>
+          <div><p class="eyebrow">Settings</p><h2 class="loop-title">${escapeHtml(settingsTabs.find((item) => item.id === tab)?.label || "Access")}</h2></div>
         </div>
         <div id="settingsTabPanel" role="tabpanel">${settingsTabPanelHtml(tab)}</div>
         </section>
@@ -12676,46 +12545,14 @@ function playShellViewTransition(view) {
 }
 
 const productTourSteps = [
-  {
-    view: "dossiers",
-    title: "Document Prep",
-    copy: "Start here. Imported Podio or Google Workspace leads appear in the client list, and estate leads move here when Discovery or Closing Prep starts."
-  },
-  {
-    view: "find-estates",
-    title: "Pull a lead",
-    copy: "Use Estates to fetch a fresh public-record lead, confirm owner/address/folio evidence, then add the estate into Document Prep."
-  },
-  {
-    view: "dossiers",
-    title: "Run Discovery",
-    copy: "Open the file, run the Discovery workflow, import the approved IDI Core report, capture source facts, and promote reviewed contacts."
-  },
-  {
-    view: "dossiers",
-    title: "Prepare Closing Docs",
-    copy: "Switch to Closing Prep, fill the template packet from estate fields and reviewed notes, then export the review draft to Google Workspace."
-  },
-  {
-    view: "drips",
-    title: "Outreach controls",
-    copy: "Create approved SMS/email templates, manage cadence and stop rules, then sync a Podio-ready package or keep the fallback package in-app."
-  },
-  {
-    view: "queue",
-    title: "Queue",
-    copy: "Stage export packages after Discovery clears. Closing Prep and outreach remain visible as tracked blockers without blocking Discovery export."
-  },
-  {
-    view: "admin",
-    title: "Admin",
-    copy: "Review integration errors, file Linear support tickets, manage Leads engine access, and watch team activity."
-  },
-  {
-    view: "settings",
-    title: "Settings",
-    copy: "Connector readiness lives under Integrations; lead-quality preferences live under Preferences."
-  }
+  { view: "find-estates", title: "Upload the client file", copy: "Press Upload PDF or CSV. A verified free Nous model parses the source, while every missing fact stays blank and review-required.", target: "[data-estates-import-file], #estateFileUpload" },
+  { view: "find-estates", title: "Find the estate", copy: "Use Filter estates to narrow the review list by owner, address, county, or status.", target: "[data-grid-quick-filter]" },
+  { view: "find-estates", title: "Queue reviewed estates", copy: "Select the eligible rows, then press Queue for Doc Prep. The button stays unavailable until at least one estate is selected.", target: "[data-estates-add-queue]" },
+  { view: "dossiers", title: "Choose the queued estate", copy: "Use Quick search, then choose the estate that will enter Document Prep.", target: "[data-s40-queue-search], [data-s40-stream-estate]" },
+  { view: "dossiers", title: "Supply the IDI report", copy: "Press Upload IDI Report PDF when the report was not fetched automatically. Doc Prep cannot run without verified IDI evidence.", target: "[data-s40-idi-upload]" },
+  { view: "dossiers", title: "Run Document Prep", copy: "Press Run Doc Prep after the IDI requirement clears. The progress island explains the current work and exposes Stop while the sequence is active.", target: "[data-s40-run], [data-run-docprep]" },
+  { view: "queue", title: "Export the reviewed batch", copy: "Select completed packets, then press Export combined PDF. The Queue keeps incomplete work out of the export bundle.", target: "[data-queue-export]" },
+  { view: "settings", settingsTab: "integrations", title: "Verify the free model", copy: "Open Integrations and confirm the free Nous model selector is available before relying on file parsing.", target: "[data-agentic-model]" }
 ];
 
 const walkthroughDemos = {
@@ -12724,9 +12561,9 @@ const walkthroughDemos = {
     tab: "overview",
     icon: "open-book",
     duration: "55 sec",
-    startView: "dossiers",
+    startView: "find-estates",
     kicker: "Guided walkthrough",
-    cardCopy: "Walk the main workspaces in order: Document Prep, Estates, Outreach, Queue, Admin, and Settings.",
+    cardCopy: "Follow the live controls from file upload through estate review, Doc Prep, export, and integration verification.",
     steps: productTourSteps
   },
   "docprep-discovery": {
@@ -12737,28 +12574,43 @@ const walkthroughDemos = {
     startView: "dossiers",
     flowId: "discovery",
     kicker: "Discovery walkthrough",
-    cardCopy: "Open an estate, run Discovery, resolve source/IDI blockers, review contacts, then inspect the streamed packet.",
+    cardCopy: "Open an estate, satisfy the IDI gate, run Discovery, approve the PDF, then hand it off.",
     steps: [
-      { view: "dossiers", title: "Open the estate", copy: "Choose the estate in Document Prep and keep the rail on Flow so source capture and packet preview stay together." },
-      { view: "dossiers", title: "Run Discovery", copy: "Run Full Discovery walks owner, tax, deed, obituary, IDI, contact review, and dossier export in order." },
-      { view: "dossiers", title: "Fix blockers", copy: "If a phase stops, add the required source evidence or contact review item. The run resumes only after that fact is saved." },
-      { view: "dossiers", title: "Review the packet", copy: "Use the live preview and section chips to inspect the Discovery Prep PDF sections before queueing export." }
+      { view: "dossiers", title: "Choose the estate", copy: "Use Quick search, then press the queued estate that needs Discovery.", target: "[data-s40-queue-search], [data-s40-stream-estate]" },
+      { view: "dossiers", title: "Add verified IDI evidence", copy: "If IDI was not fetched automatically, press Upload IDI Report PDF. This requirement must clear before the run button is available.", target: "[data-s40-idi-upload]" },
+      { view: "dossiers", title: "Run Discovery", copy: "Press Run Doc Prep. The progress island describes the current step in plain language and exposes Stop while work is active.", target: "[data-s40-run], [data-run-docprep]" },
+      { view: "dossiers", title: "Approve the packet", copy: "After the PDF preview is complete, press Approve packet for export to lock the reviewed revision.", target: "[data-s40-approve], [data-approve-packet]" },
+      { view: "dossiers", title: "Send the approved PDF", copy: "Press Export only after approval and the Google Drive destination are ready.", target: "[data-s40-export], [data-export-handoff]" }
     ]
   },
-  "docprep-closing": {
-    title: "Prepare Closing Docs",
+  "estate-file-upload": {
+    title: "Upload Estate Files",
     tab: "docprep",
-    icon: "packet-clock",
-    duration: "55 sec",
-    startView: "dossiers",
-    flowId: "closing-docs",
-    kicker: "Closing Prep walkthrough",
-    cardCopy: "Switch to Closing Prep, fill required legal-template variables, and export only after blockers clear.",
+    icon: "open-book",
+    duration: "45 sec",
+    startView: "find-estates",
+    kicker: "File intake walkthrough",
+    cardCopy: "Upload a client PDF or CSV, parse it with a verified free Nous model, then review the estates before queueing.",
     steps: [
-      { view: "dossiers", title: "Switch workflow", copy: "Open the estate and select Closing Prep. The same estate file supplies the reviewed Discovery facts." },
-      { view: "dossiers", title: "Fill required fields", copy: "Complete missing seller, signer, buyer entity, title, offer, and closing-date fields. Unknown values must stay blocked." },
-      { view: "dossiers", title: "Run Closing Prep", copy: "The run checks intake, title clearance, seller approval, underwriting, and package readiness without changing template language." },
-      { view: "dossiers", title: "Export one packet", copy: "When required fields pass, export produces one combined Closing Prep PDF for review." }
+      { view: "find-estates", title: "Open file upload", copy: "Press Upload PDF or CSV. Estate files stay review-required after parsing.", target: "[data-estates-import-file], #estateFileUpload" },
+      { view: "find-estates", title: "Choose the client file", copy: "Drop or browse to a searchable PDF or CSV. The selected file is parsed only by a verified free Nous model.", target: "[data-estate-upload-dropzone], [data-estates-import-file]" },
+      { view: "find-estates", title: "Add the parsed estates", copy: "After parsing succeeds, press Add estates. Missing fields remain visible for review instead of blocking the whole upload.", target: "[data-estate-file-submit], [data-estates-import-file]" },
+      { view: "find-estates", title: "Review the new rows", copy: "Use Filter estates to find the uploaded records and review every incomplete field before queueing.", target: "[data-grid-quick-filter]" }
+    ]
+  },
+  "estate-queue": {
+    title: "Queue Estates for Doc Prep",
+    tab: "docprep",
+    icon: "batch-tray",
+    duration: "35 sec",
+    startView: "find-estates",
+    kicker: "Estate queue walkthrough",
+    cardCopy: "Select reviewable estates in Estates and move them into the shared Document Prep workbench.",
+    steps: [
+      { view: "find-estates", title: "Find reviewable estates", copy: "Use Filter estates to narrow the list before selecting rows.", target: "[data-grid-quick-filter]" },
+      { view: "find-estates", title: "Select the estate rows", copy: "Check each estate that should enter Document Prep. Incomplete fields stay review-visible.", target: "[data-estates-grid] input[type='checkbox'], [data-grid-quick-filter]" },
+      { view: "find-estates", title: "Queue for Doc Prep", copy: "Press Queue for Doc Prep. The button becomes available when at least one eligible estate is selected.", target: "[data-estates-add-queue]" },
+      { view: "dossiers", title: "Confirm the handoff", copy: "Use Quick search in Document Prep to confirm the queued estate arrived.", target: "[data-s40-queue-search], [data-s40-stream-estate]" }
     ]
   },
   "batch-queue-export": {
@@ -12766,27 +12618,14 @@ const walkthroughDemos = {
     tab: "export",
     icon: "batch-tray",
     duration: "45 sec",
-    startView: "queue",
+    startView: "dossiers",
     kicker: "Queue walkthrough",
-    cardCopy: "Stage reviewed estates and confirm the batch output is one combined PDF per selected flow.",
+    cardCopy: "Approve reviewed packets, stage their handoff, then build one combined PDF from Queue.",
     steps: [
-      { view: "dossiers", title: "Select ready estates", copy: "Use Document Prep or the list controls to select reviewed estate packets for export." },
-      { view: "queue", title: "Stage Queue", copy: "Queue shows the estate packets waiting for batch review and keeps live external writes locked." },
-      { view: "queue", title: "Export bundle", copy: "Use the export route after review. The default output is a single combined PDF per selected flow." }
-    ]
-  },
-  "outreach-simple": {
-    title: "Outreach Review",
-    tab: "export",
-    icon: "scheduled-drips",
-    duration: "50 sec",
-    startView: "drips",
-    kicker: "Outreach walkthrough",
-    cardCopy: "Create simple approved email/SMS packages without exposing the automation builder to everyday users.",
-    steps: [
-      { view: "drips", title: "Choose a campaign", copy: "Open Outreach and pick the campaign or template that matches the estate follow-up stage." },
-      { view: "drips", title: "Review guardrails", copy: "Set stop rules, approval owner, delay, and channel before asking for approval." },
-      { view: "drips", title: "Approve before sync", copy: "Sync/send controls stay blocked until template content, variables, credentials, and approval state all pass." }
+      { view: "dossiers", title: "Approve the current packet", copy: "Press Approve packet for export after reviewing the exact PDF revision.", target: "[data-s40-approve], [data-approve-packet]" },
+      { view: "dossiers", title: "Queue the approved handoff", copy: "Press Export after the packet and destination gates clear.", target: "[data-s40-export], [data-export-handoff]" },
+      { view: "queue", title: "Select Queue items", copy: "Check each completed packet that belongs in the combined PDF.", target: "[data-queue-select], [data-queue-tab='export']" },
+      { view: "queue", title: "Export the combined PDF", copy: "Press Export combined PDF. Incomplete packets stay outside the bundle.", target: "[data-queue-export]" }
     ]
   },
   "settings-readiness": {
@@ -12796,47 +12635,18 @@ const walkthroughDemos = {
     duration: "45 sec",
     startView: "settings",
     kicker: "Settings walkthrough",
-    cardCopy: "Review team access, integration readiness, IDI default key behavior, paid-source gates, and audit controls.",
+    cardCopy: "Open the exact integration controls for the Nous model, Google Drive destination, and public-record status.",
     steps: [
-      { view: "settings", title: "Check integrations", copy: "Open Settings and confirm each connector shows a clear status, reconnect action, and review gate." },
-      { view: "settings", title: "Review domains", copy: "Allowed business domains control team access. Personal domains should fail the sign-in gate in S31." },
-      { view: "settings", title: "Confirm enrichment gates", copy: "IDI Core uses the team default key unless a user pastes their own key, and paid-source work stays manually approved." }
-    ]
-  },
-  "crm-import": {
-    title: "Import From CRM",
-    tab: "docprep",
-    icon: "open-book",
-    duration: "40 sec",
-    startView: "dossiers",
-    flowId: "discovery",
-    kicker: "CRM import walkthrough",
-    cardCopy: "Import a CRM estate row, keep the row linkage, then start Discovery without triggering paid source work.",
-    steps: [
-      { view: "dossiers", title: "Import estate row", copy: "Use Import to add one estate or paste a batch from Podio, Sheets, or CSV." },
-      { view: "dossiers", title: "Verify linkage", copy: "Confirm estate name, owner, property address, county, folio, and CRM row ID before Discovery." },
-      { view: "dossiers", title: "Start Discovery", copy: "Discovery starts from the imported estate and blocks external or paid work until the user explicitly runs it." }
-    ]
-  },
-  "external-estate-fetch": {
-    title: "Fetch External Estate",
-    tab: "docprep",
-    icon: "search-estate",
-    duration: "45 sec",
-    startView: "find-estates",
-    kicker: "External fetch walkthrough",
-    cardCopy: "Fetch public-source inventory, inspect source status, then add an estate to Document Prep.",
-    steps: [
-      { view: "find-estates", title: "Search public source", copy: "Choose address, folio, or estate-name mode and run the estate search from the Estates workspace." },
-      { view: "find-estates", title: "Review evidence", copy: "Confirm owner, property, deed, tax, probate, and source status before adding anything to Document Prep." },
-      { view: "dossiers", title: "Start packet prep", copy: "Add the estate to Document Prep, then run Discovery only when the user is ready to spend paid-source effort." }
+      { view: "settings", settingsTab: "integrations", title: "Choose the free Nous route", copy: "Use Free model to keep file parsing on a verified zero-cost text model.", target: "[data-agentic-model]" },
+      { view: "settings", settingsTab: "integrations", title: "Check Google Workspace", copy: "Use the Google Workspace refresh control, then choose the shared Drive folder for approved Discovery PDFs.", target: "[data-settings-refresh-integration='google'], [data-google-workspace-load-folders]" },
+      { view: "settings", settingsTab: "integrations", title: "Confirm public records", copy: "Public Records should show Ready. Use its refresh control if the saved status is stale.", target: "[data-settings-refresh-integration='web']" }
     ]
   }
 };
 
 const helpDemoTabs = [
   { id: "docprep", label: "Doc Prep" },
-  { id: "export", label: "Export & Outreach" },
+  { id: "export", label: "Queue & Export" },
   { id: "admin", label: "Settings & Access" }
 ];
 
@@ -12848,18 +12658,64 @@ function activeWalkthroughSteps() {
   return activeWalkthroughDemo().steps || productTourSteps;
 }
 
+function clearWalkthroughTarget() {
+  document.querySelectorAll('[data-walkthrough-target="true"]').forEach((target) => {
+    target.removeAttribute("data-walkthrough-target");
+  });
+}
+
+function walkthroughTargetFor(step) {
+  if (step?.target) {
+    const target = document.querySelector(step.target);
+    if (target) return target;
+  }
+  return step?.view ? document.querySelector(`[data-shell-nav="${step.view}"]`) : null;
+}
+
+function syncWalkthroughTarget() {
+  clearWalkthroughTarget();
+  if (!state.walkthrough.open) return;
+  const steps = activeWalkthroughSteps();
+  const step = steps[state.walkthrough.index] || steps[0];
+  const target = walkthroughTargetFor(step);
+  if (!target) return;
+  target.setAttribute("data-walkthrough-target", "true");
+  if (!target.matches?.("[data-shell-nav]")) {
+    target.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "center",
+      inline: "nearest",
+    });
+  }
+  requestAnimationFrame(positionWalkthrough);
+}
+
 function positionWalkthrough() {
   if (!state.walkthrough.open) return;
   const steps = activeWalkthroughSteps();
   const step = steps[state.walkthrough.index] || steps[0];
   const popover = document.querySelector(".walkthrough-popover");
-  const anchor = document.querySelector(`[data-shell-nav="${step.view}"]`);
+  const anchor = walkthroughTargetFor(step);
   if (!popover || !anchor) return;
   const rect = anchor.getBoundingClientRect();
   const popoverRect = popover.getBoundingClientRect();
-  const sidebarNarrow = rect.width <= 56;
-  const left = sidebarNarrow ? rect.right + 12 : Math.min(rect.right + 14, window.innerWidth - popoverRect.width - 14);
-  const top = Math.max(14, Math.min(window.innerHeight - popoverRect.height - 14, rect.top + rect.height / 2 - popoverRect.height / 2));
+  const gap = 14;
+  const edge = 14;
+  const maxLeft = Math.max(edge, window.innerWidth - popoverRect.width - edge);
+  const maxTop = Math.max(edge, window.innerHeight - popoverRect.height - edge);
+  let left = rect.right + gap;
+  let top = rect.top + rect.height / 2 - popoverRect.height / 2;
+  if (left > maxLeft) left = rect.left - popoverRect.width - gap;
+  if (left < edge) {
+    left = Math.max(edge, Math.min(maxLeft, rect.left + rect.width / 2 - popoverRect.width / 2));
+    if (rect.bottom + gap + popoverRect.height <= window.innerHeight - edge) {
+      top = rect.bottom + gap;
+    } else if (rect.top - gap - popoverRect.height >= edge) {
+      top = rect.top - popoverRect.height - gap;
+    }
+  }
+  left = Math.max(edge, Math.min(maxLeft, left));
+  top = Math.max(edge, Math.min(maxTop, top));
   popover.style.left = `${left}px`;
   popover.style.top = `${top}px`;
 }
@@ -12868,6 +12724,7 @@ function renderWalkthrough() {
   const mount = document.getElementById("walkthroughMount");
   if (!mount) return;
   if (!state.walkthrough.open) {
+    clearWalkthroughTarget();
     mount.innerHTML = "";
     return;
   }
@@ -12900,7 +12757,7 @@ function renderWalkthrough() {
     syncWalkthroughView();
     renderWalkthrough();
   });
-  requestAnimationFrame(positionWalkthrough);
+  requestAnimationFrame(syncWalkthroughTarget);
 }
 
 function syncWalkthroughView() {
@@ -12911,6 +12768,11 @@ function syncWalkthroughView() {
   if (step && state.activeView !== step.view) {
     setActiveShellView(step.view, activeViewLabel(step.view));
   }
+  if (step?.view === "settings" && step.settingsTab && state.settingsTab !== step.settingsTab) {
+    state.settingsTab = normalizedSettingsTab(step.settingsTab);
+    renderCurrentLoopView();
+  }
+  requestAnimationFrame(syncWalkthroughTarget);
 }
 
 function prepareWalkthroughDemo(demoId = "product-tour") {
@@ -12945,6 +12807,7 @@ function openWalkthrough(index = 0, demoId = "product-tour", { prepare = true } 
 function closeWalkthrough(markSeen = false) {
   state.walkthrough.open = false;
   state.walkthrough.demoId = "product-tour";
+  clearWalkthroughTarget();
   if (markSeen) storageSetItem(walkthroughStateKey, "true");
   renderWalkthrough();
 }
@@ -15233,31 +15096,6 @@ function setExportMenuOpen(open) {
   if (open) popover?.querySelector("[role='menuitem']")?.focus({ preventScroll: true });
 }
 
-function setCrmImportMenuOpen(open) {
-  const menu = document.getElementById("crmImportMenu");
-  const toggle = document.getElementById("crmImportBatchToggle");
-  const popover = document.getElementById("crmImportPopover");
-  if (!menu || !toggle || !popover) return;
-  menu.dataset.open = open ? "true" : "false";
-  toggle.setAttribute("aria-expanded", open ? "true" : "false");
-  window.clearTimeout(Number(popover.dataset.closeTimer || 0));
-  if (open) {
-    popover.hidden = false;
-    popover.classList.remove("is-closing");
-    popover.classList.add("is-open");
-    popover.querySelector("[role='menuitem']")?.focus({ preventScroll: true });
-  } else {
-    popover.classList.remove("is-open");
-    popover.classList.add("is-closing");
-    popover.dataset.closeTimer = String(window.setTimeout(() => {
-      if (menu.dataset.open !== "true") {
-        popover.hidden = true;
-        popover.classList.remove("is-closing");
-      }
-    }, dropdownCloseDelay()));
-  }
-}
-
 function dropdownCloseDelay() {
   const raw = getComputedStyle(document.documentElement).getPropertyValue("--t-dropdown-close-dur").trim();
   const value = Number.parseFloat(raw);
@@ -15792,43 +15630,13 @@ function wireEvents() {
       setActiveShellView(button.dataset.shellNav, label);
     });
   });
-  document.querySelectorAll("[data-open-crm-import]").forEach((button) => {
+  document.querySelectorAll("[data-open-estate-files]").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.preventDefault();
-      setCrmImportMenuOpen(false);
-      openCrmImportModal({ mode: "single" });
+      openCrmImportModal();
     });
   });
-  document.querySelectorAll("[data-open-external-import]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      setCrmImportMenuOpen(false);
-      openCrmImportModal({ mode: "batch", provider: "podio" });
-    });
-  });
-  window.addEventListener("heirright:open-crm-import", (event) => {
-    const detail = event.detail || {};
-    setCrmImportMenuOpen(false);
-    openCrmImportModal({
-      mode: detail.mode === "single" ? "single" : "batch",
-      provider: detail.provider || "csv",
-    });
-  });
-  document.getElementById("crmImportBatchToggle")?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const isOpen = document.getElementById("crmImportMenu")?.dataset.open === "true";
-    setCrmImportMenuOpen(!isOpen);
-    setExportMenuOpen(false);
-  });
-  document.querySelectorAll("[data-crm-batch-import]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      const provider = button.dataset.crmBatchImport;
-      setCrmImportMenuOpen(false);
-      openCrmImportModal({ mode: "batch", provider });
-    });
-  });
+  window.addEventListener("heirright:open-estate-files", () => openCrmImportModal());
   document.getElementById("refresh")?.addEventListener("click", loadRun);
   document.getElementById("freshBatch").addEventListener("click", (event) => pullFreshBatch(event.currentTarget));
   document.getElementById("sourceQuery").addEventListener("keydown", (event) => {
@@ -15966,9 +15774,6 @@ function wireEvents() {
     if (!document.getElementById("exportMenu").contains(event.target)) {
       setExportMenuOpen(false);
     }
-    if (!document.getElementById("crmImportMenu")?.contains(event.target)) {
-      setCrmImportMenuOpen(false);
-    }
     if (!document.getElementById("tableFiltersPopover")?.contains(event.target) && !document.getElementById("tableFiltersToggle")?.contains(event.target)) {
       setFilterPopoverOpen(false);
     }
@@ -16009,7 +15814,6 @@ function wireEvents() {
     if (event.key === "Escape") {
       closeAllEnhancedSelects();
       setExportMenuOpen(false);
-      setCrmImportMenuOpen(false);
       setFilterPopoverOpen(false);
       setSearchPopupOpen(false);
       setHistoryRailOpen(false);

@@ -236,7 +236,7 @@ body[data-theme] .dossier-table tr.is-batch-selected {
 body[data-theme] :is(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline-color: var(--hr-focus);
 }
-/* S40 annotated controls and CSV upload surface. */
+/* S40 annotated controls and estate-file upload surface. */
 .hr-grid-controls :is(.hr-grid-import-action, .hr-grid-filter-toggle) {
   min-height: 34px;
   padding: 0.42rem 0.78rem;
@@ -267,25 +267,6 @@ body[data-theme] :is(button, a, input, select, textarea, [tabindex]):focus-visib
   text-align: center;
 }
 
-#crmImportSingle,
-#crmImportBatchToggle {
-  align-items: center;
-  justify-content: center;
-}
-
-#crmImportSingle > span {
-  margin-bottom: 4px;
-}
-
-#crmImportBatchToggle {
-  margin-top: 2px;
-}
-
-#crmImportBatchToggle svg {
-  display: block;
-  margin: 0;
-}
-
 .crm-import-modal .document-modal-body {
   background: #000000 !important;
   background-color: #000000 !important;
@@ -307,10 +288,7 @@ body[data-theme] :is(button, a, input, select, textarea, [tabindex]):focus-visib
   background-color: #0f1115 !important;
 }
 
-.crm-import-modal #crmImportBatchRows,
-.crm-import-modal #crmImportCsvFile,
-.crm-import-modal #crmImportUrl,
-.crm-import-modal #crmImportNotes,
+.crm-import-modal #estateFileInput,
 .crm-import-modal .crm-upload-dropzone {
   background: #000000 !important;
   background-color: #000000 !important;
@@ -373,6 +351,32 @@ body[data-theme] :is(button, a, input, select, textarea, [tabindex]):focus-visib
 
 .crm-upload-message {
   min-height: 1.2em;
+}
+
+.estate-file-preview {
+  display: grid;
+  gap: 0.875rem;
+  padding: 1rem;
+  border: 1px solid var(--hr-control-boundary);
+  border-radius: var(--hr-radius-control);
+  background: #0a0a0a;
+}
+
+.estate-file-preview > div,
+.estate-file-preview li {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.estate-file-preview ol {
+  display: grid;
+  gap: 0.625rem;
+  margin: 0;
+  padding-inline-start: 1.375rem;
+}
+
+.estate-file-preview span {
+  color: var(--hr-text-muted);
 }
 
 .crm-upload-file {

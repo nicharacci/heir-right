@@ -6,10 +6,10 @@ import { clientDefaultEstatesCsv, clientDefaultEstatesFileName } from "../src/da
 const legacy = fs.readFileSync(new URL("../src/legacy/app.js", import.meta.url), "utf8");
 const parser = legacy.slice(
   legacy.indexOf("function parseDelimitedRows"),
-  legacy.indexOf("function batchImportItems")
+  legacy.indexOf("function estateFileImportItems")
 );
 const api = vm.runInNewContext(`${parser}\n({ csvFileImportItems });`, {
-  crmBatchImportLimit: 200,
+  crmBatchImportLimit: 250,
   normalizeCrmImport: (value) => value,
 });
 

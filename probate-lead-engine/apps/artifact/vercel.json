@@ -53,6 +53,10 @@
       "includeFiles": "{runtime-assets,runtime-functions}/**",
       "maxDuration": 60
     },
+    "api/agentic/estate-import.js": {
+      "includeFiles": "{runtime-assets,runtime-functions}/**",
+      "maxDuration": 60
+    },
     "api/**/*.js": {
       "excludeFiles": "dist/**/*.map",
       "maxDuration": 60

@@ -203,6 +203,7 @@ function routeList(): string[] {
     "/api/google-workspace/destinations",
     "/api/agentic/models",
     "/api/agentic/backstory",
+    "/api/agentic/estate-import",
     "/api/admin/settings",
     "/api/doc-prep/packet-approval",
     "/api/google-workspace/export",
@@ -7950,6 +7951,243 @@ async function agenticBackstoryResponse(request: Request, env: CloudflareEnv): P
   }
 }
 
+const AGENTIC_ESTATE_TEXT_LIMIT = 250_000;
+const AGENTIC_ESTATE_CHUNK_LIMIT = 30_000;
+const AGENTIC_ESTATE_MAX_CHUNKS = 12;
+const AGENTIC_ESTATE_MAX_RECORDS = 250;
+const AGENTIC_ESTATE_MODEL_CONCURRENCY = 6;
+const AGENTIC_ESTATE_FIELDS = ["estateName", "ownerName", "propertyAddress", "county", "parcelId"] as const;
+
+type AgenticEstateRecord = {
+  estateName: string;
+  ownerName: string;
+  propertyAddress: string;
+  county: string;
+  parcelId: string;
+  sourceRecordId: string;
+  notes: string;
+  missingFields: string[];
+};
+
+function cleanEstateValue(value: unknown, limit = 500): string {
+  return stringValue(value).replace(/\s+/g, " ").slice(0, limit);
+}
+
+function agenticEstateJson(value: unknown): unknown[] {
+  const text = agenticResponseText(value)
+    .replace(/^\s*```(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/i, "")
+    .trim();
+  if (!text) throw new Error("The verified free model returned no estate records.");
+  const objectStart = text.indexOf("{");
+  const objectEnd = text.lastIndexOf("}");
+  const arrayStart = text.indexOf("[");
+  const arrayEnd = text.lastIndexOf("]");
+  const candidate = objectStart >= 0 && objectEnd > objectStart && (arrayStart < 0 || objectStart < arrayStart)
+    ? text.slice(objectStart, objectEnd + 1)
+    : arrayStart >= 0 && arrayEnd > arrayStart
+      ? text.slice(arrayStart, arrayEnd + 1)
+      : text;
+  const parsed = JSON.parse(candidate) as unknown;
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === "object" && Array.isArray((parsed as Record<string, unknown>).estates)) {
+    return (parsed as Record<string, unknown>).estates as unknown[];
+  }
+  throw new Error("The verified free model returned an invalid estate record envelope.");
+}
+
+export function parseAgenticEstateRecords(value: unknown, sourceHash: string, offset = 0): AgenticEstateRecord[] {
+  return agenticEstateJson(value).flatMap((entry, index) => {
+    if (!entry || typeof entry !== "object") return [];
+    const source = entry as Record<string, unknown>;
+    const estateName = cleanEstateValue(source.estateName);
+    const ownerName = cleanEstateValue(source.ownerName);
+    const propertyAddress = cleanEstateValue(source.propertyAddress);
+    const county = cleanEstateValue(source.county, 180);
+    const parcelId = cleanEstateValue(source.parcelId, 180);
+    const notes = cleanEstateValue(source.notes, 1_200);
+    if (![estateName, ownerName, propertyAddress, county, parcelId].some(Boolean)) return [];
+    const suppliedMissing = Array.isArray(source.missingFields)
+      ? source.missingFields.map((field) => cleanEstateValue(field, 80)).filter(Boolean)
+      : [];
+    const missingFields = Array.from(new Set([
+      ...suppliedMissing.filter((field) => AGENTIC_ESTATE_FIELDS.includes(field as typeof AGENTIC_ESTATE_FIELDS[number])),
+      ...AGENTIC_ESTATE_FIELDS.filter((field) => !({ estateName, ownerName, propertyAddress, county, parcelId })[field]),
+    ]));
+    return [{
+      estateName,
+      ownerName,
+      propertyAddress,
+      county,
+      parcelId,
+      sourceRecordId: `file:${sourceHash}:record-${offset + index + 1}`,
+      notes,
+      missingFields,
+    }];
+  });
+}
+
+function estateLocatorLines(body: Record<string, unknown>): string[] {
+  if (!Array.isArray(body.sourceLocators)) return [];
+  return body.sourceLocators.flatMap((locator) => {
+    if (!locator || typeof locator !== "object") return [];
+    const record = locator as Record<string, unknown>;
+    const text = cleanEstateValue(record.text, 20_000);
+    if (!text) return [];
+    const label = cleanEstateValue(record.label, 120);
+    return [`${label ? `[${label}] ` : ""}${text}`];
+  });
+}
+
+function boundedEstateChunks(lines: string[], repeatedHeader = ""): string[] {
+  const chunks: string[] = [];
+  let current = repeatedHeader;
+  for (const rawLine of lines) {
+    const line = rawLine.slice(0, AGENTIC_ESTATE_CHUNK_LIMIT);
+    const candidate = [current, line].filter(Boolean).join("\n");
+    if (current && candidate.length > AGENTIC_ESTATE_CHUNK_LIMIT) {
+      chunks.push(current);
+      current = [repeatedHeader, line].filter(Boolean).join("\n");
+    } else {
+      current = candidate;
+    }
+  }
+  if (current && current !== repeatedHeader) chunks.push(current);
+  if (chunks.length > AGENTIC_ESTATE_MAX_CHUNKS) {
+    throw new Error("The estate file is too complex for one safe parsing run. Split it into smaller files.");
+  }
+  return chunks;
+}
+
+export function agenticEstateImportChunks(body: Record<string, unknown>): string[] {
+  const text = stringValue(body.text).slice(0, AGENTIC_ESTATE_TEXT_LIMIT);
+  const locators = estateLocatorLines(body);
+  const fileKind = stringValue(body.fileKind).toLowerCase();
+  if (locators.length) {
+    if (fileKind === "csv") {
+      const header = locators[0] || "";
+      return boundedEstateChunks(locators.slice(1), header);
+    }
+    return boundedEstateChunks(locators);
+  }
+  if (!text) return [];
+  return boundedEstateChunks(text.match(/[\s\S]{1,30000}/g) || []);
+}
+
+export function boundedAgenticEstateRecords(records: AgenticEstateRecord[]): AgenticEstateRecord[] {
+  return records.slice(0, AGENTIC_ESTATE_MAX_RECORDS);
+}
+
+async function agenticEstateChunkResponse(chunk: string, model: string, credential: Awaited<ReturnType<typeof agenticNousCredential>>): Promise<unknown> {
+  if (!credential) throw new Error("A verified free Nous model is unavailable.");
+  const prompt = [
+    "Parse estate records from this uploaded client-file excerpt.",
+    "Return JSON only in this exact envelope: {\"estates\":[{\"estateName\":\"\",\"ownerName\":\"\",\"propertyAddress\":\"\",\"county\":\"\",\"parcelId\":\"\",\"notes\":\"\",\"missingFields\":[]}]}",
+    "Preserve supplied spelling, names, addresses, counties, folios, parcel IDs, and source-row boundaries exactly. Never research, infer, enrich, merge uncertain people, or fill a missing fact.",
+    "Use an empty string for every missing value and list its field name in missingFields. Keep incomplete rows as estate records when any estate, owner, address, county, or parcel fact exists.",
+    "For CSV input, the repeated first line is a header, not an estate. Notes may describe ambiguity or a source row/page reference but may not add facts.",
+    "Client-file excerpt:",
+    chunk,
+  ].join("\n");
+  const response = await fetch(`${credential.baseUrl.replace(/\/+$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${credential.credential}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: "You are the HeirRight estate-file parser. Extract supplied records only and return strict JSON. Missing information must remain missing and review-required." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0,
+      max_tokens: 7_000,
+    }),
+    redirect: "error",
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw new Error(`The verified free model returned ${response.status}.`);
+  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  const choices = Array.isArray(payload.choices) ? payload.choices : [];
+  const first = choices[0] && typeof choices[0] === "object" ? choices[0] as Record<string, unknown> : {};
+  const message = first.message && typeof first.message === "object" ? first.message as Record<string, unknown> : {};
+  return message.content;
+}
+
+async function agenticEstateChunkResponses(chunks: string[], model: string, credential: Awaited<ReturnType<typeof agenticNousCredential>>): Promise<unknown[]> {
+  const responses = new Array<unknown>(chunks.length);
+  let nextIndex = 0;
+  const workers = Array.from(
+    { length: Math.min(AGENTIC_ESTATE_MODEL_CONCURRENCY, chunks.length) },
+    async () => {
+      while (nextIndex < chunks.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        responses[index] = await agenticEstateChunkResponse(chunks[index], model, credential);
+      }
+    },
+  );
+  await Promise.all(workers);
+  return responses;
+}
+
+async function agenticEstateImportResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "POST") return methodNotAllowed("POST");
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const fileName = cleanEstateValue(body.fileName, 180);
+  const sourceHash = stringValue(body.sourceHash).toLowerCase();
+  const text = stringValue(body.text);
+  if (!fileName || !/^[a-f0-9]{64}$/.test(sourceHash) || !text) {
+    return json({ ok: false, error: "estate_import_invalid", message: "The extracted estate file did not pass source validation." }, { status: 422, headers: { "cache-control": "no-store" } });
+  }
+  if (text.length > AGENTIC_ESTATE_TEXT_LIMIT) {
+    return json({ ok: false, error: "estate_import_too_large", message: "Split this estate file into smaller files before parsing." }, { status: 413, headers: { "cache-control": "no-store" } });
+  }
+  const credential = await agenticNousCredential(env);
+  if (!credential) {
+    return json({ ok: false, error: "nous_unavailable", message: "A verified free Nous model is not available for estate file parsing." }, { status: 503, headers: { "cache-control": "no-store" } });
+  }
+  const requestedModel = stringValue(body.model);
+  const model = requestedModel && credential.verifiedFreeModels.includes(requestedModel)
+    ? requestedModel
+    : credential.model;
+  if (!credential.verifiedFreeModels.includes(model)) {
+    return json({ ok: false, error: "nous_free_model_required", message: "Estate files require a catalog-verified free Nous model." }, { status: 503, headers: { "cache-control": "no-store" } });
+  }
+  try {
+    const chunks = agenticEstateImportChunks(body);
+    if (!chunks.length) throw new Error("The estate file did not contain readable source records.");
+    const chunkResponses = await agenticEstateChunkResponses(chunks, model, credential);
+    const parsed: AgenticEstateRecord[] = [];
+    for (const content of chunkResponses) {
+      parsed.push(...parseAgenticEstateRecords(content, sourceHash, parsed.length));
+      if (parsed.length > AGENTIC_ESTATE_MAX_RECORDS) {
+        throw new Error(`This file contains more than ${AGENTIC_ESTATE_MAX_RECORDS} estate records. Split it into smaller files.`);
+      }
+    }
+    const estates = boundedAgenticEstateRecords(parsed);
+    if (!estates.length) throw new Error("The verified free model did not find any reviewable estate records.");
+    return json({
+      ok: true,
+      provider: "nous",
+      model,
+      freeModelVerified: true,
+      reviewRequired: true,
+      sourceHash,
+      sourceFileName: fileName,
+      estates,
+    }, { headers: { "cache-control": "no-store" } });
+  } catch (error) {
+    return json({
+      ok: false,
+      error: "estate_import_parse_failed",
+      message: error instanceof Error ? error.message : "The estate file could not be parsed safely.",
+    }, { status: 422, headers: { "cache-control": "no-store" } });
+  }
+}
+
 async function readbackEvidenceResponse(url: URL, env: CloudflareEnv, markdown: boolean): Promise<Response> {
   if (url.searchParams.get("dry-run") === "false") {
     return json({
@@ -8115,6 +8353,12 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return agenticBackstoryResponse(request, env);
+    }
+
+    if (url.pathname === "/api/agentic/estate-import") {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return agenticEstateImportResponse(request, env);
     }
 
     if (url.pathname === "/api/admin/settings") {

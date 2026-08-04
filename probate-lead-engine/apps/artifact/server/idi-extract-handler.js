@@ -252,6 +252,23 @@ function extractCsv(bytes) {
   };
 }
 
+async function extractEstateUpload(contentType, bytes) {
+  if (contentType === "application/pdf") {
+    try {
+      return await extractPdf(bytes);
+    } catch (error) {
+      if (error.code !== "needs_google_ocr") throw error;
+      const searchableError = new Error("This PDF has no readable text. Upload a searchable PDF or CSV.");
+      searchableError.code = "estate_upload_text_required";
+      throw searchableError;
+    }
+  }
+  if (contentType === "text/csv") return extractCsv(bytes);
+  const error = new Error("Estate intake accepts searchable PDF or CSV files only.");
+  error.code = "estate_upload_type_unsupported";
+  throw error;
+}
+
 async function extractWithGoogleWorkspace(request, session, attachmentId) {
   const result = await workerJson(request, "/api/discovery/idi-asset-search/ocr", {
     method: "POST",
@@ -279,7 +296,7 @@ async function extractReport(request, session, attachment, bytes) {
   throw new Error("This report type is not supported for Discovery extraction.");
 }
 
-module.exports = async function handler(request, response) {
+async function idiExtractHandler(request, response) {
   if (requireApiAuth(request, response)) return;
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -363,4 +380,7 @@ module.exports = async function handler(request, response) {
       message: error.message || "The IDI report could not be extracted safely.",
     });
   }
-};
+}
+
+module.exports = idiExtractHandler;
+module.exports.extractEstateUpload = extractEstateUpload;
