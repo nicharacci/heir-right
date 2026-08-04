@@ -23,7 +23,7 @@ The Fly worker uses `fly.worker.toml` (or `deploy/heirright-process/fly.worker.t
 
 - `DATABASE_URL`
 - `HEIRRIGHT_WORKER_URL`
-- `HEIRRIGHT_API_TOKEN`
+- `HEIRRIGHT_DOC_PREP_SOURCE_TOKEN`
 - `R2_ENDPOINT`
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`

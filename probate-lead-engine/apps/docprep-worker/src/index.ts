@@ -9,8 +9,8 @@ const required = (name: string) => { const value = process.env[name]; if (!value
 const databaseUrl = required("DATABASE_URL");
 const pool = new Pool({ connectionString: databaseUrl, max: 5, connectionTimeoutMillis: 5_000 });
 const workerUrl = required("HEIRRIGHT_WORKER_URL").replace(/\/+$/, "");
-const apiToken = required("HEIRRIGHT_API_TOKEN");
-const sourceRunner = createCloudflareSourceRunner({ workerUrl, apiToken });
+const sourceToken = required("HEIRRIGHT_DOC_PREP_SOURCE_TOKEN");
+const sourceRunner = createCloudflareSourceRunner({ workerUrl, apiToken: sourceToken });
 const storage = new R2ObjectStore(new S3Client({ endpoint: required("R2_ENDPOINT"), region: "auto", credentials: { accessKeyId: required("R2_ACCESS_KEY_ID"), secretAccessKey: required("R2_SECRET_ACCESS_KEY") } }), required("R2_BUCKET_NAME"));
 const processWorker = new DocumentPrepWorker({ repository: new PostgresProcessRepository(pool), sourceRunner, objectStore: storage });
 const boss = new PgBoss({ connectionString: databaseUrl, schema: "docprep_pgboss", retryLimit: 8, retryDelay: 30, retryBackoff: true, pollingIntervalSeconds: 1 });

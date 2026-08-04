@@ -98,6 +98,27 @@ const tokenResponse = await call(connectionStatus, {
 });
 assert.equal(tokenResponse.statusCode, 200, "internal bearer must preserve server-to-server access");
 
+process.env.HEIRRIGHT_DOC_PREP_SOURCE_TOKEN = "s37-docprep-source-token";
+const docPrepSourceDiscovery = await call(discoveryFile, {
+  method: "GET",
+  url: "/api/discovery/file?estateId=estate-test",
+  headers: { authorization: `Bearer ${process.env.HEIRRIGHT_DOC_PREP_SOURCE_TOKEN}` },
+});
+assert.equal(docPrepSourceDiscovery.statusCode, 503, "the scoped Doc Prep bearer must reach only the Discovery File proxy and still fail closed without the source worker");
+const docPrepSourceExport = await call(exportsHandler, {
+  method: "POST",
+  url: "/api/exports",
+  body: {},
+  headers: { authorization: `Bearer ${process.env.HEIRRIGHT_DOC_PREP_SOURCE_TOKEN}` },
+});
+assert.equal(docPrepSourceExport.statusCode, 503, "the scoped Doc Prep bearer must reach only the dry-run export proxy and still fail closed without the source worker");
+const docPrepSourceRejectedElsewhere = await call(connectionStatus, {
+  method: "GET",
+  url: "/api/connections/status",
+  headers: { authorization: `Bearer ${process.env.HEIRRIGHT_DOC_PREP_SOURCE_TOKEN}` },
+});
+assert.equal(docPrepSourceRejectedElsewhere.statusCode, 401, "the scoped Doc Prep bearer must not authorize unrelated operational routes");
+
 for (const nearMiss of [
   `${process.env.HEIRRIGHT_API_TOKEN.slice(0, -1)}x`,
   process.env.HEIRRIGHT_API_TOKEN.slice(1),
@@ -291,12 +312,17 @@ assert.match(readFileSync(new URL("../api/admin/access.js", import.meta.url), "u
 const secretCompareSource = readFileSync(new URL("../api/security/secret-compare.js", import.meta.url), "utf8");
 const authSharedSource = readFileSync(new URL("../api/auth/_shared.js", import.meta.url), "utf8");
 const sharedApiSource = readFileSync(new URL("../api/_shared.js", import.meta.url), "utf8");
+const docPrepFileSource = readFileSync(new URL("../api/discovery/file.js", import.meta.url), "utf8");
+const docPrepExportSource = readFileSync(new URL("../api/exports.js", import.meta.url), "utf8");
 const authCallbackSource = readFileSync(new URL("../api/auth/callback.js", import.meta.url), "utf8");
 const serverSource = readFileSync(new URL("../server.js", import.meta.url), "utf8");
 const workerSource = readFileSync(new URL("../../worker/src/cloudflare.ts", import.meta.url), "utf8");
 assert.match(secretCompareSource, /createHash\("sha256"\)[\s\S]*timingSafeEqual\(digest\(actualValue\), digest\(expectedValue\)\)/, "Vercel secrets must compare fixed-size digests through timingSafeEqual");
 assert.match(authSharedSource, /secretMatches\(signature, sign\(encoded\)\)/, "the Vercel session signature must use the shared timing-safe comparator");
 assert.match(sharedApiSource, /secretMatches\(supplied, expected\)/, "the Vercel internal bearer must use the shared timing-safe comparator");
+assert.match(sharedApiSource, /HEIRRIGHT_DOC_PREP_SOURCE_TOKEN/, "the Fly Doc Prep source bearer must remain separately scoped from the primary internal bearer");
+assert.match(docPrepFileSource, /allowDocPrepSource\(request\)[\s\S]*requireApiAuth\(request, response\)/, "only the Discovery File proxy may opt into the Doc Prep source bearer");
+assert.match(docPrepExportSource, /allowDocPrepSource\(request\)[\s\S]*requireApiAuth\(request, response\)/, "only the dry-run export proxy may opt into the Doc Prep source bearer");
 assert.match(authCallbackSource, /secretMatches\(state, expectedState\)/, "the Vercel OAuth state must use the shared timing-safe comparator");
 assert.match(serverSource, /secretMatches\(signature, sign\(payload\)\)/, "the production auth router must use the shared timing-safe comparator");
 assert.match(serverSource, /secretMatches\(state, expectedState\)/, "the local production router OAuth state must use the shared timing-safe comparator");
@@ -307,6 +333,7 @@ assert.doesNotMatch(`${authSharedSource}\n${sharedApiSource}\n${authCallbackSour
 console.log(JSON.stringify({ ok: true, checks: [
   "anonymous_operational_routes_rejected",
   "internal_bearer_preserved",
+  "docprep_source_bearer_scoped",
   "production_wrapper_bearer_preserved",
   "approved_session_preserved",
   "ordinary_operator_admin_mutation_rejected",

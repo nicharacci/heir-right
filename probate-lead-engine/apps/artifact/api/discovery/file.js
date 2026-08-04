@@ -1,6 +1,7 @@
-const { proxyWorkerHttp, requireApiAuth, sendJson } = require("../_shared");
+const { allowDocPrepSource, proxyWorkerHttp, requireApiAuth, sendJson } = require("../_shared");
 
 module.exports = async function handler(request, response) {
+  allowDocPrepSource(request);
   if (requireApiAuth(request, response)) return;
   if (request.method !== "GET") {
     sendJson(response, 405, { ok: false, error: "method_not_allowed" });
