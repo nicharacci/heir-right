@@ -56,27 +56,7 @@
       <div id="searchPopup" class="search-popup" role="dialog" aria-label="Search results" hidden></div>
       <div id="topStatus" class="top-status">Load the latest lead packet to begin.</div>
       <div class="top-actions">
-        <div id="crmImportMenu" class="import-menu beui-menu-shell" data-open="false">
-          <div class="import-split" aria-label="Import estates">
-            <button id="crmImportSingle" class="import-split-main" type="button" data-open-crm-import title="Import one estate">
-              <span>Import</span>
-            </button>
-            <button id="crmImportBatchToggle" class="import-split-menu beui-menu-trigger" type="button" aria-label="Open batch import menu" aria-haspopup="menu" aria-expanded="false" data-crm-import-batch-toggle>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-          </div>
-          <div id="crmImportPopover" class="import-popover beui-menu t-dropdown" data-beui-menu-surface role="menu" aria-label="Batch import source" hidden>
-            <button class="import-option beui-menu-item" type="button" role="menuitem" data-crm-batch-import="podio">
-              <span><strong>Batch from Podio</strong><span>Paste exported Lead rows for review.</span></span>
-            </button>
-            <button class="import-option beui-menu-item" type="button" role="menuitem" data-crm-batch-import="google-sheets">
-              <span><strong>Batch from Sheets</strong><span>Paste spreadsheet rows into DocPrep.</span></span>
-            </button>
-            <button class="import-option beui-menu-item" type="button" role="menuitem" data-crm-batch-import="csv">
-              <span><strong>Batch from CSV</strong><span>Paste pipe, tab, or CSV rows.</span></span>
-            </button>
-          </div>
-        </div>
+        <button id="estateFileUpload" class="btn" type="button" data-open-estate-files aria-haspopup="dialog">Upload estates</button>
         <div id="exportMenu" class="export-menu beui-menu-shell" data-open="false">
           <button id="exportToggle" class="btn primary export-toggle solvys-liquid-glass beui-menu-trigger" type="button" aria-haspopup="menu" aria-expanded="false">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v11m0-11 4 4m-4-4-4 4M6 11v8h12v-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -143,13 +123,13 @@
         </div>
         <div class="filter-scroll">
           <div class="source-action-stack" aria-label="Estate source options">
-            <button class="source-action-card" type="button" data-open-external-import>
+            <button class="source-action-card" type="button" data-open-estate-files>
               <span class="source-action-icon" aria-hidden="true">
                 <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4 7.5h16M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
               </span>
               <span class="source-action-text">
-                <strong>Import from External Sources</strong>
-                <span>Bring in Podio, Google Workspace, CSV, or pasted CRM estate rows.</span>
+                <strong>Upload estate files</strong>
+                <span>Add a PDF or CSV. A verified free Nous model parses the records for review.</span>
               </span>
             </button>
             <button id="freshBatch" class="source-action-card" type="button" aria-busy="false">

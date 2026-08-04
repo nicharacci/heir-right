@@ -233,8 +233,8 @@ function createShellController() {
     if (primaryCommand) {
       event.preventDefault();
       await runControl(primaryCommand, async () => {
-        const importButton = document.getElementById("crmImportSingle");
-        if (!importButton) throw new Error("Estate import is unavailable.");
+        const importButton = document.getElementById("estateFileUpload");
+        if (!importButton) throw new Error("Estate file upload is unavailable.");
         importButton.click();
       });
       return;

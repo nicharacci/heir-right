@@ -111,6 +111,7 @@
 }
 
 .hr-grid-controls {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   min-width: 0;
@@ -121,17 +122,28 @@
 }
 
 .hr-estate-selection-assist {
-  flex: 1 1 100%;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  flex: 0 0 auto;
   min-width: 0;
   display: inline-flex;
   gap: var(--hr-space-2);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   align-items: center;
+  padding-inline: var(--hr-space-1);
+  overflow-x: auto;
+  background: var(--hr-surface);
+  scrollbar-width: thin;
 }
 
 .hr-estate-selection-assist[hidden] {
   display: none;
+}
+
+.hr-grid-controls[data-selection-active="true"] > :is(.hr-grid-search, .hr-grid-import-action, .hr-grid-filter-toggle) {
+  visibility: hidden;
 }
 
 .hr-grid-action-status {
@@ -700,7 +712,7 @@
   }
 
   .hr-estate-selection-assist {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .hr-grid-action-status {
@@ -750,12 +762,13 @@
 
   .hr-grid-lifecycle-action,
   .hr-grid-primary-action {
-    width: 100%;
+    width: auto;
+    flex: 0 0 auto;
   }
 
   .hr-estate-selection-assist {
     width: 100%;
-    display: grid;
+    display: flex;
   }
 
   .hr-estate-selection-assist[hidden] {

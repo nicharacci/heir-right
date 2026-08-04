@@ -63,9 +63,9 @@ function renderEstatesGrid({ bridge }) {
     <section class="hr-grid-view hr-estates-grid-view" data-operational-grid-view="estates">
       <header class="hr-grid-header">
         <div><p class="hr-grid-eyebrow">Estates</p><h1>Ready for Doc Prep</h1><p>Select eligible estates, review their source state, then move them into the shared Doc Prep workbench.</p></div>
-        <div class="hr-grid-controls">
+        <div class="hr-grid-controls" data-selection-active="${selectedCount > 0}">
           <label class="hr-grid-search"><span>Filter estates</span><input type="search" value="${escape(estateQuery)}" data-grid-quick-filter placeholder="Owner, address, county, or status"></label>
-          <button type="button" class="hr-grid-import-action" data-estates-import-csv aria-haspopup="dialog">Import CSV</button>
+          <button type="button" class="hr-grid-import-action" data-estates-import-file aria-haspopup="dialog">Upload PDF or CSV</button>
           <button type="button" class="hr-grid-filter-toggle beui-popover-trigger" data-estate-filters-toggle aria-expanded="${estateFiltersOpen}" aria-controls="hrEstateFilters">Filters <span data-estate-filter-count data-active="${filterCount > 0}">${filterCount}</span></button>
           <span class="hr-estate-selection-assist" data-estates-selection-assist ${selectedCount ? "" : "hidden"}>
             <button type="button" class="hr-grid-primary-action" data-estates-add-queue ${selectedCount ? "" : "disabled"}>${selectedCount === 1 ? "Queue for Doc Prep" : `Queue ${selectedCount} estates for Doc Prep`}</button>
@@ -107,6 +107,7 @@ function mountEstatesGrid(root, bridge) {
   if (!container) return null;
   const snapshot = bridge.readState();
   const rows = activeEstateRows(snapshot.estates).map((estate) => ({ ...estate, evidenceLabel: evidenceLabel(estate) }));
+  const controls = root.querySelector(".hr-grid-controls");
   const action = root.querySelector("[data-estates-add-queue]");
   const assist = root.querySelector("[data-estates-selection-assist]");
   const archiveAction = root.querySelector("[data-estates-archive]");
@@ -121,6 +122,7 @@ function mountEstatesGrid(root, bridge) {
       || [...nextSelection].some((estateId) => !estateSelection.has(estateId));
     estateSelection = nextSelection;
     const selectedCount = estateSelection.size;
+    if (controls) controls.dataset.selectionActive = String(selectedCount > 0);
     if (assist) assist.hidden = selectedCount === 0;
     if (status && selectionChanged) {
       status.textContent = "";
@@ -185,10 +187,8 @@ function mountEstatesGrid(root, bridge) {
     estateQuery = event.currentTarget.value;
     setGridQuickFilter(api, estateQuery);
   });
-  root.querySelector("[data-estates-import-csv]")?.addEventListener("click", () => {
-    window.dispatchEvent(new CustomEvent("heirright:open-crm-import", {
-      detail: { mode: "batch", provider: "csv" },
-    }));
+  root.querySelector("[data-estates-import-file]")?.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("heirright:open-estate-files"));
   });
   root.querySelector("[data-estate-filters-toggle]")?.addEventListener("click", (event) => {
     estateFiltersOpen = !estateFiltersOpen;

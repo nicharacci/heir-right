@@ -15,12 +15,14 @@ const discoveryFile = require("../api/discovery/file.js");
 const taxReceiptRun = require("../api/discovery/tax-collector/receipt-run.js");
 const podioDiagnostics = require("../api/podio/diagnostics.js");
 const podioOAuthStart = require("../api/podio/oauth/start.js");
+const estateFileImport = require("../api/agentic/estate-import.js");
 const productionPodioDiagnostics = require("../../../api/podio/diagnostics.js");
 const productionDiscoveryFile = require("../../../api/discovery/file.js");
 const productionDocumentAttachments = require("../../../api/documents/attachments.js");
 const productionWorkspaceState = require("../../../api/workspace/state.js");
 const productionAuth = require("../../../api/auth/[...path].js");
 const productionIdiExtract = require("../../../api/discovery/idi-asset-search/extract.js");
+const productionEstateFileImport = require("../../../api/agentic/estate-import.js");
 const { createSessionToken, loginPage, sessionBody } = require("../api/auth/_shared.js");
 const { secretMatches } = require("../api/security/secret-compare.js");
 
@@ -81,10 +83,12 @@ for (const [name, handler, request] of [
   ["tax receipt", taxReceiptRun, { method: "POST", body: {}, url: "/api/discovery/tax-collector/receipt-run" }],
   ["Podio diagnostics", podioDiagnostics, { method: "GET", url: "/api/podio/diagnostics" }],
   ["Podio OAuth start", podioOAuthStart, { method: "GET", url: "/api/podio/oauth/start" }],
+  ["estate file import", estateFileImport, { method: "POST", body: {}, url: "/api/agentic/estate-import" }],
   ["production Podio diagnostics wrapper", productionPodioDiagnostics, { method: "GET", url: "/api/podio/diagnostics" }],
   ["production Discovery File wrapper", productionDiscoveryFile, { method: "GET", url: "/api/discovery/file?estateId=estate-test" }],
   ["production supporting documents wrapper", productionDocumentAttachments, { method: "GET", url: "/api/documents/attachments?estateId=estate-test" }],
   ["production workspace state wrapper", productionWorkspaceState, { method: "GET", url: "/api/workspace/state?key=heirright%3Acrm-imported-estates" }],
+  ["production estate file import wrapper", productionEstateFileImport, { method: "POST", body: {}, url: "/api/agentic/estate-import" }],
 ]) {
   const blocked = await call(handler, request);
   assert.equal(blocked.statusCode, 401, `${name} must reject anonymous requests before work begins`);

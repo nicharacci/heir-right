@@ -5,14 +5,21 @@ import { readArtifactSource } from "./helpers/artifact-source.mjs";
 const bundle = readArtifactSource();
 const server = readFileSync(new URL("../server.js", import.meta.url), "utf8");
 
-for (const tab of ["Access", "Integrations", "Sources", "Outreach", "Preferences"]) {
+for (const tab of ["Access", "Integrations", "Outreach", "Preferences"]) {
   assert.ok(bundle.includes(`label: "${tab}"`), `Settings tab missing: ${tab}`);
 }
+assert.doesNotMatch(bundle, /\{ id: "sources", label: "Sources" \}|if \(tab === "sources"\)/, "Settings must not restore the retired standalone Sources readiness destination.");
+assert.doesNotMatch(bundle, /\$\{escapeHtml\(settingsTabs\.find[\s\S]*?\)\} readiness/, "Settings page titles must not append the retired readiness label.");
 
 assert.doesNotMatch(
   bundle,
   /\{ id: "audit", label: "Audit" \}|function renderAuditSettingsPanel|Activity and audit log|Recent workspace activity|Template controls|settings-(?:readiness-band|readiness-tile|audit-grid|audit-card)/,
   "Settings must not restore the retired audit readiness destination or its dead presentation styles.",
+);
+assert.doesNotMatch(
+  bundle,
+  /Google login configured|source groups reviewable|Browser capture blocked|No-send guard active/,
+  "Settings must not restore the stale shared readiness summary cards.",
 );
 
 for (const copy of [
@@ -40,9 +47,13 @@ assert.ok(bundle.includes("width: 44px;\n      height: 44px;\n      min-height: 
 assert.ok(bundle.includes(".workspace.is-collapsed .user-strip .avatar"), "Collapsed account emblem must have explicit centered avatar geometry.");
 assert.ok(bundle.includes("width: 42px;\n      height: 42px;\n      border-radius: inherit;"), "Collapsed account emblem must match the 42px nav icon well.");
 assert.doesNotMatch(bundle, /demoEstateLeadImports|seedDemoEstatePreviewState|SAMPLE-CRM-001/, "The production shell must not seed or expose synthetic estate records.");
-assert.ok(bundle.includes("csvFileImportItems"), "The app must parse selected CSV files before the operator commits an import.");
+assert.ok(bundle.includes("csvFileImportItems"), "The bundled client CSV default must retain its deterministic idempotent loader.");
 assert.ok(bundle.includes("crmBatchImportLimit = 250"), "The app batch limit must accept the supplied 51-row client file without silently truncating it.");
 assert.ok(bundle.includes("First Name, Last Name, and Address columns"), "The app must explain the required client CSV mapping.");
+assert.ok(bundle.includes("/api/agentic/estate-import"), "User PDF/CSV uploads must use the authenticated estate-file parsing route.");
+assert.ok(bundle.includes("freeModelVerified"), "User file intake must require a verified free Nous model receipt.");
+assert.ok(bundle.includes("estateFileImportItems"), "Parsed estate records must enter the review-required estate list.");
+assert.doesNotMatch(bundle, /id="crmImportMenu"|id="crmImportSingle"|data-open-crm|heirright:open-crm|Import From CRM/, "The direct CRM intake feature must not remain visible or callable.");
 assert.ok(bundle.includes("legacyPlaceholderEstateImportsOlderThan"), "The app must identify old placeholder estates through a bounded lifecycle path.");
 assert.ok(bundle.includes("Remove ${count} placeholder estate"), "The app must show the exact old-placeholder cleanup count before deletion.");
 
@@ -78,13 +89,13 @@ assert.doesNotMatch(bundle, /Embed Builder|activepieces\.com\/docs|cdn\.activepi
 console.log(JSON.stringify({
   ok: true,
   checks: [
-    "settings_access_integrations_sources_outreach_preferences_tabs_without_audit",
+    "settings_access_integrations_outreach_preferences_without_sources_or_audit_readiness",
     "google_only_auth_gate_and_account_menu_contract",
     "idi_core_team_default_and_personal_override_copy",
     "tax_collector_bottom_right_receipt_controls",
     "source_enrichment_readiness_controls",
     "outreach_first_party_review_package_without_activepieces_builder",
     "send_locked_guardrail_visible",
-    "app_native_csv_import_and_bounded_placeholder_cleanup",
+    "verified_free_nous_file_intake_and_bounded_placeholder_cleanup",
   ],
 }, null, 2));

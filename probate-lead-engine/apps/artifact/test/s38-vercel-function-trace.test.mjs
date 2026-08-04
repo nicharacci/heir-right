@@ -12,10 +12,18 @@ const functionRoot = path.join(
   repoRoot,
   ".vercel/output/functions/api/discovery/idi-asset-search/extract.func",
 );
+const estateImportFunctionRoot = path.join(
+  repoRoot,
+  ".vercel/output/functions/api/agentic/estate-import.func",
+);
 
 assert.ok(
   fs.existsSync(functionRoot),
   "run `vercel build --prod --yes` before the Vercel trace test",
+);
+assert.ok(
+  fs.existsSync(estateImportFunctionRoot),
+  "the root Vercel build must emit the estate-file import function",
 );
 
 function walk(directory) {
@@ -31,6 +39,13 @@ const filePathMap = config.filePathMap || {};
 const mappedFiles = Object.keys(filePathMap).map(normalize);
 const files = [...new Set([...walk(functionRoot).map(normalize), ...mappedFiles])];
 const matches = (suffix) => files.filter((file) => file.endsWith(suffix));
+const estateImportConfig = JSON.parse(fs.readFileSync(path.join(estateImportFunctionRoot, ".vc-config.json"), "utf8"));
+const estateImportFilePathMap = estateImportConfig.filePathMap || {};
+const estateImportFiles = [...new Set([
+  ...walk(estateImportFunctionRoot).map(normalize),
+  ...Object.keys(estateImportFilePathMap).map(normalize),
+])];
+const estateImportMatches = (suffix) => estateImportFiles.filter((file) => file.endsWith(suffix));
 
 for (const source of Object.values(filePathMap)) {
   assert.ok(
@@ -38,10 +53,24 @@ for (const source of Object.values(filePathMap)) {
     `the Vercel trace source must exist: ${source}`,
   );
 }
+for (const source of Object.values(estateImportFilePathMap)) {
+  assert.ok(
+    fs.existsSync(path.resolve(repoRoot, source)),
+    `the estate-import Vercel trace source must exist: ${source}`,
+  );
+}
 
 assert.ok(
   matches("/runtime-functions/idi-extract.cjs").length > 0,
   "the extraction function must contain its generated dependency bundle",
+);
+assert.ok(
+  estateImportMatches("/runtime-functions/idi-extract.cjs").length > 0,
+  "the estate-import function must contain its generated extraction bundle",
+);
+assert.ok(
+  estateImportMatches("/runtime-assets/pdfjs-dist/legacy/build/pdf.mjs").length > 0,
+  "the estate-import function must trace the searchable-PDF runtime",
 );
 assert.ok(
   matches("/runtime-assets/pdfjs-dist/package.json").length > 0,
@@ -99,6 +128,8 @@ console.log(JSON.stringify({
     "pdfjs_standard_fonts_traced",
     "production_trace_has_no_source_maps",
     "production_trace_has_no_native_canvas_binding",
+    "estate_import_extraction_bundle_traced",
+    "estate_import_pdf_runtime_traced",
   ],
   standardFontCount: expectedFonts.length,
 }, null, 2));

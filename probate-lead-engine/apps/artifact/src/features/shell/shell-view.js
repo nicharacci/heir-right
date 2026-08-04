@@ -134,12 +134,12 @@ function createShellView() {
   topbar.append(headerCommands);
 
   const legacyTopActions = topbar.querySelector(".top-actions");
-  const importMenu = document.getElementById("crmImportMenu");
-  const importRecord = importMenu ? {
-    parent: importMenu.parentNode,
-    next: importMenu.nextSibling,
+  const estateFileUpload = document.getElementById("estateFileUpload");
+  const importRecord = estateFileUpload ? {
+    parent: estateFileUpload.parentNode,
+    next: estateFileUpload.nextSibling,
   } : null;
-  if (importMenu) headerCommands.prepend(importMenu);
+  if (estateFileUpload) headerCommands.prepend(estateFileUpload);
   if (legacyTopActions) legacyTopActions.dataset.s38LegacyActions = "true";
 
   const kpiStrip = document.createElement("div");
@@ -219,8 +219,8 @@ function createShellView() {
     destroy() {
       restoreLegacyRails();
       window.removeEventListener("resize", onWindowResize);
-      if (importMenu && importRecord?.parent) {
-        importRecord.parent.insertBefore(importMenu, importRecord.next);
+      if (estateFileUpload && importRecord?.parent) {
+        importRecord.parent.insertBefore(estateFileUpload, importRecord.next);
       }
       delete legacyTopActions?.dataset.s38LegacyActions;
       routeContext.remove();

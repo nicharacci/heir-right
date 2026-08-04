@@ -163,7 +163,7 @@ function assertStaticContracts() {
   assert.match(shellView, /["researchRail", "historyRail"]/);
   assert.match(shellView, /const primaryAction = { label: "Queue", view: "", action: "queue" }/);
   assert.match(shellView, /this\.primaryCommand\.setAttribute\("title", primaryAction\.label\)/);
-  assert.match(controller, /data-shell-action="import-estate"[\s\S]*document\.getElementById\("crmImportSingle"\)[\s\S]*importButton\.click\(\)/);
+  assert.match(controller, /data-shell-action="import-estate"[\s\S]*document\.getElementById\("estateFileUpload"\)[\s\S]*importButton\.click\(\)/);
   assert.match(controller, /await bridge\.navigate\(view\)[\s\S]*viewButton\.dataset\.dashboardContext[\s\S]*openContext\(viewButton\.dataset\.dashboardContext, viewButton\)/, "a Dashboard approval CTA must deep-link to the explicit rail action after opening Document Prep");
   assert.match(dashboardCss, /\.case-lifecycle-stage:not\(:last-child\)::after \{\s*content:\s*none;/, "the lifecycle must not draw a connector plate around the steps");
   assert.match(dashboardCss, /\.case-stage-index \{[\s\S]*background:\s*transparent;[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;/, "lifecycle steps must render as bare status marks without circular button plates");
@@ -222,7 +222,7 @@ function assertStaticContracts() {
   assert.match(shellCss, /wa-button \{[\s\S]*margin-block-start:\s*var\(--s38-action-host-margin-block-start, var\(--s38-action-row-offset-y\)\)/, "Web Awesome labeled actions must use the shared optical row offset while honoring a component-owned layout margin");
   assert.match(docPrepSource, /\.hr-docprep-empty wa-button \{[\s\S]*--s38-action-host-margin-block-start:\s*var\(--hr-space-3\)[\s\S]*margin-block-start:\s*var\(--hr-space-3\)/, "the Document Prep empty-state CTA must retain its intentional twelve-pixel separation");
   assert.match(shellCss, /a\.btn:not\(\.icon-only\) \{[\s\S]*margin-block-start:\s*var\(--s38-action-row-offset-y\)/, "link actions must use the shared optical row offset");
-  assert.match(shellCss, /#crmImportMenu \.import-split > button \{[\s\S]*margin-block-start:\s*var\(--s38-action-row-offset-y\)/, "both halves of the Import split control must keep their label and arrow rows aligned");
+  assert.match(shellCss, /#estateFileUpload \{[\s\S]*display:\s*none[\s\S]*data-active-view="find-estates"[\s\S]*#estateFileUpload \{[\s\S]*display:\s*inline-flex/, "the single estate-file upload action must appear only in Estates on desktop");
   assert.match(shellCss, /body\[data-s38-shell="case-journey"\] button:not\(:where\([\s\S]*\[role="tab"\][\s\S]*\[role="menuitem"\][\s\S]*\.ag-root-wrapper button[\s\S]*background:\s*var\(--hr-action-surface\)[\s\S]*border-radius:\s*var\(--hr-radius-chip\)/, "approved controls must share the tokenized graphite chip without leaking into tabs, menus, or grids");
   assert.match(shellCss, /wa-button::part\(base\)[\s\S]*background:\s*var\(--hr-action-surface\)[\s\S]*border-radius:\s*var\(--hr-radius-chip\)/, "Web Awesome actions must share the source-owned material");
   assert.match(shellCss, /a\.btn:not\(\.icon-only\) \{[\s\S]*background:\s*var\(--hr-action-surface\)[\s\S]*border-radius:\s*var\(--hr-radius-chip\)/, "link actions must share the source-owned material");

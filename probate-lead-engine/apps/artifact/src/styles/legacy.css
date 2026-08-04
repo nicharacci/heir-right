@@ -9558,16 +9558,13 @@
     }
 
     .walkthrough-popover::before {
-      content: "";
-      position: absolute;
-      left: -7px;
-      top: 22px;
-      width: 14px;
-      height: 14px;
-      border-left: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line-strong));
-      border-bottom: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line-strong));
-      background: color-mix(in srgb, var(--panel) 94%, transparent);
-      transform: rotate(45deg);
+      content: none;
+    }
+
+    [data-walkthrough-target="true"] {
+      outline: 2px solid var(--hr-focus, var(--accent)) !important;
+      outline-offset: 4px !important;
+      scroll-margin: 5rem;
     }
 
     .walkthrough-step-row {

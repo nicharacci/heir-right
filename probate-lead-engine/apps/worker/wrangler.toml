@@ -28,6 +28,7 @@ MIAMI_DADE_CLERK_API_BASE = "https://www2.miamidadeclerk.gov/Developers/api"
 # wrangler secret put GOOGLE_OAUTH_CLIENT_ID
 # wrangler secret put GOOGLE_OAUTH_CLIENT_SECRET
 # wrangler secret put HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN
+# wrangler secret put NOUS_API_KEY
 
 [[kv_namespaces]]
 binding = "PODIO_TOKEN_STORE"
