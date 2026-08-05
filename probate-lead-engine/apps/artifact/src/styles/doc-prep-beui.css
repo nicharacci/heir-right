@@ -1,0 +1,232 @@
+.docprep-beui-surface {
+  --docprep-bg: #090b0f;
+  --docprep-panel: #10141b;
+  --docprep-panel-raised: #151b24;
+  --docprep-line: #2a3442;
+  --docprep-muted: #9aa6b5;
+  --docprep-text: #f3f6fa;
+  --docprep-pearl: #17416f;
+  --docprep-pearl-strong: #24578f;
+  --docprep-danger: #f3a4a4;
+  display: block;
+  color: var(--docprep-text);
+  background: var(--docprep-bg);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.45;
+}
+
+.docprep-beui-shell {
+  display: grid;
+  gap: 1rem;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.docprep-beui-island,
+.docprep-beui-review,
+.docprep-beui-table-section,
+.docprep-beui-preview {
+  border: 1px solid var(--docprep-line);
+  border-radius: 1.25rem;
+  background: var(--docprep-panel);
+}
+
+.docprep-beui-island {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.docprep-beui-island-heading,
+.docprep-beui-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.docprep-beui-eyebrow,
+.docprep-beui-muted,
+.docprep-beui-island p,
+.docprep-beui-review p,
+.docprep-beui-empty-preview,
+.docprep-beui-table-stage span,
+.docprep-beui-island-note,
+.docprep-beui-delivery-message {
+  color: var(--docprep-muted);
+}
+
+.docprep-beui-eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.docprep-beui-surface h2 {
+  margin: 0;
+  color: var(--docprep-text);
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.docprep-beui-island p,
+.docprep-beui-review p,
+.docprep-beui-empty-preview,
+.docprep-beui-delivery-message {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+}
+
+.docprep-beui-predecessors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 0;
+  padding: 0 0 0 1.25rem;
+  color: #c7d1dd;
+  font-size: 0.8125rem;
+}
+
+.docprep-beui-island-note {
+  display: grid;
+  gap: 0.25rem;
+  border-left: 2px solid var(--docprep-line);
+  padding-left: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.docprep-beui-island-note p {
+  margin: 0;
+}
+
+.docprep-beui-note-label {
+  color: var(--docprep-text);
+  font-weight: 650;
+}
+
+.docprep-beui-surface a {
+  color: #a9cbf2;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.docprep-beui-surface a:focus-visible,
+.docprep-beui-surface button:focus-visible {
+  outline: 2px solid #9bc7f4;
+  outline-offset: 3px;
+}
+
+.docprep-beui-popover {
+  max-width: 20rem;
+  padding: 0.75rem;
+  color: var(--docprep-text);
+  background: var(--docprep-panel-raised);
+  border: 1px solid var(--docprep-line);
+}
+
+.docprep-beui-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  align-items: center;
+}
+
+.docprep-beui-actions [data-action="run"] {
+  background: var(--docprep-pearl);
+  color: #f5f9ff;
+}
+
+.docprep-beui-actions [data-action="run"]:hover:not(:disabled) {
+  background: var(--docprep-pearl-strong);
+}
+
+.docprep-beui-review,
+.docprep-beui-table-section,
+.docprep-beui-preview {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.docprep-beui-review {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 26rem);
+  align-items: start;
+}
+
+.docprep-beui-inline-error {
+  color: var(--docprep-danger) !important;
+}
+
+.docprep-beui-table {
+  overflow: hidden;
+  border: 1px solid var(--docprep-line);
+  border-radius: 0.875rem;
+}
+
+.docprep-beui-table-stage {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.docprep-beui-table-stage strong {
+  overflow: hidden;
+  color: var(--docprep-text);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docprep-beui-table-stage span,
+.docprep-beui-table td {
+  font-size: 0.75rem;
+}
+
+.docprep-beui-preview-frame {
+  display: block;
+  width: 100%;
+  min-height: 28rem;
+  border: 1px solid var(--docprep-line);
+  border-radius: 0.875rem;
+  background: #07090c;
+}
+
+.docprep-beui-preview-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem 1.25rem;
+  font-size: 0.8125rem;
+}
+
+.docprep-beui-delivery-message {
+  color: #b7d7f5;
+}
+
+@media (max-width: 720px) {
+  .docprep-beui-shell {
+    padding: 1rem;
+  }
+
+  .docprep-beui-island-heading,
+  .docprep-beui-section-heading,
+  .docprep-beui-review {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docprep-beui-surface *,
+  .docprep-beui-surface *::before,
+  .docprep-beui-surface *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
