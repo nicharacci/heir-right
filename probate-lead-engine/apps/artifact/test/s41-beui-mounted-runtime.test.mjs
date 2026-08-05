@@ -16,6 +16,7 @@ const estatesSource = await readFile(new URL("../src/features/beui-tabs/estates.
 const runtimeCss = await readFile(new URL("runtime.css", runtimeRoot), "utf8");
 const legacySource = await readFile(new URL("../src/legacy/app.js", import.meta.url), "utf8");
 const s40Source = await readFile(new URL("../src/features/doc-prep/s40-doc-prep-view.js", import.meta.url), "utf8");
+const s40Css = await readFile(new URL("../src/features/doc-prep/s40-doc-prep.css", import.meta.url), "utf8");
 const cloudProcessSource = await readFile(new URL("../src/features/doc-prep/cloud-process.js", import.meta.url), "utf8");
 
 assert.match(bridgeSource, /createBeuiBridgeAdapter/);
@@ -40,6 +41,8 @@ assert.match(docPrepSource, /data-dynamic-island/);
 assert.match(docPrepSource, /data-beui-component=\"table\"/);
 assert.match(mountedAppSource, /setSelectedEstateIds\(\[estateId\]\)/);
 assert.match(mountedAppSource, /selectedEstateIds=\{selectedEstateIds\}/);
+assert.match(mountedAppSource, /setInterval\(poll, 1500\)/, "active durable Doc Prep cases must refresh while work is in progress");
+assert.match(mountedAppSource, /\["queued", "sourcing", "rendering"\]/, "polling must follow durable active states only");
 assert.match(estatesSource, /estateIds: \[\.\.\.selected\]/);
 assert.match(runtimeCss, /\.beui-mounted-runtime \.beui-tabs-root[\s\S]*border-radius/);
 assert.match(runtimeCss, /\.beui-mounted-runtime-content/);
@@ -62,6 +65,26 @@ assert.match(legacySource, /id === \"beui-docprep-action\"[\s\S]*requestCaseActi
 assert.match(legacySource, /id === \"beui-docprep-export\"[\s\S]*exportVerifiedPdfToGoogleDrive/);
 assert.match(legacySource, /dispatchFile:\s*\(command, payload, file\)/);
 assert.match(legacySource, /id === \"select-estate\"[\s\S]*hydratePersistedDiscoveryFile\(row\)/);
+assert.match(legacySource, /imported\.reviewRequired !== true/);
+const hydratedDiscoverySource = legacySource.slice(
+  legacySource.indexOf("async function hydratePersistedDiscoveryFile"),
+  legacySource.indexOf("async function runFullDiscovery"),
+);
+assert.match(hydratedDiscoverySource, /response\.status === 404\) return state\.idiImports\[key\] \|\| null/);
+assert.match(hydratedDiscoverySource, /finally \{[\s\S]*rerenderHydratedDocPrepSurface\(row\)/, "verified IDI hydration must repaint after every readback outcome");
+const stoppedDiscoverySource = legacySource.slice(
+  legacySource.indexOf("async function stopS40DocPrep"),
+  legacySource.indexOf("async function ensureS40WorkflowStateReady"),
+);
+assert.match(stoppedDiscoverySource, /void Promise\.all\(stopped\.map\(\(row\) => hydratePersistedDiscoveryFile\(row\)\)\)/, "stopping must rehydrate the persisted IDI record before the route settles");
+const dossiersScrollRule = s40Css.match(/\.app\[data-active-view="dossiers"\] #dossiersView \{([\s\S]*?)\n\}/)?.[1] || "";
+assert.match(dossiersScrollRule, /height: auto/);
+assert.match(dossiersScrollRule, /min-height: 100%/);
+assert.match(dossiersScrollRule, /overflow: visible/);
+assert.match(s40Css, /\.s40-docprep \{[\s\S]*grid-template-rows: auto auto auto;[\s\S]*min-height: auto;/);
+assert.match(s40Css, /\.s40-workbench \{[\s\S]*min-height: clamp\(32rem, 68vh, 52rem\);[\s\S]*overflow: visible;/);
+assert.match(s40Css, /\.s40-artifact-surface \{[\s\S]*grid-template-rows: auto minmax\(28rem, 70vh\) auto;[\s\S]*min-height: 28rem;/);
+assert.match(s40Css, /\.s40-preview-viewport \{[\s\S]*overflow-y: auto;/);
 assert.match(s40Source, /data-s40-idi-file data-estate-id=/);
 assert.match(s40Source, /bridge\.dispatchFile\(command, payload, file\)/);
 assert.match(cloudProcessSource, /contentType === \"application\/pdf\"/);
