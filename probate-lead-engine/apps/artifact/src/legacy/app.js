@@ -402,6 +402,7 @@ function normalizeEstateWorkflowRecord(record = {}) {
     exportEligible: Boolean(source.exportEligible),
     blocker: cleanDisplayValue(source.blocker || "").slice(0, 300),
     blockerStage: cleanDisplayValue(source.blockerStage || "").slice(0, 100),
+    batchId: cleanDisplayValue(source.batchId || "").slice(0, 96),
     stages,
     artifact,
     handoff,
@@ -16228,6 +16229,7 @@ function publicEstateRow(row) {
     workflowLabel: workflow.label,
     workflowBlocker: workflow.blocker,
     workflowBlockerStage: workflow.blockerStage,
+    workflowBatchId: workflow.batchId,
     workflowStages: workflow.stages,
     exportEligible: workflow.exportEligible,
     workflowArtifact: workflow.artifact,
@@ -16997,6 +16999,9 @@ async function queueEstatesForDocPrep(rows = []) {
 async function runS40DocPrep(estateIds = []) {
   const ids = [...new Set(estateIds.map(String).filter(Boolean))];
   if (!ids.length) throw new Error("Select at least one queued estate before starting Doc Prep.");
+  const batchId = ids.length > 1
+    ? `s40-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+    : "";
   const results = [];
   for (const estateId of ids) {
     const row = rowById(estateId);
@@ -17031,6 +17036,7 @@ async function runS40DocPrep(estateIds = []) {
         exportEligible: false,
         blocker: "",
         blockerStage: "",
+        batchId,
         stages: s40StagesFor(row, true),
         processingAt: isoNow(),
       });

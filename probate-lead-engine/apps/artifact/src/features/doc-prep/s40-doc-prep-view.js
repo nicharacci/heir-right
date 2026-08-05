@@ -324,7 +324,10 @@ function renderEstateSelector(rows, selected, bridge) {
 }
 
 function batchIsRunning(rows) {
-  return rows.some((row) => workflowState(row) === "processing");
+  return rows.length > 1 && rows.some((row) => (
+    workflowState(row) === "processing"
+    && String(row?.workflowBatchId || "").trim()
+  ));
 }
 
 function renderBatchProgress(selected, bridge) {

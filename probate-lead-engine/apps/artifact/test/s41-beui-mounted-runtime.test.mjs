@@ -44,6 +44,7 @@ assert.doesNotMatch(runtimeCss, /\.beui-mounted-runtime/);
 assert.match(s40Source, /data-s40-beui-queue/);
 assert.match(s40Source, /data-s40-beui-batch-progress/);
 assert.match(s40Source, /batchIsRunning\(selected\)/);
+assert.match(s40Source, /rows\.length > 1[\s\S]*workflowBatchId/);
 assert.match(s40Source, /renderArtifactRail\(current, bridge, rows, snapshot\)/);
 assert.doesNotMatch(s40Source, /data-community-grid="docprep"|createCommunityGrid|setGridQuickFilter/);
 assert.match(s40Css, /@media \(min-width: 701px\)[\s\S]*width: calc\(100% \+ var\(--s40-docprep-gutter\)\)/);
@@ -52,6 +53,8 @@ assert.equal(existsSync(new URL("mounted-app.tsx", runtimeRoot)), false, "the ob
 assert.equal(existsSync(new URL("../src/features/doc-prep-beui/doc-prep-sequence.tsx", import.meta.url)), false, "the obsolete full-page Doc Prep surface is removed");
 assert.equal(existsSync(new URL("../src/styles/doc-prep-beui.css", import.meta.url)), false, "the obsolete full-page Doc Prep stylesheet is removed");
 assert.match(legacySource, /id === "s40-stop-docprep"/);
+assert.match(legacySource, /workflowBatchId: workflow\.batchId/);
+assert.match(legacySource, /const batchId = ids\.length > 1/);
 assert.match(legacySource, /id === "select-estate"[\s\S]*hydratePersistedDiscoveryFile\(row\)/);
 assert.match(legacySource, /dispatchFile:\s*\(command, payload, file\)/);
 assert.match(cloudProcessSource, /contentType === "application\/pdf"/);

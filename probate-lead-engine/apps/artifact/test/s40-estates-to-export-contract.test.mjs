@@ -119,6 +119,7 @@ assert.doesNotMatch(docPrepRegister, /docPrepRail|renderDocPrepView/);
 assert.match(docPrepView, /s40-workbench/);
 assert.match(docPrepView, /data-s40-beui-queue/);
 assert.match(docPrepView, /data-s40-beui-batch-progress/);
+assert.match(docPrepView, /rows\.length > 1[\s\S]*workflowBatchId/);
 assert.doesNotMatch(docPrepView, /data-community-grid="docprep"|createCommunityGrid|setGridQuickFilter/);
 assert.match(docPrepView, /data-s40-run/);
 assert.match(docPrepView, /data-s40-stop/);
