@@ -454,13 +454,14 @@
   align-items: center;
   gap: var(--hr-space-3);
   width: min(100%, 39.675rem);
-  min-height: 3.5rem;
+  height: 70px;
   margin: 15px 0 0;
   padding: 0.7rem 1rem;
   color: var(--hr-text);
   background: var(--hr-chrome);
   border: 1px solid var(--hr-ruler);
   border-radius: 2rem;
+  flex-grow: 0;
 }
 
 .s40-island-loader {
