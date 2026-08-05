@@ -7,6 +7,7 @@ import { build, transform } from "esbuild";
 const testFile = fileURLToPath(import.meta.url);
 const artifactRoot = fileURLToPath(new URL("..", import.meta.url));
 const runtimeRoot = new URL("../src/features/beui-runtime/", import.meta.url);
+const buildSource = await readFile(new URL("../build.js", import.meta.url), "utf8");
 
 const bridgeSource = await readFile(new URL("bridge-adapter.ts", runtimeRoot), "utf8");
 const registerSource = await readFile(new URL("register.js", runtimeRoot), "utf8");
@@ -22,6 +23,9 @@ const cloudProcessSource = await readFile(new URL("../src/features/doc-prep/clou
 assert.match(bridgeSource, /createBeuiBridgeAdapter/);
 assert.match(bridgeSource, /dispatchFile/);
 assert.match(bridgeSource, /createReactRuntimeLifecycle/);
+assert.match(buildSource, /excludedFeatureRegisters/);
+assert.match(buildSource, /features\/beui-runtime\/register\.js/);
+assert.match(buildSource, /filter\(isPublishedFeatureRegister\)/);
 assert.match(registerSource, /bridgeReady/);
 assert.match(registerSource, /afterRender/);
 assert.match(registerSource, /createRoot/);
@@ -184,4 +188,4 @@ await build({
   loader: { ".css": "empty" },
 });
 
-console.log("S41 mounted runtime contract: 6 assertions passed");
+console.log("S41 BeUI rollback contract: 6 assertions passed");

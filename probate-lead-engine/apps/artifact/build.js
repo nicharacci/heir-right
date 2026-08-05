@@ -19,6 +19,10 @@ const runtimeAssetsDir = join(__dirname, "runtime-assets");
 const runtimeFunctionsDir = join(__dirname, "runtime-functions");
 const production = process.argv.includes("--production") || process.env.NODE_ENV === "production";
 const virtualFeatureModule = "virtual:heirright-features";
+const excludedFeatureRegisters = new Set([
+  // S41 T6R replaced the accepted Doc Prep workbench with the BeUI table surface.
+  "features/beui-runtime/register.js",
+]);
 const forbiddenRuntimeAsset = /https?:\/\/(?:ka-[fp]\.fontawesome\.com|ka-f\.webawesome\.com|cdn\.jsdelivr\.net|unpkg\.com|fonts\.bunny\.net|fonts\.googleapis\.com|fonts\.gstatic\.com)/i;
 const forbiddenPublicOperatorFiles = new Set([
   "api/connections/status",
@@ -53,6 +57,11 @@ function walkRegisterModules(directory) {
       return entry.isFile() && entry.name === "register.js" ? [path] : [];
     })
     .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+function isPublishedFeatureRegister(path) {
+  const relativePath = relative(sourceDir, path).split(sep).join("/");
+  return !excludedFeatureRegisters.has(relativePath);
 }
 
 function featureDiscoveryPlugin(registerModules) {
@@ -232,7 +241,8 @@ async function buildArtifact() {
   copyPdfExtractionRuntime();
   await buildIdiExtractionFunction();
 
-  const registerModules = walkRegisterModules(join(sourceDir, "features"));
+  const registerModules = walkRegisterModules(join(sourceDir, "features"))
+    .filter(isPublishedFeatureRegister);
   await esbuild.build({
     absWorkingDir: __dirname,
     entryPoints: [join(sourceDir, "entry.js")],
