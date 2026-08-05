@@ -70,7 +70,7 @@ const state = {
   searchHistory: [],
   historyProspectIds: null,
   sortState: {
-    results: { key: "score", direction: "desc" },
+    results: { key: "address", direction: "asc" },
     dossiers: { key: "", direction: "" }
   },
   docPrepAddModal: {
@@ -126,8 +126,8 @@ const state = {
     source: ""
   },
   columnOrder: {
-    results: ["address", "lead", "score", "evidence"],
-    dossiers: ["address", "lead", "score", "evidence"]
+    results: ["address", "lead", "evidence"],
+    dossiers: ["address", "lead", "evidence"]
   },
   dripSettings: {
     startDelay: "same-day",
@@ -332,14 +332,13 @@ const columnMap = {
 };
 
 const defaultColumnOrder = {
-  results: ["address", "lead", "score", "evidence"],
-  dossiers: ["address", "lead", "score", "evidence"]
+  results: ["address", "lead", "evidence"],
+  dossiers: ["address", "lead", "evidence"]
 };
 
 const tableColumnLabels = {
   lead: "Estate file",
   address: "Property address",
-  score: "Score",
   evidence: "Classification"
 };
 
@@ -13656,7 +13655,6 @@ function resultCellHtml(key, row) {
   if (key === "lead") {
     return `<td data-column="lead"><span class="primary-text">${escapeHtml(row.leadName)}</span></td>`;
   }
-  if (key === "score") return `<td data-column="score">${scoreHtml(row)}</td>`;
   if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowEstateDateValue(row))}</span></td>`;
   if (key === "next") {
     return `<td data-column="next"><span class="estate-next-stack"><button class="next-link solvys-liquid-glass" type="button" title="Add ${escapeHtml(row.leadName || row.title)} to Queue" data-add-row-to-queue="${escapeHtml(row.id)}">Add to queue</button>${importedEstateLifecycleHtml(row)}</span></td>`;
@@ -13670,7 +13668,6 @@ function dossierCellHtml(key, row) {
     return `<td data-column="address"><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td>`;
   }
   if (key === "lead") return `<td data-column="lead"><span class="primary-text">${escapeHtml(row.leadName)}</span></td>`;
-  if (key === "score") return `<td data-column="score">${scoreHtml(row)}</td>`;
   if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowDisplayClassification(row))}</span></td>`;
   return "";
 }
