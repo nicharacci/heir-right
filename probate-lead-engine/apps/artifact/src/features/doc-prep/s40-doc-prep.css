@@ -88,7 +88,7 @@
 .s40-column-kicker {
   margin: 0 0 var(--hr-space-2) !important;
   color: var(--hr-accent-strong) !important;
-  font-size: var(--hr-type-xs) !important;
+  font-size: var(--hr-type-sm) !important;
   font-weight: 750;
   letter-spacing: 0.08em;
   line-height: 1.2 !important;
@@ -219,11 +219,30 @@
   border-bottom: 1px solid var(--hr-ruler);
 }
 
+.s40-selector > header > div,
+.s40-export-queue > header > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hr-space-2);
+}
+
 .s40-selector > header > span,
 .s40-export-queue > header > span {
   color: var(--hr-text-muted);
   font-family: var(--hr-font-mono);
   font-size: var(--hr-type-xs);
+}
+
+.s40-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 .s40-export-queue ul {
@@ -275,6 +294,8 @@
 .s40-empty-selector {
   display: grid;
   align-content: center;
+  justify-items: center;
+  text-align: center;
   gap: var(--hr-space-3);
   padding: var(--hr-space-5);
 }
@@ -1107,9 +1128,7 @@
 }
 
 .s40-empty-rail-head h2 {
-  margin: 0;
-  color: var(--hr-text);
-  font-size: var(--hr-type-lg);
+  display: none;
 }
 
 .s40-empty-rail-head p:last-child {
