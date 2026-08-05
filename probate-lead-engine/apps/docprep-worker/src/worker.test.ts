@@ -74,18 +74,22 @@ test("review resume starts at the first non-succeeded stage and never repeats a 
 test("a PDF byte or SHA mismatch fails before packet_ready", async () => {
   const repository = new InMemoryProcessRepository();
   const intake = await repository.intake(estate("estate-worker-4"), "worker-idempotency-0004");
-  const worker = new DocumentPrepWorker({ repository, objectStore: new MemoryStore(true), stageRunner: async (stageId) => success(stageId), packetRenderer });
+  const failures: Array<{ code: string }> = [];
+  const worker = new DocumentPrepWorker({ repository, objectStore: new MemoryStore(true), stageRunner: async (stageId) => success(stageId), packetRenderer, reportSystemFailure: async (failure) => { failures.push(failure); } });
   const failed = await worker.process(intake[0].case.id);
   assert.equal(failed.state, "failed"); assert.equal(failed.artifact, undefined);
   assert.equal(failed.steps.find((step) => step.id === "packet-render")?.state, "failed");
+  assert.deepEqual(failures.map((failure) => failure.code), ["r2_readback_mismatch"]);
 });
 
 test("an R2 content-type mismatch fails before packet_ready", async () => {
   const repository = new InMemoryProcessRepository();
   const intake = await repository.intake(estate("estate-worker-5"), "worker-idempotency-0005");
-  const worker = new DocumentPrepWorker({ repository, objectStore: new MemoryStore(false, "application/octet-stream"), stageRunner: async (stageId) => success(stageId), packetRenderer });
+  const failures: Array<{ code: string }> = [];
+  const worker = new DocumentPrepWorker({ repository, objectStore: new MemoryStore(false, "application/octet-stream"), stageRunner: async (stageId) => success(stageId), packetRenderer, reportSystemFailure: async (failure) => { failures.push(failure); } });
   const failed = await worker.process(intake[0].case.id);
   assert.equal(failed.state, "failed"); assert.equal(failed.artifact, undefined);
+  assert.deepEqual(failures.map((failure) => failure.code), ["r2_readback_mismatch"]);
 });
 
 test("the outbox dispatcher reclaims stale claims and preserves the queue topic", async () => {
@@ -103,4 +107,27 @@ test("the outbox dispatcher reclaims stale claims and preserves the queue topic"
   assert.deepEqual(jobs, [{ id: "job-1", caseId: "case-1", topic: "docprep.case.queued" }]);
   assert.match(calls[1], /claimed_at < now\(\) - interval '5 minutes'/);
   assert.match(calls[1], /RETURNING o\.id, o\.case_id, o\.topic/);
+});
+
+test("outbox claim failures report sanitized system transport without changing the thrown error", async () => {
+  const calls: string[] = [];
+  const client = {
+    query: async (sql: string) => {
+      calls.push(sql);
+      if (sql === "BEGIN") return { rows: [] };
+      if (sql === "ROLLBACK") return { rows: [] };
+      throw new Error("database value must not be reported");
+    },
+    release: () => undefined,
+  };
+  const failures: Array<{ stageId: string; code: string; provider: string; deploymentKey: string }> = [];
+  const pool = { connect: async () => client };
+  await assert.rejects(
+    () => claimOutbox(pool as never, 25, async (failure) => { failures.push(failure); }),
+    /database value must not be reported/,
+  );
+  assert.equal(calls[0], "BEGIN");
+  assert.match(calls[1], /UPDATE docprep_outbox/);
+  assert.equal(calls[2], "ROLLBACK");
+  assert.deepEqual(failures, [{ stageId: "outbox", code: "outbox_claim_failed", provider: "postgres", deploymentKey: "docprep-worker" }]);
 });

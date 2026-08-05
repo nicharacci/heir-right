@@ -21,20 +21,99 @@ export type DocPrepStageId = z.infer<typeof DocPrepStageId>;
 export const StageOutcomeStatus = z.enum(["succeeded", "review_required", "blocked", "failed"]);
 export type StageOutcomeStatus = z.infer<typeof StageOutcomeStatus>;
 
+const text = (max: number) => z.string().trim().min(1).max(max);
+const MAX_EVIDENCE_JSON_DEPTH = 8;
+const MAX_EVIDENCE_JSON_KEYS = 64;
+const MAX_EVIDENCE_JSON_ITEMS = 128;
+const MAX_EVIDENCE_JSON_STRING = 4_000;
+const MAX_EVIDENCE_JSON_BYTES = 32_000;
+
+const isBoundedJsonValue = (value: unknown, depth = 0, seen = new WeakSet<object>()): boolean => {
+  if (value === null || typeof value === "boolean") return true;
+  if (typeof value === "string") return value.length <= MAX_EVIDENCE_JSON_STRING;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value !== "object" || depth >= MAX_EVIDENCE_JSON_DEPTH || seen.has(value)) return false;
+  seen.add(value);
+  if (Array.isArray(value)) {
+    const valid = value.length <= MAX_EVIDENCE_JSON_ITEMS && value.every((item) => isBoundedJsonValue(item, depth + 1, seen));
+    seen.delete(value);
+    return valid;
+  }
+  const keys = Object.keys(value);
+  const valid = keys.length <= MAX_EVIDENCE_JSON_KEYS
+    && keys.every((key) => key.length <= 160 && isBoundedJsonValue((value as Record<string, unknown>)[key], depth + 1, seen));
+  seen.delete(value);
+  return valid;
+};
+
+const boundedJsonValue = z.unknown().superRefine((value, context) => {
+  if (!isBoundedJsonValue(value)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Value must be bounded JSON." });
+    return;
+  }
+  try {
+    if (JSON.stringify(value).length > MAX_EVIDENCE_JSON_BYTES) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "Value exceeds the durable JSON size limit." });
+    }
+  } catch {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Value must be serializable JSON." });
+  }
+});
+const boundedJsonRecord = z.custom<Record<string, unknown>>(
+  (value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value) || !isBoundedJsonValue(value)) return false;
+    try { return JSON.stringify(value).length <= MAX_EVIDENCE_JSON_BYTES; } catch { return false; }
+  },
+  { message: "Value must be a bounded JSON object." },
+);
 const evidenceReference = z.string().trim().min(1).max(1_000);
+export const DocPrepEvidenceReferenceRecord = z.object({
+  id: text(300),
+  stageId: DocPrepStageId,
+  source: text(120),
+  rawId: text(500),
+  fetchedAt: text(80),
+  factType: text(160),
+  value: boundedJsonValue,
+  sourceUrl: z.string().trim().max(2_000).optional(),
+  attachment: boundedJsonRecord.optional(),
+  sourceLocator: boundedJsonRecord.optional(),
+}).strict();
+export const DocPrepEvidenceReference = z.union([evidenceReference, DocPrepEvidenceReferenceRecord]);
+export type DocPrepEvidenceReference = z.infer<typeof DocPrepEvidenceReference>;
+
+export const DocPrepStageFact = z.object({
+  source: text(120),
+  rawId: text(500),
+  fetchedAt: text(80),
+  factType: text(160),
+  value: boundedJsonValue,
+  confidence: z.number().finite().min(0).max(1),
+  reviewFlags: z.array(text(160)).max(32),
+  sourceUrl: z.string().trim().max(2_000).optional(),
+  attachment: boundedJsonRecord.optional(),
+  evidenceReferenceIds: z.array(evidenceReference).max(256).optional(),
+}).strict();
+export type DocPrepStageFact = z.infer<typeof DocPrepStageFact>;
+const legacyFacts = boundedJsonRecord;
+export const DocPrepFacts = z.union([
+  z.object({ records: z.array(DocPrepStageFact).max(256) }).strict(),
+  legacyFacts,
+]);
+export type DocPrepFacts = z.infer<typeof DocPrepFacts>;
+
 export const DocPrepStageResponse = z.object({
   ok: z.literal(true),
   stageId: DocPrepStageId,
   status: StageOutcomeStatus,
   detail: z.string().trim().min(1).max(4_000),
   nextAction: z.string().trim().min(1).max(2_000).optional(),
-  evidenceReferences: z.array(evidenceReference).max(100),
-  facts: z.record(z.unknown()),
+  evidenceReferences: z.array(DocPrepEvidenceReference).max(256),
+  facts: DocPrepFacts,
 }).strict();
 export type DocPrepStageResponse = z.infer<typeof DocPrepStageResponse>;
 export type StageOutcome = Omit<DocPrepStageResponse, "ok" | "stageId">;
-
-const text = (max: number) => z.string().trim().min(1).max(max);
+export type DocPrepPriorStageOutput = { stageId: DocPrepStageId; evidenceReferences: DocPrepEvidenceReference[] };
 export const EstateSnapshot = z.object({
   estateId: text(160),
   name: text(300),
@@ -51,7 +130,7 @@ export type EstateSnapshot = z.infer<typeof EstateSnapshot>;
 export const IntakeCommand = z.object({ estates: z.array(EstateSnapshot).min(1).max(50) }).strict();
 export type IntakeCommand = z.infer<typeof IntakeCommand>;
 
-export type ProcessStep = { id: string; name: string; description?: string; state: StepState; blocker?: string; nextAction?: string; detail?: string; evidenceReferences: string[]; facts: Record<string, unknown>; startedAt?: string; finishedAt?: string; updatedAt: string };
+export type ProcessStep = { id: string; name: string; description?: string; state: StepState; blocker?: string; nextAction?: string; detail?: string; evidenceReferences: DocPrepEvidenceReference[]; facts: DocPrepFacts; startedAt?: string; finishedAt?: string; updatedAt: string };
 export type ProcessArtifact = { id: string; caseId: string; objectKey: string; objectVersion?: string; contentType: "application/pdf"; bytes: number; sha256: string; readbackStatus: "pending" | "verified" | "failed"; verifiedAt?: string; url?: string };
 export type ProcessEvent = { id: number; caseId: string; type: string; state: CaseState; stageId?: DocPrepStageId; occurredAt: string; detail: string; actorEmail?: string };
 export type ProcessCase = { id: string; estate: EstateSnapshot; state: CaseState; revision: number; createdAt: string; updatedAt: string; blocker?: string; nextAction?: string; steps: ProcessStep[]; artifact?: ProcessArtifact; events: ProcessEvent[] };
@@ -250,7 +329,7 @@ const toCase = async (db: Queryable, caseId: string): Promise<ProcessCase | null
   return {
     id: row.id, estate: EstateSnapshot.parse(row.snapshot), state: CaseState.parse(row.state), revision: row.revision,
     createdAt: row.created_at.toISOString(), updatedAt: row.updated_at.toISOString(), blocker: row.blocker || undefined, nextAction: row.next_action || undefined,
-    steps: steps.rows.map((step) => ({ id: step.id, name: step.name, description: stageDefinition(step.id)?.detail, state: StepState.parse(step.state), blocker: step.blocker || undefined, nextAction: step.next_action || undefined, detail: step.detail || undefined, evidenceReferences: Array.isArray(step.evidence_references) ? step.evidence_references : [], facts: step.facts && typeof step.facts === "object" && !Array.isArray(step.facts) ? step.facts : {}, startedAt: step.started_at?.toISOString(), finishedAt: step.finished_at?.toISOString(), updatedAt: step.updated_at.toISOString() })),
+    steps: steps.rows.map((step) => ({ id: step.id, name: step.name, description: stageDefinition(step.id)?.detail, state: StepState.parse(step.state), blocker: step.blocker || undefined, nextAction: step.next_action || undefined, detail: step.detail || undefined, evidenceReferences: DocPrepEvidenceReference.array().max(256).parse(step.evidence_references), facts: DocPrepFacts.parse(step.facts), startedAt: step.started_at?.toISOString(), finishedAt: step.finished_at?.toISOString(), updatedAt: step.updated_at.toISOString() })),
     events: events.rows.map((event) => ({ id: Number(event.id), caseId: event.case_id, type: event.event_type, state: CaseState.parse(event.state), stageId: event.stage_id ? DocPrepStageId.parse(event.stage_id) : undefined, detail: event.detail, actorEmail: event.actor_email || undefined, occurredAt: event.occurred_at.toISOString() })),
     artifact: sourceArtifact ? { id: sourceArtifact.id, caseId: sourceArtifact.case_id, objectKey: sourceArtifact.object_key, objectVersion: sourceArtifact.object_version || undefined, contentType: "application/pdf", bytes: Number(sourceArtifact.bytes), sha256: sourceArtifact.sha256, readbackStatus: sourceArtifact.readback_status, verifiedAt: sourceArtifact.verified_at?.toISOString(), url: sourceArtifact.artifact_url || undefined } : undefined,
   };

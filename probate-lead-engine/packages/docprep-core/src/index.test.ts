@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DOC_PREP_STAGES, InMemoryProcessRepository, ProcessCase, ProcessConflictError, ProcessTransitionError } from "./index.js";
+import { DOC_PREP_STAGES, DocPrepStageResponse, InMemoryProcessRepository, ProcessCase, ProcessConflictError, ProcessTransitionError } from "./index.js";
 
 const intake = { estates: [{ estateId: "estate-1", name: "Estate of Jordan Lee", owner: "Jordan Lee", address: "100 Main St, Miami, FL", county: "Miami-Dade", sourceFileReferences: ["idi-report-upload-1"], actor: { email: "operator@heirright.com" } }] };
 const succeeded = (stageId: string) => ({ status: "succeeded" as const, detail: `${stageId} completed.`, evidenceReferences: [`evidence:${stageId}`], facts: { stageId } });
@@ -22,6 +22,43 @@ test("intake is idempotent and rejects a reused key with a changed payload", asy
   const retry = await repository.intake(intake, "idem-key-000001");
   assert.equal(first[0].case.id, retry[0].case.id); assert.equal(retry[0].idempotent, true);
   await assert.rejects(() => repository.intake({ estates: [{ ...intake.estates[0], address: "101 Main St, Miami, FL" }] }, "idem-key-000001"), ProcessConflictError);
+});
+
+test("real structured evidence and normalized fact records parse, persist, and read back", async () => {
+  const evidence = {
+    id: "evidence-record-1",
+    stageId: "skip_trace_parse" as const,
+    source: "idi",
+    rawId: "idi-record-1",
+    fetchedAt: "2026-08-05T12:00:00.000Z",
+    factType: "potential_heir",
+    value: { name: "Jordan Fox", relationship: "sibling" },
+    sourceUrl: "/api/discovery/idi-asset-search/import?assetKey=estate-structured",
+    sourceLocator: { kind: "page", index: 2 },
+  };
+  const fact = {
+    source: "idi",
+    rawId: "idi-record-1",
+    fetchedAt: evidence.fetchedAt,
+    factType: evidence.factType,
+    value: evidence.value,
+    confidence: 0.88,
+    reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
+    sourceUrl: evidence.sourceUrl,
+    evidenceReferenceIds: [evidence.id],
+  };
+  const response = DocPrepStageResponse.safeParse({ ok: true, stageId: evidence.stageId, status: "succeeded", detail: "IDI facts returned.", evidenceReferences: [evidence], facts: { records: [fact] } });
+  assert.equal(response.success, true);
+  const repository = new InMemoryProcessRepository();
+  const [created] = await repository.intake(intake, "structured-idempotency-001");
+  const sourcing = await repository.transition(created.case.id, created.case.revision, "sourcing", "stages");
+  const running = await repository.startStage(sourcing.id, sourcing.revision, evidence.stageId);
+  const finished = await repository.finishStage(running.id, running.revision, evidence.stageId, { status: "succeeded", detail: "IDI facts returned.", evidenceReferences: [evidence], facts: { records: [fact] } });
+  const readback = await repository.get(finished.id);
+  assert.deepEqual(readback?.steps[0].evidenceReferences, [evidence]);
+  assert.deepEqual(readback?.steps[0].facts, { records: [fact] });
+  assert.equal(DocPrepStageResponse.safeParse({ ok: true, stageId: evidence.stageId, status: "succeeded", detail: "too large", evidenceReferences: [{ ...evidence, value: "x".repeat(4_001) }], facts: { records: [fact] } }).success, false);
+  assert.equal(DocPrepStageResponse.safeParse({ ok: true, stageId: evidence.stageId, status: "succeeded", detail: "too many", evidenceReferences: Array.from({ length: 257 }, () => "legacy"), facts: {} }).success, false);
 });
 
 test("the six durable stages keep the accepted labels and append ordered start and finish events", async () => {
