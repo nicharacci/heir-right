@@ -12702,19 +12702,26 @@ function positionWalkthrough() {
   const edge = 14;
   const maxLeft = Math.max(edge, window.innerWidth - popoverRect.width - edge);
   const maxTop = Math.max(edge, window.innerHeight - popoverRect.height - edge);
-  let left = rect.right + gap;
-  let top = rect.top + rect.height / 2 - popoverRect.height / 2;
-  if (left > maxLeft) left = rect.left - popoverRect.width - gap;
-  if (left < edge) {
-    left = Math.max(edge, Math.min(maxLeft, rect.left + rect.width / 2 - popoverRect.width / 2));
-    if (rect.bottom + gap + popoverRect.height <= window.innerHeight - edge) {
-      top = rect.bottom + gap;
-    } else if (rect.top - gap - popoverRect.height >= edge) {
-      top = rect.top - popoverRect.height - gap;
-    }
+  const fitsBelow = rect.bottom + gap + popoverRect.height <= window.innerHeight - edge;
+  const fitsAbove = rect.top - gap - popoverRect.height >= edge;
+  let left = rect.left + rect.width / 2 - popoverRect.width / 2;
+  let top;
+  let placement;
+  if (fitsBelow) {
+    top = rect.bottom + gap;
+    placement = "bottom";
+  } else if (fitsAbove) {
+    top = rect.top - popoverRect.height - gap;
+    placement = "top";
+  } else {
+    top = rect.top + rect.height / 2 - popoverRect.height / 2;
+    left = rect.right + gap;
+    if (left > maxLeft) left = rect.left - popoverRect.width - gap;
+    placement = "side";
   }
   left = Math.max(edge, Math.min(maxLeft, left));
   top = Math.max(edge, Math.min(maxTop, top));
+  popover.dataset.placement = placement;
   popover.style.left = `${left}px`;
   popover.style.top = `${top}px`;
 }
@@ -15840,6 +15847,8 @@ function wireEvents() {
     positionTableFiltersPopover();
     positionWalkthrough();
   });
+  // Capture phase so scrolls inside nested panels keep the tip on its target.
+  window.addEventListener("scroll", positionWalkthrough, { capture: true, passive: true });
   syncSidebarState();
   wireRailResize();
   wireFilterResize();
