@@ -17,6 +17,7 @@ export interface AuthorizedLegacyBridge {
   subscribe: (listener: LegacyStateListener) => () => void;
   navigate: (view: string) => unknown;
   dispatch: (command: string, payload?: Readonly<Record<string, unknown>>) => unknown;
+  dispatchFile?: (command: string, payload: Readonly<Record<string, unknown>> | undefined, file: File) => unknown;
   selectedEstateId?: string | null | (() => string | null);
   emit?: (...args: unknown[]) => unknown;
 }
@@ -27,6 +28,7 @@ export interface BeuiBridgeAdapter {
   subscribe: (listener: LegacyStateListener) => () => void;
   navigate: (route: BeuiRouteId | string) => unknown;
   dispatch: (command: string, payload?: Readonly<Record<string, unknown>>) => unknown;
+  dispatchFile: (command: string, payload: Readonly<Record<string, unknown>> | undefined, file: File) => unknown;
   emit: (...args: unknown[]) => unknown;
 }
 
@@ -98,6 +100,10 @@ export function createBeuiBridgeAdapter(bridge: AuthorizedLegacyBridge): BeuiBri
     navigate: (route: BeuiRouteId | string) => bridge.navigate(normalizeBeuiRoute(route)),
     dispatch: (command: string, payload?: Readonly<Record<string, unknown>>) =>
       bridge.dispatch(command, payload),
+    dispatchFile: (command: string, payload: Readonly<Record<string, unknown>> | undefined, file: File) =>
+      typeof bridge.dispatchFile === "function"
+        ? bridge.dispatchFile(command, payload, file)
+        : bridge.dispatch(command, { ...(payload || {}), file }),
     emit: (...args: unknown[]) => bridge.emit?.(...args),
   });
 }

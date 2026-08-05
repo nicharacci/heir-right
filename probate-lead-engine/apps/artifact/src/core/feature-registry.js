@@ -250,7 +250,8 @@ function installLegacyBridge(bridge) {
   required.forEach((name) => {
     if (typeof bridge[name] !== "function") throw new TypeError(`Legacy bridge is missing ${name}().`);
   });
-  legacyBridge = Object.freeze(Object.fromEntries(required.map((name) => [name, bridge[name].bind(bridge)])));
+  const optional = ["dispatchFile"].filter((name) => typeof bridge[name] === "function");
+  legacyBridge = Object.freeze(Object.fromEntries([...required, ...optional].map((name) => [name, bridge[name].bind(bridge)])));
   setRailRuntimeActive(true);
   emit();
   runLifecycle("bridgeReady", { bridge: legacyBridge });

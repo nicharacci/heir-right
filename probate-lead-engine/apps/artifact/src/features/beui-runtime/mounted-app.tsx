@@ -336,7 +336,13 @@ function useDocPrepController(adapter: BeuiBridgeAdapter, estateId: string | nul
     setPendingAction(action);
     setUploadError("");
     try {
-      await adapter.dispatch(command, { estateId, ...payload });
+      const file = payload.file;
+      if (file && typeof file === "object" && typeof (file as { arrayBuffer?: unknown }).arrayBuffer === "function") {
+        const { file: fileValue, ...rest } = payload;
+        await adapter.dispatchFile(command, { estateId, ...rest }, fileValue as File);
+      } else {
+        await adapter.dispatch(command, { estateId, ...payload });
+      }
       await refreshCase();
     } catch {
       setUploadError(safeActionError());

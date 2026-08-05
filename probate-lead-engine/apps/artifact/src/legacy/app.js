@@ -17520,6 +17520,7 @@ function installAuthorizedLegacyBridge() {
     readState: legacyPublicSnapshot,
     subscribe: subscribeLegacyState,
     dispatch: dispatchLegacyCommand,
+    dispatchFile: (command, payload, file) => dispatchLegacyCommand(command, { ...(payload || {}), file }),
     selectedEstateId: () => selectedRow()?.id || null,
     navigate: navigateLegacy,
     emit: (title, copy, tone = "review") => {
