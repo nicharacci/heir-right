@@ -20,6 +20,7 @@ import { DocPrepSequence, type DocPrepPendingAction } from "../doc-prep-beui/doc
 import {
   caseForEstate,
   hydrateProcessCase,
+  subscribeProcessCaseEvents,
 } from "../doc-prep/cloud-process.js";
 import {
   normalizeBeuiRoute,
@@ -321,6 +322,14 @@ function useDocPrepController(adapter: BeuiBridgeAdapter, estateId: string | nul
       || !["queued", "sourcing", "rendering"].includes(state)
     ) return;
     let active = true;
+    const refreshFromEvent = () => {
+      void hydrateProcessCase(estateId, { force: true })
+        .then((next) => {
+          if (active) setProcessCase(next);
+        })
+        .catch(() => {});
+    };
+    const unsubscribe = subscribeProcessCaseEvents(processCase?.id, refreshFromEvent);
     const poll = () => {
       void hydrateProcessCase(estateId, { force: true })
         .then((next) => {
@@ -331,9 +340,10 @@ function useDocPrepController(adapter: BeuiBridgeAdapter, estateId: string | nul
     const interval = window.setInterval(poll, 1500);
     return () => {
       active = false;
+      unsubscribe();
       window.clearInterval(interval);
     };
-  }, [estateId, pendingAction, processCase?.state]);
+  }, [estateId, pendingAction, processCase?.id, processCase?.state]);
 
   async function refreshCase() {
     if (!estateId) return null;

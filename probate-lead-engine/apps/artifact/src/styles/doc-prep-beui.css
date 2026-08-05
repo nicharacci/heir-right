@@ -152,6 +152,11 @@
   padding: 1.25rem;
 }
 
+.docprep-beui-table-section,
+.docprep-beui-preview {
+  padding-inline: 0;
+}
+
 .docprep-beui-review {
   grid-template-columns: minmax(0, 1fr) minmax(18rem, 26rem);
   align-items: start;

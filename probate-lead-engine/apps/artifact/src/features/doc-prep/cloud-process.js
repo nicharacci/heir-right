@@ -109,6 +109,32 @@ async function hydrateProcessCase(estateId, { force = false } = {}) {
   return storeCase(body.case);
 }
 
+function subscribeProcessCaseEvents(caseId, onCaseEvent) {
+  const key = asDisplayText(caseId);
+  const EventSourceConstructor = globalThis.EventSource;
+  if (!key || typeof EventSourceConstructor !== "function") return () => {};
+
+  let source;
+  try {
+    source = new EventSourceConstructor(`/api/doc-prep/cases/${encodeURIComponent(key)}/events`);
+  } catch {
+    return () => {};
+  }
+  const handleCaseEvent = (event) => {
+    try {
+      const parsed = JSON.parse(String(event?.data || ""));
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) onCaseEvent(parsed);
+    } catch {
+      // The durable case is rehydrated only from authenticated JSON. Ignore malformed stream data.
+    }
+  };
+  source.addEventListener("case", handleCaseEvent);
+  return () => {
+    source.removeEventListener?.("case", handleCaseEvent);
+    source.close();
+  };
+}
+
 async function startProcessCase(snapshot = {}) {
   const estate = processSnapshot(snapshot);
   const response = await fetch("/api/doc-prep/cases", {
@@ -179,5 +205,6 @@ export {
   processStateTone,
   requestCaseAction,
   startProcessCase,
+  subscribeProcessCaseEvents,
   verifiedPdf,
 };

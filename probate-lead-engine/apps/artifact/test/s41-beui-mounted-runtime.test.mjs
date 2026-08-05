@@ -14,6 +14,8 @@ const mountedAppSource = await readFile(new URL("mounted-app.tsx", runtimeRoot),
 const docPrepSource = await readFile(new URL("../src/features/doc-prep-beui/doc-prep-sequence.tsx", import.meta.url), "utf8");
 const estatesSource = await readFile(new URL("../src/features/beui-tabs/estates.tsx", import.meta.url), "utf8");
 const runtimeCss = await readFile(new URL("runtime.css", runtimeRoot), "utf8");
+const docPrepCss = await readFile(new URL("../src/styles/doc-prep-beui.css", import.meta.url), "utf8");
+const estatesGridSource = await readFile(new URL("../src/features/data-grid/estates-grid.js", import.meta.url), "utf8");
 const legacySource = await readFile(new URL("../src/legacy/app.js", import.meta.url), "utf8");
 const s40Source = await readFile(new URL("../src/features/doc-prep/s40-doc-prep-view.js", import.meta.url), "utf8");
 const s40Css = await readFile(new URL("../src/features/doc-prep/s40-doc-prep.css", import.meta.url), "utf8");
@@ -43,6 +45,9 @@ assert.match(mountedAppSource, /setSelectedEstateIds\(\[estateId\]\)/);
 assert.match(mountedAppSource, /selectedEstateIds=\{selectedEstateIds\}/);
 assert.match(mountedAppSource, /setInterval\(poll, 1500\)/, "active durable Doc Prep cases must refresh while work is in progress");
 assert.match(mountedAppSource, /\["queued", "sourcing", "rendering"\]/, "polling must follow durable active states only");
+assert.match(docPrepCss, /\.docprep-beui-table-section,\s*\.docprep-beui-preview\s*\{[\s\S]*padding-inline:\s*0;/, "the table and preview must meet their shared section border");
+assert.match(estatesGridSource, /field: "title", headerName: "Estate", minWidth: 260, flex: 1\.8/, "the Estate column must keep the full estate name visible");
+assert.match(estatesGridSource, /field: "address", headerName: "Property", minWidth: 220, flex: 1\.45/, "the Address column must retain its existing width");
 assert.match(estatesSource, /estateIds: \[\.\.\.selected\]/);
 assert.match(runtimeCss, /\.beui-mounted-runtime \.beui-tabs-root[\s\S]*border-radius/);
 assert.match(runtimeCss, /\.beui-mounted-runtime-content/);

@@ -30,6 +30,27 @@ test("the API cancels with the durable revision guard", async () => {
   assert.equal(cancelled.status, 200);
   assert.equal((await cancelled.json() as any).case.state, "cancelled");
 });
+test("the durable event stream preserves all six phase updates in order", async () => {
+  const streamRepository = new InMemoryProcessRepository();
+  const [intake] = await streamRepository.intake({ estates: [{ estateId: "estate-api-stream", name: "Estate of Stream", address: "4 Stream St, Miami, FL", county: "Miami-Dade", sourceFileReferences: ["idi-stream-1"], actor: { email: "operator@heirright.com" } }] }, "api-stream-idempotency-001");
+  const stagesDone = await completeStages(streamRepository, intake.case);
+  const rendering = await streamRepository.transition(stagesDone.id, stagesDone.revision, "rendering", "Packet rendering started.");
+  const ready = await streamRepository.recordArtifact(rendering.id, rendering.revision, { objectKey: "docprep/stream.pdf", contentType: "application/pdf", bytes: 16, sha256: "a".repeat(64), readbackStatus: "verified", verifiedAt: new Date().toISOString(), url: "https://public.example.test/docprep/stream.pdf" });
+  const streamApp = createApp({ serviceToken: "test-service-token", repository: streamRepository, now: () => 1 });
+  const response = await streamApp.request(`http://api/v1/doc-prep/cases/${ready.id}/events`, { headers });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") || "", /text\/event-stream/);
+  const body = await response.text();
+  const events = body.split("\n\n").flatMap((block) => {
+    if (!block.includes("event: case")) return [];
+    const data = block.split("\n").find((line) => line.startsWith("data: "));
+    return data ? [JSON.parse(data.slice("data: ".length))] : [];
+  });
+  const stageEvents = events.filter((event) => event.stageId);
+  assert.deepEqual(stageEvents.map((event) => `${event.type}:${event.stageId}`), DOC_PREP_STAGES.flatMap((stage) => [`stage_started:${stage.id}`, `stage_finished:${stage.id}`]));
+  assert.match(stageEvents[1].detail, /skip_trace_parse complete/);
+  assert.match(stageEvents.at(-1).detail, /backstory_generate complete/);
+});
 test("readiness checks the repository connection instead of treating a missing case as healthy", async () => {
   assert.equal((await app.request("http://api/readyz")).status, 200);
   class OfflineRepository extends InMemoryProcessRepository { override async ready() { throw new Error("database unavailable"); } }

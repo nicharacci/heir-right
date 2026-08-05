@@ -505,6 +505,23 @@ async function proxyProcessJson(pathname, { req, session, method = "GET", body }
   return { status: response.status, body: await response.text(), contentType: response.headers.get("content-type") || "application/json; charset=utf-8" };
 }
 
+async function proxyProcessStream(pathname, { req, session } = {}) {
+  const base = processApiBase();
+  if (!base) return null;
+  if (!session?.email) throw new Error("Sign in with an approved HeirRight account before starting document preparation.");
+  const response = await fetch(`${base}${pathname}`, {
+    method: "GET",
+    headers: {
+      authorization: `Bearer ${process.env.HEIRRIGHT_PROCESS_API_TOKEN || ""}`,
+      "x-heirright-actor-email": session.email,
+      "x-heirright-actor-name": session.name || session.email,
+      "x-heirright-public-origin": originFor(req),
+      ...(req?.headers?.["last-event-id"] ? { "last-event-id": req.headers["last-event-id"] } : {}),
+    },
+  });
+  return { status: response.status, body: response.body, contentType: response.headers.get("content-type") || "text/event-stream" };
+}
+
 async function proxyProcessBinary(pathname, { req, session, method = "GET", body } = {}) {
   const base = processApiBase();
   if (!base) return null;
@@ -556,6 +573,26 @@ async function handleDocPrepProcessRoute(req, res, url, session) {
     const proxied = await proxyProcessBinary(apiPath, { req, session, method: req.method, body });
     res.writeHead(proxied.status, { "content-type": proxied.contentType, "content-disposition": proxied.disposition, "cache-control": "private, no-store" });
     res.end(proxied.bytes);
+    return true;
+  }
+  if (apiPath.endsWith("/events")) {
+    const proxied = await proxyProcessStream(apiPath, { req, session });
+    res.writeHead(proxied.status, { "content-type": proxied.contentType, "cache-control": "private, no-store", connection: "keep-alive" });
+    if (!proxied.body) {
+      res.end();
+      return true;
+    }
+    const reader = proxied.body.getReader();
+    try {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done || res.destroyed) break;
+        res.write(Buffer.from(chunk.value));
+      }
+    } finally {
+      reader.releaseLock();
+      if (!res.writableEnded) res.end();
+    }
     return true;
   }
   const proxied = await proxyProcessJson(apiPath, { req, session, method: req.method, body });

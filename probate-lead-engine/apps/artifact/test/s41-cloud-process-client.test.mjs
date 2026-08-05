@@ -77,6 +77,7 @@ const readyCase = {
 };
 const requests = [];
 const originalFetch = globalThis.fetch;
+const originalEventSource = globalThis.EventSource;
 globalThis.fetch = async (url, init = {}) => {
   requests.push({ url: String(url), init });
   if (String(url) === "/api/doc-prep/exports/google-drive") {
@@ -140,8 +141,40 @@ try {
     caseIds: ["case-cloud"],
     operatorIntent: "export_verified_pdfs_to_google_drive",
   });
+
+  const eventSources = [];
+  class FakeEventSource {
+    constructor(url) {
+      this.url = url;
+      this.listeners = new Map();
+      this.closed = false;
+      eventSources.push(this);
+    }
+    addEventListener(type, listener) {
+      this.listeners.set(type, listener);
+    }
+    removeEventListener(type, listener) {
+      if (this.listeners.get(type) === listener) this.listeners.delete(type);
+    }
+    close() {
+      this.closed = true;
+    }
+    emit(type, data) {
+      this.listeners.get(type)?.({ data });
+    }
+  }
+  globalThis.EventSource = FakeEventSource;
+  const streamEvents = [];
+  const unsubscribe = client.subscribeProcessCaseEvents("case/cloud", (event) => streamEvents.push(event));
+  assert.equal(eventSources[0].url, "/api/doc-prep/cases/case%2Fcloud/events");
+  eventSources[0].emit("case", JSON.stringify({ id: 17, type: "stage_started", stageId: "skip_trace_parse" }));
+  eventSources[0].emit("case", "not-json");
+  assert.deepEqual(streamEvents, [{ id: 17, type: "stage_started", stageId: "skip_trace_parse" }]);
+  unsubscribe();
+  assert.equal(eventSources[0].closed, true, "stream cleanup must close the durable event source");
 } finally {
   globalThis.fetch = originalFetch;
+  globalThis.EventSource = originalEventSource;
 }
 
 console.log(JSON.stringify({
@@ -149,6 +182,7 @@ console.log(JSON.stringify({
   checks: [
     "cloud_intake_uses_stable_idempotency",
     "cloud_case_hydrates_after_reload",
+    "cloud_case_subscribes_to_persisted_events",
     "cloud_actions_carry_durable_revision",
     "cloud_pdf_requires_verified_readback",
     "cloud_drive_export_requires_verified_pdf",

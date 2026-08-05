@@ -145,7 +145,7 @@ function mountEstatesGrid(root, bridge) {
     key: "estates",
     rows,
     columns: [
-      { field: "title", headerName: "Estate", minWidth: 190, flex: 1.35, filter: "agTextColumnFilter" },
+      { field: "title", headerName: "Estate", minWidth: 260, flex: 1.8, filter: "agTextColumnFilter" },
       { field: "address", headerName: "Property", minWidth: 220, flex: 1.45, filter: "agTextColumnFilter" },
       { field: "county", headerName: "County", minWidth: 130, filter: "agTextColumnFilter" },
       { field: "status", headerName: "Status", minWidth: 140, filter: "agTextColumnFilter" },

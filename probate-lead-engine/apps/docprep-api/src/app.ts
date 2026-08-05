@@ -9,6 +9,8 @@ export type ApiConfig = {
   repository: ProcessRepository;
   artifactStore?: { get(objectKey: string): Promise<Uint8Array> };
   now?: () => number;
+  eventPollIntervalMs?: number;
+  eventStreamMaxMs?: number;
   fetcher?: typeof fetch;
   googleDrive?: { getCredentials?: GoogleDriveCredentialProvider };
 };
@@ -155,8 +157,10 @@ async function exportVerifiedPdfToGoogleDrive({
   throw new Error("Google Drive authorization could not be refreshed.");
 }
 
-export const createApp = ({ serviceToken, repository, artifactStore, now = () => Date.now(), fetcher = fetch, googleDrive = {} }: ApiConfig) => {
+export const createApp = ({ serviceToken, repository, artifactStore, now = () => Date.now(), eventPollIntervalMs = 1_000, eventStreamMaxMs = 30_000, fetcher = fetch, googleDrive = {} }: ApiConfig) => {
   const app = new Hono();
+  const streamPollInterval = Math.max(10, Math.floor(eventPollIntervalMs));
+  const streamMaxDuration = Math.max(streamPollInterval, Math.floor(eventStreamMaxMs));
   app.use("/v1/*", async (context, next) => {
     if (Number(context.req.header("content-length") || 0) > 1_000_000) return context.json({ ok: false, error: "request_too_large" }, 413);
     const authorization = context.req.header("authorization") || "";
@@ -190,9 +194,27 @@ export const createApp = ({ serviceToken, repository, artifactStore, now = () =>
     return new Response(verified.bytes as unknown as BodyInit, { headers: { "content-type": "application/pdf", "content-disposition": `${disposition}; filename="${verified.filename.replace(/"/g, "")}"`, "cache-control": "private, no-store" } });
   });
   app.get("/v1/doc-prep/cases/:caseId/events", async (context) => {
-    const lastEventId = Number(context.req.header("last-event-id") || context.req.query("after") || 0);
-    const events = await repository.events(context.req.param("caseId"), Number.isSafeInteger(lastEventId) && lastEventId > 0 ? lastEventId : 0);
-    return streamSSE(context, async (stream) => { for (const event of events) await stream.writeSSE({ id: String(event.id), event: "case", data: JSON.stringify(event) }); await stream.writeSSE({ event: "heartbeat", data: JSON.stringify({ at: now() }) }); });
+    const caseId = context.req.param("caseId");
+    const parsedLastEventId = Number(context.req.header("last-event-id") || context.req.query("after") || 0);
+    let lastEventId = Number.isSafeInteger(parsedLastEventId) && parsedLastEventId > 0 ? parsedLastEventId : 0;
+    return streamSSE(context, async (stream) => {
+      const deadline = Date.now() + streamMaxDuration;
+      try {
+        while (!context.req.raw.signal.aborted && Date.now() < deadline) {
+          const events = await repository.events(caseId, lastEventId);
+          for (const event of events) {
+            await stream.writeSSE({ id: String(event.id), event: "case", data: JSON.stringify(event) });
+            lastEventId = event.id;
+          }
+          const current = await repository.get(caseId);
+          if (!current || !["queued", "sourcing", "rendering"].includes(current.state)) break;
+          await stream.writeSSE({ event: "heartbeat", data: JSON.stringify({ at: now() }) });
+          await new Promise((resolve) => setTimeout(resolve, streamPollInterval));
+        }
+      } catch (error) {
+        if (!context.req.raw.signal.aborted) throw error;
+      }
+    });
   });
   app.post("/v1/doc-prep/cases/:caseId/actions/:action", async (context) => {
     const body = await context.req.json().catch(() => ({})) as { revision?: unknown }; const revision = Number(body.revision); if (!Number.isInteger(revision) || revision < 1) return context.json({ ok: false, error: "revision_required" }, 400);

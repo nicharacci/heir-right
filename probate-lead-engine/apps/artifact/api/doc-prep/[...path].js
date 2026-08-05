@@ -79,9 +79,24 @@ module.exports = async function handler(request, response) {
     });
     response.statusCode = upstream.status;
     response.setHeader("Cache-Control", "private, no-store");
-    response.setHeader("Content-Type", upstream.headers.get("content-type") || "application/json; charset=utf-8");
+    const contentType = upstream.headers.get("content-type") || "application/json; charset=utf-8";
+    response.setHeader("Content-Type", contentType);
     const disposition = upstream.headers.get("content-disposition");
     if (disposition) response.setHeader("Content-Disposition", disposition);
+    if (contentType.toLowerCase().includes("text/event-stream") && upstream.body) {
+      const reader = upstream.body.getReader();
+      try {
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          response.write(Buffer.from(chunk.value));
+        }
+      } finally {
+        reader.releaseLock();
+        response.end();
+      }
+      return;
+    }
     response.end(Buffer.from(await upstream.arrayBuffer()));
   } catch (error) {
     sendJson(response, 502, { ok: false, error: "document_prep_proxy_failed", message: error instanceof Error ? error.message : "Document preparation request failed." });
