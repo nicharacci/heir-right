@@ -1,0 +1,52 @@
+@layer theme, utilities;
+
+@import "tailwindcss/theme.css" layer(theme) theme(static);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@source "../beui-foundation";
+
+/*
+ * Compile-only Tailwind v4 boundary for the future BeUI root.
+ * Preflight is intentionally omitted and this file is not imported by entry.js.
+ */
+@theme inline {
+  --color-background: var(--beui-background);
+  --color-foreground: var(--beui-foreground);
+  --color-card: var(--beui-card);
+  --color-card-foreground: var(--beui-card-foreground);
+  --color-popover: var(--beui-popover);
+  --color-popover-foreground: var(--beui-popover-foreground);
+  --color-primary: var(--beui-primary);
+  --color-primary-foreground: var(--beui-primary-foreground);
+  --color-secondary: var(--beui-secondary);
+  --color-secondary-foreground: var(--beui-secondary-foreground);
+  --color-muted: var(--beui-muted);
+  --color-muted-foreground: var(--beui-muted-foreground);
+  --color-accent: var(--beui-accent);
+  --color-accent-foreground: var(--beui-accent-foreground);
+  --color-destructive: var(--beui-destructive);
+  --color-border: var(--beui-border);
+  --color-input: var(--beui-input);
+  --color-ring: var(--beui-ring);
+}
+
+[data-beui-foundation] {
+  --beui-background: oklch(1 0 0);
+  --beui-foreground: oklch(0.145 0 0);
+  --beui-card: oklch(1 0 0);
+  --beui-card-foreground: oklch(0.145 0 0);
+  --beui-popover: oklch(1 0 0);
+  --beui-popover-foreground: oklch(0.145 0 0);
+  --beui-primary: oklch(0.205 0 0);
+  --beui-primary-foreground: oklch(0.985 0 0);
+  --beui-secondary: oklch(0.97 0 0);
+  --beui-secondary-foreground: oklch(0.205 0 0);
+  --beui-muted: oklch(0.97 0 0);
+  --beui-muted-foreground: oklch(0.556 0 0);
+  --beui-accent: oklch(0.97 0 0);
+  --beui-accent-foreground: oklch(0.205 0 0);
+  --beui-destructive: oklch(0.577 0.245 27.325);
+  --beui-border: oklch(0.922 0 0);
+  --beui-input: oklch(0.922 0 0);
+  --beui-ring: oklch(0.708 0 0);
+}

@@ -7,19 +7,32 @@
     "build:production": "node build.js --production",
     "dev": "node server.js",
     "test:s40": "node build.js && node test/s40-estates-to-export-contract.test.mjs && node test/s40-workflow-model.test.mjs && node test/s41-docprep-route-auth.test.mjs && node test/s41-docprep-vercel-route.test.mjs && node test/s41-cloud-process-client.test.mjs",
-    "lint": "node scripts/lint.mjs",
+    "lint": "node scripts/lint.mjs && tsc -p tsconfig.ui.json --noEmit",
     "test": "node build.js && pnpm --filter @ple/types build && pnpm --filter @ple/worker build && node test/s38-static-build-privacy.test.mjs && node test/s38-component-runtime-contract.test.mjs && node test/s38-shell-contract.test.mjs && node test/s38-unified-rail-runtime.test.mjs && node test/s38-doc-prep-contract.test.mjs && node test/s38-preview-security-contract.test.mjs && node test/source-run-contract.test.mjs && node test/source-readiness-contract.test.mjs && node test/s31-readiness-contract.test.mjs && node test/s31-access-domains-contract.test.mjs && node test/s33-production-source-cleanup.test.mjs && node test/s34-app-owned-readiness.test.mjs && node test/s35-production-route-guards.test.mjs && node test/s37-route-auth.test.mjs && node test/s37-podio-user-oauth.test.mjs && node test/s37-closing-template-assets.test.mjs && node test/s37-pdf-content.test.mjs && node test/s38-public-estate-demo.test.mjs && node test/s37-document-artifacts.test.mjs && node test/s37-workspace-state.test.mjs && node test/s37-tax-receipt-e2e.test.mjs && node test/s37-discovery-persistence.test.mjs && node test/s37-control-inventory.test.mjs && node test/s38-idi-real-extraction.test.mjs && node test/s38-idi-reload-contract.test.mjs && node test/s38-idi-upload-contract.test.mjs && node test/s38-google-workspace-contract.test.mjs && node test/s38-google-lifecycle.test.mjs && node test/s37-product-loop-e2e.test.mjs && node test/s40-estates-to-export-contract.test.mjs && node test/s40-workflow-model.test.mjs && node test/s41-client-default-estates.test.mjs && node test/s41-estate-file-import.test.mjs"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
     "esbuild": "0.28.1",
-    "pdf-lib": "1.17.1"
+    "pdf-lib": "1.17.1",
+    "postcss": "8.5.25",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3"
   },
   "dependencies": {
+    "@tanstack/react-virtual": "3.14.9",
     "@awesome.me/webawesome": "3.10.0",
     "@napi-rs/canvas": "0.1.100",
     "ag-grid-community": "36.0.0",
+    "clsx": "2.1.1",
     "csv-parse": "6.1.0",
+    "lucide-react": "1.28.0",
     "mammoth": "1.12.0",
-    "pdfjs-dist": "5.4.530"
+    "motion": "12.43.0",
+    "pdfjs-dist": "5.4.530",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "tailwind-merge": "3.6.0"
   }
 }
