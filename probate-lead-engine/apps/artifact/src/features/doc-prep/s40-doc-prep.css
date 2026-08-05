@@ -300,6 +300,10 @@
   padding: var(--hr-space-5);
 }
 
+.s40-empty-selector .s40-link-button {
+  justify-self: center;
+}
+
 .s40-link-button {
   justify-self: start;
 }
