@@ -88,6 +88,17 @@ export interface TaxCollectorReceiptAcquisitionOptions {
   fetchImpl?: FetchImpl;
 }
 
+export interface TaxCollectorReceiptAttachment {
+  ok: boolean;
+  finalUrl?: string;
+  status?: number;
+  contentType?: "application/pdf" | "text/html" | "application/xhtml+xml";
+  bytes?: number;
+  sha256?: string;
+  details?: TaxCollectorDetails;
+  error?: "invalid_url" | "redirect_blocked" | "too_many_redirects" | "unsafe_content_type" | "body_too_large" | "timed_out" | "fetch_failed" | "invalid_signature" | "empty_attachment";
+}
+
 const DEFAULT_TAX_COLLECTOR_SEARCH_URL = "https://county-taxes.net/fl-miamidade/property-tax";
 const DEFAULT_TAX_COLLECTOR_ALLOWED_ORIGINS = [
   "https://county-taxes.net",
@@ -360,6 +371,125 @@ async function boundedTaxCollectorBody(response: Response, maxBytes: number): Pr
     offset += chunk.byteLength;
   }
   return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+}
+
+async function boundedTaxCollectorBytes(response: Response, maxBytes: number): Promise<Uint8Array | null> {
+  const contentLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) return null;
+  if (!response.body) return new Uint8Array();
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      byteLength += value.byteLength;
+      if (byteLength > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+function taxCollectorAttachmentContentType(response: Response): TaxCollectorReceiptAttachment["contentType"] | null {
+  const type = stringValue(response.headers.get("content-type")).split(";", 1)[0].toLowerCase();
+  return type === "application/pdf" || type === "text/html" || type === "application/xhtml+xml"
+    ? type
+    : null;
+}
+
+async function sha256ByteString(bytes: Uint8Array): Promise<string> {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", copy.buffer);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function verifyTaxCollectorReceiptAttachment(
+  receiptUrl: string,
+  options: TaxCollectorReceiptAcquisitionOptions = {},
+): Promise<TaxCollectorReceiptAttachment> {
+  const env = options.env ?? {};
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const initial = approvedTaxCollectorUrl(receiptUrl, env);
+  if (!initial) return { ok: false, error: "invalid_url" };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), taxCollectorFetchTimeoutMs(env));
+  let current = initial;
+  try {
+    for (let redirectCount = 0; redirectCount <= TAX_COLLECTOR_FETCH_MAX_REDIRECTS; redirectCount += 1) {
+      let response: Response;
+      try {
+        response = await fetchImpl(current.toString(), {
+          redirect: "manual",
+          signal: controller.signal,
+          headers: {
+            accept: "application/pdf,text/html,application/xhtml+xml;q=0.9",
+            "user-agent": "HeirRight-TaxCollectorReceiptAttachment/1.0",
+          },
+        });
+      } catch {
+        return { ok: false, error: controller.signal.aborted ? "timed_out" : "fetch_failed" };
+      }
+      const responseUrl = stringValue(response.url);
+      if (responseUrl && !approvedTaxCollectorUrl(responseUrl, env)) {
+        await response.body?.cancel().catch(() => undefined);
+        return { ok: false, error: "redirect_blocked" };
+      }
+      if (response.status >= 300 && response.status < 400) {
+        const location = stringValue(response.headers.get("location"));
+        await response.body?.cancel().catch(() => undefined);
+        if (!location) return { ok: false, error: "redirect_blocked" };
+        const next = approvedTaxCollectorUrl(location, env, current.toString());
+        if (!next) return { ok: false, error: "redirect_blocked" };
+        if (redirectCount === TAX_COLLECTOR_FETCH_MAX_REDIRECTS) return { ok: false, error: "too_many_redirects" };
+        current = next;
+        continue;
+      }
+      const contentType = taxCollectorAttachmentContentType(response);
+      if (!contentType) {
+        await response.body?.cancel().catch(() => undefined);
+        return { ok: false, status: response.status, error: "unsafe_content_type" };
+      }
+      const bytes = await boundedTaxCollectorBytes(response, taxCollectorFetchMaxBytes(env));
+      if (bytes === null) return { ok: false, status: response.status, error: "body_too_large" };
+      if (!bytes.byteLength) return { ok: false, status: response.status, error: "empty_attachment" };
+      if (contentType === "application/pdf"
+        && !(bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d)) {
+        return { ok: false, status: response.status, error: "invalid_signature" };
+      }
+      const finalUrl = approvedTaxCollectorUrl(responseUrl || current.toString(), env);
+      if (!finalUrl) return { ok: false, status: response.status, error: "redirect_blocked" };
+      return {
+        ok: response.ok,
+        finalUrl: finalUrl.toString(),
+        status: response.status,
+        contentType,
+        bytes: bytes.byteLength,
+        sha256: await sha256ByteString(bytes),
+        ...(contentType === "application/pdf"
+          ? {}
+          : { details: extractTaxCollectorDetails({ receiptHtml: new TextDecoder("utf-8", { fatal: false }).decode(bytes) }) }),
+        ...(response.ok ? {} : { error: "fetch_failed" as const }),
+      };
+    }
+    return { ok: false, error: "too_many_redirects" };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function fetchApprovedTaxCollectorPage(

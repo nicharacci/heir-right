@@ -27,6 +27,13 @@ import { generateCompletedLeadReport } from "./documents/completed-lead-report";
 import { buildOutreachWorkflow } from "./outreach/build-outreach-workflow";
 import { buildQualificationDecision } from "./qualification/qualification-review";
 import { getServerNousCredential, publicNousFreeModelStatus } from "./agentic/nous-free-model";
+import {
+  executeDocPrepStage,
+  isDocPrepStageId,
+  parseDocPrepStageInput,
+  type DocPrepStageEnv,
+  type DocPrepSystemFailure,
+} from "./adapters/doc-prep-stages";
 
 interface CloudflareEnv {
   DEPLOYMENT_KEY?: string;
@@ -148,6 +155,15 @@ interface CloudflareEnv {
   VITAL_OBITUARY_BROWSERBASE_FUNCTION_ID?: string;
   MARRIAGE_DEATH_BROWSERBASE_FUNCTION_ID?: string;
   BROWSERBASE_VITAL_OBITUARY_FUNCTION_ID?: string;
+  OBITUARY_VITAL_WORKFLOW_URL?: string;
+  VITAL_OBITUARY_WORKFLOW_URL?: string;
+  MARRIAGE_DEATH_WORKFLOW_URL?: string;
+  OBITUARY_VITAL_WORKFLOW_TOKEN?: string;
+  VITAL_OBITUARY_WORKFLOW_TOKEN?: string;
+  MARRIAGE_DEATH_WORKFLOW_TOKEN?: string;
+  MIAMI_DADE_CLERK_AUTH_KEY?: string;
+  MIAMI_DADE_COMMERCIAL_AUTH_KEY?: string;
+  CLERK_COMMERCIAL_AUTH_KEY?: string;
 }
 
 const DEFAULT_ADDRESS = "20611 NW 33rd Pl, Miami Gardens, FL 33056";
@@ -206,6 +222,7 @@ function routeList(): string[] {
     "/api/agentic/estate-import",
     "/api/admin/settings",
     "/api/doc-prep/packet-approval",
+    "/api/doc-prep/stages/:stageId",
     "/api/google-workspace/export",
     "/api/outreach/sync",
     "/api/exports",
@@ -7385,8 +7402,95 @@ async function linearSupportIssue(env: CloudflareEnv, title: string, description
       variables: { input },
     }),
   });
+  if (!response.ok) return null;
   const data = await response.json().catch(() => ({})) as { data?: { issueCreate?: { success?: boolean; issue?: Record<string, unknown> } } };
-  return data.data?.issueCreate?.issue ?? null;
+  return data.data?.issueCreate?.success === true ? data.data.issueCreate.issue ?? null : null;
+}
+
+const docPrepLinearFingerprints = new Set<string>();
+
+function safeLinearFingerprintPart(value: unknown, fallback: string): string {
+  return stringValue(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9._:-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 100) || fallback;
+}
+
+async function docPrepSystemFailureIssue(env: CloudflareEnv, failure: DocPrepSystemFailure) {
+  const stageId = safeLinearFingerprintPart(failure.stageId, "unknown_stage");
+  const code = safeLinearFingerprintPart(failure.code, "unknown_failure");
+  const provider = safeLinearFingerprintPart(failure.provider, "unknown_provider");
+  const deployment = safeLinearFingerprintPart(failure.deploymentKey, "unknown_deployment");
+  const fingerprint = `${stageId}|${code}|${provider}|${deployment}`;
+  const digest = await sha256Hex(fingerprint);
+  const key = `linear-doc-prep-failure:${digest}`;
+  if (docPrepLinearFingerprints.has(digest)) return { deduplicated: true };
+  try {
+    if (await env.PACKET_ARTIFACTS?.get(key)) {
+      docPrepLinearFingerprints.add(digest);
+      return { deduplicated: true };
+    }
+  } catch {
+    // The in-isolate fingerprint still prevents duplicate issue writes during this execution lane.
+  }
+  const title = `[HeirRight Doc Prep] ${stageId}: ${code}`.slice(0, 200);
+  const description = [
+    "Sanitized automated stage failure.",
+    `Fingerprint: ${digest}`,
+    `Stage: ${stageId}`,
+    `Code: ${code}`,
+    `Provider: ${provider}`,
+    `Deployment: ${deployment}`,
+    "Estate, contact, upload, browser, header, secret, and provider/model payload data are intentionally excluded.",
+  ].join("\n");
+  try {
+    const issue = await linearSupportIssue(env, title, description);
+    if (!issue) return { error: "linear_log_failed" as const };
+    docPrepLinearFingerprints.add(digest);
+    try {
+      await env.PACKET_ARTIFACTS?.put(key, JSON.stringify({
+        version: 1,
+        fingerprint: digest,
+        issue: {
+          id: stringValue(issue.id),
+          identifier: stringValue(issue.identifier),
+          url: stringValue(issue.url),
+        },
+      }), {
+        expirationTtl: 30 * 24 * 60 * 60,
+        metadata: { kind: "linear_doc_prep_failure", fingerprint: digest },
+      });
+    } catch {
+      // Linear already accepted the single sanitized issue. In-isolate dedupe remains active.
+    }
+    return { issue };
+  } catch {
+    return { error: "linear_log_failed" as const };
+  }
+}
+
+async function docPrepStageResponse(request: Request, stageId: string, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "POST") return methodNotAllowed("POST");
+  if (!isDocPrepStageId(stageId)) {
+    return json({ ok: false, error: "unknown_doc_prep_stage", stageId }, { status: 404, headers: { "cache-control": "no-store" } });
+  }
+  const body = await request.json().catch(() => undefined);
+  const parsed = parseDocPrepStageInput(stageId, body);
+  if (!parsed.ok) return json(parsed, { status: 400, headers: { "cache-control": "no-store" } });
+  const sessionEmail = await signedSessionEmail(request, env);
+  if (sessionEmail && parsed.input.actor.email !== sessionEmail) {
+    return json({
+      ok: false,
+      error: "doc_prep_actor_mismatch",
+      message: "The request actor must match the authenticated HeirRight session.",
+    }, { status: 403, headers: { "cache-control": "no-store" } });
+  }
+  const result = await executeDocPrepStage(stageId, parsed.input, env as unknown as DocPrepStageEnv, {
+    fetcher: fetch,
+    reportSystemFailure: (failure) => docPrepSystemFailureIssue(env, failure),
+  });
+  return json(result, { headers: { "cache-control": "no-store" } });
 }
 
 function outreachSeed(body: Record<string, unknown>): IntakeSeed {
@@ -8366,6 +8470,13 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return adminSettingsResponse(request, env);
+    }
+
+    const docPrepStageMatch = url.pathname.match(/^\/api\/doc-prep\/stages\/([^/]+)$/);
+    if (docPrepStageMatch) {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return docPrepStageResponse(request, decodeURIComponent(docPrepStageMatch[1] || ""), env);
     }
 
     if (url.pathname === "/api/doc-prep/packet-approval") {
