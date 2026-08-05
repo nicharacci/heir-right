@@ -28,10 +28,12 @@ import { buildOutreachWorkflow } from "./outreach/build-outreach-workflow";
 import { buildQualificationDecision } from "./qualification/qualification-review";
 import { getServerNousCredential, publicNousFreeModelStatus } from "./agentic/nous-free-model";
 import {
+  DOC_PREP_STAGE_IDS,
   executeDocPrepStage,
   isDocPrepStageId,
   parseDocPrepStageInput,
   type DocPrepStageEnv,
+  type DocPrepStageOutput,
   type DocPrepSystemFailure,
 } from "./adapters/doc-prep-stages";
 
@@ -92,6 +94,7 @@ interface CloudflareEnv {
   AUTH_ALLOWED_EMAILS?: string;
   SOLVYS_ADMIN_EMAILS?: string;
   HEIRRIGHT_API_TOKEN?: string;
+  HEIRRIGHT_DOC_PREP_SOURCE_TOKEN?: string;
   HEIRRIGHT_ADMIN_SETTINGS_PASSWORD?: string;
   HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN?: string;
   GOOGLE_WORKSPACE_ACCESS_TOKEN?: string;
@@ -1835,6 +1838,13 @@ function storedSupportingDocument(value: string | null | undefined): StoredSuppo
 function internalBearerAuthorized(request: Request, env: CloudflareEnv): boolean {
   const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
   return Boolean(env.HEIRRIGHT_API_TOKEN && timingSafeStringEqual(bearer, env.HEIRRIGHT_API_TOKEN));
+}
+
+function docPrepSourceAuthorized(request: Request, env: CloudflareEnv): boolean {
+  const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
+  return [env.HEIRRIGHT_DOC_PREP_SOURCE_TOKEN, env.HEIRRIGHT_API_TOKEN]
+    .filter((token): token is string => Boolean(token))
+    .some((token) => timingSafeStringEqual(bearer, token));
 }
 
 function docPrepDriveBrokerAuthorized(request: Request, env: CloudflareEnv): boolean {
@@ -7470,6 +7480,48 @@ async function docPrepSystemFailureIssue(env: CloudflareEnv, failure: DocPrepSys
   }
 }
 
+const DOC_PREP_DURABLE_FACT_LIMIT = 256;
+const DOC_PREP_DURABLE_JSON_BYTES = 32_000;
+
+function boundedDocPrepJson(value: unknown, depth = 0, seen = new WeakSet<object>()): boolean {
+  if (value === null || typeof value === "boolean") return true;
+  if (typeof value === "string") return value.length <= 4_000;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value !== "object" || depth >= 8 || seen.has(value)) return false;
+  seen.add(value);
+  const valid = Array.isArray(value)
+    ? value.length <= 128 && value.every((item) => boundedDocPrepJson(item, depth + 1, seen))
+    : Object.keys(value).length <= 64
+      && Object.keys(value).every((key) => key.length <= 160 && boundedDocPrepJson((value as Record<string, unknown>)[key], depth + 1, seen));
+  seen.delete(value);
+  return valid;
+}
+
+function validDocPrepEvidenceReference(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0 && value.trim().length <= 1_000;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  const required = ["id", "stageId", "source", "rawId", "fetchedAt", "factType", "value"];
+  const optional = ["sourceUrl", "attachment", "sourceLocator"];
+  if (Object.keys(record).some((key) => !required.includes(key) && !optional.includes(key)) || typeof record.stageId !== "string" || !isDocPrepStageId(record.stageId)) return false;
+  const bounds: Array<[string, number]> = [["id", 300], ["source", 120], ["rawId", 500], ["fetchedAt", 80], ["factType", 160]];
+  if (bounds.some(([key, max]) => typeof record[key] !== "string" || (record[key] as string).trim().length < 1 || (record[key] as string).trim().length > max)) return false;
+  if (!boundedDocPrepJson(record.value)) return false;
+  if (record.sourceUrl !== undefined && (typeof record.sourceUrl !== "string" || record.sourceUrl.length > 2_000)) return false;
+  return [record.attachment, record.sourceLocator].every((metadata) => metadata === undefined || (Boolean(metadata) && typeof metadata === "object" && !Array.isArray(metadata) && boundedDocPrepJson(metadata)));
+}
+
+/** Converts trusted adapter arrays into the bounded JSON object persisted by Doc Prep. */
+export function normalizeDocPrepStageResponse(result: DocPrepStageOutput): Omit<DocPrepStageOutput, "facts"> & { facts: { records: DocPrepStageOutput["facts"] } } {
+  if (!Array.isArray(result.evidenceReferences) || result.evidenceReferences.length > DOC_PREP_DURABLE_FACT_LIMIT || !result.evidenceReferences.every((reference) => validDocPrepEvidenceReference(reference))) {
+    throw new Error("Doc Prep stage returned unbounded or malformed evidence references.");
+  }
+  if (!Array.isArray(result.facts) || result.facts.length > DOC_PREP_DURABLE_FACT_LIMIT) throw new Error("Doc Prep stage returned unbounded facts.");
+  const facts = structuredClone(result.facts);
+  if (!facts.every((fact) => boundedDocPrepJson(fact) && JSON.stringify(fact).length <= DOC_PREP_DURABLE_JSON_BYTES)) throw new Error("Doc Prep stage returned unbounded facts.");
+  return { ...result, evidenceReferences: structuredClone(result.evidenceReferences), facts: { records: facts } };
+}
+
 async function docPrepStageResponse(request: Request, stageId: string, env: CloudflareEnv): Promise<Response> {
   if (request.method !== "POST") return methodNotAllowed("POST");
   if (!isDocPrepStageId(stageId)) {
@@ -7490,7 +7542,33 @@ async function docPrepStageResponse(request: Request, stageId: string, env: Clou
     fetcher: fetch,
     reportSystemFailure: (failure) => docPrepSystemFailureIssue(env, failure),
   });
-  return json(result, { headers: { "cache-control": "no-store" } });
+  try {
+    return json(normalizeDocPrepStageResponse(result), { headers: { "cache-control": "no-store" } });
+  } catch {
+    return json({ ok: false, error: "invalid_doc_prep_stage_response", message: "The source stage returned data outside the durable Doc Prep contract." }, { status: 502, headers: { "cache-control": "no-store" } });
+  }
+}
+
+async function docPrepSystemFailureResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "POST") return methodNotAllowed("POST");
+  if (!docPrepSourceAuthorized(request, env)) return json({ ok: false, error: "auth_required" }, { status: 401, headers: { "cache-control": "no-store" } });
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const allowedStages = new Set([...DOC_PREP_STAGE_IDS, "packet-render", "artifact-readback", "outbox", "pg-boss"]);
+  const allowedKeys = ["stageId", "code", "provider", "deploymentKey"];
+  if (!body || Array.isArray(body) || Object.keys(body).some((key) => !allowedKeys.includes(key)) || Object.keys(body).length !== allowedKeys.length
+    || typeof body.stageId !== "string" || !allowedStages.has(body.stageId)
+    || typeof body.code !== "string" || !/^[a-zA-Z0-9._:-]{1,120}$/.test(body.code)
+    || typeof body.provider !== "string" || !/^[a-zA-Z0-9._:-]{1,120}$/.test(body.provider)
+    || typeof body.deploymentKey !== "string" || !/^[a-zA-Z0-9._:-]{1,120}$/.test(body.deploymentKey)) {
+    return json({ ok: false, error: "invalid_system_failure" }, { status: 400, headers: { "cache-control": "no-store" } });
+  }
+  const result = await docPrepSystemFailureIssue(env, {
+    stageId: body.stageId as DocPrepSystemFailure["stageId"],
+    code: body.code,
+    provider: body.provider,
+    deploymentKey: body.deploymentKey,
+  });
+  return json({ ok: !result.error, ...result }, { status: result.error ? 503 : 200, headers: { "cache-control": "no-store" } });
 }
 
 function outreachSeed(body: Record<string, unknown>): IntakeSeed {
@@ -8478,6 +8556,8 @@ export default {
       if (blocked) return blocked;
       return docPrepStageResponse(request, decodeURIComponent(docPrepStageMatch[1] || ""), env);
     }
+
+    if (url.pathname === "/api/doc-prep/system-failure") return docPrepSystemFailureResponse(request, env);
 
     if (url.pathname === "/api/doc-prep/packet-approval") {
       const blocked = await authBlocker(request, env);

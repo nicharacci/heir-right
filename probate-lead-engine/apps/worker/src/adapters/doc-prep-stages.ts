@@ -108,8 +108,10 @@ export interface DocPrepInputError {
   message: string;
 }
 
+export type DocPrepSystemFailureStage = DocPrepStageId | "packet-render" | "artifact-readback" | "outbox" | "pg-boss";
+
 export interface DocPrepSystemFailure {
-  stageId: DocPrepStageId;
+  stageId: DocPrepSystemFailureStage;
   code: string;
   provider: string;
   deploymentKey: string;

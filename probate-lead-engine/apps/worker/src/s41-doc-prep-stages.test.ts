@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
-import worker from "./cloudflare";
+import worker, { normalizeDocPrepStageResponse } from "./cloudflare";
 import { DOC_PREP_STAGE_IDS, type DocPrepStageId } from "./adapters/doc-prep-stages";
 import { resetServerNousCredentialCache } from "./agentic/nous-free-model";
 
@@ -27,7 +27,7 @@ class MemoryKv {
   }
 }
 
-function evidence(stageId: DocPrepStageId, suffix = stageId) {
+function evidence(stageId: DocPrepStageId, suffix: string = stageId) {
   return {
     id: `ref-${suffix}`,
     stageId,
@@ -257,11 +257,57 @@ test("all six authenticated stage routes execute sequentially through existing p
   });
 });
 
+test("the Cloudflare boundary normalizes real fact arrays and rejects unbounded evidence", () => {
+  const fact = {
+    source: "idi",
+    rawId: "idi-record-1",
+    fetchedAt: FETCHED_AT,
+    factType: "potential_heir",
+    value: { name: "Jordan Fox" },
+    confidence: 0.88,
+    reviewFlags: ["HUMAN_REVIEW_REQUIRED"],
+  };
+  const evidenceReference = { ...evidence("skip_trace_parse", "record-1"), value: { name: "Jordan Fox" } };
+  const normalized = normalizeDocPrepStageResponse({ ok: true, stageId: "skip_trace_parse", status: "succeeded", detail: "facts", evidenceReferences: [evidenceReference], facts: [fact] });
+  assert.deepEqual(normalized.facts, { records: [fact] });
+  assert.deepEqual(normalized.evidenceReferences, [evidenceReference]);
+  assert.throws(() => normalizeDocPrepStageResponse({ ok: true, stageId: "skip_trace_parse", status: "succeeded", detail: "facts", evidenceReferences: [{ ...evidenceReference, value: "x".repeat(4_001) }], facts: [fact] }));
+});
+
+test("the internal failure reporter accepts the existing source token and deduplicates through Linear", { concurrency: false }, async () => {
+  let linearCalls = 0;
+  await withFetch(async () => {
+    linearCalls += 1;
+    return jsonResponse({ data: { issueCreate: { success: true, issue: { id: "issue-transport-1", identifier: "HR-TRANSPORT-1", url: "https://linear.example/HR-TRANSPORT-1" } } } });
+  }, async () => {
+    const env = environment({
+      HEIRRIGHT_API_TOKEN: "different-api-token",
+      HEIRRIGHT_DOC_PREP_SOURCE_TOKEN: "source-token",
+      HEIRRIGHT_LINEAR_API_KEY: "linear-secret-value",
+      HEIRRIGHT_LINEAR_TEAM_ID: "team-1",
+      PACKET_ARTIFACTS: new MemoryKv(),
+      DEPLOYMENT_KEY: "reporter-route-test",
+    });
+    const request = () => worker.fetch(new Request("https://worker.example/api/doc-prep/system-failure", {
+      method: "POST",
+      headers: { authorization: "Bearer source-token", "content-type": "application/json" },
+      body: JSON.stringify({ stageId: "packet-render", code: "packet_renderer_transport_failed", provider: "source", deploymentKey: "docprep-worker" }),
+    }), env as never);
+    const first = await request();
+    const second = await request();
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    assert.equal(linearCalls, 1);
+    const unauthorized = await worker.fetch(new Request("https://worker.example/api/doc-prep/system-failure", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stageId: "packet-render", code: "packet_renderer_transport_failed", provider: "source", deploymentKey: "docprep-worker" }) }), env as never);
+    assert.equal(unauthorized.status, 401);
+  });
+});
+
 test("strict input preserves IDI source facts and leaves unknown fields blank", { concurrency: false }, async () => {
   const kv = new MemoryKv();
   kv.values.set(`idi-import:${createHash("sha256").update("estate-doc-prep-1").digest("hex")}`, JSON.stringify(persistedIdiRecord()));
   const result = await callStage("skip_trace_parse", stageInput("skip_trace_parse"), environment({ PACKET_ARTIFACTS: kv }));
-  const facts = result.body.facts as Array<Record<string, unknown>>;
+  const facts = (result.body.facts as { records: Array<Record<string, unknown>> }).records;
   const value = facts[0].value as Record<string, unknown>;
   assert.equal(value.age, "");
   assert.equal(value.interest, "");
@@ -338,7 +384,7 @@ test("unsafe Tax Collector attachments stop at review without filing a Linear is
 test("Nous fails closed on paid catalogs, unverified configured models, and malformed strict JSON", { concurrency: false }, async () => {
   const missingCredential = await callStage("backstory_generate", stageInput("backstory_generate"), environment({ DEPLOYMENT_KEY: "nous-missing-credential" }));
   assert.equal(missingCredential.body.status, "blocked");
-  assert.ok((missingCredential.body.facts as Array<Record<string, unknown>>).some((fact) => (fact.value as Record<string, unknown>).code === "nous_credential_missing"));
+  assert.ok(((missingCredential.body.facts as { records: Array<Record<string, unknown>> }).records).some((fact) => (fact.value as Record<string, unknown>).code === "nous_credential_missing"));
 
   resetServerNousCredentialCache();
   await withFetch(async (input) => {
@@ -347,7 +393,7 @@ test("Nous fails closed on paid catalogs, unverified configured models, and malf
   }, async () => {
     const result = await callStage("backstory_generate", stageInput("backstory_generate"), environment({ NOUS_API_KEY: "configured-test-key", DEPLOYMENT_KEY: "nous-paid-catalog" }));
     assert.equal(result.body.status, "failed");
-    assert.ok((result.body.facts as Array<Record<string, unknown>>).some((fact) => (fact.value as Record<string, unknown>).code === "nous_catalog_unavailable"));
+    assert.ok(((result.body.facts as { records: Array<Record<string, unknown>> }).records).some((fact) => (fact.value as Record<string, unknown>).code === "nous_catalog_unavailable"));
   });
 
   resetServerNousCredentialCache();
@@ -357,7 +403,7 @@ test("Nous fails closed on paid catalogs, unverified configured models, and malf
   }, async () => {
     const result = await callStage("backstory_generate", stageInput("backstory_generate"), environment({ NOUS_API_KEY: "configured-test-key", NOUS_MODEL: "paid-model", DEPLOYMENT_KEY: "nous-unverified-model" }));
     assert.equal(result.body.status, "failed");
-    assert.ok((result.body.facts as Array<Record<string, unknown>>).some((fact) => (fact.value as Record<string, unknown>).code === "nous_model_not_verified_free"));
+    assert.ok(((result.body.facts as { records: Array<Record<string, unknown>> }).records).some((fact) => (fact.value as Record<string, unknown>).code === "nous_model_not_verified_free"));
   });
 
   resetServerNousCredentialCache();
@@ -367,7 +413,7 @@ test("Nous fails closed on paid catalogs, unverified configured models, and malf
   }, async () => {
     const result = await callStage("backstory_generate", stageInput("backstory_generate"), environment({ NOUS_API_KEY: "configured-test-key", DEPLOYMENT_KEY: "nous-malformed-json" }));
     assert.equal(result.body.status, "failed");
-    assert.ok((result.body.facts as Array<Record<string, unknown>>).some((fact) => (fact.value as Record<string, unknown>).code === "nous_strict_json_failed"));
+    assert.ok(((result.body.facts as { records: Array<Record<string, unknown>> }).records).some((fact) => (fact.value as Record<string, unknown>).code === "nous_strict_json_failed"));
   });
 
   resetServerNousCredentialCache();
@@ -381,7 +427,7 @@ test("Nous fails closed on paid catalogs, unverified configured models, and malf
   }, async () => {
     const result = await callStage("backstory_generate", stageInput("backstory_generate"), environment({ NOUS_API_KEY: "configured-test-key", DEPLOYMENT_KEY: "nous-inferred-value" }));
     assert.equal(result.body.status, "failed");
-    assert.ok((result.body.facts as Array<Record<string, unknown>>).some((fact) => (fact.value as Record<string, unknown>).code === "nous_grounding_validation_failed"));
+    assert.ok(((result.body.facts as { records: Array<Record<string, unknown>> }).records).some((fact) => (fact.value as Record<string, unknown>).code === "nous_grounding_validation_failed"));
   });
 });
 
@@ -416,7 +462,7 @@ test("Linear failure reports are sanitized, deduplicated, and preserve fallback 
       HEIRRIGHT_LINEAR_API_KEY: "linear-secret-value",
       HEIRRIGHT_LINEAR_TEAM_ID: "team-1",
     }));
-    const codes = (result.body.facts as Array<Record<string, unknown>>).map((fact) => (fact.value as Record<string, unknown>).code).filter(Boolean);
+    const codes = ((result.body.facts as { records: Array<Record<string, unknown>> }).records).map((fact) => (fact.value as Record<string, unknown>).code).filter(Boolean);
     assert.ok(codes.includes("deed_title_search_credential_missing"));
     assert.ok(codes.includes("linear_log_failed"));
   });
