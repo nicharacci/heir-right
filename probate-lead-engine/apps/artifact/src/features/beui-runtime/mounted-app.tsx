@@ -313,6 +313,28 @@ function useDocPrepController(adapter: BeuiBridgeAdapter, estateId: string | nul
     };
   }, [adapter, estateId]);
 
+  useEffect(() => {
+    const state = typeof processCase?.state === "string" ? processCase.state : "";
+    if (
+      !estateId
+      || pendingAction
+      || !["queued", "sourcing", "rendering"].includes(state)
+    ) return;
+    let active = true;
+    const poll = () => {
+      void hydrateProcessCase(estateId, { force: true })
+        .then((next) => {
+          if (active) setProcessCase(next);
+        })
+        .catch(() => {});
+    };
+    const interval = window.setInterval(poll, 1500);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [estateId, pendingAction, processCase?.state]);
+
   async function refreshCase() {
     if (!estateId) return null;
     const localCase = caseForEstate(estateId);

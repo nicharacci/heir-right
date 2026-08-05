@@ -5904,6 +5904,12 @@ async function runAutonomousDiscoverySources(row = selectedRow()) {
   }
 }
 
+function rerenderHydratedDocPrepSurface(row) {
+  if (state.activeView !== "dossiers" || selectedRow()?.id !== row?.id) return;
+  renderCurrentLoopView();
+  renderRail();
+}
+
 async function hydratePersistedDiscoveryFile(row = selectedRow()) {
   if (!row || isDemoEstateImport(row)) return null;
   const key = assetDiscoveryKey(row);
@@ -5981,13 +5987,11 @@ async function hydratePersistedDiscoveryFile(row = selectedRow()) {
       } catch {}
     }
     persistAssetDiscoveryState();
-    if (state.activeView === "dossiers" && selectedRow()?.id === row.id) {
-      renderDossiersView();
-      renderRail();
-    }
     return state.sourceCaptures[key];
   } catch {
     return null;
+  } finally {
+    rerenderHydratedDocPrepSurface(row);
   }
 }
 
@@ -16905,6 +16909,7 @@ async function stopS40DocPrep(estateIds = [], { silent = false } = {}) {
   if (stopped.length) {
     syncLegacyQueueIds();
     await s40PersistWorkflowOrThrow();
+    void Promise.all(stopped.map((row) => hydratePersistedDiscoveryFile(row)));
     if (!silent) {
       addShellEvent(
         "Doc Prep stopped",
