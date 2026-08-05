@@ -1,38 +1,89 @@
 import { createHash, randomUUID } from "node:crypto";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import type { Pool } from "pg";
-import { ProcessCase, ProcessRepository } from "@ple/docprep-core";
+import { DOC_PREP_STAGES, DocPrepStageId, EstateSnapshot, ProcessCase, ProcessRepository, StageOutcome } from "@ple/docprep-core";
 
 export type SourceResult = { kind: "ready"; pdf: Uint8Array } | { kind: "review_required"; detail: string; nextAction: string } | { kind: "blocked"; detail: string; nextAction: string };
-export type SourceRunner = (processCase: ProcessCase) => Promise<SourceResult>;
-export interface ObjectStore { put(key: string, bytes: Uint8Array): Promise<void>; get(key: string): Promise<Uint8Array>; }
-export type WorkerDependencies = { repository: ProcessRepository; sourceRunner: SourceRunner; objectStore: ObjectStore };
+export type StageRunnerRequest = {
+  caseId: string;
+  estate: EstateSnapshot;
+  priorStageOutputs: Array<{ stageId: DocPrepStageId; evidenceReferences: string[] }>;
+  actor: { email: string; name?: string };
+};
+export type StageRunner = (stageId: DocPrepStageId, request: StageRunnerRequest) => Promise<StageOutcome>;
+export type PacketRenderer = (processCase: ProcessCase) => Promise<SourceResult>;
+export interface ObjectStore { put(key: string, bytes: Uint8Array): Promise<void>; get(key: string): Promise<{ bytes: Uint8Array; contentType: string }>; }
+export type WorkerDependencies = { repository: ProcessRepository; stageRunner: StageRunner; packetRenderer: PacketRenderer; objectStore: ObjectStore };
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+const stoppedStates = new Set(["packet_ready", "review_required", "blocked", "failed", "cancelled"]);
+
+const priorStageOutputs = (processCase: ProcessCase): StageRunnerRequest["priorStageOutputs"] => DOC_PREP_STAGES.flatMap((stage) => {
+  const step = processCase.steps.find((candidate) => candidate.id === stage.id);
+  return step?.state === "succeeded" ? [{ stageId: stage.id, evidenceReferences: [...step.evidenceReferences] }] : [];
+});
 
 export class DocumentPrepWorker {
   constructor(private readonly dependencies: WorkerDependencies) {}
   async process(caseId: string): Promise<ProcessCase> {
-    const existing = await this.dependencies.repository.get(caseId);
-    if (!existing) throw new Error("Document-prep case was not found.");
-    if (["packet_ready", "blocked", "cancelled"].includes(existing.state)) return existing;
-    const sourcing = existing.state === "queued" ? await this.dependencies.repository.transition(existing.id, existing.revision, "sourcing", "Cloud source review started.") : existing;
-    const result = await this.dependencies.sourceRunner(sourcing);
-    if (result.kind === "blocked") return this.dependencies.repository.transition(sourcing.id, sourcing.revision, "blocked", result.detail, undefined, result.detail, result.nextAction);
-    if (result.kind === "review_required") return this.dependencies.repository.transition(sourcing.id, sourcing.revision, "review_required", result.detail, undefined, result.detail, result.nextAction);
-    const rendering = await this.dependencies.repository.transition(sourcing.id, sourcing.revision, "rendering", "Verified source evidence is ready for packet rendering.");
+    let current = await this.dependencies.repository.get(caseId);
+    if (!current) throw new Error("Document-prep case was not found.");
+    if (stoppedStates.has(current.state)) return current;
+    if (current.state === "queued") current = await this.dependencies.repository.transition(current.id, current.revision, "sourcing", "Ordered Doc Prep stages started.");
+
+    if (current.state === "sourcing") {
+      for (const stage of DOC_PREP_STAGES) {
+        const step = current.steps.find((candidate) => candidate.id === stage.id);
+        if (!step) throw new Error(`Document-prep stage ${stage.id} was not persisted.`);
+        if (step.state === "succeeded") continue;
+        if (step.state === "running") return current;
+
+        const running = await this.dependencies.repository.startStage(current.id, current.revision, stage.id, current.estate.actor.email);
+        let outcome: StageOutcome;
+        try {
+          outcome = await this.dependencies.stageRunner(stage.id, {
+            caseId: running.id,
+            estate: running.estate,
+            priorStageOutputs: priorStageOutputs(running),
+            actor: running.estate.actor,
+          });
+        } catch (error) {
+          outcome = {
+            status: "failed",
+            detail: error instanceof Error ? error.message : `Stage ${stage.id} failed without a readable error.`,
+            nextAction: "Review the stage failure and retry document preparation.",
+            evidenceReferences: [],
+            facts: {},
+          };
+        }
+        current = await this.dependencies.repository.finishStage(running.id, running.revision, stage.id, outcome, running.estate.actor.email);
+        if (outcome.status !== "succeeded") return current;
+      }
+      current = await this.dependencies.repository.transition(current.id, current.revision, "rendering", "All six Doc Prep stages succeeded. Rendering the verified Discovery packet.");
+    }
+
+    if (current.state !== "rendering") return current;
+    const rendering = current;
+    const result = await this.dependencies.packetRenderer(rendering);
+    if (result.kind === "blocked") return this.dependencies.repository.transition(rendering.id, rendering.revision, "blocked", result.detail, undefined, result.detail, result.nextAction);
+    if (result.kind === "review_required") return this.dependencies.repository.transition(rendering.id, rendering.revision, "review_required", result.detail, undefined, result.detail, result.nextAction);
     const key = `docprep/${rendering.id}/${randomUUID()}.pdf`;
-    await this.dependencies.objectStore.put(key, result.pdf);
-    const readback = await this.dependencies.objectStore.get(key);
-    const expectedHash = sha256(result.pdf); const readbackHash = sha256(readback);
-    if (expectedHash !== readbackHash || readback.byteLength !== result.pdf.byteLength) return this.dependencies.repository.transition(rendering.id, rendering.revision, "failed", "Stored PDF did not pass readback verification.", undefined, "Stored PDF did not pass readback verification.", "Retry document preparation after storage is available.");
-    return this.dependencies.repository.recordArtifact(rendering.id, rendering.revision, { objectKey: key, contentType: "application/pdf", bytes: readback.byteLength, sha256: readbackHash, readbackStatus: "verified", verifiedAt: new Date().toISOString() });
+    let readback: { bytes: Uint8Array; contentType: string };
+    try {
+      await this.dependencies.objectStore.put(key, result.pdf);
+      readback = await this.dependencies.objectStore.get(key);
+    } catch {
+      return this.dependencies.repository.transition(rendering.id, rendering.revision, "failed", "Stored PDF could not be read back from R2.", undefined, "Stored PDF could not be read back from R2.", "Retry document preparation after storage is available.");
+    }
+    const expectedHash = sha256(result.pdf); const readbackHash = sha256(readback.bytes);
+    if (readback.contentType !== "application/pdf" || expectedHash !== readbackHash || readback.bytes.byteLength !== result.pdf.byteLength) return this.dependencies.repository.transition(rendering.id, rendering.revision, "failed", "Stored PDF did not pass readback verification.", undefined, "Stored PDF did not pass readback verification.", "Retry document preparation after storage is available.");
+    return this.dependencies.repository.recordArtifact(rendering.id, rendering.revision, { objectKey: key, contentType: readback.contentType, bytes: readback.bytes.byteLength, sha256: readbackHash, readbackStatus: "verified", verifiedAt: new Date().toISOString() });
   }
 }
 
 export class R2ObjectStore implements ObjectStore {
   constructor(private readonly client: S3Client, private readonly bucket: string) {}
   async put(key: string, bytes: Uint8Array) { await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: bytes, ContentType: "application/pdf" })); }
-  async get(key: string) { const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key })); if (!response.Body) throw new Error("R2 returned an empty PDF object."); return new Uint8Array(await response.Body.transformToByteArray()); }
+  async get(key: string) { const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key })); if (!response.Body) throw new Error("R2 returned an empty PDF object."); return { bytes: new Uint8Array(await response.Body.transformToByteArray()), contentType: response.ContentType || "" }; }
 }
 
 /** Claims the transactional outbox without a browser or request process owning the sequence. */

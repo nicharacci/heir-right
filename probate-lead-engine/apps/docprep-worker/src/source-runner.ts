@@ -1,4 +1,6 @@
-import type { SourceRunner, SourceResult } from "./worker.js";
+import { DocPrepStageResponse } from "@ple/docprep-core";
+import type { DocPrepStageId, StageOutcome } from "@ple/docprep-core";
+import type { PacketRenderer, StageRunner, SourceResult } from "./worker.js";
 
 type FetchLike = typeof fetch;
 type DiscoveryPacketReference = {
@@ -21,6 +23,8 @@ type PacketExport = {
 
 const reviewRequired = (detail: string, nextAction: string): SourceResult => ({ kind: "review_required", detail, nextAction });
 const blocked = (detail: string, nextAction: string): SourceResult => ({ kind: "blocked", detail, nextAction });
+const stageReviewRequired = (detail: string, nextAction: string): StageOutcome => ({ status: "review_required", detail, nextAction, evidenceReferences: [], facts: {} });
+const stageBlocked = (stageId: DocPrepStageId, detail: string): StageOutcome => ({ status: "blocked", detail, nextAction: `Review the ${stageId} source service and retry document preparation.`, evidenceReferences: [], facts: {} });
 
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const sourceHeaders = (token: string) => ({ authorization: `Bearer ${token}`, accept: "application/json" });
@@ -48,11 +52,42 @@ async function readVerifiedPdf(fetcher: FetchLike, workerUrl: string, token: str
     : null;
 }
 
+/** Calls one source stage at a time. The persisted IDI upload is the only input accepted for stage one. */
+export function createCloudflareStageRunner({ workerUrl, apiToken, fetcher = fetch }: { workerUrl: string; apiToken: string; fetcher?: FetchLike }): StageRunner {
+  const baseUrl = workerUrl.replace(/\/+$/, "");
+  return async (stageId, request) => {
+    if (stageId === "skip_trace_parse" && request.estate.sourceFileReferences.length === 0) {
+      return stageReviewRequired(
+        "A persisted uploaded IDI report is required before skip-trace parsing. No live IDI API call was attempted.",
+        "Upload and persist the approved IDI report, then retry document preparation.",
+      );
+    }
+
+    let response: Response;
+    try {
+      response = await fetcher(`${baseUrl}/api/doc-prep/stages/${encodeURIComponent(stageId)}`, {
+        method: "POST",
+        headers: { ...sourceHeaders(apiToken), "content-type": "application/json", "idempotency-key": `docprep:${request.caseId}:${stageId}` },
+        body: JSON.stringify(request),
+      });
+    } catch {
+      return stageBlocked(stageId, `The ${stageId} stage service could not be reached.`);
+    }
+    if (!response.ok) return stageBlocked(stageId, `The ${stageId} stage service returned HTTP ${response.status}.`);
+    const parsed = DocPrepStageResponse.safeParse(await response.json().catch(() => null));
+    if (!parsed.success || parsed.data.stageId !== stageId) {
+      return { status: "failed", detail: `The ${stageId} stage returned an invalid response.`, nextAction: "Review the stage contract before retrying document preparation.", evidenceReferences: [], facts: {} };
+    }
+    const { status, detail, nextAction, evidenceReferences, facts } = parsed.data;
+    return { status, detail, nextAction, evidenceReferences, facts };
+  };
+}
+
 /**
  * Reads only the stored Discovery File and its existing packet renderer. It never
  * invents packet content or bypasses the source system's review gates.
  */
-export function createCloudflareSourceRunner({ workerUrl, apiToken, fetcher = fetch }: { workerUrl: string; apiToken: string; fetcher?: FetchLike }): SourceRunner {
+export function createCloudflarePacketRenderer({ workerUrl, apiToken, fetcher = fetch }: { workerUrl: string; apiToken: string; fetcher?: FetchLike }): PacketRenderer {
   const baseUrl = workerUrl.replace(/\/+$/, "");
   return async (processCase) => {
     let discoveryResponse: Response;
@@ -97,3 +132,5 @@ export function createCloudflareSourceRunner({ workerUrl, apiToken, fetcher = fe
     return { kind: "ready", pdf: generatedPdf };
   };
 }
+
+export const createCloudflareSourceRunner = createCloudflarePacketRenderer;
