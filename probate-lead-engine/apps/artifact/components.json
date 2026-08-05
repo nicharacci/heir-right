@@ -1,0 +1,29 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/beui-foundation.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/beui-foundation/components",
+    "ui": "@/beui-foundation/components",
+    "lib": "@/beui-foundation/lib",
+    "hooks": "@/beui-foundation/lib/hooks",
+    "utils": "@/beui-foundation/lib/utils"
+  },
+  "registries": {
+    "@beui": "https://beui.dev/r/{name}.json",
+    "@beui-pro": {
+      "url": "https://pro.beui.dev/r/{name}.json",
+      "headers": {
+        "Authorization": "Bearer ${BEUI_PRO_TOKEN}"
+      }
+    }
+  }
+}

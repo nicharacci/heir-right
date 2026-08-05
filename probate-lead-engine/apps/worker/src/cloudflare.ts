@@ -27,6 +27,15 @@ import { generateCompletedLeadReport } from "./documents/completed-lead-report";
 import { buildOutreachWorkflow } from "./outreach/build-outreach-workflow";
 import { buildQualificationDecision } from "./qualification/qualification-review";
 import { getServerNousCredential, publicNousFreeModelStatus } from "./agentic/nous-free-model";
+import {
+  DOC_PREP_STAGE_IDS,
+  executeDocPrepStage,
+  isDocPrepStageId,
+  parseDocPrepStageInput,
+  type DocPrepStageEnv,
+  type DocPrepStageOutput,
+  type DocPrepSystemFailure,
+} from "./adapters/doc-prep-stages";
 
 interface CloudflareEnv {
   DEPLOYMENT_KEY?: string;
@@ -85,6 +94,7 @@ interface CloudflareEnv {
   AUTH_ALLOWED_EMAILS?: string;
   SOLVYS_ADMIN_EMAILS?: string;
   HEIRRIGHT_API_TOKEN?: string;
+  HEIRRIGHT_DOC_PREP_SOURCE_TOKEN?: string;
   HEIRRIGHT_ADMIN_SETTINGS_PASSWORD?: string;
   HEIRRIGHT_DOC_PREP_DRIVE_BROKER_TOKEN?: string;
   GOOGLE_WORKSPACE_ACCESS_TOKEN?: string;
@@ -148,6 +158,15 @@ interface CloudflareEnv {
   VITAL_OBITUARY_BROWSERBASE_FUNCTION_ID?: string;
   MARRIAGE_DEATH_BROWSERBASE_FUNCTION_ID?: string;
   BROWSERBASE_VITAL_OBITUARY_FUNCTION_ID?: string;
+  OBITUARY_VITAL_WORKFLOW_URL?: string;
+  VITAL_OBITUARY_WORKFLOW_URL?: string;
+  MARRIAGE_DEATH_WORKFLOW_URL?: string;
+  OBITUARY_VITAL_WORKFLOW_TOKEN?: string;
+  VITAL_OBITUARY_WORKFLOW_TOKEN?: string;
+  MARRIAGE_DEATH_WORKFLOW_TOKEN?: string;
+  MIAMI_DADE_CLERK_AUTH_KEY?: string;
+  MIAMI_DADE_COMMERCIAL_AUTH_KEY?: string;
+  CLERK_COMMERCIAL_AUTH_KEY?: string;
 }
 
 const DEFAULT_ADDRESS = "20611 NW 33rd Pl, Miami Gardens, FL 33056";
@@ -206,6 +225,7 @@ function routeList(): string[] {
     "/api/agentic/estate-import",
     "/api/admin/settings",
     "/api/doc-prep/packet-approval",
+    "/api/doc-prep/stages/:stageId",
     "/api/google-workspace/export",
     "/api/outreach/sync",
     "/api/exports",
@@ -1818,6 +1838,13 @@ function storedSupportingDocument(value: string | null | undefined): StoredSuppo
 function internalBearerAuthorized(request: Request, env: CloudflareEnv): boolean {
   const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
   return Boolean(env.HEIRRIGHT_API_TOKEN && timingSafeStringEqual(bearer, env.HEIRRIGHT_API_TOKEN));
+}
+
+function docPrepSourceAuthorized(request: Request, env: CloudflareEnv): boolean {
+  const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
+  return [env.HEIRRIGHT_DOC_PREP_SOURCE_TOKEN, env.HEIRRIGHT_API_TOKEN]
+    .filter((token): token is string => Boolean(token))
+    .some((token) => timingSafeStringEqual(bearer, token));
 }
 
 function docPrepDriveBrokerAuthorized(request: Request, env: CloudflareEnv): boolean {
@@ -7385,8 +7412,163 @@ async function linearSupportIssue(env: CloudflareEnv, title: string, description
       variables: { input },
     }),
   });
+  if (!response.ok) return null;
   const data = await response.json().catch(() => ({})) as { data?: { issueCreate?: { success?: boolean; issue?: Record<string, unknown> } } };
-  return data.data?.issueCreate?.issue ?? null;
+  return data.data?.issueCreate?.success === true ? data.data.issueCreate.issue ?? null : null;
+}
+
+const docPrepLinearFingerprints = new Set<string>();
+
+function safeLinearFingerprintPart(value: unknown, fallback: string): string {
+  return stringValue(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9._:-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 100) || fallback;
+}
+
+async function docPrepSystemFailureIssue(env: CloudflareEnv, failure: DocPrepSystemFailure) {
+  const stageId = safeLinearFingerprintPart(failure.stageId, "unknown_stage");
+  const code = safeLinearFingerprintPart(failure.code, "unknown_failure");
+  const provider = safeLinearFingerprintPart(failure.provider, "unknown_provider");
+  const deployment = safeLinearFingerprintPart(failure.deploymentKey, "unknown_deployment");
+  const fingerprint = `${stageId}|${code}|${provider}|${deployment}`;
+  const digest = await sha256Hex(fingerprint);
+  const key = `linear-doc-prep-failure:${digest}`;
+  if (docPrepLinearFingerprints.has(digest)) return { deduplicated: true };
+  try {
+    if (await env.PACKET_ARTIFACTS?.get(key)) {
+      docPrepLinearFingerprints.add(digest);
+      return { deduplicated: true };
+    }
+  } catch {
+    // The in-isolate fingerprint still prevents duplicate issue writes during this execution lane.
+  }
+  const title = `[HeirRight Doc Prep] ${stageId}: ${code}`.slice(0, 200);
+  const description = [
+    "Sanitized automated stage failure.",
+    `Fingerprint: ${digest}`,
+    `Stage: ${stageId}`,
+    `Code: ${code}`,
+    `Provider: ${provider}`,
+    `Deployment: ${deployment}`,
+    "Estate, contact, upload, browser, header, secret, and provider/model payload data are intentionally excluded.",
+  ].join("\n");
+  try {
+    const issue = await linearSupportIssue(env, title, description);
+    if (!issue) return { error: "linear_log_failed" as const };
+    docPrepLinearFingerprints.add(digest);
+    try {
+      await env.PACKET_ARTIFACTS?.put(key, JSON.stringify({
+        version: 1,
+        fingerprint: digest,
+        issue: {
+          id: stringValue(issue.id),
+          identifier: stringValue(issue.identifier),
+          url: stringValue(issue.url),
+        },
+      }), {
+        expirationTtl: 30 * 24 * 60 * 60,
+        metadata: { kind: "linear_doc_prep_failure", fingerprint: digest },
+      });
+    } catch {
+      // Linear already accepted the single sanitized issue. In-isolate dedupe remains active.
+    }
+    return { issue };
+  } catch {
+    return { error: "linear_log_failed" as const };
+  }
+}
+
+const DOC_PREP_DURABLE_FACT_LIMIT = 256;
+const DOC_PREP_DURABLE_JSON_BYTES = 32_000;
+
+function boundedDocPrepJson(value: unknown, depth = 0, seen = new WeakSet<object>()): boolean {
+  if (value === null || typeof value === "boolean") return true;
+  if (typeof value === "string") return value.length <= 4_000;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value !== "object" || depth >= 8 || seen.has(value)) return false;
+  seen.add(value);
+  const valid = Array.isArray(value)
+    ? value.length <= 128 && value.every((item) => boundedDocPrepJson(item, depth + 1, seen))
+    : Object.keys(value).length <= 64
+      && Object.keys(value).every((key) => key.length <= 160 && boundedDocPrepJson((value as Record<string, unknown>)[key], depth + 1, seen));
+  seen.delete(value);
+  return valid;
+}
+
+function validDocPrepEvidenceReference(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0 && value.trim().length <= 1_000;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  const required = ["id", "stageId", "source", "rawId", "fetchedAt", "factType", "value"];
+  const optional = ["sourceUrl", "attachment", "sourceLocator"];
+  if (Object.keys(record).some((key) => !required.includes(key) && !optional.includes(key)) || typeof record.stageId !== "string" || !isDocPrepStageId(record.stageId)) return false;
+  const bounds: Array<[string, number]> = [["id", 300], ["source", 120], ["rawId", 500], ["fetchedAt", 80], ["factType", 160]];
+  if (bounds.some(([key, max]) => typeof record[key] !== "string" || (record[key] as string).trim().length < 1 || (record[key] as string).trim().length > max)) return false;
+  if (!boundedDocPrepJson(record.value)) return false;
+  if (record.sourceUrl !== undefined && (typeof record.sourceUrl !== "string" || record.sourceUrl.length > 2_000)) return false;
+  return [record.attachment, record.sourceLocator].every((metadata) => metadata === undefined || (Boolean(metadata) && typeof metadata === "object" && !Array.isArray(metadata) && boundedDocPrepJson(metadata)));
+}
+
+/** Converts trusted adapter arrays into the bounded JSON object persisted by Doc Prep. */
+export function normalizeDocPrepStageResponse(result: DocPrepStageOutput): Omit<DocPrepStageOutput, "facts"> & { facts: { records: DocPrepStageOutput["facts"] } } {
+  if (!Array.isArray(result.evidenceReferences) || result.evidenceReferences.length > DOC_PREP_DURABLE_FACT_LIMIT || !result.evidenceReferences.every((reference) => validDocPrepEvidenceReference(reference))) {
+    throw new Error("Doc Prep stage returned unbounded or malformed evidence references.");
+  }
+  if (!Array.isArray(result.facts) || result.facts.length > DOC_PREP_DURABLE_FACT_LIMIT) throw new Error("Doc Prep stage returned unbounded facts.");
+  const facts = structuredClone(result.facts);
+  if (!facts.every((fact) => boundedDocPrepJson(fact) && JSON.stringify(fact).length <= DOC_PREP_DURABLE_JSON_BYTES)) throw new Error("Doc Prep stage returned unbounded facts.");
+  return { ...result, evidenceReferences: structuredClone(result.evidenceReferences), facts: { records: facts } };
+}
+
+async function docPrepStageResponse(request: Request, stageId: string, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "POST") return methodNotAllowed("POST");
+  if (!isDocPrepStageId(stageId)) {
+    return json({ ok: false, error: "unknown_doc_prep_stage", stageId }, { status: 404, headers: { "cache-control": "no-store" } });
+  }
+  const body = await request.json().catch(() => undefined);
+  const parsed = parseDocPrepStageInput(stageId, body);
+  if (!parsed.ok) return json(parsed, { status: 400, headers: { "cache-control": "no-store" } });
+  const sessionEmail = await signedSessionEmail(request, env);
+  if (sessionEmail && parsed.input.actor.email !== sessionEmail) {
+    return json({
+      ok: false,
+      error: "doc_prep_actor_mismatch",
+      message: "The request actor must match the authenticated HeirRight session.",
+    }, { status: 403, headers: { "cache-control": "no-store" } });
+  }
+  const result = await executeDocPrepStage(stageId, parsed.input, env as unknown as DocPrepStageEnv, {
+    fetcher: fetch,
+    reportSystemFailure: (failure) => docPrepSystemFailureIssue(env, failure),
+  });
+  try {
+    return json(normalizeDocPrepStageResponse(result), { headers: { "cache-control": "no-store" } });
+  } catch {
+    return json({ ok: false, error: "invalid_doc_prep_stage_response", message: "The source stage returned data outside the durable Doc Prep contract." }, { status: 502, headers: { "cache-control": "no-store" } });
+  }
+}
+
+async function docPrepSystemFailureResponse(request: Request, env: CloudflareEnv): Promise<Response> {
+  if (request.method !== "POST") return methodNotAllowed("POST");
+  if (!docPrepSourceAuthorized(request, env)) return json({ ok: false, error: "auth_required" }, { status: 401, headers: { "cache-control": "no-store" } });
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const allowedStages = new Set([...DOC_PREP_STAGE_IDS, "packet-render", "artifact-readback", "outbox", "pg-boss"]);
+  const allowedKeys = ["stageId", "code", "provider", "deploymentKey"];
+  if (!body || Array.isArray(body) || Object.keys(body).some((key) => !allowedKeys.includes(key)) || Object.keys(body).length !== allowedKeys.length
+    || typeof body.stageId !== "string" || !allowedStages.has(body.stageId)
+    || typeof body.code !== "string" || !/^[a-zA-Z0-9._:-]{1,120}$/.test(body.code)
+    || typeof body.provider !== "string" || !/^[a-zA-Z0-9._:-]{1,120}$/.test(body.provider)
+    || typeof body.deploymentKey !== "string" || !/^[a-zA-Z0-9._:-]{1,120}$/.test(body.deploymentKey)) {
+    return json({ ok: false, error: "invalid_system_failure" }, { status: 400, headers: { "cache-control": "no-store" } });
+  }
+  const result = await docPrepSystemFailureIssue(env, {
+    stageId: body.stageId as DocPrepSystemFailure["stageId"],
+    code: body.code,
+    provider: body.provider,
+    deploymentKey: body.deploymentKey,
+  });
+  return json({ ok: !result.error, ...result }, { status: result.error ? 503 : 200, headers: { "cache-control": "no-store" } });
 }
 
 function outreachSeed(body: Record<string, unknown>): IntakeSeed {
@@ -8367,6 +8549,15 @@ export default {
       if (blocked) return blocked;
       return adminSettingsResponse(request, env);
     }
+
+    const docPrepStageMatch = url.pathname.match(/^\/api\/doc-prep\/stages\/([^/]+)$/);
+    if (docPrepStageMatch) {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return docPrepStageResponse(request, decodeURIComponent(docPrepStageMatch[1] || ""), env);
+    }
+
+    if (url.pathname === "/api/doc-prep/system-failure") return docPrepSystemFailureResponse(request, env);
 
     if (url.pathname === "/api/doc-prep/packet-approval") {
       const blocked = await authBlocker(request, env);

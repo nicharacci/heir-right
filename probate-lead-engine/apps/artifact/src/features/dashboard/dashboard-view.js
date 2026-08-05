@@ -146,7 +146,7 @@ function attentionMarkup(state, bridge) {
 
 function estateRowsMarkup(state, bridge) {
   const rows = [...(state.estates || [])]
-    .sort((left, right) => Number(right.selected) - Number(left.selected) || Number(right.score || 0) - Number(left.score || 0))
+    .sort((left, right) => Number(right.selected) - Number(left.selected))
     .slice(0, 6);
   return `
     <section class="dashboard-section dashboard-active-work" aria-labelledby="dashboardActiveTitle">
@@ -159,7 +159,6 @@ function estateRowsMarkup(state, bridge) {
           <button class="dashboard-estate-row" type="button" data-dashboard-estate-id="${safe(bridge, estate.id)}" data-dashboard-estate-open="dossiers" ${estate.selected ? 'aria-current="true"' : ""}>
             <span class="dashboard-estate-lead"><strong>${safe(bridge, estate.title)}</strong><span>${safe(bridge, estate.address)}</span></span>
             <span class="dashboard-estate-state"><strong>${safe(bridge, estate.classification)}</strong><span>${safe(bridge, estate.nextAction)}</span></span>
-            <span class="dashboard-estate-score"><strong>${safe(bridge, estate.score)}</strong><span>score</span></span>
           </button>
         `).join("") : `
           <div class="dashboard-empty-row"><strong>No estate files loaded</strong><span>Open Estates to import or review a controlled public-source lead.</span></div>

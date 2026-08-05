@@ -9,6 +9,8 @@ const {
 } = require("node:fs");
 const { dirname, join, relative, sep } = require("node:path");
 const esbuild = require("esbuild");
+const postcss = require("postcss");
+const tailwindcss = require("@tailwindcss/postcss");
 
 const sourceDir = join(__dirname, "src");
 const distDir = join(__dirname, "dist");
@@ -163,6 +165,36 @@ async function buildIdiExtractionFunction() {
   });
 }
 
+async function compileBeuiFoundation() {
+  const proofPath = join(sourceDir, "beui-foundation", "compile-proof.tsx");
+  const cssPath = join(sourceDir, "styles", "beui-foundation.css");
+  const bundle = await esbuild.build({
+    absWorkingDir: __dirname,
+    entryPoints: [proofPath],
+    outfile: "beui-foundation.js",
+    bundle: true,
+    write: false,
+    format: "esm",
+    platform: "browser",
+    target: ["es2020"],
+    jsx: "automatic",
+    tsconfig: join(__dirname, "tsconfig.ui.json"),
+    treeShaking: false,
+    sourcemap: false,
+    minify: production,
+    legalComments: "eof",
+    logLevel: "silent",
+  });
+  const css = await postcss([tailwindcss()]).process(readFileSync(cssPath, "utf8"), {
+    from: cssPath,
+  });
+  const bundleBytes = bundle.outputFiles.reduce((total, file) => total + file.contents.byteLength, 0);
+  if (!bundleBytes || !css.css.includes(".flex")) {
+    throw new Error("BeUI compile proof did not produce JavaScript and Tailwind utility output");
+  }
+  console.log(`beui foundation compiled in memory (${bundleBytes} JS bytes, ${Buffer.byteLength(css.css)} CSS bytes)`);
+}
+
 function assertLocalRuntimeAssets() {
   for (const relativePath of ["index.html", "assets/app.js", "assets/app.css"]) {
     const source = readFileSync(join(distDir, relativePath), "utf8");
@@ -209,6 +241,7 @@ async function buildArtifact() {
     format: "iife",
     platform: "browser",
     target: ["es2020"],
+    tsconfig: join(__dirname, "tsconfig.ui.json"),
     sourcemap: production ? false : "external",
     minify: production,
     legalComments: "eof",
@@ -216,6 +249,7 @@ async function buildArtifact() {
     plugins: [localizeWebAwesomeAssetsPlugin(), featureDiscoveryPlugin(registerModules)],
     logLevel: "info",
   });
+  await compileBeuiFoundation();
 
   copyFileSync(join(sourceDir, "index.html"), join(distDir, "index.html"));
   copyBrandAssets();

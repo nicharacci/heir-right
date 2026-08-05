@@ -11,6 +11,13 @@ import {
   estateWorkflowStates,
   estateWorkflowTransitions,
 } from "../features/estate-export/workflow-model.js";
+import {
+  caseForEstate,
+  exportVerifiedPdfToGoogleDrive,
+  hydrateProcessCase,
+  requestCaseAction,
+  startProcessCase,
+} from "../features/doc-prep/cloud-process.js";
 
 const state = {
   activeView: "find-estates",
@@ -70,7 +77,7 @@ const state = {
   searchHistory: [],
   historyProspectIds: null,
   sortState: {
-    results: { key: "score", direction: "desc" },
+    results: { key: "address", direction: "asc" },
     dossiers: { key: "", direction: "" }
   },
   docPrepAddModal: {
@@ -126,8 +133,8 @@ const state = {
     source: ""
   },
   columnOrder: {
-    results: ["address", "lead", "score", "evidence"],
-    dossiers: ["address", "lead", "score", "evidence"]
+    results: ["address", "lead", "evidence"],
+    dossiers: ["address", "lead", "evidence"]
   },
   dripSettings: {
     startDelay: "same-day",
@@ -136,6 +143,9 @@ const state = {
     requireCourtPacket: true,
     holdNoContact: true,
     operatorNote: ""
+  },
+  beuiPreferences: {
+    compactTables: false,
   },
   outreachTemplateModal: {
     open: false,
@@ -214,6 +224,7 @@ const estateWorkflowStateKey = "heirright:estate-workflow-state";
 const columnOrderStateKey = "heirright:column-order-state";
 const searchHistoryStateKey = "heirright:search-history-state";
 const dripSettingsKey = "heirright:drip-settings";
+const beuiPreferencesKey = "heirright:beui-preferences";
 const agenticModelPreferenceKey = "heirright:agentic-model-preference";
 const outreachWorkspaceKey = "heirright:outreach-workspace";
 const walkthroughStateKey = "heirright:guided-walkthrough-seen";
@@ -332,14 +343,13 @@ const columnMap = {
 };
 
 const defaultColumnOrder = {
-  results: ["address", "lead", "score", "evidence"],
-  dossiers: ["address", "lead", "score", "evidence"]
+  results: ["address", "lead", "evidence"],
+  dossiers: ["address", "lead", "evidence"]
 };
 
 const tableColumnLabels = {
   lead: "Estate file",
   address: "Property address",
-  score: "Score",
   evidence: "Classification"
 };
 
@@ -3309,6 +3319,7 @@ function loadSavedState() {
   loadSearchHistory();
   loadShellSettings();
   loadDripSettings();
+  loadBeuiPreferences();
   loadOutreachWorkspace();
   loadAdminAccessDomains();
   state.shellEvents = defaultShellEvents();
@@ -3621,6 +3632,21 @@ function normalizeDripSettings(settings = {}) {
     senderMode: ["lead-owner", "approval-owner", "static-manager"].includes(settings.senderMode) ? settings.senderMode : "lead-owner",
     operatorNote: String(settings.operatorNote ?? "").slice(0, 500)
   };
+}
+
+function loadBeuiPreferences() {
+  try {
+    const stored = JSON.parse(storageGetItem(beuiPreferencesKey) ?? "{}");
+    state.beuiPreferences = {
+      compactTables: stored?.compactTables === true,
+    };
+  } catch {
+    state.beuiPreferences = { compactTables: false };
+  }
+}
+
+function persistBeuiPreferences() {
+  storageSetItem(beuiPreferencesKey, JSON.stringify(state.beuiPreferences));
 }
 
 function isoNow() {
@@ -12703,19 +12729,26 @@ function positionWalkthrough() {
   const edge = 14;
   const maxLeft = Math.max(edge, window.innerWidth - popoverRect.width - edge);
   const maxTop = Math.max(edge, window.innerHeight - popoverRect.height - edge);
-  let left = rect.right + gap;
-  let top = rect.top + rect.height / 2 - popoverRect.height / 2;
-  if (left > maxLeft) left = rect.left - popoverRect.width - gap;
-  if (left < edge) {
-    left = Math.max(edge, Math.min(maxLeft, rect.left + rect.width / 2 - popoverRect.width / 2));
-    if (rect.bottom + gap + popoverRect.height <= window.innerHeight - edge) {
-      top = rect.bottom + gap;
-    } else if (rect.top - gap - popoverRect.height >= edge) {
-      top = rect.top - popoverRect.height - gap;
-    }
+  const fitsBelow = rect.bottom + gap + popoverRect.height <= window.innerHeight - edge;
+  const fitsAbove = rect.top - gap - popoverRect.height >= edge;
+  let left = rect.left + rect.width / 2 - popoverRect.width / 2;
+  let top;
+  let placement;
+  if (fitsBelow) {
+    top = rect.bottom + gap;
+    placement = "bottom";
+  } else if (fitsAbove) {
+    top = rect.top - popoverRect.height - gap;
+    placement = "top";
+  } else {
+    top = rect.top + rect.height / 2 - popoverRect.height / 2;
+    left = rect.right + gap;
+    if (left > maxLeft) left = rect.left - popoverRect.width - gap;
+    placement = "side";
   }
   left = Math.max(edge, Math.min(maxLeft, left));
   top = Math.max(edge, Math.min(maxTop, top));
+  popover.dataset.placement = placement;
   popover.style.left = `${left}px`;
   popover.style.top = `${top}px`;
 }
@@ -13656,7 +13689,6 @@ function resultCellHtml(key, row) {
   if (key === "lead") {
     return `<td data-column="lead"><span class="primary-text">${escapeHtml(row.leadName)}</span></td>`;
   }
-  if (key === "score") return `<td data-column="score">${scoreHtml(row)}</td>`;
   if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowEstateDateValue(row))}</span></td>`;
   if (key === "next") {
     return `<td data-column="next"><span class="estate-next-stack"><button class="next-link solvys-liquid-glass" type="button" title="Add ${escapeHtml(row.leadName || row.title)} to Queue" data-add-row-to-queue="${escapeHtml(row.id)}">Add to queue</button>${importedEstateLifecycleHtml(row)}</span></td>`;
@@ -13670,7 +13702,6 @@ function dossierCellHtml(key, row) {
     return `<td data-column="address"><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td>`;
   }
   if (key === "lead") return `<td data-column="lead"><span class="primary-text">${escapeHtml(row.leadName)}</span></td>`;
-  if (key === "score") return `<td data-column="score">${scoreHtml(row)}</td>`;
   if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowDisplayClassification(row))}</span></td>`;
   return "";
 }
@@ -15843,6 +15874,8 @@ function wireEvents() {
     positionTableFiltersPopover();
     positionWalkthrough();
   });
+  // Capture phase so scrolls inside nested panels keep the tip on its target.
+  window.addEventListener("scroll", positionWalkthrough, { capture: true, passive: true });
   syncSidebarState();
   wireRailResize();
   wireFilterResize();
@@ -15925,6 +15958,7 @@ function wireFilterResize() {
 }
 
 const legacySubscribers = new Set();
+const beuiDocPrepActions = new Set();
 
 function freezePublicValue(value) {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
@@ -16153,6 +16187,12 @@ function publicEstateRow(row) {
   const workflow = estateWorkflowForRow(row);
   const idiConnection = connectionByName("IDI Core");
   const idiReportReady = idiImportReadyForDocPrep(row);
+  const verifiedIdiArtifactId = idiReportReady
+    ? cleanDisplayValue(idiImportForRow(row)?.attachment?.artifactId || "").slice(0, 240)
+    : "";
+  const caseReference = [capture?.probate?.caseNumber, capture?.probate?.docketNumber]
+    .map((value) => cleanDisplayValue(value).slice(0, 160))
+    .find(hasReviewedEvidenceValue) || "";
   const idiApiAvailable = Boolean(idiConnection?.api?.endpointConfigured && idiConnection?.api?.sharedDefaultConfigured);
   return {
     id: String(row.id || ""),
@@ -16190,6 +16230,8 @@ function publicEstateRow(row) {
     handoff: workflow.handoff,
     exportedAt: workflow.exportedAt,
     idiReportReady,
+    sourceFileReferences: verifiedIdiArtifactId ? [verifiedIdiArtifactId] : [],
+    ...(caseReference ? { caseReference } : {}),
     idiApiAvailable,
     idiReportStatus: idiReportReady ? "IDI report verified" : idiApiAvailable ? "IDI report required" : "Manual IDI report required",
     idiReportStatusCopy: idiReportReady
@@ -16437,6 +16479,24 @@ function legacyPublicSnapshot() {
   const stream = docPrepStreamForRow(row, flow.id);
   const packet = packetArtifactForRow(row, flow.id);
   const workflow = estateWorkflowForRow(row);
+  const rawAgenticModelStatus = state.agenticModelStatus || {};
+  const verifiedFreeModels = [...new Set((Array.isArray(rawAgenticModelStatus.freeModels) ? rawAgenticModelStatus.freeModels : [])
+    .map((model) => cleanDisplayValue(model))
+    .filter((model) => model && model !== "dynamic-free-catalog"))];
+  const modelValue = cleanDisplayValue(rawAgenticModelStatus.model || "");
+  const publicAgenticModelStatus = {
+    loaded: rawAgenticModelStatus.loaded === true,
+    available: rawAgenticModelStatus.available === true && verifiedFreeModels.length > 0,
+    provider: "nous",
+    model: verifiedFreeModels.includes(modelValue) ? modelValue : null,
+    route: ["dynamic-free-catalog", "configured-free-model", "unavailable"].includes(rawAgenticModelStatus.route)
+      ? rawAgenticModelStatus.route
+      : "unavailable",
+  };
+  const publicAgenticModelPreference = state.agenticModelPreference === "dynamic-free-catalog"
+    || verifiedFreeModels.includes(state.agenticModelPreference)
+    ? state.agenticModelPreference
+    : "dynamic-free-catalog";
   const publicEstates = state.rows.map(publicEstateRow);
   const docPrepEstates = publicEstates.filter((estate) => estateWorkflowDocPrepStates.includes(estate.workflowState));
   const exportQueue = publicEstates.filter((estate) => estate.exportEligible && estateWorkflowExportQueueStates.includes(estate.workflowState));
@@ -16509,6 +16569,34 @@ function legacyPublicSnapshot() {
       } : null,
     },
     connections: state.connections.map(normalizePublicConnection),
+    settings: {
+      activeTab: state.settingsTab,
+      accessDomains: [...state.adminAccessDomains],
+      preferences: {
+        holdNoContact: Boolean(state.dripSettings.holdNoContact),
+        compactTables: Boolean(state.beuiPreferences.compactTables),
+      },
+      agenticModelStatus: publicAgenticModelStatus,
+      agenticModelPreference: publicAgenticModelPreference,
+      verifiedFreeModels,
+    },
+    outreach: {
+      selectedCampaignId: state.selectedOutreachCampaignId,
+      selectedTemplateId: state.selectedOutreachTemplateId,
+      campaigns: state.outreachWorkspace.campaigns.map((campaign) => ({
+        id: String(campaign.id || ""),
+        label: cleanDisplayValue(campaign.name || "Campaign"),
+        detail: cleanDisplayValue(campaign.description || ""),
+      })),
+      templates: state.outreachWorkspace.templates.map((template) => ({
+        id: String(template.id || ""),
+        campaignId: String(template.campaignId || ""),
+        label: cleanDisplayValue(template.name || "Template"),
+        channel: template.channel === "email" ? "email" : "sms",
+        state: template.status,
+        detail: template.channel === "email" ? cleanDisplayValue(template.subject || "") : "",
+      })),
+    },
     activity: publicShellEvents(row),
   });
 }
@@ -16544,6 +16632,17 @@ function estateForLegacyCommand(payload = {}) {
   const row = estateId ? rowById(estateId) : null;
   if (!row) throw new Error(`Estate is unavailable: ${estateId || "(empty)"}`);
   return row;
+}
+
+async function withBeuiDocPrepAction(estateId, action, operation) {
+  const key = `${String(estateId || "")}:${String(action || "")}`;
+  if (beuiDocPrepActions.has(key)) throw new Error("That Doc Prep action is already in progress.");
+  beuiDocPrepActions.add(key);
+  try {
+    return await operation();
+  } finally {
+    beuiDocPrepActions.delete(key);
+  }
 }
 
 async function runLegacyDocumentAction(row, payload = {}) {
@@ -17092,7 +17191,122 @@ async function dispatchLegacyCommand(command, payload = {}) {
   const id = String(command || "");
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new TypeError("Command payload must be an object.");
   try {
-    if (id === "s40-queue-estates") {
+    if (id === "beui-import-estate-file") {
+      const file = payload.file;
+      if (!file || typeof file.arrayBuffer !== "function") throw new Error("Choose a PDF or CSV file before importing.");
+      if (state.crmImportModal) state.crmImportModal.open = false;
+      await queueEstateFile(file);
+      if (state.crmImportUpload?.status !== "success" || state.crmImportUpload?.reviewRequired !== true) {
+        throw new Error("The estate file did not pass the verified free-model review gate.");
+      }
+      await commitEstateFileImports();
+      if (state.crmImportUpload?.status !== "success") throw new Error("The parsed estate records could not be added safely.");
+    } else if (id === "beui-docprep-start") {
+      const row = estateForLegacyCommand(payload);
+      if (!row) throw new Error("Select an available estate before starting Doc Prep.");
+      state.selectedId = row.id;
+      await withBeuiDocPrepAction(row.id, "start", async () => {
+        if (!idiImportReadyForDocPrep(row)) throw new Error("Attach a verified IDI report before starting cloud document preparation.");
+        if (caseForEstate(row.id)) throw new Error("This estate already has a durable Doc Prep case.");
+        await startProcessCase(legacyPublicSnapshot());
+        setActiveShellView("dossiers", "Doc Prep");
+      });
+    } else if (id === "beui-docprep-action") {
+      const row = estateForLegacyCommand(payload);
+      const action = ["retry", "cancel"].includes(String(payload.action || "")) ? String(payload.action) : "";
+      if (!row || !action) throw new Error("Choose a valid durable Doc Prep action.");
+      state.selectedId = row.id;
+      await withBeuiDocPrepAction(row.id, action, async () => {
+        const processCase = caseForEstate(row.id) || await hydrateProcessCase(row.id, { force: true });
+        if (!processCase) throw new Error("The durable Doc Prep case is unavailable. Refresh and try again.");
+        await requestCaseAction(processCase, action);
+        setActiveShellView("dossiers", "Doc Prep");
+      });
+    } else if (id === "beui-docprep-upload-idi") {
+      const row = estateForLegacyCommand(payload);
+      const file = payload.file;
+      if (!row) throw new Error("Select an available estate before uploading an IDI report.");
+      if (!file || (file.type !== "application/pdf" && !String(file.name || "").toLowerCase().endsWith(".pdf"))) {
+        throw new Error("Choose a PDF exported from the approved IDI report workflow.");
+      }
+      state.selectedId = row.id;
+      await withBeuiDocPrepAction(row.id, "upload", async () => {
+        const imported = await importIdiReportFile(file, row, { startDiscovery: false });
+        if (imported?.ok !== true) throw new Error("The IDI report could not be verified.");
+        const processCase = caseForEstate(row.id) || await hydrateProcessCase(row.id, { force: true });
+        if (processCase) await requestCaseAction(processCase, "retry");
+        setActiveShellView("dossiers", "Doc Prep");
+      });
+    } else if (id === "beui-docprep-export") {
+      const row = estateForLegacyCommand(payload);
+      if (!row) throw new Error("Select an available estate before exporting the verified PDF.");
+      await withBeuiDocPrepAction(row.id, "export", async () => {
+        const processCase = caseForEstate(row.id) || await hydrateProcessCase(row.id, { force: true });
+        if (!processCase) throw new Error("The durable Doc Prep case is unavailable. Refresh and try again.");
+        await exportVerifiedPdfToGoogleDrive(processCase);
+      });
+    } else if (id === "beui-settings-tab") {
+      const tab = String(payload.tab || "");
+      if (!["access", "integrations", "support", "outreach", "preferences", "admin"].includes(tab)) {
+        throw new Error("Choose a valid Settings section.");
+      }
+      state.settingsTab = tab;
+      if (tab === "integrations" && !state.agenticModelStatus?.loaded) await loadAgenticModelStatus();
+    } else if (id === "beui-load-agentic-model-status") {
+      if (!state.agenticModelStatus?.loaded) await loadAgenticModelStatus();
+    } else if (id === "beui-set-agentic-model") {
+      const model = String(payload.model || "").trim();
+      const verifiedFreeModels = Array.isArray(state.agenticModelStatus?.freeModels)
+        ? state.agenticModelStatus.freeModels.map((value) => String(value || "").trim()).filter(Boolean)
+        : [];
+      if (model !== "dynamic-free-catalog" && !verifiedFreeModels.includes(model)) {
+        throw new Error("Choose a model from the verified Nous free catalog.");
+      }
+      state.agenticModelPreference = model || "dynamic-free-catalog";
+      storageSetItem(agenticModelPreferenceKey, state.agenticModelPreference, { sync: false });
+    } else if (id === "beui-set-preference") {
+      const key = String(payload.key || "");
+      if (key === "holdNoContact") {
+        state.dripSettings.holdNoContact = payload.value !== false;
+        persistDripSettings("Outreach no-contact preference updated");
+      } else if (key === "compactTables") {
+        state.beuiPreferences.compactTables = payload.value === true;
+        persistBeuiPreferences();
+      } else {
+        throw new Error("Choose a supported workspace preference.");
+      }
+    } else if (id === "beui-refresh-connection") {
+      await loadConnectionStatuses();
+      await loadAgenticModelStatus();
+    } else if (id === "beui-outreach-select-campaign") {
+      const campaign = campaignById(payload.campaignId);
+      if (!campaign) throw new Error("The selected campaign is unavailable.");
+      state.selectedOutreachCampaignId = campaign.id;
+      state.selectedOutreachTemplateId = activeOutreachTemplates(campaign.id)[0]?.id || null;
+    } else if (id === "beui-outreach-select-template") {
+      const template = state.outreachWorkspace.templates.find((item) => item.id === String(payload.templateId || ""));
+      if (!template) throw new Error("The selected template is unavailable.");
+      state.selectedOutreachTemplateId = template.id;
+      state.selectedOutreachCampaignId = template.campaignId;
+    } else if (id === "beui-outreach-template-action") {
+      const template = state.outreachWorkspace.templates.find((item) => item.id === String(payload.templateId || ""));
+      const action = String(payload.action || "");
+      if (!template) throw new Error("The selected template is unavailable.");
+      if (["mark-ready", "submit-approval"].includes(action)) {
+        const next = normalizeOutreachTemplate({ ...template, status: "Ready", lastEditedBy: currentActorEmail(), lastEditedAt: isoNow(), updatedAt: isoNow() });
+        upsertOutreachTemplate(next, action === "mark-ready" ? "Marked ready" : "Submitted for approval", `${next.name} is held for the existing approval boundary.`);
+      } else if (action === "sync") {
+        await syncOutreachTemplate(template.id);
+      } else if (action === "hold-outbound") {
+        showOutreachNotification({ tone: "blocked", title: "Direct send is locked", copy: "HeirRight does not send SMS or email from this screen. The reviewed package remains queued for the approved external path.", action: "settings" });
+      } else {
+        throw new Error("Choose a supported outreach action.");
+      }
+    } else if (id === "beui-admin-action") {
+      const action = String(payload.action || "");
+      state.settingsTab = action === "open-support" ? "support" : action === "review-access" ? "admin" : state.settingsTab;
+      setActiveShellView("settings", "Settings");
+    } else if (id === "s40-queue-estates") {
       const estateIds = Array.isArray(payload.estateIds) ? [...new Set(payload.estateIds.map(String).filter(Boolean))] : [];
       if (!estateIds.length) throw new Error("Select at least one active estate before queueing Doc Prep.");
       const rows = estateIds.map(rowById).filter(Boolean);

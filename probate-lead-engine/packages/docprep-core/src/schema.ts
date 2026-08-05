@@ -24,6 +24,7 @@ export const docprepEvents = pgTable("docprep_events", {
   caseId: uuid("case_id").notNull(),
   eventType: text("event_type").notNull(),
   state: text("state").notNull(),
+  stageId: text("stage_id"),
   detail: text("detail").notNull(),
   actorEmail: text("actor_email"),
   occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
@@ -37,6 +38,11 @@ export const docprepSteps = pgTable("docprep_steps", {
   position: integer("position").notNull(),
   blocker: text("blocker"),
   nextAction: text("next_action"),
+  detail: text("detail"),
+  evidenceReferences: jsonb("evidence_references").notNull(),
+  facts: jsonb("facts").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => [primaryKey({ columns: [table.caseId, table.id] })]);
 
