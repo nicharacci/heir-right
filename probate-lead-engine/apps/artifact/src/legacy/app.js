@@ -77,7 +77,7 @@ const state = {
   searchHistory: [],
   historyProspectIds: null,
   sortState: {
-    results: { key: "score", direction: "desc" },
+    results: { key: "address", direction: "asc" },
     dossiers: { key: "", direction: "" }
   },
   docPrepAddModal: {
@@ -133,8 +133,8 @@ const state = {
     source: ""
   },
   columnOrder: {
-    results: ["address", "lead", "score", "evidence"],
-    dossiers: ["address", "lead", "score", "evidence"]
+    results: ["address", "lead", "evidence"],
+    dossiers: ["address", "lead", "evidence"]
   },
   dripSettings: {
     startDelay: "same-day",
@@ -343,14 +343,13 @@ const columnMap = {
 };
 
 const defaultColumnOrder = {
-  results: ["address", "lead", "score", "evidence"],
-  dossiers: ["address", "lead", "score", "evidence"]
+  results: ["address", "lead", "evidence"],
+  dossiers: ["address", "lead", "evidence"]
 };
 
 const tableColumnLabels = {
   lead: "Estate file",
   address: "Property address",
-  score: "Score",
   evidence: "Classification"
 };
 
@@ -12730,19 +12729,26 @@ function positionWalkthrough() {
   const edge = 14;
   const maxLeft = Math.max(edge, window.innerWidth - popoverRect.width - edge);
   const maxTop = Math.max(edge, window.innerHeight - popoverRect.height - edge);
-  let left = rect.right + gap;
-  let top = rect.top + rect.height / 2 - popoverRect.height / 2;
-  if (left > maxLeft) left = rect.left - popoverRect.width - gap;
-  if (left < edge) {
-    left = Math.max(edge, Math.min(maxLeft, rect.left + rect.width / 2 - popoverRect.width / 2));
-    if (rect.bottom + gap + popoverRect.height <= window.innerHeight - edge) {
-      top = rect.bottom + gap;
-    } else if (rect.top - gap - popoverRect.height >= edge) {
-      top = rect.top - popoverRect.height - gap;
-    }
+  const fitsBelow = rect.bottom + gap + popoverRect.height <= window.innerHeight - edge;
+  const fitsAbove = rect.top - gap - popoverRect.height >= edge;
+  let left = rect.left + rect.width / 2 - popoverRect.width / 2;
+  let top;
+  let placement;
+  if (fitsBelow) {
+    top = rect.bottom + gap;
+    placement = "bottom";
+  } else if (fitsAbove) {
+    top = rect.top - popoverRect.height - gap;
+    placement = "top";
+  } else {
+    top = rect.top + rect.height / 2 - popoverRect.height / 2;
+    left = rect.right + gap;
+    if (left > maxLeft) left = rect.left - popoverRect.width - gap;
+    placement = "side";
   }
   left = Math.max(edge, Math.min(maxLeft, left));
   top = Math.max(edge, Math.min(maxTop, top));
+  popover.dataset.placement = placement;
   popover.style.left = `${left}px`;
   popover.style.top = `${top}px`;
 }
@@ -13683,7 +13689,6 @@ function resultCellHtml(key, row) {
   if (key === "lead") {
     return `<td data-column="lead"><span class="primary-text">${escapeHtml(row.leadName)}</span></td>`;
   }
-  if (key === "score") return `<td data-column="score">${scoreHtml(row)}</td>`;
   if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowEstateDateValue(row))}</span></td>`;
   if (key === "next") {
     return `<td data-column="next"><span class="estate-next-stack"><button class="next-link solvys-liquid-glass" type="button" title="Add ${escapeHtml(row.leadName || row.title)} to Queue" data-add-row-to-queue="${escapeHtml(row.id)}">Add to queue</button>${importedEstateLifecycleHtml(row)}</span></td>`;
@@ -13697,7 +13702,6 @@ function dossierCellHtml(key, row) {
     return `<td data-column="address"><span class="primary-text">${escapeHtml(address.street)}</span><span class="secondary-text">${escapeHtml(address.locality)}</span></td>`;
   }
   if (key === "lead") return `<td data-column="lead"><span class="primary-text">${escapeHtml(row.leadName)}</span></td>`;
-  if (key === "score") return `<td data-column="score">${scoreHtml(row)}</td>`;
   if (key === "evidence") return `<td data-column="evidence"><span class="classification">${escapeHtml(rowDisplayClassification(row))}</span></td>`;
   return "";
 }
@@ -15870,6 +15874,8 @@ function wireEvents() {
     positionTableFiltersPopover();
     positionWalkthrough();
   });
+  // Capture phase so scrolls inside nested panels keep the tip on its target.
+  window.addEventListener("scroll", positionWalkthrough, { capture: true, passive: true });
   syncSidebarState();
   wireRailResize();
   wireFilterResize();

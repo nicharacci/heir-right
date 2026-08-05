@@ -343,7 +343,7 @@
   width: 100%;
   min-height: 4.75rem;
   display: grid;
-  grid-template-columns: minmax(12rem, 1.3fr) minmax(10rem, 1fr) 4rem;
+  grid-template-columns: minmax(12rem, 1.3fr) minmax(10rem, 1fr);
   align-items: center;
   gap: var(--hr-space-4);
   padding: var(--hr-space-3) var(--hr-space-2);
@@ -359,24 +359,6 @@
 .dashboard-estate-row:is(:hover, :focus-visible),
 .dashboard-estate-row[aria-current="true"] {
   background: color-mix(in srgb, var(--hr-accent) 10%, transparent);
-}
-
-.dashboard-estate-score {
-  min-width: 0;
-  display: grid;
-  justify-items: end;
-}
-
-.dashboard-estate-score strong {
-  color: var(--hr-text);
-  font-family: var(--hr-font-mono);
-  font-size: var(--hr-type-lg);
-  font-weight: 620;
-}
-
-.dashboard-estate-score span {
-  color: var(--hr-text-subtle);
-  font-size: 0.6875rem;
 }
 
 .dashboard-awareness-row {
@@ -541,17 +523,12 @@
   }
 
   .dashboard-estate-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--hr-space-2);
   }
 
   .dashboard-estate-state {
     grid-column: 1;
-  }
-
-  .dashboard-estate-score {
-    grid-column: 2;
-    grid-row: 1 / span 2;
   }
 
   .dashboard-activity-list li {

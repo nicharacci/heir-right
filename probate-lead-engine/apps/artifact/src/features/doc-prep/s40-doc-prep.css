@@ -21,10 +21,13 @@
   overflow: visible;
 }
 
+/* .loop-view adds a 16px gutter that would stack with the .s40-docprep padding. */
 .app[data-active-view="dossiers"] #dossiersView {
   display: block !important;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
 }
 
 .s40-docprep {
@@ -85,7 +88,7 @@
 .s40-column-kicker {
   margin: 0 0 var(--hr-space-2) !important;
   color: var(--hr-accent-strong) !important;
-  font-size: var(--hr-type-xs) !important;
+  font-size: var(--hr-type-sm) !important;
   font-weight: 750;
   letter-spacing: 0.08em;
   line-height: 1.2 !important;
@@ -216,11 +219,30 @@
   border-bottom: 1px solid var(--hr-ruler);
 }
 
+.s40-selector > header > div,
+.s40-export-queue > header > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hr-space-2);
+}
+
 .s40-selector > header > span,
 .s40-export-queue > header > span {
   color: var(--hr-text-muted);
   font-family: var(--hr-font-mono);
   font-size: var(--hr-type-xs);
+}
+
+.s40-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 .s40-export-queue ul {
@@ -272,8 +294,14 @@
 .s40-empty-selector {
   display: grid;
   align-content: center;
+  justify-items: center;
+  text-align: center;
   gap: var(--hr-space-3);
   padding: var(--hr-space-5);
+}
+
+.s40-empty-selector .s40-link-button {
+  justify-self: center;
 }
 
 .s40-link-button {
@@ -454,13 +482,14 @@
   align-items: center;
   gap: var(--hr-space-3);
   width: min(100%, 39.675rem);
-  min-height: 3.5rem;
+  height: 70px;
   margin: 15px 0 0;
   padding: 0.7rem 1rem;
   color: var(--hr-text);
   background: var(--hr-chrome);
   border: 1px solid var(--hr-ruler);
   border-radius: 2rem;
+  flex-grow: 0;
 }
 
 .s40-island-loader {
@@ -1072,13 +1101,16 @@
 /* Empty Doc Prep retains the connected selector-and-rail workbench. */
 @media (min-width: 701px) {
   .s40-docprep-empty {
-    display: block;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    place-items: stretch;
+    align-content: stretch;
     min-height: 100%;
   }
 
   .s40-docprep-empty .s40-workbench {
     grid-template-columns: minmax(20rem, 28.125rem) minmax(0, 1fr);
-    min-height: min(44rem, calc(100dvh - 11rem));
+    min-height: 0;
   }
 }
 
@@ -1100,9 +1132,7 @@
 }
 
 .s40-empty-rail-head h2 {
-  margin: 0;
-  color: var(--hr-text);
-  font-size: var(--hr-type-lg);
+  display: none;
 }
 
 .s40-empty-rail-head p:last-child {
