@@ -31,6 +31,27 @@
   overflow: visible;
 }
 
+/* S38 owns the shell with an ID-scoped clipped workbench. Doc Prep must reclaim
+   the scroll owner without changing the shell behavior on other routes. */
+#workspace[data-s38-shell="case-journey"] .app[data-active-view="dossiers"] .content {
+  display: block !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#workspace[data-s38-shell="case-journey"] .app[data-active-view="dossiers"] .workbench {
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+#workspace[data-s38-shell="case-journey"] .app[data-active-view="dossiers"] #dossiersView {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .s40-docprep {
   display: grid;
   grid-template-rows: auto auto auto;

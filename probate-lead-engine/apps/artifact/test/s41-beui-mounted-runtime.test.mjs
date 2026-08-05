@@ -81,6 +81,9 @@ const dossiersScrollRule = s40Css.match(/\.app\[data-active-view="dossiers"\] #d
 assert.match(dossiersScrollRule, /height: auto/);
 assert.match(dossiersScrollRule, /min-height: 100%/);
 assert.match(dossiersScrollRule, /overflow: visible/);
+assert.match(s40Css, /#workspace\[data-s38-shell="case-journey"\] \.app\[data-active-view="dossiers"\] \.content \{[\s\S]*display: block !important;[\s\S]*overflow-y: auto;[\s\S]*overflow-x: hidden;/, "Doc Prep must outrank the S38 shell clip and own page scrolling");
+assert.match(s40Css, /#workspace\[data-s38-shell="case-journey"\] \.app\[data-active-view="dossiers"\] \.workbench \{[\s\S]*height: auto;[\s\S]*min-height: 100%;[\s\S]*overflow: visible;/, "the shell workbench must expand instead of clipping Doc Prep");
+assert.match(s40Css, /#workspace\[data-s38-shell="case-journey"\] \.app\[data-active-view="dossiers"\] #dossiersView \{[\s\S]*height: auto;[\s\S]*min-height: 100%;[\s\S]*overflow: visible;/, "the active Doc Prep host must remain content-sized");
 assert.match(s40Css, /\.s40-docprep \{[\s\S]*grid-template-rows: auto auto auto;[\s\S]*min-height: auto;/);
 assert.match(s40Css, /\.s40-workbench \{[\s\S]*min-height: clamp\(32rem, 68vh, 52rem\);[\s\S]*overflow: visible;/);
 assert.match(s40Css, /\.s40-artifact-surface \{[\s\S]*grid-template-rows: auto minmax\(28rem, 70vh\) auto;[\s\S]*min-height: 28rem;/);
