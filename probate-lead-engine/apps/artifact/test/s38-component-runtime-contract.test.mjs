@@ -182,6 +182,12 @@ function assertStaticContracts() {
 
   assert.match(legacySource, /const gated = blocked \|\| !authorizedWorkspaceReady/);
   assert.match(legacySource, /function failAuthorizedWorkspace[\s\S]*workspaceBooted = false;[\s\S]*uninstallLegacyBridge\(\)/);
+  assert.doesNotMatch(legacySource, /await Promise\.race\(\[runRestore/, "run restoration must not hold the authenticated route behind the startup gate");
+  assert.match(
+    legacySource,
+    /prepareAuthorizedWorkspace\(\);\s+completeAuthorizedWorkspace\(\);\s+\/\/ The authenticated route is ready[\s\S]*?void loadRun\(\)\.then\(\(\) => \{\s+if \(workspaceBooted\) renderCurrentLoopView\(\);/,
+    "the requested route must open before the latest run refresh completes",
+  );
   assert.match(legacySource, /Object\.prototype\.hasOwnProperty\.call\(payload, "estateId"\)/);
   assert.match(legacySource, /if \(!row\) throw new Error\(`Estate is unavailable:/);
   assert.match(legacySource, /const allowedExportRoutes = new Set\(\["queue", "pdf", "google", "podio", "podio-test", "both"\]\)/);

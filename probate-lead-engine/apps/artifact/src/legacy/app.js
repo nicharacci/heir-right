@@ -17627,14 +17627,19 @@ window.addEventListener("pageshow", (event) => {
 // Purge legacy IDI/contact payloads before session resolution so an expired or
 // unauthorized browser never retains the former JS-readable copies.
 purgeLegacyIdiBrowserState();
-loadSession().then(async (session) => {
+loadSession().then((session) => {
   if (authGateBlocking(session)) return;
   try {
     prepareAuthorizedWorkspace();
-    const runRestore = loadRun();
-    await Promise.race([runRestore, new Promise((resolve) => window.setTimeout(resolve, 2400))]);
     completeAuthorizedWorkspace();
-    void runRestore.then(() => { if (workspaceBooted) renderCurrentLoopView(); }).catch(() => {});
+    // The authenticated route is ready from local, security-cleared state. Restore
+    // the latest run afterward so a slow state read cannot keep the entire app
+    // behind the generic startup shell.
+    void loadRun().then(() => {
+      if (workspaceBooted) renderCurrentLoopView();
+    }).catch((error) => {
+      console.error("HeirRight workspace state refresh failed.", error);
+    });
     // Access-list and Google status are secondary chrome. Let the estate
     // workspace become interactive first, then refresh those surfaces without
     // holding the auth gate open for optional network work.
