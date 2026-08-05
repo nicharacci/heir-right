@@ -1,13 +1,21 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { InMemoryProcessRepository } from "@ple/docprep-core";
+import { DOC_PREP_STAGES, InMemoryProcessRepository, ProcessCase } from "@ple/docprep-core";
 import { createApp } from "./app.js";
 
 const repository = new InMemoryProcessRepository();
 const app = createApp({ serviceToken: "test-service-token", repository, now: () => 1 });
 const headers = { authorization: "Bearer test-service-token", "x-heirright-actor-email": "operator@heirright.com", "x-heirright-actor-name": "Sam Frederique", "idempotency-key": "api-idempotency-000001", "content-type": "application/json" };
 const body = { estates: [{ estateId: "estate-api-1", name: "Estate of Morgan Bell", address: "9 Palm Rd, Miami, FL", county: "Miami-Dade", actor: { email: "operator@heirright.com" } }] };
+async function completeStages(target: InMemoryProcessRepository, processCase: ProcessCase) {
+  let current = processCase.state === "queued" ? await target.transition(processCase.id, processCase.revision, "sourcing", "stages") : processCase;
+  for (const stage of DOC_PREP_STAGES) {
+    const running = await target.startStage(current.id, current.revision, stage.id);
+    current = await target.finishStage(running.id, running.revision, stage.id, { status: "succeeded", detail: `${stage.id} complete.`, evidenceReferences: [`evidence:${stage.id}`], facts: { stageId: stage.id } });
+  }
+  return current;
+}
 test("the API authenticates durable intake and returns the same case for a duplicate click", async () => {
   const first = await app.request("http://api/v1/doc-prep/cases", { method: "POST", headers, body: JSON.stringify(body) }); assert.equal(first.status, 201); const firstBody = await first.json() as any;
   const repeat = await app.request("http://api/v1/doc-prep/cases", { method: "POST", headers, body: JSON.stringify(body) }); assert.equal(repeat.status, 200); const repeatBody = await repeat.json() as any;
@@ -28,14 +36,29 @@ test("readiness checks the repository connection instead of treating a missing c
   const offlineApp = createApp({ serviceToken: "test-service-token", repository: new OfflineRepository() });
   assert.equal((await offlineApp.request("http://api/readyz")).status, 503);
 });
+test("the retry API resumes the first review-required stage while preserving succeeded evidence", async () => {
+  const retryRepository = new InMemoryProcessRepository();
+  const [intake] = await retryRepository.intake({ estates: [{ estateId: "estate-api-retry", name: "Estate of Morgan Bell", address: "9 Palm Rd, Miami, FL", county: "Miami-Dade", sourceFileReferences: ["idi-report-upload-1"], actor: { email: "operator@heirright.com" } }] }, "api-retry-idempotency-001");
+  const sourcing = await retryRepository.transition(intake.case.id, intake.case.revision, "sourcing", "stages");
+  const firstRunning = await retryRepository.startStage(sourcing.id, sourcing.revision, "skip_trace_parse");
+  const firstDone = await retryRepository.finishStage(firstRunning.id, firstRunning.revision, "skip_trace_parse", { status: "succeeded", detail: "IDI parsed.", evidenceReferences: ["idi:parsed"], facts: { heirs: 2 } });
+  const secondRunning = await retryRepository.startStage(firstDone.id, firstDone.revision, "obituary_search");
+  const review = await retryRepository.finishStage(secondRunning.id, secondRunning.revision, "obituary_search", { status: "review_required", detail: "Confirm obituary.", nextAction: "Review the candidate.", evidenceReferences: ["obituary:candidate"], facts: { candidates: 1 } });
+  const retryApp = createApp({ serviceToken: "test-service-token", repository: retryRepository });
+  const response = await retryApp.request(`http://api/v1/doc-prep/cases/${review.id}/actions/retry`, { method: "POST", headers, body: JSON.stringify({ revision: review.revision }) });
+  assert.equal(response.status, 200);
+  const retried = (await response.json() as any).case;
+  assert.equal(retried.steps.find((step: any) => step.id === "skip_trace_parse").state, "succeeded");
+  assert.equal(retried.steps.find((step: any) => step.id === "obituary_search").state, "pending");
+});
 test("downloads and Google Drive exports only use a byte-verified PDF", async () => {
   const pdf = new TextEncoder().encode("%PDF-1.7\nverified\n");
   const hash = createHash("sha256").update(pdf).digest("hex");
   const md5 = createHash("md5").update(pdf).digest("hex");
   const exportRepository = new InMemoryProcessRepository();
   const [intake] = await exportRepository.intake({ estates: [{ estateId: "estate-api-export", name: "Estate of Morgan Bell", address: "9 Palm Rd, Miami, FL", county: "Miami-Dade", sourceFileReferences: [], actor: { email: "operator@heirright.com" } }] }, "api-export-idempotency-001");
-  const sourcing = await exportRepository.transition(intake.case.id, intake.case.revision, "sourcing", "source");
-  const rendering = await exportRepository.transition(sourcing.id, sourcing.revision, "rendering", "render");
+  const stagesDone = await completeStages(exportRepository, intake.case);
+  const rendering = await exportRepository.transition(stagesDone.id, stagesDone.revision, "rendering", "render");
   const ready = await exportRepository.recordArtifact(rendering.id, rendering.revision, { objectKey: "docprep/export.pdf", contentType: "application/pdf", bytes: pdf.byteLength, sha256: hash, readbackStatus: "verified", verifiedAt: new Date().toISOString(), url: "https://public.example.test/docprep/export.pdf" });
   const requests: Array<{ url: string; method: string; authorization: string; body?: string }> = [];
   const credentialRefreshes: boolean[] = [];
