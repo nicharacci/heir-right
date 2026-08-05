@@ -1,5 +1,4 @@
 import { registerFeature } from "../../core/feature-registry.js";
-import { destroyCommunityGrid } from "../data-grid/community-grid.js";
 import { mountExportView, renderExportView, unmountExportView } from "./export-view.js";
 import "../data-grid/grids.css";
 
@@ -15,7 +14,6 @@ registerFeature({
   ],
   lifecycle: {
     afterRender: ({ activeView, mount, bridge }) => {
-      if (activeView !== "export") destroyCommunityGrid("export");
       if (activeView === "export" && mount) mountExportView(mount, bridge);
     },
     bridgeLost: () => unmountExportView(),

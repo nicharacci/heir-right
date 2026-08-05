@@ -1,8 +1,9 @@
 import { escapeFor } from "../doc-prep/document-row.js";
-import { createCommunityGrid, gridStatus, setGridQuickFilter } from "./community-grid.js";
+import { gridStatus } from "./grid-status.js";
 
 let queueSelection = new Set();
 let queueQuery = "";
+let removeQueueRailSelectionHandler = null;
 
 function selectedQueueEstateIds(rows = [], selection = queueSelection) {
   const queuedIds = new Set(rows.map((row) => String(row.id)));
@@ -38,29 +39,16 @@ function renderQueueGrid({ bridge }) {
         </div>
       </header>
       <div class="hr-grid-meta"><span>${escape(`${rows.length} queued estate${rows.length === 1 ? "" : "s"}`)}</span><span data-grid-selection-count>${escape(`${selectedCount} selected`)}</span><span data-grid-status aria-live="polite"></span></div>
-      <div class="hr-community-grid" data-community-grid="queue" data-grid-label="Queue"></div>
+      <div class="hr-beui-rail-host" data-beui-rail="queue" data-grid-label="Queue" data-selected-ids="${escape([...queueSelection].join(","))}" data-query="${escape(queueQuery)}"></div>
     </section>
   `;
 }
 
-function removeCellRenderer(onRemove) {
-  return (params) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "hr-grid-row-action";
-    button.textContent = "Remove";
-    button.setAttribute("aria-label", `Remove ${params.data.title} from Queue`);
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      onRemove(params.data, button);
-    });
-    return button;
-  };
-}
-
 function mountQueueGrid(root, bridge) {
-  const container = root?.querySelector?.('[data-community-grid="queue"]');
+  const container = root?.querySelector?.('[data-beui-rail="queue"]');
   if (!container) return null;
+  removeQueueRailSelectionHandler?.();
+  removeQueueRailSelectionHandler = null;
   const snapshot = bridge.readState();
   const rows = queueRows(snapshot);
   const exportButton = root.querySelector("[data-queue-export]");
@@ -70,55 +58,27 @@ function mountQueueGrid(root, bridge) {
     if (count) count.textContent = `${queueSelection.size} selected`;
     if (exportButton) exportButton.disabled = queueSelection.size === 0;
   };
-  const api = createCommunityGrid(container, {
-    key: "queue",
-    rows,
-    columns: [
-      { field: "title", headerName: "Estate", minWidth: 190, flex: 1.25, filter: "agTextColumnFilter" },
-      { field: "address", headerName: "Property", minWidth: 220, flex: 1.35, filter: "agTextColumnFilter" },
-      { field: "status", headerName: "Lead state", minWidth: 140, filter: "agTextColumnFilter" },
-      { field: "packetState", headerName: "Packet", minWidth: 160, filter: "agTextColumnFilter" },
-      { field: "source", headerName: "Source", minWidth: 150, filter: "agTextColumnFilter" },
-      {
-        colId: "remove",
-        headerName: "",
-        width: 100,
-        minWidth: 100,
-        maxWidth: 100,
-        sortable: false,
-        filter: false,
-        cellRenderer: removeCellRenderer(async (row, button) => {
-          button.disabled = true;
-          try {
-            await bridge.dispatch("remove-from-queue", { estateId: row.id });
-            queueSelection.delete(String(row.id));
-            gridStatus(root, `${row.title} removed from Queue.`, "ready");
-          } catch {
-            gridStatus(root, "The estate could not be removed from Queue.", "blocked");
-            if (button.isConnected) button.disabled = false;
-          }
-        }),
-      },
-    ],
-    selectedIds: [...queueSelection],
-    emptyMessage: "No estates are queued yet.",
-    onSelect: (row) => bridge.dispatch("select-estate", { estateId: row.id }).catch(() => {
+  const selectionHandler = (event) => {
+    const detail = event?.detail;
+    if (detail?.target !== "queue") return;
+    const selectedIds = Array.isArray(detail.estateIds) ? detail.estateIds.map(String) : [];
+    const selectedRows = rows.filter((row) => selectedIds.includes(String(row.id)));
+    updateSelection(selectedRows);
+    const primary = selectedRows[0];
+    if (!primary) return;
+    void bridge.dispatch("select-estate", { estateId: primary.id }).catch(() => {
       gridStatus(root, "That estate is no longer available.", "blocked");
-    }),
-    onOpen: async (row) => {
-      try {
-        await bridge.dispatch("select-estate", { estateId: row.id });
-        bridge.navigate("dossiers");
-      } catch {
-        gridStatus(root, "That estate is no longer available.", "blocked");
-      }
-    },
-    onSelectionChange: updateSelection,
-  });
-  if (queueQuery) setGridQuickFilter(api, queueQuery);
+    });
+  };
+  window.addEventListener("heirright:beui-rail", selectionHandler);
+  removeQueueRailSelectionHandler = () => window.removeEventListener("heirright:beui-rail", selectionHandler);
+  const syncRailQuery = () => window.dispatchEvent(new CustomEvent("heirright:beui-rail-filter", {
+    detail: { target: "queue", query: queueQuery },
+  }));
+  syncRailQuery();
   root.querySelector("[data-grid-quick-filter]")?.addEventListener("input", (event) => {
     queueQuery = event.currentTarget.value;
-    setGridQuickFilter(api, queueQuery);
+    syncRailQuery();
   });
   exportButton?.addEventListener("click", async () => {
     const estateIds = selectedQueueEstateIds(rows);
@@ -137,7 +97,7 @@ function mountQueueGrid(root, bridge) {
       }
     }
   });
-  return api;
+  return root;
 }
 
 export { mountQueueGrid, queueRows, renderQueueGrid, selectedQueueEstateIds };

@@ -118,22 +118,12 @@ function createShellController() {
   let queueDrawerOpen = false;
   let queueDrawerTab = "docprep";
 
-  function queueRows(snapshot) {
-    return queueDrawerTab === "export"
-      ? (Array.isArray(snapshot.exportQueue) ? snapshot.exportQueue : [])
-      : (Array.isArray(snapshot.docPrepEstates) ? snapshot.docPrepEstates : []);
-  }
-
   function renderShellQueue() {
     const drawer = document.getElementById("agentDrawer");
     const list = document.getElementById("activityList");
     if (!drawer || !list || !bridge) return;
     drawer.dataset.drawerMode = "queue";
     drawer.setAttribute("aria-label", "Workflow queue");
-    const snapshot = bridge.readState();
-    const rows = queueRows(snapshot);
-    const escape = (value) => bridge.escapeHtml(String(value ?? ""));
-    const rowHtml = rows.length ? rows.map((row) => "<tr><td><button type=\"button\" data-shell-queue-estate=\"" + escape(row.id) + "\" data-shell-queue-view=\"" + (queueDrawerTab === "export" && row.workflowState === "exported" ? "export" : "dossiers") + "\"><strong>" + escape(row.title || "Estate file") + "<\/strong><span>" + escape(row.address || "Address unavailable") + "<\/span><\/button><\/td><td>" + escape(row.workflowLabel || ({ queued: "Queued for Doc Prep", processing: "Preparing packet", "completed-awaiting-export": "Ready for export", blocked: "Needs attention", exported: "Exported" }[row.workflowState] || "In review")) + "<\/td><td>" + escape(row.workflowBlocker || (row.workflowState === "completed-awaiting-export" ? "Verified report is ready for export." : "Workflow state updated.")) + "<\/td><\/tr>").join("") : "<tr><td colspan=\"3\" class=\"shell-queue-empty\">No estates are waiting in this queue.<\/td><\/tr>";
     drawer.querySelector(".drawer-title").textContent = "Workflow queue";
     drawer.querySelector(".drawer-head .eyebrow").textContent = "Queue";
     const close = drawer.querySelector("#closeAgentDrawer");
@@ -141,7 +131,8 @@ function createShellController() {
       close.setAttribute("aria-label", "Close workflow queue");
       close.setAttribute("title", "Close workflow queue");
     }
-    list.innerHTML = "<div class=\"shell-queue-tabs hr-docprep-flow-switch beui-tabs\" role=\"tablist\" aria-label=\"Queue type\"><button class=\"beui-tabs-trigger\" type=\"button\" data-shell-queue-tab=\"docprep\" aria-selected=\"" + String(queueDrawerTab === "docprep") + "\">Doc Prep<\/button><button class=\"beui-tabs-trigger\" type=\"button\" data-shell-queue-tab=\"export\" aria-selected=\"" + String(queueDrawerTab === "export") + "\">Export<\/button><\/div><div class=\"shell-queue-table-wrap\"><table class=\"shell-queue-table\" data-hr-table-edge-resize=\"guarded\"><thead><tr><th>Estate<\/th><th>Status<\/th><th>Notification<\/th><\/tr><\/thead><tbody>" + rowHtml + "<\/tbody><\/table><\/div>";
+    list.innerHTML = "<div class=\"shell-queue-tabs hr-docprep-flow-switch beui-tabs\" role=\"tablist\" aria-label=\"Queue type\"><button class=\"beui-tabs-trigger\" type=\"button\" data-shell-queue-tab=\"docprep\" aria-selected=\"" + String(queueDrawerTab === "docprep") + "\">Doc Prep<\/button><button class=\"beui-tabs-trigger\" type=\"button\" data-shell-queue-tab=\"export\" aria-selected=\"" + String(queueDrawerTab === "export") + "\">Export<\/button><\/div><div class=\"shell-queue-table-wrap\" data-beui-rail=\"shell-queue\" data-shell-queue-kind=\"" + queueDrawerTab + "\" aria-label=\"Workflow queue\"><\/div>";
+    window.dispatchEvent(new CustomEvent("heirright:beui-rail-render"));
   }
 
   function openShellQueue() {
@@ -195,9 +186,6 @@ function createShellController() {
 
     const queueTab = target.closest("[data-shell-queue-tab]");
     if (queueTab) { event.preventDefault(); queueDrawerTab = queueTab.dataset.shellQueueTab === "export" ? "export" : "docprep"; renderShellQueue(); return; }
-
-    const queueEstate = target.closest("[data-shell-queue-estate]");
-    if (queueEstate) { event.preventDefault(); await runControl(queueEstate, async () => { await bridge.dispatch("select-estate", { estateId: queueEstate.dataset.shellQueueEstate }); bridge.navigate(queueEstate.dataset.shellQueueView || "dossiers"); }); return; }
 
     const closeQueue = target.closest("#closeAgentDrawer");
     if (closeQueue && queueDrawerOpen) { queueDrawerOpen = false; }

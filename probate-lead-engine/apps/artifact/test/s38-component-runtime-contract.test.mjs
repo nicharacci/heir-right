@@ -143,16 +143,16 @@ function assertStaticContracts() {
   assert.doesNotMatch(sourceIndex, /<script(?![^>]*src=)[^>]*>[\s\S]*?<\/script>/i, "the HTML shell must not contain executable inline JavaScript");
 
   assert.equal(packageJson.dependencies["@awesome.me/webawesome"], "3.10.0");
-  assert.equal(packageJson.dependencies["ag-grid-community"], "36.0.0");
+  assert.equal(packageJson.dependencies["ag-grid-community"], undefined);
   assert.equal(packageJson.devDependencies.esbuild, "0.28.1");
   assert.equal(packageJson.dependencies["ag-grid-enterprise"], undefined);
   const manifests = workspaceManifests(repoRoot);
   assert.ok(manifests.length >= 3, "the Enterprise boundary must inspect every workspace manifest");
   manifests.forEach((manifest) => {
-    assert.doesNotMatch(fs.readFileSync(manifest, "utf8"), /ag-grid-enterprise/i, `${path.relative(repoRoot, manifest)} must not declare AG Grid Enterprise`);
+    assert.doesNotMatch(fs.readFileSync(manifest, "utf8"), /ag-grid(?:-community|-enterprise)/i, `${path.relative(repoRoot, manifest)} must not declare AG Grid`);
   });
-  assert.doesNotMatch(lock, /ag-grid-enterprise/i);
-  assert.doesNotMatch(sourceText, /ag-grid-enterprise/i, "application source must not import AG Grid Enterprise");
+  assert.doesNotMatch(lock, /ag-grid(?:-community|-enterprise)/i);
+  assert.doesNotMatch(sourceText, /ag-grid(?:-community|-enterprise)/i, "application source must not import AG Grid");
   assert.doesNotMatch(
     dist,
     /(?:AllEnterpriseModule|EnterpriseCoreModule|LicenseManager|setLicenseKey)/,
@@ -175,7 +175,7 @@ function assertStaticContracts() {
   assert.match(serverSource, /staticContentTypes/);
   assert.match(serverSource, /"x-content-type-options": "nosniff"/i);
   assert.match(ossPolicy, /@awesome\.me\/webawesome` \| `3\.10\.0` \| MIT/);
-  assert.match(ossPolicy, /ag-grid-community` \| `36\.0\.0` \| MIT/);
+  assert.doesNotMatch(ossPolicy, /ag-grid-community/i);
   assert.match(ossPolicy, /esbuild` \| `0\.28\.1` \| MIT/);
   assert.ok(fs.existsSync(path.join(distRoot, "assets", "webawesome", "LICENSE.md")), "the shipped Web Awesome license must be local");
   assert.doesNotMatch(dist, /https?:\/\/(?:ka-[fp]\.fontawesome\.com|ka-f\.webawesome\.com|cdn\.jsdelivr\.net|unpkg\.com|fonts\.bunny\.net|fonts\.googleapis\.com|fonts\.gstatic\.com)/i);

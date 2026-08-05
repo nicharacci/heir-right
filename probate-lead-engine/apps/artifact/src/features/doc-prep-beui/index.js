@@ -12,5 +12,3 @@ export {
   stageState,
   verifiedArtifact,
 } from "./sequence-model.js";
-
-export { DocPrepSequence } from "./doc-prep-sequence.tsx";

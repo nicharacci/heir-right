@@ -904,7 +904,9 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(queueHtml, /data-queue-export disabled/, "Queue export must remain unavailable until at least one row is selected");
 
   const adminSource = read("src/features/data-grid/admin-audit-grid.js");
-  assert.match(adminSource, /adminAuditApi\.setGridOption\("rowData", adminAuditRows\(snapshot\)\)/, "Admin audit rows must refresh on live bridge updates");
+  const adminRailSource = read("src/features/beui-runtime/operational-grid-rails.tsx");
+  assert.match(adminSource, /data-beui-rail="admin-audit"/, "Admin audit must expose the BeUI rail slot");
+  assert.match(adminRailSource, /function AdminRail[\s\S]*useLegacySnapshot/, "Admin audit rows must refresh from the live bridge snapshot");
 }
 
 {
@@ -1084,9 +1086,9 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
 {
   const docPrepTree = readTree(path.join(sourceRoot, "features", "doc-prep"));
   const gridTree = readTree(path.join(sourceRoot, "features", "data-grid"));
-  const gridCommunity = read("src/features/data-grid/community-grid.js");
   const gridRegister = read("src/features/data-grid/register.js");
   const estatesGrid = read("src/features/data-grid/estates-grid.js");
+  const operationalRails = read("src/features/beui-runtime/operational-grid-rails.tsx");
   const gridsCss = read("src/features/data-grid/grids.css");
   const docPrepCss = read("src/features/doc-prep/doc-prep.css");
   const dividerCss = read("src/styles/dividers.css");
@@ -1136,41 +1138,28 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(legacy, /id === "save-source-capture"[\s\S]*saveSourceCaptureForRow\(row, payload\.capture\)/, "the unified evidence action must reuse canonical Discovery File readback");
   assert.match(unifiedRailHost, /"review-contact-candidate":\s*"The IDI contact decision could not be saved[\s\S]*data-unified-rail-retry/, "contact review failures must stay visible and retryable in the unified rail");
   assert.match(unifiedRailHost, /"save-source-capture":\s*"The source evidence could not be saved[\s\S]*new FormData\(button\.form\)/, "source evidence failures must stay visible and form values must flow through the unified rail action");
-  assert.match(gridCommunity, /from "ag-grid-community"/);
-  assert.match(gridCommunity, /ClientSideRowModelModule/);
-  assert.match(gridCommunity, /PaginationModule/);
-  assert.match(gridCommunity, /QuickFilterModule/);
-  assert.match(gridCommunity, /RowApiModule/, "the registered Community bundle must include the API used to restore selected rows");
-  assert.match(gridCommunity, /RowSelectionModule/);
-  assert.match(gridCommunity, /themeQuartz\.withParams/);
-  assert.doesNotMatch(gridCommunity, /NumberFilterModule|DateFilterModule/, "unused Community modules must stay out of the grid bundle");
-  assert.match(gridCommunity, /animateRows:\s*!reduceMotion/, "row motion must respect the operator's reduced-motion preference");
-  assert.match(gridCommunity, /function interactiveGridTarget[\s\S]*button, a, input, select, textarea/);
-  assert.match(gridCommunity, /event\.key !== " " \|\| !node\?\.data \|\| interactiveGridTarget\(event\)/, "Space on a nested row control must reach that control");
-  assert.match(gridCommunity, /event\.key !== "Enter" \|\| !data \|\| interactiveGridTarget\(event\)/, "Enter on a nested row control must reach that control");
+  assert.doesNotMatch(gridTree, /ag-grid|data-community-grid|createCommunityGrid/i, "operational rails must not retain AG Grid ownership");
+  assert.match(operationalRails, /renderOperationalGridRail/);
+  assert.match(operationalRails, /case "estates"[\s\S]*case "queue"[\s\S]*case "export"[\s\S]*case "admin-audit"[\s\S]*case "shell-queue"/);
+  assert.match(operationalRails, /Table, type TableColumn/);
+  assert.match(operationalRails, /heirright:beui-rail-filter/);
+  assert.match(operationalRails, /heirright:beui-rail/);
   assert.match(gridsCss, /\.hr-estates-grid-view\s*\{[\s\S]*grid-template-areas:\s*"estate-header"\s*"estate-filters"\s*"estate-grid"[\s\S]*grid-template-rows:\s*auto auto minmax\(0, 1fr\)/, "Estates must keep explicit header, optional-filter, and flexible grid areas without an idle metadata row");
   for (const [selector, area] of [
     ["hr-grid-header", "estate-header"],
     ["hr-estate-filters", "estate-filters"],
-    ["hr-community-grid", "estate-grid"],
+    ["hr-beui-rail-host", "estate-grid"],
   ]) {
     assert.match(gridsCss, new RegExp(`\\.hr-estates-grid-view > \\.${selector}\\s*\\{[^}]*grid-area:\\s*${area}`), `${selector} must stay bound to the ${area} layout area`);
   }
-  assert.match(gridsCss, /\.hr-estates-grid-view > \.hr-community-grid\[data-community-grid="estates"\][\s\S]*\.ag-root-wrapper\s*\{[^}]*height:\s*100%/, "the Estates AG Grid wrapper must stretch through its flexible layout area");
-  assert.match(gridsCss, /\.hr-community-grid\[data-community-grid="estates"\] \.ag-paging-panel\s*\{[^}]*justify-content:\s*center[^}]*transform:\s*translateY\(calc\(-1 \* var\(--hr-space-8\)\)\)/, "the Estates paging controls must float above the command hover zone at the bottom center on desktop");
+  assert.match(gridsCss, /\.hr-estates-grid-view > \.hr-beui-rail-host\s*\{[^}]*align-self:\s*stretch[^}]*border-radius:\s*var\(--hr-radius-panel\)/, "the Estates BeUI rail must fill the flexible work area");
   assert.doesNotMatch(gridsCss, /hr-estates-command-clearance|padding-block-end:\s*calc\([^;]*command-clearance/, "Estates must not reserve a second command-row gutter that strands pagination above the workbench bottom");
-  assert.match(gridsCss, /@media \(max-width: 620px\)[\s\S]*\.hr-community-grid\[data-community-grid="estates"\] \.ag-paging-panel\s*\{[^}]*transform:\s*none/, "mobile paging must stay centered without a desktop translation");
-  assert.match(gridsCss, /@media \(max-width: 620px\)[\s\S]*\.ag-paging-row-summary-panel\s*\{[^}]*display:\s*none[\s\S]*\.ag-paging-page-size, \.ag-paging-page-summary-panel[^}]*white-space:\s*nowrap[\s\S]*data-ref="btFirst"[\s\S]*data-ref="btLast"[\s\S]*display:\s*none/, "mobile paging must remove duplicate and edge controls so Page Size plus previous/next stay on one readable line");
   assert.match(gridsCss, /@media \(max-width: 620px\)[\s\S]*\.app\[data-active-view="find-estates"\] \.workbench\s*\{[^}]*grid-template-rows:\s*auto\s*!important[^}]*align-content:\s*start/, "the mobile Estates workbench must size to its content instead of clipping the grid into a fixed row");
   assert.match(gridsCss, /@media \(max-width: 620px\)[\s\S]*\.app\[data-active-view="find-estates"\] \.workbench-head\[data-view-panel="find-estates"\]\s*\{[^}]*height:\s*auto[^}]*overflow:\s*visible/, "the mobile Estates owner must expose grid overflow to the workbench scroll container");
   assert.match(gridsCss, /@media \(max-width: 620px\)[\s\S]*\.hr-estates-grid-view\s*\{[^}]*height:\s*auto[^}]*overflow:\s*visible[^}]*grid-template-rows:\s*auto auto minmax\(520px, 1fr\)/, "the mobile Estates layout must preserve a complete grid row in vertical flow without restoring the idle metadata strip");
-  assert.match(gridsCss, /@media \(max-width: 620px\)[\s\S]*\.hr-estates-grid-view > \.hr-community-grid\[data-community-grid="estates"\]\s*\{[^}]*height:\s*520px/, "the mobile AG Grid host must have a definite, unclipped viewport");
-  assert.match(gridsCss, /\.hr-community-grid :is\([^)]+ag-body-viewport[^)]+ag-center-cols-viewport[^)]+ag-body-horizontal-scroll-viewport[^)]+ag-body-vertical-scroll-viewport[^)]+\)\s*\{[^}]*scrollbar-width:\s*none/, "AG Grid scroll viewports must suppress native scrollbar tracks without changing overflow");
-  assert.match(gridsCss, /::-webkit-scrollbar\s*\{[^}]*width:\s*0[^}]*height:\s*0/, "WebKit scrollbar tracks must be visually hidden");
-  assert.doesNotMatch(gridsCss, /\.ag-body-(?:horizontal|vertical)-scroll\s*\{[^}]*(?:display:\s*none|visibility:\s*hidden)/, "AG Grid synchronization nodes must remain in layout and available to its runtime");
+  assert.match(gridsCss, /@media \(max-width: 620px\)[\s\S]*\.hr-estates-grid-view > \.hr-beui-rail-host\s*\{[^}]*height:\s*520px/, "the mobile BeUI rail host must have a definite, unclipped viewport");
   assert.doesNotMatch(gridsCss, /@keyframes hr-grid-enter[\s\S]*?from\s*\{[^}]*opacity:\s*0/, "grid content must remain visible if its entrance motion never runs");
   assert.doesNotMatch(gridsCss, /\.hr-grid-primary-action:hover[^}]*\{[^}]*transform:/, "primary grid actions must not jump on hover");
-  assert.doesNotMatch(gridTree, /AllCommunityModule|AllEnterpriseModule|ag-grid-enterprise/i);
   assert.match(docPrepCss, /\.hr-upload-command\.hr-public-sources-command,[\s\S]*\.hr-upload-command\.hr-idi-report-command\s*\{[^}]*background:\s*transparent[^}]*border-color:\s*transparent[^}]*box-shadow:\s*none/, "source review and IDI replacement must remain bare secondary controls");
   assert.match(docPrepCss, /@media \(max-width:\s*620px\)[\s\S]*\.hr-discovery-actions\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/, "mobile Discovery actions must stack so their labels remain fully readable");
   assert.match(tokensCss, /--hr-divider-line:\s*linear-gradient\([\s\S]*transparent 0%[\s\S]*var\(--hr-ruler\) 10%[\s\S]*var\(--hr-ruler\) 90%[\s\S]*transparent 100%/, "horizontal divider edges must share one theme-aware fade token");
@@ -1184,10 +1173,7 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   const dividerRules = dividerCss.replace(/\/\*[\s\S]*?\*\//g, "");
   assert.doesNotMatch(dividerRules, /ag-(?:cell|row|root)|input|textarea|focus-visible|wa-progress|progress-bar/, "grid structure, fields, focus rings, and progress tracks must stay outside the divider override");
   assert.doesNotMatch(dividerRules, /settings-status-list/, "card and status-panel outlines must not be repainted as divider gradients");
-  assert.deepEqual(
-    [...new Set([...gridTree.matchAll(/data-community-grid="([^"]+)"/g)].map((match) => match[1]))].sort(),
-    ["admin-audit", "estates", "queue"],
-  );
+  assert.match(gridRegister, /id: "s41-operational-beui-rails"/);
   assert.match(gridRegister, /id: "find-estates"/);
   assert.match(gridRegister, /id: "queue"/);
   assert.doesNotMatch(gridRegister, /\{ id: "admin", render:/, "the Admin forms must remain owned by the legacy view");
@@ -1203,8 +1189,8 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(estatesGrid, /selectedCount === 1 \? "Queue for Doc Prep" : `Queue \$\{selectedCount\} estates for Doc Prep`/, "the contextual action must describe the exact selected-estate scope");
   assert.match(estatesGrid, /bridge\.dispatch\("s40-queue-estates", \{ estateIds \}\)/);
   assert.match(estatesGrid, /data-estate-filter="county"[\s\S]*data-estate-filter="status"[\s\S]*data-estate-filter="minimumEvidence"[\s\S]*data-estate-filter="missing"[\s\S]*data-estate-filter="priorityOnly"/, "approved operational filters must remain visible in the Estates migration");
-  assert.match(gridTree, /queueSelection\.delete\(String\(row\.id\)\)/, "Queue removal must prune the export selection immediately");
-  assert.match(gridTree, /if \(exportButton\) exportButton\.disabled = queueSelection\.size === 0/, "Queue export must track explicit selection state");
+  assert.match(operationalRails, /const nextSelection = activeSelection\.filter\(\(estateId\) => estateId !== row\.id\)/, "Queue removal must prune the export selection immediately");
+  assert.match(operationalRails, /onSelectionChange=\{\(estateIds\) => \{[\s\S]*railEvent\("queue", element, \{ estateIds \}\)/, "Queue export must track explicit selection state");
   assert.match(legacy, /if \(!estateIds\.length\) throw new Error\("Select at least one estate before exporting or adding it to Queue\."\)/, "the bridge must reject empty Queue exports instead of falling back to the active estate");
   assert.match(legacy, /const queueRows = Array\.isArray\(rowsOverride\) && rowsOverride\.length \? rowsOverride : rowsForBatchAction\(\)/);
   const idiImport = legacy.slice(legacy.indexOf("async function importIdiReportFile"), legacy.indexOf("function wireIdiReportUploadControls"));
@@ -1414,8 +1400,9 @@ const [viewModule, railModule, uploadModule, timelineModule, rowModule, estatesM
   assert.match(legacy, /data-close-document-modal[^\n]*nucleoIcon\("close", 16\)/);
   assert.match(legacy, /runtime\.rails\.setOpen\(false\);\s*picker\.click\(\);/, "IDI replacement must expose the main-view continuation before the chooser returns");
   assert.match(read("src/features/doc-prep/idi-upload-control.js"), /#hrIdiReplacementReason[\s\S]*\[data-idi-submit\][\s\S]*scrollIntoView/, "mobile IDI replacement must reveal and focus its required main-view continuation");
-  assert.equal(packageJson.dependencies["ag-grid-community"], "36.0.0");
+  assert.equal(packageJson.dependencies["ag-grid-community"], undefined);
   assert.equal(packageJson.dependencies["ag-grid-enterprise"], undefined);
+  assert.doesNotMatch(lock, /ag-grid-(?:community|enterprise)/i);
   assert.doesNotMatch(lock, /ag-grid-enterprise/i);
 
   const allOwnedSource = `${read("src/features/doc-prep/s40-doc-prep-view.js")}\n${read("src/features/doc-prep/s40-doc-prep.css")}\n${gridTree}`;
@@ -1446,7 +1433,7 @@ console.log(JSON.stringify({
     "owner_details_requires_verified_property_appraiser_evidence",
     "exact_estate_identity_and_safe_legacy_migration",
     "discovery_and_closing_prep_flow_switch",
-    "community_only_operational_grids",
+    "beui_operational_rails",
     "selected_grid_rows_reach_queue",
     "admin_forms_preserved",
     "design_and_sensitive_data_boundaries",

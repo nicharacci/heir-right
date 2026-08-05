@@ -1,82 +1,41 @@
-import { createElement } from "react";
 import { createRoot } from "react-dom/client";
-import { registerFeature, unmountView } from "../../core/feature-registry.js";
-import { MountedBeuiApp } from "./mounted-app.tsx";
-import {
-  createBeuiBridgeAdapter,
-  createReactRuntimeLifecycle,
-  normalizeBeuiRoute,
-} from "./bridge-adapter.ts";
+import { registerFeature } from "../../core/feature-registry.js";
+import { createBeuiBridgeAdapter } from "./bridge-adapter.ts";
+import { renderBeuiRail } from "./doc-prep-rails.tsx";
 import "./runtime.css";
-import "../../styles/beui-tabs.css";
-import "../../styles/doc-prep-beui.css";
 
 const runtimeState = {
-  lifecycle: null,
-  element: null,
-  mount: null,
+  roots: new Map(),
   syncToken: 0,
+  bridge: null,
 };
-
-function isDocPrepRoute(bridge) {
-  return normalizeBeuiRoute(bridge.readState?.().activeView) === "dossiers";
-}
-
-function removeRuntimeElement() {
-  runtimeState.element?.remove();
-  runtimeState.mount?.removeAttribute("data-beui-runtime");
-  runtimeState.element = null;
-  runtimeState.mount = null;
-}
-
-function mountRuntime(bridge) {
-  if (runtimeState.lifecycle?.isMounted()) return;
-  const mount = document.getElementById("dossiersView");
-  if (!mount) return;
-
-  const runtimeElement = document.createElement("div");
-  runtimeElement.className = "beui-mounted-runtime";
-  runtimeElement.dataset.beuiRuntimeRoot = "true";
-  unmountView("dossiers", { mount, bridge });
-  mount.replaceChildren(runtimeElement);
-  mount.dataset.beuiRuntime = "mounted";
-
-  const adapter = createBeuiBridgeAdapter(bridge);
-  runtimeState.mount = mount;
-  runtimeState.element = runtimeElement;
-  runtimeState.lifecycle = createReactRuntimeLifecycle({
-    createRoot,
-    render: (root, props) => root.render(createElement(MountedBeuiApp, {
-      ...props,
-      presentation: "legacy-docprep",
-    })),
-  });
-  runtimeState.lifecycle.mount(runtimeElement, { adapter });
-}
 
 function unmountRuntime() {
   runtimeState.syncToken += 1;
-  runtimeState.lifecycle?.unmount();
-  runtimeState.lifecycle = null;
-  removeRuntimeElement();
+  runtimeState.roots.forEach(({ root }) => root.unmount());
+  runtimeState.roots.clear();
 }
 
 function syncRuntime(bridge) {
-  if (!isDocPrepRoute(bridge)) {
-    unmountRuntime();
-    return;
-  }
-  const mount = document.getElementById("dossiersView");
-  if (!mount) {
-    unmountRuntime();
-    return;
-  }
-  if (runtimeState.lifecycle?.isMounted() && runtimeState.mount === mount) return;
-  unmountRuntime();
-  mountRuntime(bridge);
+  const targets = [...document.querySelectorAll("[data-s40-beui-queue], [data-s40-beui-batch-progress], [data-beui-rail]")];
+  runtimeState.roots.forEach(({ root }, element) => {
+    if (!targets.includes(element) || !element.isConnected) {
+      root.unmount();
+      runtimeState.roots.delete(element);
+    }
+  });
+  if (!targets.length) return;
+  const adapter = createBeuiBridgeAdapter(bridge);
+  targets.forEach((element) => {
+    const existing = runtimeState.roots.get(element);
+    const root = existing?.root || createRoot(element);
+    runtimeState.roots.set(element, { root });
+    root.render(renderBeuiRail(adapter, element));
+  });
 }
 
 function scheduleRuntimeSync(bridge) {
+  runtimeState.bridge = bridge;
   const token = ++runtimeState.syncToken;
   queueMicrotask(() => {
     if (token !== runtimeState.syncToken) return;
@@ -84,12 +43,22 @@ function scheduleRuntimeSync(bridge) {
   });
 }
 
+window.addEventListener("heirright:beui-rail-render", () => {
+  if (runtimeState.bridge) scheduleRuntimeSync(runtimeState.bridge);
+});
+
 registerFeature({
   id: "s41-mounted-beui-runtime",
   lifecycle: {
     bridgeReady: ({ bridge }) => scheduleRuntimeSync(bridge),
     afterRender: ({ bridge }) => scheduleRuntimeSync(bridge),
-    bridgeLost: unmountRuntime,
-    unmount: unmountRuntime,
+    bridgeLost: () => {
+      runtimeState.bridge = null;
+      unmountRuntime();
+    },
+    unmount: () => {
+      runtimeState.bridge = null;
+      unmountRuntime();
+    },
   },
 });

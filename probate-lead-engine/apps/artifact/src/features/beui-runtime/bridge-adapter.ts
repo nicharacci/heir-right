@@ -32,22 +32,6 @@ export interface BeuiBridgeAdapter {
   emit: (...args: unknown[]) => unknown;
 }
 
-export interface ReactRootLike {
-  render: (node: unknown) => void;
-  unmount: () => void;
-}
-
-export interface ReactRuntimeLifecycleOptions<Props> {
-  createRoot: (element: Element) => ReactRootLike;
-  render: (root: ReactRootLike, props: Props) => void;
-}
-
-export interface ReactRuntimeLifecycle<Props> {
-  mount: (element: Element, props: Props) => void;
-  unmount: () => void;
-  isMounted: () => boolean;
-}
-
 const ROUTE_ALIASES: Readonly<Record<string, BeuiRouteId>> = Object.freeze({
   home: "dashboard",
   manage: "dashboard",
@@ -106,26 +90,4 @@ export function createBeuiBridgeAdapter(bridge: AuthorizedLegacyBridge): BeuiBri
         : bridge.dispatch(command, { ...(payload || {}), file }),
     emit: (...args: unknown[]) => bridge.emit?.(...args),
   });
-}
-
-export function createReactRuntimeLifecycle<Props>(
-  options: ReactRuntimeLifecycleOptions<Props>,
-): ReactRuntimeLifecycle<Props> {
-  let mounted: { element: Element; root: ReactRootLike } | null = null;
-
-  return {
-    mount(element, props) {
-      if (!mounted || mounted.element !== element) {
-        if (mounted) mounted.root.unmount();
-        mounted = { element, root: options.createRoot(element) };
-      }
-      options.render(mounted.root, props);
-    },
-    unmount() {
-      if (!mounted) return;
-      mounted.root.unmount();
-      mounted = null;
-    },
-    isMounted: () => mounted !== null,
-  };
 }

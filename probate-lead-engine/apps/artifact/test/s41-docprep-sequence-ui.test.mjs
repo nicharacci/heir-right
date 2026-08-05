@@ -3,16 +3,11 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
-import { build } from "esbuild";
 
 const artifactRoot = path.resolve(import.meta.dirname, "..");
 const sequenceModulePath = path.join(
   artifactRoot,
   "src/features/doc-prep-beui/sequence-model.js",
-);
-const surfacePath = path.join(
-  artifactRoot,
-  "src/features/doc-prep-beui/doc-prep-sequence.tsx",
 );
 const model = await import(pathToFileURL(sequenceModulePath).href);
 
@@ -280,30 +275,7 @@ test("does not surface raw event details, provider payloads, secrets, or private
   assert.equal(derived.currentTask.operatorText, "The process could not complete this stage.");
 });
 
-test("compiles the unmounted BeUI surface and keeps the legacy mount untouched", async () => {
-  const result = await build({
-    absWorkingDir: artifactRoot,
-    entryPoints: [surfacePath],
-    bundle: true,
-    write: false,
-    format: "esm",
-    platform: "browser",
-    target: ["es2020"],
-    jsx: "automatic",
-    tsconfig: path.join(artifactRoot, "tsconfig.ui.json"),
-    logLevel: "silent",
-  });
-  assert.ok(result.outputFiles?.[0]?.text.length > 0);
-
-  const css = readFileSync(
-    path.join(artifactRoot, "src/styles/doc-prep-beui.css"),
-    "utf8",
-  );
-  assert.match(css, /prefers-reduced-motion/);
-  assert.match(css, /\.docprep-beui-surface/);
-  assert.doesNotMatch(css, /gradient/i);
-  assert.doesNotMatch(css, /<svg/i);
-
+test("keeps the durable six-stage model while removing the duplicate full-page surface", () => {
   const entry = readFileSync(path.join(artifactRoot, "src/entry.js"), "utf8");
   const currentRegister = readFileSync(
     path.join(artifactRoot, "src/features/doc-prep/register.js"),
@@ -312,7 +284,8 @@ test("compiles the unmounted BeUI surface and keeps the legacy mount untouched",
   assert.doesNotMatch(entry, /doc-prep-beui/);
   assert.match(currentRegister, /s40-doc-prep/);
   assert.equal(
-    existsSync(path.join(artifactRoot, "src/features/doc-prep-beui/register.js")),
+    existsSync(path.join(artifactRoot, "src/features/doc-prep-beui/doc-prep-sequence.tsx")),
     false,
   );
+  assert.equal(existsSync(path.join(artifactRoot, "src/styles/doc-prep-beui.css")), false);
 });

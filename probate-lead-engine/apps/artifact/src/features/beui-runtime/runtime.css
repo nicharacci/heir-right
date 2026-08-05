@@ -1,115 +1,214 @@
-.beui-mounted-runtime {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  min-height: 0;
+.s40-beui-rail,
+.s40-beui-batch-rail {
+  --beui-background: var(--hr-chrome);
+  --beui-foreground: var(--hr-text);
+  --beui-card: var(--hr-chrome);
+  --beui-card-foreground: var(--hr-text);
+  --beui-popover: var(--hr-surface);
+  --beui-popover-foreground: var(--hr-text);
+  --beui-primary: var(--hr-accent);
+  --beui-primary-foreground: var(--hr-accent-ink);
+  --beui-secondary: var(--hr-surface-selected);
+  --beui-secondary-foreground: var(--hr-text);
+  --beui-muted: var(--hr-surface-selected);
+  --beui-muted-foreground: var(--hr-text-muted);
+  --beui-accent: var(--hr-surface-selected);
+  --beui-accent-foreground: var(--hr-text);
+  --beui-destructive: var(--hr-danger);
+  --beui-border: var(--hr-ruler);
+  --beui-input: var(--hr-control-boundary);
+  --beui-ring: var(--hr-focus);
+  color: var(--hr-text);
 }
 
-.beui-mounted-runtime-content {
+.s40-beui-rail,
+.s40-beui-rail > div,
+.s40-beui-batch-table,
+.s40-beui-batch-table > div,
+.hr-beui-rail,
+.hr-beui-rail > div {
   width: 100%;
+  min-width: 0;
+  height: 100%;
+}
+
+.s40-beui-table {
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.s40-beui-table :is(th, td) {
+  color: var(--hr-text);
+  border-color: var(--hr-ruler) !important;
+}
+
+.s40-beui-table th {
+  color: var(--hr-text-muted);
+  background: var(--hr-chrome);
+  font-size: var(--hr-type-xs);
+  font-weight: 750;
+}
+
+.s40-beui-table tr[data-selected="true"] {
+  background: var(--hr-surface-selected) !important;
+}
+
+.s40-beui-table tr:hover {
+  background: color-mix(in srgb, var(--hr-surface-selected) 74%, transparent) !important;
+}
+
+.hr-beui-rail {
+  --beui-background: var(--hr-surface);
+  --beui-foreground: var(--hr-text);
+  --beui-muted: var(--hr-surface-selected);
+  --beui-muted-foreground: var(--hr-text-muted);
+  --beui-border: var(--hr-ruler);
+  --beui-primary: var(--hr-accent);
+  --beui-primary-foreground: var(--hr-accent-ink);
+  --beui-ring: var(--hr-focus);
+  color: var(--hr-text);
+}
+
+.hr-beui-table {
+  height: 100%;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.hr-beui-table :is(th, td) {
+  color: var(--hr-text);
+  border-color: var(--hr-ruler) !important;
+}
+
+.hr-beui-table th {
+  color: var(--hr-text-muted);
+  background: var(--hr-surface);
+  font-size: var(--hr-type-xs);
+  font-weight: 750;
+}
+
+.hr-beui-table tr[data-selected="true"] {
+  background: var(--hr-surface-selected) !important;
+}
+
+.hr-beui-table tr:hover {
+  background: color-mix(in srgb, var(--hr-surface-selected) 74%, transparent) !important;
+}
+
+.hr-beui-rail-open {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  color: var(--hr-text);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-weight: 750;
+  line-height: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+a.hr-beui-rail-open {
+  display: inline-block;
+  color: var(--hr-accent-strong);
+  text-decoration: none;
+}
+
+.hr-beui-rail-open:is(:hover, :focus-visible) {
+  color: var(--hr-accent-strong);
+}
+
+.shell-beui-rail-address {
+  display: block;
+  overflow: hidden;
+  margin-top: 0.15rem;
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.s40-beui-batch-rail {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--hr-space-5);
   min-width: 0;
   min-height: 100%;
 }
 
-.beui-mounted-runtime .beui-tabs-root {
-  --beui-tabs-ink: #f0f3f7;
-  --beui-tabs-muted: #9aa6b5;
-  --beui-tabs-line: #2a3442;
-  --beui-tabs-surface: #090b0f;
-  --beui-tabs-panel: #10141b;
-  --beui-tabs-blue: #173f69;
-  --beui-tabs-blue-ink: #e7f1ff;
-  min-height: 100svh;
-  margin: 1rem;
-  overflow: hidden;
-  border: 1px solid var(--beui-tabs-line);
-  border-radius: 1.25rem;
-  background: var(--beui-tabs-surface);
+.s40-beui-batch-rail > header {
+  display: flex;
+  gap: var(--hr-space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.5125rem 1rem;
+  color: var(--hr-text);
+  background: var(--hr-chrome);
+  border: 1px solid var(--hr-ruler);
+  border-radius: 2rem;
 }
 
-.beui-mounted-runtime .beui-tabs-sidebar-panel,
-.beui-mounted-runtime .beui-tabs-inset,
-.beui-mounted-runtime .beui-tabs-command-header,
-.beui-mounted-runtime .beui-tabs-panel,
-.beui-mounted-runtime .beui-tabs-command-popover {
-  border-color: var(--beui-tabs-line);
-  background: var(--beui-tabs-panel);
-  color: var(--beui-tabs-ink);
+.s40-beui-batch-rail > header > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
 }
 
-.beui-mounted-runtime .beui-tabs-sidebar-panel {
-  background: #0d1117;
+.s40-beui-batch-rail p,
+.s40-beui-batch-rail h2,
+.s40-beui-batch-rail span {
+  margin: 0;
 }
 
-.beui-mounted-runtime .beui-tabs-command-header {
-  background: #0d1117;
+.s40-beui-batch-rail p {
+  color: var(--hr-accent-strong);
+  font-size: var(--hr-type-xs);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.beui-mounted-runtime .beui-tabs-brand,
-.beui-mounted-runtime .beui-tabs-screen-heading h1,
-.beui-mounted-runtime .beui-tabs-panel-heading h2,
-.beui-mounted-runtime .beui-tabs-metric-list dd,
-.beui-mounted-runtime .beui-tabs-command-row,
-.beui-mounted-runtime .beui-tabs-detail-list dd,
-.beui-mounted-runtime .beui-tabs-select-row strong {
-  color: var(--beui-tabs-ink);
+.s40-beui-batch-rail h2 {
+  color: var(--hr-text);
+  font-size: var(--hr-type-lg);
+  letter-spacing: -0.02em;
 }
 
-.beui-mounted-runtime .beui-tabs-screen-heading h1 + p,
-.beui-mounted-runtime .beui-tabs-detail-copy,
-.beui-mounted-runtime .beui-tabs-empty,
-.beui-mounted-runtime .beui-tabs-count,
-.beui-mounted-runtime .beui-tabs-eyebrow,
-.beui-mounted-runtime .beui-tabs-state,
-.beui-mounted-runtime .beui-tabs-select-row span span,
-.beui-mounted-runtime .beui-tabs-command-row span span {
-  color: var(--beui-tabs-muted);
+.s40-beui-batch-rail header > div > span,
+.s40-beui-stage > span {
+  color: var(--hr-text-muted);
+  font-size: var(--hr-type-xs);
 }
 
-.beui-mounted-runtime .beui-tabs-panel,
-.beui-mounted-runtime .beui-tabs-next-action,
-.beui-mounted-runtime .beui-tabs-command-row,
-.beui-mounted-runtime .beui-tabs-metric-list,
-.beui-mounted-runtime .beui-tabs-connection-list li,
-.beui-mounted-runtime .beui-tabs-detail-list > div {
-  border-color: var(--beui-tabs-line);
-}
-
-.beui-mounted-runtime .beui-tabs-pearl-button {
-  border-color: #42688f;
-  background: var(--beui-tabs-blue);
-  color: var(--beui-tabs-blue-ink);
-}
-
-.beui-mounted-runtime .beui-tabs-pearl-button:hover:not(:disabled) {
-  border-color: #5f86ad;
-  background: #1c4c7c;
-}
-
-.beui-mounted-runtime .beui-tabs-quiet-button,
-.beui-mounted-runtime .beui-tabs-inline-link {
-  color: #b9d5ef;
-}
-
-.beui-mounted-runtime .beui-tabs-state-mark {
-  border-radius: 0.35rem;
-}
-
-.beui-mounted-runtime [data-beui-spotlight="true"] {
-  outline: 2px solid #7096bf;
-  outline-offset: 4px;
-  box-shadow: none;
-}
-
-.beui-mounted-runtime .docprep-beui-status-badge {
-  border-radius: 0.35rem;
-  box-shadow: none;
+.s40-beui-stage {
+  display: grid;
+  gap: 0.15rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .beui-mounted-runtime *,
-  .beui-mounted-runtime *::before,
-  .beui-mounted-runtime *::after {
+  .s40-beui-rail *,
+  .s40-beui-rail *::before,
+  .s40-beui-rail *::after,
+  .s40-beui-batch-rail *,
+  .s40-beui-batch-rail *::before,
+  .s40-beui-batch-rail *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .hr-beui-rail *,
+  .hr-beui-rail *::before,
+  .hr-beui-rail *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.001ms !important;
     animation-duration: 0.001ms !important;
@@ -117,11 +216,10 @@
   }
 }
 
-@media (max-width: 720px) {
-  .beui-mounted-runtime .beui-tabs-root {
-    margin: 0;
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
+@media (max-width: 700px) {
+  .s40-beui-batch-rail > header {
+    align-items: stretch;
+    flex-direction: column;
+    padding-block: 1.5125rem;
   }
 }

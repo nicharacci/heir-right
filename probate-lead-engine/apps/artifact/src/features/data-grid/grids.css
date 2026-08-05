@@ -55,7 +55,7 @@
   grid-area: estate-filters;
 }
 
-.hr-estates-grid-view > .hr-community-grid {
+.hr-estates-grid-view > .hr-beui-rail-host {
   grid-area: estate-grid;
 }
 
@@ -384,7 +384,7 @@
   color: var(--hr-danger);
 }
 
-.hr-community-grid {
+.hr-beui-rail-host {
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -393,220 +393,18 @@
   background: var(--hr-surface);
 }
 
-.hr-community-grid .ag-root-wrapper {
-  border: 0;
-  border-radius: 0;
-}
-
-.hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] {
+.hr-estates-grid-view > .hr-beui-rail-host {
   align-self: stretch;
-}
-
-.hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] .ag-root-wrapper {
-  height: 100%;
-  min-height: 0;
-}
-
-/* The estate table is one surface. Round the outer frame once and let the
-   empty tail dissolve into the page tone instead of ending in a hard strip. */
-.hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] {
   position: relative;
   overflow: hidden;
   border-radius: var(--hr-radius-panel);
   background: var(--hr-surface);
 }
 
-.hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] .ag-root-wrapper {
-  overflow: hidden;
-  border-radius: inherit;
-}
-
-.hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] .ag-body-viewport {
-  position: relative;
-}
-
-.hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] .ag-body-viewport::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 3.5rem;
-  content: "";
-  pointer-events: none;
-  background: color-mix(in srgb, var(--hr-surface) 78%, transparent);
-  box-shadow: 0 -1.5rem 1.5rem color-mix(in srgb, var(--hr-surface) 58%, transparent);
-  filter: blur(1px);
-  opacity: .88;
-}
-
 @media (min-width: 621px) {
-  .hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] {
+  .hr-estates-grid-view > .hr-beui-rail-host {
     min-height: 0;
   }
-}
-
-.hr-community-grid .ag-header {
-  border-bottom-color: var(--hr-ruler);
-}
-
-.hr-community-grid .ag-row {
-  border-bottom-color: var(--hr-ruler);
-}
-
-.hr-community-grid .ag-cell-focus,
-.hr-community-grid .ag-cell-range-selected {
-  outline: var(--hr-focus-width) solid var(--hr-focus) !important;
-  outline-offset: -2px;
-}
-
-.hr-community-grid .ag-paging-panel {
-  min-height: var(--hr-control-min);
-  color: var(--hr-text-muted);
-  border-top-color: var(--hr-ruler);
-}
-
-.hr-community-grid[data-community-grid="estates"] .ag-paging-panel {
-  justify-content: center;
-  border-top: 0;
-  transform: translateY(calc(-1 * var(--hr-space-8)));
-}
-
-.hr-community-grid[data-community-grid="estates"] .ag-paging-panel-content {
-  width: max-content;
-  max-width: 100%;
-  min-width: 0;
-  margin-inline: auto;
-  justify-content: center;
-}
-
-/* AG Grid renders pagination affordances as glyph-only controls. Keep their
-   keyboard focus visible on the glyph itself without restoring a button plate. */
-.hr-community-grid .ag-paging-button {
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-.hr-community-grid .ag-paging-button:not(.ag-disabled) {
-  color: var(--hr-accent-strong);
-}
-
-.hr-community-grid .ag-paging-button::after {
-  display: none !important;
-  content: none !important;
-}
-
-.hr-community-grid .ag-paging-button .ag-icon {
-  color: currentColor;
-  filter: none;
-  transition: color var(--hr-motion-feedback) var(--hr-ease-standard),
-    filter var(--hr-motion-feedback) var(--hr-ease-standard);
-}
-
-.hr-community-grid .ag-paging-button:not(.ag-disabled):is(:hover, :focus-visible, :active) {
-  color: var(--hr-accent-strong);
-  background: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-}
-
-.hr-community-grid .ag-paging-button:not(.ag-disabled):focus-visible {
-  outline: var(--hr-focus-width) solid var(--hr-focus) !important;
-  outline-offset: 2px;
-}
-
-.hr-community-grid .ag-paging-button:not(.ag-disabled):is(:hover, :focus-visible, :active) .ag-icon {
-  filter: drop-shadow(0 0 0.3rem var(--hr-icon-glow));
-}
-
-/* Column menu and filter affordances are icon-only commands too. Quartz draws
-   a square hover plate by default, so remove that plate while preserving a
-   visible blue glyph response for pointer and keyboard interaction. */
-.hr-community-grid :is(.ag-header-cell-menu-button, .ag-header-cell-filter-button) {
-  color: var(--hr-accent-strong) !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-.hr-community-grid :is(.ag-header-cell-menu-button, .ag-header-cell-filter-button)::after {
-  display: none !important;
-  content: none !important;
-}
-
-.hr-community-grid :is(.ag-header-cell-menu-button, .ag-header-cell-filter-button) .ag-icon {
-  color: currentColor;
-  filter: none;
-  transition: color var(--hr-motion-feedback) var(--hr-ease-standard),
-    filter var(--hr-motion-feedback) var(--hr-ease-standard);
-}
-
-.hr-community-grid :is(.ag-header-cell-menu-button, .ag-header-cell-filter-button):is(:hover, :focus-visible, :active) {
-  color: var(--hr-accent-strong) !important;
-  background: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-}
-
-.hr-community-grid :is(.ag-header-cell-menu-button, .ag-header-cell-filter-button):focus-visible {
-  outline: var(--hr-focus-width) solid var(--hr-focus) !important;
-  outline-offset: 2px;
-}
-
-.hr-community-grid :is(.ag-header-cell-menu-button, .ag-header-cell-filter-button):is(:hover, :focus-visible, :active) .ag-icon {
-  filter: drop-shadow(0 0 0.3rem var(--hr-icon-glow));
-}
-
-@media (forced-colors: active) {
-  .hr-community-grid :is(
-    .ag-paging-button:not(.ag-disabled),
-    .ag-header-cell-menu-button,
-    .ag-header-cell-filter-button
-  ):focus-visible {
-    outline: 2px solid ButtonText !important;
-    outline-offset: 2px;
-  }
-}
-
-.hr-community-grid :is(
-  .ag-body-viewport,
-  .ag-center-cols-viewport,
-  .ag-body-horizontal-scroll-viewport,
-  .ag-body-vertical-scroll-viewport,
-  .ag-paging-panel
-) {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.hr-community-grid :is(
-  .ag-body-viewport,
-  .ag-center-cols-viewport,
-  .ag-body-horizontal-scroll-viewport,
-  .ag-body-vertical-scroll-viewport,
-  .ag-paging-panel
-)::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.hr-community-grid :is(
-  .ag-body-viewport,
-  .ag-center-cols-viewport,
-  .ag-body-horizontal-scroll-viewport,
-  .ag-body-vertical-scroll-viewport,
-  .ag-paging-panel
-)::-webkit-scrollbar-track,
-.hr-community-grid :is(
-  .ag-body-viewport,
-  .ag-center-cols-viewport,
-  .ag-body-horizontal-scroll-viewport,
-  .ag-body-vertical-scroll-viewport,
-  .ag-paging-panel
-)::-webkit-scrollbar-thumb {
-  background: transparent;
 }
 
 .hr-grid-empty {
@@ -784,32 +582,12 @@
     margin-inline-start: 0;
   }
 
-  .hr-community-grid {
+  .hr-beui-rail-host {
     min-height: 520px;
   }
 
-  .hr-estates-grid-view > .hr-community-grid[data-community-grid="estates"] {
+  .hr-estates-grid-view > .hr-beui-rail-host {
     height: 520px;
-  }
-
-  .hr-community-grid[data-community-grid="estates"] .ag-paging-panel {
-    transform: none;
-  }
-
-  .hr-community-grid[data-community-grid="estates"] .ag-paging-row-summary-panel {
-    display: none;
-  }
-
-  .hr-community-grid[data-community-grid="estates"] :is(.ag-paging-page-size, .ag-paging-page-summary-panel) {
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-
-  .hr-community-grid[data-community-grid="estates"] :is(
-    .ag-paging-button[data-ref="btFirst"],
-    .ag-paging-button[data-ref="btLast"]
-  ) {
-    display: none;
   }
 }
 
@@ -819,8 +597,7 @@
   }
 }
 
-/* Annotation pass: shared shell and table seams. Keep scroll behavior while
-   removing reserved scrollbar gutters and the outermost AG Grid resize grips. */
+/* Annotation pass: shared shell and table seams. */
 :root,
 html,
 body,
@@ -839,33 +616,6 @@ body,
 
 .s40-preview-viewport {
   scrollbar-gutter: auto !important;
-}
-
-.hr-community-grid :is(
-  .ag-header-container > .ag-header-row > .ag-header-cell:first-child .ag-header-cell-resize,
-  .ag-header-container > .ag-header-row > .ag-header-cell:last-child .ag-header-cell-resize,
-  .ag-pinned-left-header .ag-header-row > .ag-header-cell:first-child .ag-header-cell-resize,
-  .ag-pinned-right-header .ag-header-row > .ag-header-cell:last-child .ag-header-cell-resize,
-  .ag-header-row .ag-header-cell:first-child .ag-header-cell-resize,
-  .ag-header-row .ag-header-cell:last-child .ag-header-cell-resize
-) {
-  display: none !important;
-  pointer-events: none !important;
-}
-
-.ag-root :is(
-  .ag-header-row .ag-header-cell:first-child .ag-header-cell-resize,
-  .ag-header-row .ag-header-cell:last-child .ag-header-cell-resize
-) {
-  display: none !important;
-  pointer-events: none !important;
-}
-
-.ag-root :is(
-  .ag-header-row .ag-header-cell:first-child,
-  .ag-header-row .ag-header-cell:last-child
-) {
-  resize: none !important;
 }
 
 table :is(th:first-child, th:last-child),
@@ -1342,10 +1092,4 @@ table :is(th:first-child, th:last-child),
   .settings-gutter .beui-tabs-trigger {
     width: auto;
   }
-}
-
-.hr-community-grid[data-hr-table-edge-resize="guarded"] .ag-header-row .ag-header-cell:first-child .ag-header-cell-resize,
-.hr-community-grid[data-hr-table-edge-resize="guarded"] .ag-header-row .ag-header-cell:last-child .ag-header-cell-resize {
-  display: none;
-  pointer-events: none;
 }

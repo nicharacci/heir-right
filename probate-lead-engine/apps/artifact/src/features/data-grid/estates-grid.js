@@ -1,5 +1,5 @@
 import { escapeFor } from "../doc-prep/document-row.js";
-import { createCommunityGrid, gridStatus, setGridQuickFilter, setGridRows } from "./community-grid.js";
+import { gridStatus } from "./grid-status.js";
 
 let estateSelection = new Set();
 let estateQuery = "";
@@ -11,6 +11,7 @@ let estateFilters = {
   missing: "all",
   priorityOnly: false,
 };
+let removeEstatesRailSelectionHandler = null;
 
 function normalized(value) {
   return String(value || "").trim().toLowerCase();
@@ -97,14 +98,16 @@ function renderEstatesGrid({ bridge }) {
         <label class="hr-estate-priority-filter beui-checkbox"><input type="checkbox" data-estate-filter="priorityOnly" ${estateFilters.priorityOnly ? "checked" : ""}><span>High priority only</span></label>
         <button type="button" class="hr-text-command" data-estate-filters-clear>Clear filters</button>
       </section>
-      <div class="hr-community-grid" data-community-grid="estates" data-grid-label="Estates"></div>
+      <div class="hr-beui-rail-host" data-beui-rail="estates" data-grid-label="Estates" data-selected-ids="${escape([...estateSelection].join(","))}" data-query="${escape(estateQuery)}" data-filter-county="${escape(estateFilters.county)}" data-filter-status="${escape(estateFilters.status)}" data-filter-minimum-evidence="${escape(estateFilters.minimumEvidence)}" data-filter-missing="${escape(estateFilters.missing)}" data-filter-priority-only="${estateFilters.priorityOnly}"></div>
     </section>
   `;
 }
 
 function mountEstatesGrid(root, bridge) {
-  const container = root?.querySelector?.('[data-community-grid="estates"]');
+  const container = root?.querySelector?.('[data-beui-rail="estates"]');
   if (!container) return null;
+  removeEstatesRailSelectionHandler?.();
+  removeEstatesRailSelectionHandler = null;
   const snapshot = bridge.readState();
   const rows = activeEstateRows(snapshot.estates).map((estate) => ({ ...estate, evidenceLabel: evidenceLabel(estate) }));
   const controls = root.querySelector(".hr-grid-controls");
@@ -141,51 +144,35 @@ function mountEstatesGrid(root, bridge) {
       deleteAction.textContent = selectedCount === 1 ? "Delete estate" : `Delete ${selectedCount} estates`;
     }
   };
-  const api = createCommunityGrid(container, {
-    key: "estates",
-    rows,
-    columns: [
-      { field: "title", headerName: "Estate", minWidth: 190, flex: 1.35, filter: "agTextColumnFilter" },
-      { field: "address", headerName: "Property", minWidth: 220, flex: 1.45, filter: "agTextColumnFilter" },
-      { field: "county", headerName: "County", minWidth: 130, filter: "agTextColumnFilter" },
-      { field: "status", headerName: "Status", minWidth: 140, filter: "agTextColumnFilter" },
-      { field: "evidenceLabel", headerName: "Evidence", minWidth: 120, comparator: (_left, _right, leftNode, rightNode) => Number(leftNode.data?.evidence || 0) - Number(rightNode.data?.evidence || 0), filter: "agTextColumnFilter" },
-      { field: "nextAction", headerName: "Next action", minWidth: 220, flex: 1.35, filter: "agTextColumnFilter" },
-    ],
-    selectedIds: [...estateSelection],
-    emptyMessage: "No estates match this filter.",
-    onSelect: async (row) => {
-      try {
-        await bridge.dispatch("select-estate", { estateId: row.id });
-      } catch {
-        gridStatus(statusRoot(), "That estate is no longer available.", "blocked");
-      }
-    },
-    onOpen: async (row) => {
-      try {
-        await bridge.dispatch("select-estate", { estateId: row.id });
-        bridge.navigate("dossiers");
-      } catch {
-        gridStatus(statusRoot(), "That estate is no longer available.", "blocked");
-      }
-    },
-    onSelectionChange: updateSelection,
-  });
-  if (estateQuery) setGridQuickFilter(api, estateQuery);
   const filterCount = root.querySelector("[data-estate-filter-count]");
-  const updateRows = () => {
-    const nextRows = filteredEstateRows(rows);
-    setGridRows(api, nextRows);
+  const syncRailFilters = () => {
+    window.dispatchEvent(new CustomEvent("heirright:beui-rail-filter", {
+      detail: { target: "estates", query: estateQuery, filters: estateFilters },
+    }));
     if (filterCount) {
       const activeCount = activeEstateFilterCount();
       filterCount.textContent = String(activeCount);
       filterCount.dataset.active = String(activeCount > 0);
     }
   };
-  updateRows();
+  const selectionHandler = (event) => {
+    const detail = event?.detail;
+    if (detail?.target !== "estates") return;
+    const selectedIds = Array.isArray(detail.estateIds) ? detail.estateIds.map(String) : [];
+    const selectedRows = rows.filter((row) => selectedIds.includes(String(row.id)));
+    updateSelection(selectedRows);
+    const primary = selectedRows[0];
+    if (!primary) return;
+    void bridge.dispatch("select-estate", { estateId: primary.id }).catch(() => {
+      gridStatus(statusRoot(), "That estate is no longer available.", "blocked");
+    });
+  };
+  window.addEventListener("heirright:beui-rail", selectionHandler);
+  removeEstatesRailSelectionHandler = () => window.removeEventListener("heirright:beui-rail", selectionHandler);
+  syncRailFilters();
   root.querySelector("[data-grid-quick-filter]")?.addEventListener("input", (event) => {
     estateQuery = event.currentTarget.value;
-    setGridQuickFilter(api, estateQuery);
+    syncRailFilters();
   });
   root.querySelector("[data-estates-import-file]")?.addEventListener("click", () => {
     window.dispatchEvent(new CustomEvent("heirright:open-estate-files"));
@@ -207,7 +194,7 @@ function mountEstatesGrid(root, bridge) {
             ? Number(control.value || 0)
             : control.value,
       };
-      updateRows();
+      syncRailFilters();
     });
   });
   root.querySelector("[data-estate-filters-clear]")?.addEventListener("click", () => {
@@ -217,7 +204,7 @@ function mountEstatesGrid(root, bridge) {
       if (control.type === "checkbox") control.checked = false;
       else control.value = key === "minimumEvidence" ? "0" : "all";
     });
-    updateRows();
+    syncRailFilters();
   });
   action?.addEventListener("click", async () => {
     const estateIds = [...estateSelection];
@@ -282,7 +269,7 @@ function mountEstatesGrid(root, bridge) {
   };
   archiveAction?.addEventListener("click", () => runLifecycleAction("archive", archiveAction));
   deleteAction?.addEventListener("click", () => runLifecycleAction("delete", deleteAction));
-  return api;
+  return root;
 }
 
 export { activeEstateFilterCount, estateMatchesFilters, evidenceLabel, filteredEstateRows, mountEstatesGrid, renderEstatesGrid };

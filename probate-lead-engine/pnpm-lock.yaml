@@ -32,9 +32,6 @@ importers:
       '@tanstack/react-virtual':
         specifier: 3.14.9
         version: 3.14.9(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      ag-grid-community:
-        specifier: 36.0.0
-        version: 36.0.0
       clsx:
         specifier: 2.1.1
         version: 2.1.1
@@ -1275,15 +1272,6 @@ packages:
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
     engines: {node: '>=10.0.0'}
-
-  ag-charts-types@14.0.0:
-    resolution: {integrity: sha512-89X4J/OeOTzTp505126JayGEn3k6QUKz3UHSR0/ggoVZYzVqtMN13k/B136S1+YBwgnzyJ/NARnnIRTPWsWG9g==}
-
-  ag-grid-community@36.0.0:
-    resolution: {integrity: sha512-73PeuoG1Pofi6o1o2dYd092m5AdCt0uq/iCaVTCxLw9eRJGLZu0I+HICReolUmUH7A5X+CnYDXiE+P9S8dUqCQ==}
-
-  ag-stack@36.0.0:
-    resolution: {integrity: sha512-ciXqjZygVLk3tnZWOAQyOxP48Ju2ZmaSAtIebekXJwHqA7vB+NJ8ZME/O4XTRpInTSHn2KSu/KTxgWJO8dduiw==}
 
   argparse@1.0.10:
     resolution: {integrity: sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg==}
@@ -3454,15 +3442,6 @@ snapshots:
       d3-transition: 3.0.1(d3-selection@3.0.0)
 
   '@xmldom/xmldom@0.8.13': {}
-
-  ag-charts-types@14.0.0: {}
-
-  ag-grid-community@36.0.0:
-    dependencies:
-      ag-charts-types: 14.0.0
-      ag-stack: 36.0.0
-
-  ag-stack@36.0.0: {}
 
   argparse@1.0.10:
     dependencies:

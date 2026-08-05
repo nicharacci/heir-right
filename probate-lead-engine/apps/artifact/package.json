@@ -24,7 +24,6 @@
     "@tanstack/react-virtual": "3.14.9",
     "@awesome.me/webawesome": "3.10.0",
     "@napi-rs/canvas": "0.1.100",
-    "ag-grid-community": "36.0.0",
     "clsx": "2.1.1",
     "csv-parse": "6.1.0",
     "lucide-react": "1.28.0",

@@ -1,5 +1,4 @@
 import { escapeFor } from "./document-row.js";
-import { createCommunityGrid, destroyCommunityGrid, setGridQuickFilter } from "../data-grid/community-grid.js";
 import { estateWorkflowStateLabels } from "../estate-export/workflow-model.js";
 
 const stageLabels = Object.freeze({
@@ -16,6 +15,7 @@ const discoveryMissingLabel = "";
 
 let activeMount = null;
 const selectedEstateIds = new Set();
+let removeQueueSelectionHandler = null;
 
 function escape(bridge, value) {
   return escapeFor(bridge, value);
@@ -317,10 +317,20 @@ function renderArtifactStreamSwitcher(rows, current, bridge) {
     + "</div></nav>";
 }
 
-function renderEstateSelector(rows) {
+function renderEstateSelector(rows, selected, bridge) {
   return rows.length
-    ? `<div class="s40-selector-grid hr-community-grid" data-community-grid="docprep" data-grid-label="Queued estates" aria-label="Queued estates"></div>`
+    ? `<div class="s40-selector-grid" data-s40-beui-queue="docprep-queue" data-estate-ids="${escape(bridge, selected.map((row) => row.id).join(","))}" data-grid-label="Queued estates" aria-label="Queued estates"></div>`
     : `<div class="s40-empty-selector"><strong>No estates are queued.</strong><span>Return to Estates to choose the next files for Doc Prep.</span><button type="button" class="s40-link-button" data-open-estates>Open Estates</button></div>`;
+}
+
+function batchIsRunning(rows) {
+  return rows.some((row) => workflowState(row) === "processing");
+}
+
+function renderBatchProgress(selected, bridge) {
+  return `<section class="s40-batch-progress-host" data-s40-batch-progress-host aria-label="Doc Prep batch progress">
+    <div data-s40-beui-batch-progress data-estate-ids="${escape(bridge, selected.map((row) => row.id).join(","))}"></div>
+  </section>`;
 }
 
 function renderArtifactRail(row, bridge, rows = [], snapshot = {}) {
@@ -433,10 +443,10 @@ function renderS40DocPrepView({ bridge }) {
       <div class="s40-workbench">
         <aside class="s40-selector" aria-label="Doc Prep estate selector">
           <header><div><span class="s40-column-kicker">Queued estates</span><label class="s40-quick-search"><span class="s40-visually-hidden">Quick search queued estates</span><input type="search" data-s40-queue-search aria-label="Quick search queued estates" placeholder="Quick search"></label></div><span>${rows.length}</span></header>
-          ${renderEstateSelector(rows)}
+          ${renderEstateSelector(rows, selected, bridge)}
         </aside>
-        <article class="s40-artifact-rail" aria-label="Doc Prep artifact rail">
-          ${renderArtifactRail(current, bridge, rows, snapshot)}
+        <article class="s40-artifact-rail" aria-label="${batchIsRunning(selected) ? "Doc Prep batch progress" : "Doc Prep artifact rail"}">
+          ${batchIsRunning(selected) ? renderBatchProgress(selected, bridge) : renderArtifactRail(current, bridge, rows, snapshot)}
         </article>
       </div>
       ${renderExportQueue(snapshot, bridge)}
@@ -477,10 +487,11 @@ async function dispatchAction(bridge, command, payload, control, file = null) {
 }
 
 function mountS40DocPrepView(root, bridge) {
+  removeQueueSelectionHandler?.();
+  removeQueueSelectionHandler = null;
   activeMount = root;
   const snapshot = bridge.readState();
   const rows = docPrepRows(snapshot);
-  const selector = root?.querySelector?.('[data-community-grid="docprep"]');
   const selectedCount = root?.querySelector?.("[data-s40-selected-count]");
   const runControl = root?.querySelector?.("[data-s40-run], [data-run-docprep]");
   const stopControl = root?.querySelector?.("[data-s40-stop], [data-stop-docprep]");
@@ -494,36 +505,22 @@ function mountS40DocPrepView(root, bridge) {
     }
     if (stopControl) stopControl.disabled = !nextRows.some((row) => workflowState(row) === "processing");
   };
-  let gridApi = null;
-  if (selector) {
-    gridApi = createCommunityGrid(selector, {
-      key: "docprep",
-      rows,
-      columns: [
-        { field: "title", headerName: "Estate", minWidth: 150, flex: 1.1, filter: "agTextColumnFilter" },
-        { field: "address", headerName: "Address", minWidth: 170, flex: 1.3, filter: "agTextColumnFilter" },
-      ],
-      selectionMode: "multi",
-      selectedIds: [...selectedEstateIds],
-      pageSize: 8,
-      pagination: false,
-      emptyMessage: "No queued estates.",
-      onSelect: async (row) => {
-        try {
-          await bridge.dispatch("select-estate", { estateId: row.id });
-        } catch {
-          bridge.emit("Estate selection blocked", "That estate is no longer available.", "blocked");
-        }
-      },
-      onSelectionChange: (nextRows) => {
-        selectedEstateIds.clear();
-        nextRows.forEach((row) => selectedEstateIds.add(String(row.id)));
-        updateRunControl(rows);
-      },
+  const selectionHandler = (event) => {
+    const nextIds = Array.isArray(event?.detail?.estateIds) ? event.detail.estateIds.map(String) : [];
+    const nextRows = rows.filter((row) => nextIds.includes(String(row.id)));
+    selectedEstateIds.clear();
+    nextRows.forEach((row) => selectedEstateIds.add(String(row.id)));
+    updateRunControl(rows);
+    const primary = nextRows[0];
+    if (!primary) return;
+    void bridge.dispatch("select-estate", { estateId: primary.id }).catch(() => {
+      bridge.emit("Estate selection blocked", "That estate is no longer available.", "blocked");
     });
-  }
+  };
+  window.addEventListener("s40-docprep-selection", selectionHandler);
+  removeQueueSelectionHandler = () => window.removeEventListener("s40-docprep-selection", selectionHandler);
   root?.querySelector?.("[data-s40-queue-search]")?.addEventListener("input", (event) => {
-    setGridQuickFilter(gridApi, event.currentTarget.value);
+    window.dispatchEvent(new CustomEvent("s40-docprep-query", { detail: { target: "docprep-queue", query: event.currentTarget.value } }));
   });
   updateRunControl(rows);
   const idiUpload = root?.querySelector?.("[data-s40-idi-upload]");
@@ -572,7 +569,8 @@ function mountS40DocPrepView(root, bridge) {
 }
 
 function unmountS40DocPrepView(root) {
-  destroyCommunityGrid("docprep");
+  removeQueueSelectionHandler?.();
+  removeQueueSelectionHandler = null;
   if (!root || root === activeMount) activeMount = null;
 }
 
