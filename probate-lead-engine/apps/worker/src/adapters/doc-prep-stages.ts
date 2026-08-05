@@ -455,8 +455,8 @@ function selectedIdiRecord(value: string | null, estateId: string): JsonRecord |
   try {
     const record = JSON.parse(value) as JsonRecord;
     if (record.version !== 1 || record.assetKey !== estateId || !Array.isArray(record.candidates) || !isRecord(record.attachment)) return null;
+    if (record.mode !== "uploaded_file") return null;
     if (["pending_guard_commit", "review_required"].includes(stringValue(record.importVerification))) return null;
-    if (record.mode === "live_idi_core") return record.paidRunVerification === "verified" ? record : null;
     const subjectMatch = isRecord(record.subjectMatch) ? record.subjectMatch : {};
     return subjectMatch.matched === true ? record : null;
   } catch {
@@ -884,10 +884,10 @@ async function backstoryStage(input: DocPrepStageInput, env: DocPrepStageEnv, de
   if (!parsed) {
     return systemFailure(input, env, dependencies, "failed", "nous_strict_json_failed", "nous", "The Nous response failed the strict backstory JSON contract.", "Retry after the Nous provider returns the required strict JSON.");
   }
-  if (!strictlyGrounded(parsed.summary, parsed.reviewBoundary, evidence)) {
+  const selected = evidence.filter((item) => parsed.evidenceReferenceIds.includes(item.id));
+  if (!strictlyGrounded(parsed.summary, parsed.reviewBoundary, selected)) {
     return systemFailure(input, env, dependencies, "failed", "nous_grounding_validation_failed", "nous", "The Nous response introduced a value that was not present in the verified evidence.", "Review the evidence and retry without inferred values.");
   }
-  const selected = evidence.filter((item) => parsed.evidenceReferenceIds.includes(item.id));
   const facts: DocPrepStageFact[] = [
     {
       source: "nous",

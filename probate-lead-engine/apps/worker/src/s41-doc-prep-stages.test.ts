@@ -314,6 +314,27 @@ test("missing or stale selected IDI files remain review-required and never file 
   });
 });
 
+test("skip trace parsing rejects persisted live IDI records without starting a provider run", { concurrency: false }, async () => {
+  const kv = new MemoryKv();
+  const liveRecord = {
+    ...persistedIdiRecord(),
+    mode: "live_idi_core",
+    paidRun: true,
+    paidRunVerification: "verified",
+  };
+  kv.values.set(`idi-import:${createHash("sha256").update("estate-doc-prep-1").digest("hex")}`, JSON.stringify(liveRecord));
+  let externalCalls = 0;
+  await withFetch(async () => {
+    externalCalls += 1;
+    return jsonResponse({});
+  }, async () => {
+    const result = await callStage("skip_trace_parse", stageInput("skip_trace_parse"), environment({ PACKET_ARTIFACTS: kv }));
+    assert.equal(result.body.status, "review_required");
+    assert.deepEqual(result.body.evidenceReferences, []);
+    assert.equal(externalCalls, 0);
+  });
+});
+
 test("unsafe Tax Collector attachments stop at review without filing a Linear issue", { concurrency: false }, async () => {
   let calls = 0;
   await withFetch(async (input) => {
@@ -380,6 +401,25 @@ test("Nous fails closed on paid catalogs, unverified configured models, and malf
     }) } }] });
   }, async () => {
     const result = await callStage("backstory_generate", stageInput("backstory_generate"), environment({ NOUS_API_KEY: "configured-test-key", DEPLOYMENT_KEY: "nous-inferred-value" }));
+    assert.equal(result.body.status, "failed");
+    assert.ok((result.body.facts as Array<Record<string, unknown>>).some((fact) => (fact.value as Record<string, unknown>).code === "nous_grounding_validation_failed"));
+  });
+});
+
+test("Nous grounding is limited to the evidence references the model cites", { concurrency: false }, async () => {
+  resetServerNousCredentialCache();
+  await withFetch(async (input) => {
+    if (String(input).endsWith("/models")) return jsonResponse({ data: [{ id: "nous-free", pricing: { prompt: 0, completion: 0 } }] });
+    return jsonResponse({ choices: [{ message: { content: JSON.stringify({
+      summary: "Verified evidence obituary search remains under human review.",
+      reviewBoundary: "Human review required.",
+      evidenceReferenceIds: ["ref-skip_trace_parse"],
+    }) } }] });
+  }, async () => {
+    const result = await callStage("backstory_generate", stageInput("backstory_generate"), environment({
+      NOUS_API_KEY: "configured-test-key",
+      DEPLOYMENT_KEY: "nous-cited-evidence-only",
+    }));
     assert.equal(result.body.status, "failed");
     assert.ok((result.body.facts as Array<Record<string, unknown>>).some((fact) => (fact.value as Record<string, unknown>).code === "nous_grounding_validation_failed"));
   });
