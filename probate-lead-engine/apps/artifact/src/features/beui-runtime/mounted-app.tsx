@@ -336,7 +336,13 @@ function useDocPrepController(adapter: BeuiBridgeAdapter, estateId: string | nul
     setPendingAction(action);
     setUploadError("");
     try {
-      await adapter.dispatch(command, { estateId, ...payload });
+      const file = payload.file;
+      if (file && typeof file === "object" && typeof (file as { arrayBuffer?: unknown }).arrayBuffer === "function") {
+        const { file: fileValue, ...rest } = payload;
+        await adapter.dispatchFile(command, { estateId, ...rest }, fileValue as File);
+      } else {
+        await adapter.dispatch(command, { estateId, ...payload });
+      }
       await refreshCase();
     } catch {
       setUploadError(safeActionError());
@@ -387,7 +393,15 @@ function useDocPrepController(adapter: BeuiBridgeAdapter, estateId: string | nul
   };
 }
 
-export function MountedBeuiApp({ adapter }: { adapter: BeuiBridgeAdapter }) {
+type MountedBeuiPresentation = "chassis" | "legacy-docprep";
+
+export function MountedBeuiApp({
+  adapter,
+  presentation = "chassis",
+}: {
+  adapter: BeuiBridgeAdapter;
+  presentation?: MountedBeuiPresentation;
+}) {
   const snapshot = useMountedSnapshot(adapter);
   const [selectedEstateIds, setSelectedEstateIds] = useState(snapshot.selectedIds);
   const [settingsTab, setSettingsTab] = useState(snapshot.settingsTab);
@@ -518,6 +532,14 @@ export function MountedBeuiApp({ adapter }: { adapter: BeuiBridgeAdapter }) {
       onUploadFiles={docPrep.onUploadFiles}
     />
   );
+
+  if (presentation === "legacy-docprep") {
+    return (
+      <div className="beui-mounted-runtime-content" data-beui-runtime-surface="docprep">
+        {docPrepNode}
+      </div>
+    );
+  }
 
   return (
     <BeuiChassis

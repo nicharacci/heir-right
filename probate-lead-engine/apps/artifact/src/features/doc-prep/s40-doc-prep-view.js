@@ -355,7 +355,7 @@ function renderArtifactRail(row, bridge, rows = [], snapshot = {}) {
       <div class="s40-rail-head-commands">
         <span class="s40-idi-status" data-state="${idiReady ? "ready" : "required"}"><strong>${escape(bridge, idiStatus)}</strong><span>${escape(bridge, idiStatusCopy)}</span></span>
         <button type="button" class="s40-secondary-button" data-s40-idi-upload aria-label="Upload IDI Report PDF for ${escape(bridge, row.title || "this estate")}">Upload IDI Report PDF</button>
-        <input type="file" hidden data-s40-idi-file accept=".pdf,application/pdf" aria-label="Choose an IDI Report PDF">
+        <input type="file" hidden data-s40-idi-file data-estate-id="${escape(bridge, row.id)}" accept=".pdf,application/pdf" aria-label="Choose an IDI Report PDF">
         ${workflow !== "processing" && workflowLabel(row) ? `<span class="s40-state-label" data-state="${escape(bridge, workflow)}">${escape(bridge, workflowLabel(row))}</span>` : ""}
       </div>
     </header>
@@ -452,7 +452,7 @@ function safeActionError(error) {
   return "The workflow action could not complete. Review the estate state, then retry.";
 }
 
-async function dispatchAction(bridge, command, payload, control) {
+async function dispatchAction(bridge, command, payload, control, file = null) {
   if (control?.disabled || control?.dataset.busy === "true") return;
   if (control) {
     control.dataset.busy = "true";
@@ -460,7 +460,11 @@ async function dispatchAction(bridge, command, payload, control) {
     control.disabled = true;
   }
   try {
-    await bridge.dispatch(command, payload);
+    if (file && typeof bridge.dispatchFile === "function") {
+      await bridge.dispatchFile(command, payload, file);
+    } else {
+      await bridge.dispatch(command, file ? { ...payload, file } : payload);
+    }
   } catch (error) {
     bridge.emit("Workflow action blocked", safeActionError(error), "blocked");
   } finally {
@@ -533,7 +537,8 @@ function mountS40DocPrepView(root, bridge) {
       idiFile.value = "";
       return;
     }
-    void dispatchAction(bridge, "s40-upload-idi-report", { estateId: root.dataset.estateId, file }, idiUpload)
+    const estateId = String(idiFile.dataset.estateId || root.dataset.estateId || "").trim();
+    void dispatchAction(bridge, "s40-upload-idi-report", { estateId, file }, idiUpload, file)
       .finally(() => {
         if (idiFile.isConnected) idiFile.value = "";
       });

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { File } from "node:buffer";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { build, transform } from "esbuild";
@@ -14,15 +15,25 @@ const docPrepSource = await readFile(new URL("../src/features/doc-prep-beui/doc-
 const estatesSource = await readFile(new URL("../src/features/beui-tabs/estates.tsx", import.meta.url), "utf8");
 const runtimeCss = await readFile(new URL("runtime.css", runtimeRoot), "utf8");
 const legacySource = await readFile(new URL("../src/legacy/app.js", import.meta.url), "utf8");
+const s40Source = await readFile(new URL("../src/features/doc-prep/s40-doc-prep-view.js", import.meta.url), "utf8");
 const cloudProcessSource = await readFile(new URL("../src/features/doc-prep/cloud-process.js", import.meta.url), "utf8");
 
 assert.match(bridgeSource, /createBeuiBridgeAdapter/);
+assert.match(bridgeSource, /dispatchFile/);
 assert.match(bridgeSource, /createReactRuntimeLifecycle/);
 assert.match(registerSource, /bridgeReady/);
 assert.match(registerSource, /afterRender/);
 assert.match(registerSource, /createRoot/);
 assert.match(registerSource, /beuiRuntimeRoot/);
+assert.match(registerSource, /getElementById\("dossiersView"\)/);
+assert.match(registerSource, /unmountView\("dossiers"/);
+assert.match(registerSource, /presentation: "legacy-docprep"/);
+assert.match(registerSource, /queueMicrotask/);
+assert.doesNotMatch(registerSource, /hideLegacyChildren/);
+assert.doesNotMatch(registerSource, /workspace\.append\(runtimeElement\)/);
 assert.equal((mountedAppSource.match(/<BeuiChassis/g) || []).length, 1, "one mounted BeUI chassis is authored");
+assert.match(mountedAppSource, /legacy-docprep/);
+assert.match(mountedAppSource, /beui-mounted-runtime-content/);
 assert.match(mountedAppSource, /<DocPrepSequence/);
 assert.match(docPrepSource, /data-docprep-beui/);
 assert.match(docPrepSource, /data-dynamic-island/);
@@ -31,6 +42,8 @@ assert.match(mountedAppSource, /setSelectedEstateIds\(\[estateId\]\)/);
 assert.match(mountedAppSource, /selectedEstateIds=\{selectedEstateIds\}/);
 assert.match(estatesSource, /estateIds: \[\.\.\.selected\]/);
 assert.match(runtimeCss, /\.beui-mounted-runtime \.beui-tabs-root[\s\S]*border-radius/);
+assert.match(runtimeCss, /\.beui-mounted-runtime-content/);
+assert.doesNotMatch(runtimeCss, /#workspace\[data-beui-runtime/);
 const spotlightSource = mountedAppSource.slice(mountedAppSource.indexOf("const spotlight"), mountedAppSource.indexOf("const status"));
 assert.match(spotlightSource, /requestAnimationFrame/);
 assert.match(spotlightSource, /scrollIntoView/);
@@ -47,6 +60,10 @@ assert(legacySource.includes("const caseReference = [capture?.probate?.caseNumbe
 assert(legacySource.includes("...(caseReference ? { caseReference } : {})"));
 assert.match(legacySource, /id === \"beui-docprep-action\"[\s\S]*requestCaseAction/);
 assert.match(legacySource, /id === \"beui-docprep-export\"[\s\S]*exportVerifiedPdfToGoogleDrive/);
+assert.match(legacySource, /dispatchFile:\s*\(command, payload, file\)/);
+assert.match(legacySource, /id === \"select-estate\"[\s\S]*hydratePersistedDiscoveryFile\(row\)/);
+assert.match(s40Source, /data-s40-idi-file data-estate-id=/);
+assert.match(s40Source, /bridge\.dispatchFile\(command, payload, file\)/);
 assert.match(cloudProcessSource, /contentType === \"application\/pdf\"/);
 assert.match(cloudProcessSource, /readbackStatus === \"verified\"/);
 assert.match(cloudProcessSource, /operatorIntent: \"export_verified_pdfs_to_google_drive\"/);
@@ -83,6 +100,10 @@ const legacyBridge = {
     calls.dispatch.push([command, payload]);
     return { ok: true };
   },
+  dispatchFile(command, payload, file) {
+    calls.dispatch.push([command, { ...payload, file }]);
+    return { ok: true };
+  },
 };
 
 const adapter = bridgeModule.createBeuiBridgeAdapter(legacyBridge);
@@ -93,6 +114,10 @@ adapter.navigate("estates");
 assert.deepEqual(calls.navigate, ["find-estates"], "route aliases use the real bridge navigate call");
 adapter.dispatch("select-estate", { estateId: "estate-1" });
 assert.deepEqual(calls.dispatch, [["select-estate", { estateId: "estate-1" }]], "commands use the real bridge dispatch call");
+const idiFile = new File(["%PDF-1.7\nIDI"], "Michelet.pdf", { type: "application/pdf" });
+adapter.dispatchFile("s40-upload-idi-report", { estateId: "estate-1" }, idiFile);
+assert.equal(calls.dispatch[1][0], "s40-upload-idi-report", "file commands keep their legacy command identity");
+assert.strictEqual(calls.dispatch[1][1].file, idiFile, "the real File object crosses the mounted bridge unchanged");
 unsubscribe();
 const updatesBeforeUnsubscribe = updates;
 for (const listener of listeners) listener(state);

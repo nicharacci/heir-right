@@ -1,17 +1,14 @@
 .beui-mounted-runtime {
   display: block;
-  min-height: 100svh;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
 }
 
-#workspace[data-beui-runtime="mounted"] {
-  display: block;
-  min-height: 100svh;
-  overflow: visible;
-  background: #090b0f;
-}
-
-#workspace[data-beui-runtime="mounted"] > [hidden] {
-  display: none !important;
+.beui-mounted-runtime-content {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
 }
 
 .beui-mounted-runtime .beui-tabs-root {
