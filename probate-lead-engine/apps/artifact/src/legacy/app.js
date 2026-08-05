@@ -1425,6 +1425,12 @@ function idiImportForRow(row = selectedRow()) {
   return state.idiImports[assetDiscoveryKey(row)] ?? null;
 }
 
+function verifiedIdiAttachmentReference(imported = null) {
+  const attachment = imported?.attachment;
+  if (!attachment || attachment.readbackStatus !== "verified") return "";
+  return cleanDisplayValue(attachment.artifactId || attachment.id).slice(0, 240);
+}
+
 function idiImportReadyForDocPrep(row = selectedRow()) {
   const imported = idiImportForRow(row);
   return Boolean(
@@ -1433,7 +1439,7 @@ function idiImportReadyForDocPrep(row = selectedRow()) {
     && imported.importVerification === "verified"
     && imported.reviewRequired !== true
     && (!imported.paidRun || imported.paidRunApproved === true)
-    && imported.attachment?.artifactId
+    && verifiedIdiAttachmentReference(imported)
   );
 }
 
@@ -16192,7 +16198,7 @@ function publicEstateRow(row) {
   const idiConnection = connectionByName("IDI Core");
   const idiReportReady = idiImportReadyForDocPrep(row);
   const verifiedIdiArtifactId = idiReportReady
-    ? cleanDisplayValue(idiImportForRow(row)?.attachment?.artifactId || "").slice(0, 240)
+    ? verifiedIdiAttachmentReference(idiImportForRow(row))
     : "";
   const caseReference = [capture?.probate?.caseNumber, capture?.probate?.docketNumber]
     .map((value) => cleanDisplayValue(value).slice(0, 160))

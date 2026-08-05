@@ -66,6 +66,9 @@ assert.match(legacySource, /id === \"beui-docprep-export\"[\s\S]*exportVerifiedP
 assert.match(legacySource, /dispatchFile:\s*\(command, payload, file\)/);
 assert.match(legacySource, /id === \"select-estate\"[\s\S]*hydratePersistedDiscoveryFile\(row\)/);
 assert.match(legacySource, /imported\.reviewRequired !== true/);
+assert.match(legacySource, /function verifiedIdiAttachmentReference\(imported = null\)[\s\S]*attachment\.artifactId \|\| attachment\.id/);
+assert.match(legacySource, /idiImportReadyForDocPrep[\s\S]*verifiedIdiAttachmentReference\(imported\)/);
+assert.match(legacySource, /verifiedIdiArtifactId = idiReportReady[\s\S]*verifiedIdiAttachmentReference\(idiImportForRow\(row\)\)/);
 const hydratedDiscoverySource = legacySource.slice(
   legacySource.indexOf("async function hydratePersistedDiscoveryFile"),
   legacySource.indexOf("async function runFullDiscovery"),
@@ -187,4 +190,4 @@ await build({
   loader: { ".css": "empty" },
 });
 
-console.log("S41 mounted runtime contract: 6 assertions passed");
+console.log("S41 mounted runtime contract: 9 assertions passed");
