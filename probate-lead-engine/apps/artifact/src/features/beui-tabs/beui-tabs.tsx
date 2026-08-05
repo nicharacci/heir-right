@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "../../beui-foundation/components/motion/button/base";
 import {
   AnimatedSidebar,
@@ -24,10 +24,12 @@ import {
   BEUI_EXPORT_ROUTES,
   BEUI_NAV_ITEMS,
   type BeuiAccountIdentity,
+  type BeuiAgenticModelStatus,
   type BeuiCommandHandler,
   type BeuiHelpAreaId,
   type BeuiOwnedRouteId,
   type BeuiPreferences,
+  type BeuiRouteId,
   type BeuiScreenStatus,
   type BeuiSettingsTabId,
   type DashboardSnapshot,
@@ -52,7 +54,7 @@ interface BeuiCommandHeaderProps {
   selectedEstateIds: readonly string[];
   status?: BeuiScreenStatus;
   onQueryChange: (query: string) => void;
-  onNavigate: (route: BeuiOwnedRouteId) => void;
+  onNavigate: (route: BeuiRouteId) => void;
   onCommand?: BeuiCommandHandler;
 }
 
@@ -150,14 +152,17 @@ function BeuiCommandHeader({
 }
 
 interface BeuiPrimaryNavProps {
-  activeRoute: BeuiOwnedRouteId;
+  activeRoute: BeuiRouteId;
   canOpenAdmin: boolean;
-  onNavigate: (route: BeuiOwnedRouteId) => void;
+  onNavigate: (route: BeuiRouteId) => void;
+  includeDossiers?: boolean;
 }
 
-function BeuiPrimaryNav({ activeRoute, canOpenAdmin, onNavigate }: BeuiPrimaryNavProps) {
+function BeuiPrimaryNav({ activeRoute, canOpenAdmin, onNavigate, includeDossiers = false }: BeuiPrimaryNavProps) {
   const items = BEUI_NAV_ITEMS.filter(
-    (item) => item.renderInT4 && (!item.requiresAdmin || canOpenAdmin),
+    (item) =>
+      (item.renderInT4 || (includeDossiers && item.id === "dossiers")) &&
+      (!item.requiresAdmin || canOpenAdmin),
   );
 
   return (
@@ -168,7 +173,7 @@ function BeuiPrimaryNav({ activeRoute, canOpenAdmin, onNavigate }: BeuiPrimaryNa
             <AnimatedSidebarMenuItem key={item.id}>
               <AnimatedSidebarMenuButton
                 isActive={item.id === activeRoute}
-                onSelect={() => onNavigate(item.id as BeuiOwnedRouteId)}
+                onSelect={() => onNavigate(item.id)}
                 className="beui-tabs-nav-item"
               >
                 <BeuiIcon name={item.icon} size={17} />
@@ -183,7 +188,7 @@ function BeuiPrimaryNav({ activeRoute, canOpenAdmin, onNavigate }: BeuiPrimaryNa
 }
 
 interface BeuiRouteSurfaceProps {
-  activeRoute: BeuiOwnedRouteId;
+  activeRoute: BeuiRouteId;
   identity: BeuiAccountIdentity | null;
   canOpenAdmin: boolean;
   status?: BeuiScreenStatus;
@@ -195,12 +200,18 @@ interface BeuiRouteSurfaceProps {
   selectedEstateIds: readonly string[];
   campaigns?: readonly OutreachCampaign[];
   templates?: readonly OutreachTemplate[];
+  selectedCampaignId?: string;
+  selectedTemplateId?: string;
   integrations?: readonly IntegrationRecord[];
+  agenticModelStatus?: BeuiAgenticModelStatus;
+  agenticModelPreference?: string;
+  verifiedFreeModels?: readonly string[];
   preferences?: BeuiPreferences;
   activeSettingsTab?: BeuiSettingsTabId;
   activeHelpArea?: BeuiHelpAreaId;
   accessDomains?: readonly string[];
-  onNavigate: (route: BeuiOwnedRouteId) => void;
+  docPrep?: ReactNode;
+  onNavigate: (route: BeuiRouteId) => void;
   onCommand?: BeuiCommandHandler;
   onEstateSelectionChange?: (estateIds: string[]) => void;
   onEstateFilesAdded?: (files: File[]) => void | Promise<void>;
@@ -210,6 +221,7 @@ interface BeuiRouteSurfaceProps {
   onSettingsTabChange?: (tab: BeuiSettingsTabId) => void;
   onPreferenceChange?: (key: keyof BeuiPreferences, value: boolean) => void;
   onConnectionAction?: (connectionId: string) => void;
+  onAgenticModelChange?: (model: string) => void;
   onOpenAuth?: () => void;
   onAdminAction?: (action: string) => void;
   onHelpAreaChange?: (area: BeuiHelpAreaId) => void;
@@ -229,11 +241,17 @@ function BeuiRouteSurface({
   selectedEstateIds,
   campaigns,
   templates,
+  selectedCampaignId,
+  selectedTemplateId,
   integrations,
+  agenticModelStatus,
+  agenticModelPreference,
+  verifiedFreeModels,
   preferences,
   activeSettingsTab,
   activeHelpArea,
   accessDomains,
+  docPrep,
   onNavigate,
   onCommand,
   onEstateSelectionChange,
@@ -244,6 +262,7 @@ function BeuiRouteSurface({
   onSettingsTabChange,
   onPreferenceChange,
   onConnectionAction,
+  onAgenticModelChange,
   onOpenAuth,
   onAdminAction,
   onHelpAreaChange,
@@ -272,6 +291,8 @@ function BeuiRouteSurface({
           message={message}
         />
       );
+    case "dossiers":
+      return docPrep ?? null;
     case "export":
       return <ExportSurface exportedEstates={exportedEstates} status={status} message={message} />;
     case "drips":
@@ -279,6 +300,8 @@ function BeuiRouteSurface({
         <OutreachSurface
           campaigns={campaigns}
           templates={templates}
+          selectedCampaignId={selectedCampaignId}
+          selectedTemplateId={selectedTemplateId}
           onSelectCampaign={onCampaignChange}
           onSelectTemplate={onTemplateChange}
           onTemplateAction={onTemplateAction}
@@ -316,11 +339,15 @@ function BeuiRouteSurface({
           activeTab={activeSettingsTab}
           canOpenAdmin={canOpenAdmin}
           integrations={integrations}
+          agenticModelStatus={agenticModelStatus}
+          agenticModelPreference={agenticModelPreference}
+          verifiedFreeModels={verifiedFreeModels}
           preferences={preferences}
           allowedDomains={accessDomains}
           onTabChange={onSettingsTabChange}
           onPreferenceChange={onPreferenceChange}
           onConnectionAction={onConnectionAction}
+          onAgenticModelChange={onAgenticModelChange}
           onOpenAuth={onOpenAuth}
           onAdminAction={onAdminAction}
           status={status}
@@ -342,9 +369,10 @@ function BeuiRouteSurface({
 }
 
 export interface BeuiChassisProps extends Omit<BeuiRouteSurfaceProps, "activeRoute" | "onNavigate"> {
-  activeRoute: BeuiOwnedRouteId;
-  onNavigate: (route: BeuiOwnedRouteId) => void;
+  activeRoute: BeuiRouteId;
+  onNavigate: (route: BeuiRouteId) => void;
   onGlobalSearchChange: (query: string) => void;
+  includeDossiers?: boolean;
   onSwitchAccount?: () => void;
   onSignOut?: () => void;
 }
@@ -367,8 +395,10 @@ export function BeuiChassis({
   activeSettingsTab,
   activeHelpArea,
   accessDomains,
+  docPrep,
   onNavigate,
   onGlobalSearchChange,
+  includeDossiers = false,
   onSwitchAccount,
   onSignOut,
   ...surfaceProps
@@ -403,6 +433,7 @@ export function BeuiChassis({
             activeRoute={activeRoute}
             canOpenAdmin={canOpenAdmin}
             onNavigate={onNavigate}
+            includeDossiers={includeDossiers}
           />
           <AnimatedSidebarFooter className="beui-tabs-sidebar-footer">
             <BeuiAccountControl
@@ -440,6 +471,7 @@ export function BeuiChassis({
               activeSettingsTab={activeSettingsTab}
               activeHelpArea={activeHelpArea}
               accessDomains={accessDomains}
+              docPrep={docPrep}
               onNavigate={onNavigate}
               {...surfaceProps}
             />

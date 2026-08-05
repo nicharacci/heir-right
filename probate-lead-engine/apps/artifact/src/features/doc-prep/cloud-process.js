@@ -11,6 +11,11 @@ function processSnapshot(snapshot = {}) {
   const actor = snapshot.session?.user;
   if (!estate?.id) throw new Error("Select an estate before starting cloud document preparation.");
   if (!actor?.email) throw new Error("Sign in with an approved HeirRight account before starting cloud document preparation.");
+  const sourceFileReferences = Array.isArray(estate.sourceFileReferences)
+    ? estate.sourceFileReferences.map((reference) => asDisplayText(reference)).filter(Boolean).slice(0, 4)
+    : [];
+  const caseReference = asDisplayText(estate.caseReference).slice(0, 160);
+  if (!sourceFileReferences.length) throw new Error("Attach a verified IDI report before starting cloud document preparation.");
   return {
     estateId: asDisplayText(estate.id),
     name: asDisplayText(estate.title, "Estate file"),
@@ -18,6 +23,8 @@ function processSnapshot(snapshot = {}) {
     address: asDisplayText(estate.address, "Address needs review"),
     county: asDisplayText(estate.county, "County needs review"),
     ...(asDisplayText(estate.parcel) ? { parcelId: asDisplayText(estate.parcel) } : {}),
+    sourceFileReferences,
+    ...(caseReference ? { caseReference } : {}),
     actor: {
       email: asDisplayText(actor.email),
       ...(asDisplayText(actor.name) ? { name: asDisplayText(actor.name) } : {}),

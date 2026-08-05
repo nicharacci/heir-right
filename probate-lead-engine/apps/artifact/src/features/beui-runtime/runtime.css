@@ -1,0 +1,130 @@
+.beui-mounted-runtime {
+  display: block;
+  min-height: 100svh;
+}
+
+#workspace[data-beui-runtime="mounted"] {
+  display: block;
+  min-height: 100svh;
+  overflow: visible;
+  background: #090b0f;
+}
+
+#workspace[data-beui-runtime="mounted"] > [hidden] {
+  display: none !important;
+}
+
+.beui-mounted-runtime .beui-tabs-root {
+  --beui-tabs-ink: #f0f3f7;
+  --beui-tabs-muted: #9aa6b5;
+  --beui-tabs-line: #2a3442;
+  --beui-tabs-surface: #090b0f;
+  --beui-tabs-panel: #10141b;
+  --beui-tabs-blue: #173f69;
+  --beui-tabs-blue-ink: #e7f1ff;
+  min-height: 100svh;
+  margin: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--beui-tabs-line);
+  border-radius: 1.25rem;
+  background: var(--beui-tabs-surface);
+}
+
+.beui-mounted-runtime .beui-tabs-sidebar-panel,
+.beui-mounted-runtime .beui-tabs-inset,
+.beui-mounted-runtime .beui-tabs-command-header,
+.beui-mounted-runtime .beui-tabs-panel,
+.beui-mounted-runtime .beui-tabs-command-popover {
+  border-color: var(--beui-tabs-line);
+  background: var(--beui-tabs-panel);
+  color: var(--beui-tabs-ink);
+}
+
+.beui-mounted-runtime .beui-tabs-sidebar-panel {
+  background: #0d1117;
+}
+
+.beui-mounted-runtime .beui-tabs-command-header {
+  background: #0d1117;
+}
+
+.beui-mounted-runtime .beui-tabs-brand,
+.beui-mounted-runtime .beui-tabs-screen-heading h1,
+.beui-mounted-runtime .beui-tabs-panel-heading h2,
+.beui-mounted-runtime .beui-tabs-metric-list dd,
+.beui-mounted-runtime .beui-tabs-command-row,
+.beui-mounted-runtime .beui-tabs-detail-list dd,
+.beui-mounted-runtime .beui-tabs-select-row strong {
+  color: var(--beui-tabs-ink);
+}
+
+.beui-mounted-runtime .beui-tabs-screen-heading h1 + p,
+.beui-mounted-runtime .beui-tabs-detail-copy,
+.beui-mounted-runtime .beui-tabs-empty,
+.beui-mounted-runtime .beui-tabs-count,
+.beui-mounted-runtime .beui-tabs-eyebrow,
+.beui-mounted-runtime .beui-tabs-state,
+.beui-mounted-runtime .beui-tabs-select-row span span,
+.beui-mounted-runtime .beui-tabs-command-row span span {
+  color: var(--beui-tabs-muted);
+}
+
+.beui-mounted-runtime .beui-tabs-panel,
+.beui-mounted-runtime .beui-tabs-next-action,
+.beui-mounted-runtime .beui-tabs-command-row,
+.beui-mounted-runtime .beui-tabs-metric-list,
+.beui-mounted-runtime .beui-tabs-connection-list li,
+.beui-mounted-runtime .beui-tabs-detail-list > div {
+  border-color: var(--beui-tabs-line);
+}
+
+.beui-mounted-runtime .beui-tabs-pearl-button {
+  border-color: #42688f;
+  background: var(--beui-tabs-blue);
+  color: var(--beui-tabs-blue-ink);
+}
+
+.beui-mounted-runtime .beui-tabs-pearl-button:hover:not(:disabled) {
+  border-color: #5f86ad;
+  background: #1c4c7c;
+}
+
+.beui-mounted-runtime .beui-tabs-quiet-button,
+.beui-mounted-runtime .beui-tabs-inline-link {
+  color: #b9d5ef;
+}
+
+.beui-mounted-runtime .beui-tabs-state-mark {
+  border-radius: 0.35rem;
+}
+
+.beui-mounted-runtime [data-beui-spotlight="true"] {
+  outline: 2px solid #7096bf;
+  outline-offset: 4px;
+  box-shadow: none;
+}
+
+.beui-mounted-runtime .docprep-beui-status-badge {
+  border-radius: 0.35rem;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beui-mounted-runtime *,
+  .beui-mounted-runtime *::before,
+  .beui-mounted-runtime *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .beui-mounted-runtime .beui-tabs-root {
+    margin: 0;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+}
