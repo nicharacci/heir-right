@@ -241,6 +241,7 @@ async function buildArtifact() {
     format: "iife",
     platform: "browser",
     target: ["es2020"],
+    tsconfig: join(__dirname, "tsconfig.ui.json"),
     sourcemap: production ? false : "external",
     minify: production,
     legalComments: "eof",

@@ -27,6 +27,7 @@ export type DocPrepPendingAction = "start" | "retry" | "stop" | "export" | "uplo
 export interface DocPrepSequenceProps {
   processCase?: ProcessCaseLike;
   events?: ProcessEventLike[];
+  requiresIdiReview?: boolean;
   pendingAction?: DocPrepPendingAction;
   uploadError?: string;
   googleDriveState?: "idle" | "pending" | "success" | "failed";
@@ -141,6 +142,7 @@ function ActionButton({
 export function DocPrepSequence({
   processCase = null,
   events = [],
+  requiresIdiReview = false,
   pendingAction,
   uploadError,
   googleDriveState = "idle",
@@ -216,6 +218,7 @@ export function DocPrepSequence({
               size="sm"
               pulse={false}
               contentKey={sequence.island.state}
+              className="docprep-beui-status-badge"
             >
               {sequence.island.label}
             </AnimatedBadge>
@@ -306,7 +309,7 @@ export function DocPrepSequence({
           />
         </div>
 
-        {availability.requiresIdiReview && firstStage ? (
+        {(availability.requiresIdiReview || requiresIdiReview) && firstStage ? (
           <section className="docprep-beui-review" aria-labelledby="docprep-upload-title">
             <div>
               <p className="docprep-beui-eyebrow">Review required</p>
@@ -317,12 +320,12 @@ export function DocPrepSequence({
               </p>
             </div>
             <FileUpload
-              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".pdf,application/pdf"
               multiple={false}
               maxFiles={1}
               disabled={!onUploadFiles || pendingAction === "upload"}
               title="Add the persisted IDI report"
-              description="PDF or DOCX only"
+              description="PDF only"
               browseLabel="Select report"
               onFilesAdded={handleFilesAdded}
             />

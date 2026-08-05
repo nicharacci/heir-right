@@ -117,6 +117,14 @@ interface IntegrationRecord {
   detail?: string;
 }
 
+interface BeuiAgenticModelStatus {
+  loaded: boolean;
+  available: boolean;
+  provider: "nous";
+  model: string | null;
+  route: "dynamic-free-catalog" | "configured-free-model" | "unavailable";
+}
+
 interface BeuiPreferences {
   holdNoContact: boolean;
   compactTables: boolean;
@@ -235,6 +243,7 @@ export {
 };
 export type {
   BeuiAccountIdentity,
+  BeuiAgenticModelStatus,
   BeuiCommandHandler,
   BeuiCommandId,
   BeuiCommandPayload,

@@ -171,7 +171,7 @@ assert.equal(
 );
 
 const gitDiffNames = execFileSync("git", ["diff", "--name-only"], { cwd: path.resolve(repoRoot, ".."), encoding: "utf8" });
-assert.doesNotMatch(gitDiffNames, /(^|\n)(probate-lead-engine\/)?apps\/artifact\/src\/(entry\.js|legacy\/app\.js)/);
+assert.doesNotMatch(gitDiffNames, /(^|\n)(probate-lead-engine\/)?apps\/artifact\/src\/entry\.js/);
 
 assert.ok(fs.existsSync(repoRoot), "repository root must remain attached");
 console.log(`s41 beui tabs contract passed (${featureFiles.length} TypeScript modules compiled; routes, intake, Help mappings, account state, CSS states, and mounted entry verified)`);

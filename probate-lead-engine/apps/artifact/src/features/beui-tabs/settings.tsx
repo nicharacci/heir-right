@@ -1,8 +1,16 @@
 import { Switch } from "../../beui-foundation/components/motion/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../beui-foundation/components/motion/select";
 import { BeuiTabs, type BeuiTabDefinition } from "./tabs";
 import { BEUI_SETTINGS_TABS } from "./contract";
 import type {
   BeuiAccountIdentity,
+  BeuiAgenticModelStatus,
   BeuiPreferences,
   BeuiSettingsTabId,
   IntegrationRecord,
@@ -20,11 +28,15 @@ export interface SettingsSurfaceProps extends ScreenStatusProps {
   activeTab?: BeuiSettingsTabId;
   canOpenAdmin?: boolean;
   integrations?: readonly IntegrationRecord[];
+  agenticModelStatus?: BeuiAgenticModelStatus;
+  agenticModelPreference?: string;
+  verifiedFreeModels?: readonly string[];
   preferences?: BeuiPreferences;
   allowedDomains?: readonly string[];
   onTabChange?: (tab: BeuiSettingsTabId) => void;
   onPreferenceChange?: (key: keyof BeuiPreferences, value: boolean) => void;
   onConnectionAction?: (connectionId: string) => void;
+  onAgenticModelChange?: (model: string) => void;
   onOpenAuth?: () => void;
   onAdminAction?: (action: string) => void;
 }
@@ -34,11 +46,15 @@ export function SettingsSurface({
   activeTab = "integrations",
   canOpenAdmin = false,
   integrations = [],
+  agenticModelStatus,
+  agenticModelPreference = "dynamic-free-catalog",
+  verifiedFreeModels = [],
   preferences,
   allowedDomains = [],
   onTabChange,
   onPreferenceChange,
   onConnectionAction,
+  onAgenticModelChange,
   onOpenAuth,
   onAdminAction,
   status,
@@ -55,7 +71,14 @@ export function SettingsSurface({
         <BeuiTabs tabs={settingsTabDefinitions} value={active} onValueChange={(value) => onTabChange?.(value as BeuiSettingsTabId)} ariaLabel="Settings sections" panelId="settings" />
         <div className="beui-tabs-settings-content">
           {active === "access" ? <AccessSettings identity={identity} allowedDomains={allowedDomains} onOpenAuth={onOpenAuth} /> : null}
-          {active === "integrations" ? <IntegrationSettings integrations={integrations} onConnectionAction={onConnectionAction} /> : null}
+          {active === "integrations" ? <IntegrationSettings
+            integrations={integrations}
+            agenticModelStatus={agenticModelStatus}
+            agenticModelPreference={agenticModelPreference}
+            verifiedFreeModels={verifiedFreeModels}
+            onConnectionAction={onConnectionAction}
+            onAgenticModelChange={onAgenticModelChange}
+          /> : null}
           {active === "support" ? <SupportSettings onAdminAction={onAdminAction} /> : null}
           {active === "outreach" ? <OutreachSettings preferences={preferences} onPreferenceChange={onPreferenceChange} /> : null}
           {active === "preferences" ? <PreferenceSettings preferences={preferences} onPreferenceChange={onPreferenceChange} /> : null}
@@ -93,11 +116,26 @@ function AccessSettings({
 
 function IntegrationSettings({
   integrations,
+  agenticModelStatus,
+  agenticModelPreference,
+  verifiedFreeModels,
   onConnectionAction,
+  onAgenticModelChange,
 }: {
   integrations: readonly IntegrationRecord[];
+  agenticModelStatus?: BeuiAgenticModelStatus;
+  agenticModelPreference: string;
+  verifiedFreeModels: readonly string[];
   onConnectionAction?: (connectionId: string) => void;
+  onAgenticModelChange?: (model: string) => void;
 }) {
+  const modelOptions = ["dynamic-free-catalog", ...verifiedFreeModels.filter((model) => model !== "dynamic-free-catalog")];
+  const selectedModel = modelOptions.includes(agenticModelPreference) ? agenticModelPreference : "dynamic-free-catalog";
+  const modelState = !agenticModelStatus?.loaded
+    ? "neutral"
+    : agenticModelStatus.available
+      ? "ready"
+      : "review";
   return (
     <section className="beui-tabs-settings-section" data-beui-control="settings-integrations" aria-labelledby="beui-settings-integrations-title">
       <div className="beui-tabs-panel-heading"><div><p className="beui-tabs-eyebrow">Integrations</p><h2 id="beui-settings-integrations-title">Connection state</h2></div><span className="beui-tabs-count">{integrations.length} shown</span></div>
@@ -108,12 +146,37 @@ function IntegrationSettings({
             <span><strong>{integration.label}</strong><span>{integration.detail || "Connection detail supplied by the workspace."}</span></span>
             <span className="beui-tabs-connection-actions">
               <StateBadge state={integration.state}>{integration.state}</StateBadge>
-              {onConnectionAction ? <QuietButton size="sm" onClick={() => onConnectionAction(integration.id)}>Open control</QuietButton> : null}
+              {onConnectionAction ? <QuietButton size="sm" onClick={() => onConnectionAction(integration.id)}>Refresh status</QuietButton> : null}
             </span>
           </li>
         ))}
       </ul>
       {!integrations.length ? <p className="beui-tabs-empty">No integration state was supplied.</p> : null}
+      <section className="beui-tabs-settings-section" data-beui-control="nous-portal-model" aria-labelledby="beui-nous-portal-model-title">
+        <div className="beui-tabs-panel-heading"><div><p className="beui-tabs-eyebrow">Nous Portal</p><h2 id="beui-nous-portal-model-title">Free model route</h2></div><StateBadge state={modelState}>{!agenticModelStatus?.loaded ? "Loading" : agenticModelStatus.available ? "Catalog ready" : "Review only"}</StateBadge></div>
+        <p className="beui-tabs-detail-copy">Automatic selection uses only the verified free text-model catalog. Back Story output remains review-required.</p>
+        <div className="beui-tabs-detail-list">
+          <div>
+            <dt>Model</dt>
+            <dd>
+              <Select
+                value={selectedModel}
+                onValueChange={onAgenticModelChange}
+                disabled={!agenticModelStatus?.loaded || !onAgenticModelChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a verified free model" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dynamic-free-catalog">Automatic free model</SelectItem>
+                  {verifiedFreeModels.map((model) => <SelectItem key={model} value={model}>{model}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </dd>
+          </div>
+          <div><dt>Route</dt><dd>{agenticModelStatus?.available ? agenticModelStatus.model || "Automatic catalog selection" : "Reviewed report formatting"}</dd></div>
+        </div>
+      </section>
     </section>
   );
 }

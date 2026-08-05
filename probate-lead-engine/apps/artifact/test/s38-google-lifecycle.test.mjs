@@ -17,9 +17,30 @@ const EMAIL = "operator@heirright.com";
 const DESTINATION_ID = "folder-discovery-packets";
 const ESTATE_ID = "crm:podio:estate-s38-google";
 const APPROVED_AT = "2026-07-15T14:00:00.000Z";
+const EXPORT_FIXTURE_NOW = "2026-08-04T16:00:00.000Z";
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+async function withFrozenClock(iso, callback) {
+  const RealDate = globalThis.Date;
+  const fixedTime = new RealDate(iso).getTime();
+  class FrozenDate extends RealDate {
+    constructor(...args) {
+      super(...(args.length ? args : [fixedTime]));
+    }
+
+    static now() {
+      return fixedTime;
+    }
+  }
+  globalThis.Date = FrozenDate;
+  try {
+    return await callback();
+  } finally {
+    globalThis.Date = RealDate;
+  }
 }
 
 class MemoryKv {
@@ -675,7 +696,21 @@ for (const wrongReadback of ["folder", "size"]) {
 {
   const harness = await prepareHarness();
   const drive = new DriveMock();
-  const result = await withDriveMock(drive, () => call(harness.env, "/api/google-workspace/export", exportApprovalBody()));
+  const { result, completedReportResponse, completedReportBytes } = await withFrozenClock(EXPORT_FIXTURE_NOW, async () => {
+    const result = await withDriveMock(
+      drive,
+      () => call(harness.env, "/api/google-workspace/export", exportApprovalBody()),
+    );
+    const completedReportResponse = await worker.fetch(new Request(
+      `https://worker.test/api/reports/pdf?artifactId=${completedReportArtifactId}`,
+      { headers: { authorization: `Bearer ${API_TOKEN}` } },
+    ), harness.env);
+    return {
+      result,
+      completedReportResponse,
+      completedReportBytes: Buffer.from(await completedReportResponse.arrayBuffer()),
+    };
+  });
   assert.equal(result.response.status, 200, JSON.stringify(result.body));
   assert.equal(result.body.artifactId, artifactId, "Drive delivery must remain approval-bound to the parent packet");
   assert.equal(result.body.deliveryArtifactId, completedReportArtifactId, "Drive delivery must use the separated client-facing report");
@@ -685,14 +720,10 @@ for (const wrongReadback of ["folder", "size"]) {
   assert.equal(drive.folderCreateCount, 1, "every direct Drive export must resolve the signed-in operator folder under the shared root");
   assert.doesNotMatch(drive.createdRecords[0].name, /131 NW 67 ST|33150-0000/);
   const uploaded = [...drive.files.values()][0];
-  const completedReportResponse = await worker.fetch(new Request(
-    `https://worker.test/api/reports/pdf?artifactId=${completedReportArtifactId}`,
-    { headers: { authorization: `Bearer ${API_TOKEN}` } },
-  ), harness.env);
   assert.equal(completedReportResponse.status, 200);
   assert.deepEqual(
     uploaded.bytes,
-    Buffer.from(await completedReportResponse.arrayBuffer()),
+    completedReportBytes,
     "The bytes read back from Drive must be the exact completed-report artifact, not the internal Discovery packet",
   );
 }

@@ -29,6 +29,8 @@ const snapshot = {
     address: "121 Probate Way",
     county: "Broward",
     parcel: "01-0000-000-0000",
+    sourceFileReferences: ["idi-artifact-s41"],
+    caseReference: "2025-CP-001234",
   },
   session: { user: { email: "operator@heirright.example", name: "Morgan Operator" } },
 };
@@ -40,9 +42,25 @@ assert.deepEqual(client.processSnapshot(snapshot), {
   address: "121 Probate Way",
   county: "Broward",
   parcelId: "01-0000-000-0000",
+  sourceFileReferences: ["idi-artifact-s41"],
+  caseReference: "2025-CP-001234",
   actor: { email: "operator@heirright.example", name: "Morgan Operator" },
 });
 assert.throws(() => client.processSnapshot({ ...snapshot, session: { user: null } }), /Sign in with an approved HeirRight account/);
+assert.throws(
+  () => client.processSnapshot({ ...snapshot, selectedEstate: { ...snapshot.selectedEstate, sourceFileReferences: [] } }),
+  /Attach a verified IDI report/,
+  "a cloud case cannot start without a verified persisted IDI artifact reference",
+);
+const missingCaseReference = client.processSnapshot({
+  ...snapshot,
+  selectedEstate: { ...snapshot.selectedEstate, caseReference: "" },
+});
+assert.equal(
+  Object.hasOwn(missingCaseReference, "caseReference"),
+  false,
+  "missing reviewed probate references stay absent so the court stage remains review-required",
+);
 assert.equal(client.idempotencyKey("estate / 2"), "docprep-estate-2", "intake keys must use only the process API's accepted header characters");
 
 const readyCase = {
@@ -84,7 +102,17 @@ try {
   assert.equal(requests[0].url, "/api/doc-prep/cases");
   assert.equal(requests[0].init.method, "POST");
   assert.equal(requests[0].init.headers["idempotency-key"], "docprep-estate-cloud");
-  assert.equal(JSON.parse(requests[0].init.body).estates[0].estateId, "estate-cloud");
+  assert.deepEqual(JSON.parse(requests[0].init.body).estates[0], {
+    estateId: "estate-cloud",
+    name: "Estate of Morgan Reyes",
+    owner: "Morgan Reyes",
+    address: "121 Probate Way",
+    county: "Broward",
+    parcelId: "01-0000-000-0000",
+    sourceFileReferences: ["idi-artifact-s41"],
+    caseReference: "2025-CP-001234",
+    actor: { email: "operator@heirright.example", name: "Morgan Operator" },
+  });
 
   const hydrated = await client.hydrateProcessCase("estate-cloud", { force: true });
   assert.equal(hydrated.id, "case-cloud");
