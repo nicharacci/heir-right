@@ -21,10 +21,13 @@
   overflow: visible;
 }
 
+/* .loop-view adds a 16px gutter that would stack with the .s40-docprep padding. */
 .app[data-active-view="dossiers"] #dossiersView {
   display: block !important;
   width: 100%;
   height: 100%;
+  padding: 0;
+  overflow: hidden;
 }
 
 .s40-docprep {
