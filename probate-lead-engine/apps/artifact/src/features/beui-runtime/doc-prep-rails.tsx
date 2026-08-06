@@ -120,6 +120,8 @@ function QueueRail({ adapter, element }: { adapter: BeuiBridgeAdapter; element: 
       getRowId={(row) => row.id}
       selectable
       selectedRowIds={selectedIds}
+      resizable
+      minColumnWidth={160}
       onSelectionChange={(nextIds) => {
         setSelectedIds(nextIds);
         window.dispatchEvent(new CustomEvent("s40-docprep-selection", { detail: { estateIds: nextIds } }));

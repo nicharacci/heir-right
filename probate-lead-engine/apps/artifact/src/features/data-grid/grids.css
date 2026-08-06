@@ -885,19 +885,29 @@ table :is(th:first-child, th:last-child),
   background: var(--hr-surface-selected);
 }
 
-.settings-gutter .settings-select-label {
-  color: var(--hr-text-muted);
-  font-size: var(--hr-type-xs);
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+/* A-12/A-13/B-12: the gutter keeps its local title while the accessible
+ * section control is owned by the main Settings panel header. */
+.settings-gutter > .eyebrow {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 760;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-transform: none;
 }
 
-.settings-gutter > .select-enhanced {
+.settings-panel-section-control {
+  flex: 0 0 min(13rem, 42%);
+  min-width: 10rem;
+  margin-inline-start: auto;
+}
+
+.settings-panel-section-control > .select-enhanced,
+.settings-panel-section-control > select {
   width: 100%;
 }
 
-.settings-gutter > .select-enhanced .select-button {
+.settings-panel-section-control .select-button {
   min-height: var(--hr-control-min);
 }
 
@@ -1027,6 +1037,26 @@ table :is(th:first-child, th:last-child),
   display: inline-flex;
   gap: 0.45rem;
   align-items: center;
+  flex: 0 0 auto;
+}
+
+/* A-11: card names, status badges, and refresh controls share one baseline. */
+.integration-card-head {
+  align-items: center;
+}
+
+.integration-card-head > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.integration-card-head > div:first-child h3 {
+  overflow-wrap: anywhere;
+}
+
+.integration-refresh {
+  background: transparent;
+  border: 0;
 }
 
 .integration-refresh {
@@ -1036,8 +1066,10 @@ table :is(th:first-child, th:last-child),
   height: 1.75rem;
   padding: 0;
   color: var(--hr-text-muted);
-  background: transparent;
-  border: 0;
+  /* A-11: the shared shell button skin must not reintroduce a plate here. */
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
   border-radius: 50%;
   cursor: pointer;
 }
@@ -1091,5 +1123,17 @@ table :is(th:first-child, th:last-child),
 
   .settings-gutter .beui-tabs-trigger {
     width: auto;
+  }
+
+  .settings-gutter > .eyebrow {
+    font-size: 1.25rem;
+    line-height: 1.2;
+  }
+
+  .settings-panel-section-control {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    margin-inline-start: 0;
   }
 }

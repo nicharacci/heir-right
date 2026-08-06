@@ -11963,12 +11963,15 @@ function connectionReadyState(name) {
 }
 
 function settingsSectionShell(title, eyebrow, badge, body) {
+  const heading = eyebrow || title
+    ? `<div>${eyebrow ? `<p class="eyebrow">${escapeHtml(eyebrow)}</p>` : ""}${title ? `<h3>${escapeHtml(title)}</h3>` : ""}</div>`
+    : "";
+  const header = heading || badge
+    ? `<div class="settings-section-head">${heading}${badge ? `<span class="pill review">${escapeHtml(badge)}</span>` : ""}</div>`
+    : "";
   return `
     <div class="settings-section">
-      <div class="settings-section-head">
-        <div><p class="eyebrow">${escapeHtml(eyebrow)}</p><h3>${escapeHtml(title)}</h3></div>
-        ${badge ? `<span class="pill review">${escapeHtml(badge)}</span>` : ""}
-      </div>
+      ${header}
       ${body}
     </div>
   `;
@@ -12041,7 +12044,7 @@ function renderIntegrationSettingsPanel() {
     </article>
   `;
   return `
-    ${settingsSectionShell("Integration status", "Workspace", "Reconnect / Review setup", `
+    ${settingsSectionShell("", "", "Reconnect / Review setup", `
       <p class="copy">Connector setup, approval, and readback status live here so Batch Queue and Outreach show only deal-work blockers.</p>
       <div class="settings-integrations-layout">
         <div class="integration-directory settings-integrations-list" aria-label="Workspace integrations">
@@ -12302,16 +12305,17 @@ function renderSettingsView() {
       <div class="settings-main-layout">
         <aside class="settings-gutter" aria-label="Settings navigation">
           <p class="eyebrow">Settings</p>
-          <label class="settings-select-label" for="settingsSectionSelect">Section</label>
-          <select id="settingsSectionSelect" data-settings-tab-select aria-label="Settings section">
-            ${settingsTabs.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === tab ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
-          </select>
         </aside>
         <section class="loop-panel full settings-unified-card">
-        <div class="loop-panel-head">
-          <div><p class="eyebrow">Settings</p><h2 class="loop-title">${escapeHtml(settingsTabs.find((item) => item.id === tab)?.label || "Access")}</h2></div>
-        </div>
-        <div id="settingsTabPanel" role="tabpanel">${settingsTabPanelHtml(tab)}</div>
+          <div class="loop-panel-head">
+            <div><h2 class="loop-title">${escapeHtml(settingsTabs.find((item) => item.id === tab)?.label || "Access")}</h2></div>
+            <div class="settings-panel-section-control">
+              <select id="settingsSectionSelect" data-settings-tab-select aria-label="Settings section">
+                ${settingsTabs.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === tab ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div id="settingsTabPanel" role="tabpanel">${settingsTabPanelHtml(tab)}</div>
         </section>
       </div>
     </div>
@@ -13907,6 +13911,7 @@ function renderSearchPopup() {
   const shouldOpen = state.searchPopupOpen && query.length > 0;
   popup.hidden = !shouldOpen;
   popup.dataset.open = shouldOpen ? "true" : "false";
+  input.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
   if (!shouldOpen) {
     popup.innerHTML = "";
     return;
@@ -15813,7 +15818,7 @@ function wireEvents() {
     if (!document.getElementById("tableFiltersPopover")?.contains(event.target) && !document.getElementById("tableFiltersToggle")?.contains(event.target)) {
       setFilterPopoverOpen(false);
     }
-    if (!document.getElementById("searchPopup")?.contains(event.target) && !document.querySelector(".search-control")?.contains(event.target)) {
+    if (!document.querySelector(".search-anchor")?.contains(event.target)) {
       setSearchPopupOpen(false);
     }
   });

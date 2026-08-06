@@ -233,6 +233,9 @@ function dynamicIslandStep(row) {
   const active = stages.find((stage) => stage.status === "active");
   const blocked = stages.find((stage) => stage.status === "blocked");
   const pending = stages.find((stage) => stage.status === "pending");
+  if (row && workflowState(row) === "queued" && !active && !blocked) {
+    return { state: "pending", label: "Queued for Doc Prep", detail: "Waiting to start" };
+  }
   const stage = active || blocked || pending || stages[stages.length - 1];
   if (!stage) {
     return row
@@ -436,13 +439,8 @@ function renderS40DocPrepView({ bridge }) {
   const current = currentEstate(snapshot, rows);
   const selected = selectedRows(rows);
   const runnable = selected.filter(runEligible);
-  const countLabel = selected.length === 1 ? "1 estate selected" : `${selected.length} estates selected`;
   return `
     <section class="s40-docprep" data-feature="s40-doc-prep" data-estate-id="${escape(bridge, current?.id || "")}">
-      <header class="s40-docprep-head">
-        <div><p class="s40-rail-kicker">Doc Prep workbench</p><h1>Review packets, then hand off</h1></div>
-        <div class="s40-docprep-command"><span aria-live="polite" data-s40-selected-count>${escape(bridge, countLabel)}</span></div>
-      </header>
       <div class="s40-workbench">
         <aside class="s40-selector" aria-label="Doc Prep estate selector">
           <header><div><span class="s40-column-kicker">Queued estates</span><label class="s40-quick-search"><span class="s40-visually-hidden">Quick search queued estates</span><input type="search" data-s40-queue-search aria-label="Quick search queued estates" placeholder="Quick search"></label></div><span>${rows.length}</span></header>

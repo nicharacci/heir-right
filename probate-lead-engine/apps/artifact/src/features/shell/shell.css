@@ -12,7 +12,7 @@
   --s38-rail-max-width: 34.5rem;
   --s38-action-row-offset-y: 0.25rem;
   --s38-header-primary-offset-y: -0.125rem;
-  --s38-header-rail-offset-y: -0.0625rem;
+  --s38-header-rail-offset-y: 0;
   grid-template-columns: var(--s38-left-rail-width) minmax(0, 1fr) !important;
   height: 100dvh;
   min-height: 40rem;
@@ -246,8 +246,8 @@
   }
 
   #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .user-strip .avatar {
-    width: 2rem;
-    height: 2rem;
+    width: 1.875rem;
+    height: 1.875rem;
   }
 
   #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="false"] .user-name,
@@ -444,12 +444,19 @@
   color: var(--hr-danger);
 }
 
-#workspace[data-s38-shell="case-journey"] .topbar > .search-control {
+#workspace[data-s38-shell="case-journey"] .topbar > .search-anchor {
   grid-area: search;
   width: 100%;
   max-width: 42rem;
+  min-width: 0;
   min-height: 2.75rem;
   justify-self: center;
+  position: relative;
+}
+
+#workspace[data-s38-shell="case-journey"] .topbar > .search-anchor > .search-control {
+  width: 100%;
+  min-height: 2.75rem;
   color: var(--hr-text);
   background: var(--hr-surface);
   border: 1px solid var(--hr-control-boundary);
@@ -543,6 +550,12 @@
 
 #workspace[data-s38-shell="case-journey"] #s38OpenRail {
   margin-block-start: var(--s38-header-rail-offset-y);
+}
+
+@media (min-width: 1121px) {
+  #workspace[data-s38-shell="case-journey"] {
+    --s38-header-rail-offset-y: -0.4375rem;
+  }
 }
 
 #workspace[data-s38-shell="case-journey"] .shell-primary-command:is(:hover, :focus-visible) {
@@ -1012,10 +1025,16 @@
 }
 
 @media (min-width: 820px) {
-  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip,
-  #workspace[data-s38-shell="case-journey"] .connection-statuses {
+  #workspace[data-s38-shell="case-journey"] .shell-kpi-strip {
     align-self: end;
     margin-block-end: 0.3125rem;
+  }
+
+  /* A-04: the connection group shares the footer baseline without the
+   * five-pixel optical lift used by the estate KPI strip. */
+  #workspace[data-s38-shell="case-journey"] .connection-statuses {
+    align-self: end;
+    margin-block-end: 0;
   }
 
   #workspace[data-s38-shell="case-journey"] .shell-kpi-strip {
@@ -1023,8 +1042,7 @@
   }
 
   #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip .avatar {
-    margin-inline-start: 0.125rem;
-    margin-block-end: -0.8125rem;
+    margin: 0;
   }
 }
 
@@ -1415,7 +1433,7 @@ body.s38-rail-resizing {
     font-size: 0.6875rem;
   }
 
-  #workspace[data-s38-shell="case-journey"] .topbar > .search-control {
+  #workspace[data-s38-shell="case-journey"] .topbar > .search-anchor {
     width: 100%;
     max-width: 100%;
     min-height: 2.75rem;
@@ -2004,20 +2022,31 @@ body[data-s38-shell="case-journey"] :is(
 /* S40 account anchor: matches the compact sidebar and footer grid. */
 #workspace[data-s38-shell="case-journey"] .sidebar-footer {
   min-height: var(--s38-footer-height);
+  width: var(--s38-left-rail-width);
+  min-width: 0;
+  max-width: var(--s38-left-rail-width);
   display: grid;
   place-items: center;
+  align-items: center;
+  justify-items: center;
+  justify-self: start;
   padding: 0;
 }
 
 #workspace[data-s38-shell="case-journey"] .user-strip,
 #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip {
-  width: 2rem;
-  height: 2rem;
-  min-height: 2rem;
+  /* A-05/A-06: keep a transparent 44px keyboard/touch target around the
+   * centered 30px visible mark. */
+  width: 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
   display: grid;
   grid-template-columns: 1fr;
   place-items: center;
+  align-items: center;
+  justify-items: center;
   justify-self: center;
+  align-self: center;
   margin: 0;
   padding: 0;
   border: 0 !important;
@@ -2027,17 +2056,21 @@ body[data-s38-shell="case-journey"] :is(
 
 #workspace[data-s38-shell="case-journey"] .user-strip .avatar,
 #workspace[data-s38-shell="case-journey"][data-shell-sidebar-collapsed="true"] .user-strip .avatar {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.875rem;
+  height: 1.875rem;
+  flex: 0 0 1.875rem;
+  min-width: 1.875rem;
   margin: 0;
   display: grid;
   place-items: center;
   border: 0 !important;
   border-radius: 50%;
+  overflow: visible;
   color: var(--hr-text);
   background-color: var(--hr-surface-raised) !important;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
   box-shadow: none !important;
   font-size: 0.625rem;
   font-weight: 700;

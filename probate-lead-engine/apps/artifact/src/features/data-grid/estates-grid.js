@@ -65,7 +65,6 @@ function renderEstatesGrid({ bridge }) {
       <header class="hr-grid-header">
         <div><p class="hr-grid-eyebrow">Estates</p><h1>Ready for Doc Prep</h1><p>Select eligible estates, review their source state, then move them into the shared Doc Prep workbench.</p></div>
         <div class="hr-grid-controls" data-selection-active="${selectedCount > 0}">
-          <label class="hr-grid-search"><span>Filter estates</span><input type="search" value="${escape(estateQuery)}" data-grid-quick-filter placeholder="Owner, address, county, or status"></label>
           <button type="button" class="hr-grid-import-action" data-estates-import-file aria-haspopup="dialog">Upload PDF or CSV</button>
           <button type="button" class="hr-grid-filter-toggle beui-popover-trigger" data-estate-filters-toggle aria-expanded="${estateFiltersOpen}" aria-controls="hrEstateFilters">Filters <span data-estate-filter-count data-active="${filterCount > 0}">${filterCount}</span></button>
           <span class="hr-estate-selection-assist" data-estates-selection-assist ${selectedCount ? "" : "hidden"}>

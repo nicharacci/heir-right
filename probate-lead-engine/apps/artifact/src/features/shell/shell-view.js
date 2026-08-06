@@ -128,7 +128,7 @@ function createShellView() {
     </button>
     <wa-tooltip for="s38OpenRail" placement="bottom">Open case drawer</wa-tooltip>
     <button id="s38OpenRail" class="shell-icon-command" type="button" data-shell-open-context="overview" aria-label="Open case drawer" aria-controls="s38UnifiedRail" aria-expanded="false">
-      ${iconMarkup("journey", { size: 27 })}
+      ${iconMarkup("drawer", { size: 27 })}
     </button>
   `;
   topbar.append(headerCommands);

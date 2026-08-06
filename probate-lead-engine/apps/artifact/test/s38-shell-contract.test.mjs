@@ -153,7 +153,7 @@ function assertStaticContracts() {
   assert.match(controller, /sidebarToggle\.dataset\.shellCompactHome === "true"[\s\S]*bridge\.navigate\("dashboard"\)/);
   assert.match(shellView, /querySelector\("\.toggle-panel-icon"\)[\s\S]*panelIcon\.innerHTML = iconMarkup\("actions"/);
   assert.match(shellView, /data-command-drawer-close-icon[\s\S]*iconMarkup\("close"/);
-  assert.match(shellView, /iconMarkup\("journey", \{ size: 27 \}\)/, "the Case Journey control must use the larger semantic route icon");
+  assert.match(shellView, /iconMarkup\("drawer", \{ size: 27 \}\)/, "the Case Journey control must use the larger right-drawer icon");
   assert.match(shellView, /id="s38OpenRail"[\s\S]*aria-controls="s38UnifiedRail"[\s\S]*aria-expanded="false"/, "the stable Case Journey trigger must disclose the unified rail it controls");
   assert.doesNotMatch(shellView, /id="s38OpenRail"[^>]*aria-haspopup=/, "the desktop header trigger must not statically claim that the nonmodal rail is a dialog");
   assert.doesNotMatch(shellView, /s38ThemeControlMount/, "theme selection belongs in Settings rather than the header");
@@ -215,7 +215,8 @@ function assertStaticContracts() {
   assert.match(shellCss, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*command-drawer-toggle[\s\S]*opacity:\s*1[\s\S]*pointer-events:\s*auto/, "touch layouts must expose the command chip without hover");
   assert.doesNotMatch(shellCss, /border-bottom-color:\s*transparent|border-radius:\s*0 0 999px 999px/, "the retired cup/join seam must not remain");
   assert.match(shellCss, /--s38-action-row-offset-y:\s*0\.25rem/, "labeled action rows must share the approved four-pixel optical offset");
-  assert.match(shellCss, /--s38-header-primary-offset-y:\s*-0\.125rem[\s\S]*--s38-header-rail-offset-y:\s*-0\.0625rem/, "desktop header commands must expose their approved optical offsets as shell-owned tokens");
+  assert.match(shellCss, /--s38-header-primary-offset-y:\s*-0\.125rem[\s\S]*--s38-header-rail-offset-y:\s*0;/, "header commands must expose source-owned optical offsets");
+  assert.match(shellCss, /@media \(min-width: 1121px\)[\s\S]*--s38-header-rail-offset-y:\s*-0\.4375rem/, "the wide header must apply the seven-pixel drawer alignment correction");
   assert.match(shellCss, /\.shell-primary-command \{[\s\S]*margin-block-start:\s*var\(--s38-header-primary-offset-y\)/, "the labeled desktop header command must use its negative two-pixel optical offset");
   assert.match(shellCss, /#s38OpenRail \{[\s\S]*margin-block-start:\s*var\(--s38-header-rail-offset-y\)/, "the Case Journey trigger must use its negative one-pixel optical offset");
   assert.match(shellCss, /@media \(max-width: 1120px\) \{[\s\S]*#workspace\[data-s38-shell="case-journey"\] \.shell-primary-command \{[\s\S]*margin-block-start:\s*0;/, "the compact icon-only primary command must reset the desktop offset at matching selector specificity");
@@ -351,14 +352,15 @@ function assertStaticContracts() {
   const designGradients = source.match(/(?:linear|radial)-gradient\(/gi) || [];
   assert.equal(designGradients.length, 0, "the rejected fading footer ruler must leave no S38 shell gradient behind");
   assert.doesNotMatch(shellCss, /\.statusbar::before/, "the status footer must not draw a fading top ruler");
-  assert.match(shellCss, /@media \(min-width: 820px\)[\s\S]*\.shell-kpi-strip,\s*[\s\S]*\.connection-statuses\s*\{[^}]*align-self:\s*end[^}]*margin-block-end:\s*0\.3125rem/, "both desktop footer status clusters must share the same bottom alignment");
+  assert.match(shellCss, /@media \(min-width: 820px\)[\s\S]*\.shell-kpi-strip\s*\{[^}]*align-self:\s*end[^}]*margin-block-end:\s*0\.3125rem/, "the desktop estate KPI strip must retain its optical lift");
+  assert.match(shellCss, /@media \(min-width: 820px\)[\s\S]*\.connection-statuses\s*\{[^}]*align-self:\s*end[^}]*margin-block-end:\s*0/, "the desktop connection status group must sit on the shared footer baseline");
   assert.match(shellCss, /@media \(min-width: 820px\)[\s\S]*\.shell-kpi-strip\s*\{[^}]*margin-inline-start:\s*0\.9375rem/, "the selected-estate indicators must keep the approved 15px desktop inset");
   assert.match(shellCss, /\.shell-kpi-strip small\s*\{[^}]*font-size:\s*0\.625rem[^}]*font-weight:\s*650[^}]*letter-spacing:\s*0\.075em[^}]*text-transform:\s*uppercase/, "footer labels must retain the refined micro-label hierarchy");
   assert.match(shellCss, /\.shell-kpi-strip strong\s*\{[^}]*font-size:\s*var\(--hr-type-sm\)[^}]*font-weight:\s*760[^}]*font-variant-numeric:\s*lining-nums tabular-nums/, "footer values must remain stronger and numerically stable");
   assert.match(shellCss, /\.shell-kpi-strip > span \+ span::before\s*\{[^}]*content:\s*"\/"[^}]*color:\s*color-mix/, "desktop footer groups must keep the restrained editorial separator");
   assert.match(shellCss, /@media \(max-width: 819px\)[\s\S]*\.shell-kpi-strip > span \+ span::before\s*\{[^}]*content:\s*none/, "the editorial separator must disappear when footer groups stack");
   assert.match(shellCss, /\.connection-statuses\s*\{[^}]*font-size:\s*0\.6875rem[^}]*font-weight:\s*620[^}]*letter-spacing:\s*0\.015em/, "connection labels must share the footer's refined typographic finish");
-  assert.match(shellCss, /@media \(min-width: 820px\)[\s\S]*data-shell-sidebar-collapsed="true"\] \.user-strip \.avatar\s*\{[^}]*margin-inline-start:\s*0\.125rem[^}]*margin-block-end:\s*-0\.8125rem/, "the collapsed account mark must retain its approved desktop optical alignment");
+  assert.match(shellCss, /@media \(min-width: 820px\)[\s\S]*data-shell-sidebar-collapsed="true"\] \.user-strip \.avatar\s*\{[^}]*margin:\s*0/, "the collapsed account mark must remain centered in the footer alignment context");
   assert.doesNotMatch(source, /#0077ed|<svg|https?:\/\//i);
   assert.doesNotMatch(source, /ag-grid/i, "small dashboard and document surfaces must stay editorial");
   assert.doesNotMatch([register, controller, shellView, railHost, themeControl, dashboardSource, journeySource, journeyRailSource].join("\n"), /solvys-liquid-glass/i);

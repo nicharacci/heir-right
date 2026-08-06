@@ -34,7 +34,7 @@
 .s40-docprep {
   --s40-docprep-gutter: clamp(var(--hr-space-4), 2vw, var(--hr-space-6));
   display: grid;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto auto;
   gap: var(--hr-space-5);
   width: 100%;
   min-height: auto;
@@ -63,7 +63,6 @@
 }
 
 .s40-docprep-empty h1,
-.s40-docprep-head h1,
 .s40-rail-head h2,
 .s40-selector h2,
 .s40-export-queue h2 {
@@ -75,7 +74,6 @@
 }
 
 .s40-docprep-empty p,
-.s40-docprep-head p,
 .s40-rail-head p,
 .s40-rail-empty span,
 .s40-artifact-empty span,
@@ -95,31 +93,6 @@
   letter-spacing: 0.08em;
   line-height: 1.2 !important;
   text-transform: uppercase;
-}
-
-.s40-docprep-head {
-  display: flex;
-  gap: var(--hr-space-5);
-  align-items: end;
-  justify-content: space-between;
-  padding-block-end: var(--hr-space-4);
-  border-bottom: 0;
-}
-
-.s40-docprep-head > div:first-child {
-  display: grid;
-  gap: var(--hr-space-2);
-  min-width: 0;
-}
-
-.s40-docprep-command {
-  display: flex;
-  gap: var(--hr-space-3);
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  color: var(--hr-text-muted);
-  font-size: var(--hr-type-sm);
 }
 
 .s40-primary-button,
@@ -233,6 +206,30 @@
   display: flex;
   flex-direction: column;
   gap: var(--hr-space-2);
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.s40-selector > header > div {
+  /* A-07: reserve only the responsive rail gutter, so the field reaches the
+   * available column at wide sizes and still leaves room for compact chrome. */
+  margin-inline-end: clamp(var(--hr-space-3), 0.83vw, var(--hr-space-4));
+}
+
+/* A-07: the queue search owns the selector column instead of a fixed input width. */
+.s40-selector > header .s40-quick-search {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.s40-selector > header .s40-quick-search input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .s40-selector > header > span,
@@ -751,6 +748,14 @@
   text-align: center;
 }
 
+/* B-03 through B-07: document-preview headers keep square corners. This
+ * stays scoped to the generated artifact tables and does not touch the
+ * operational BeUI tables. */
+.s40-discovery-offer > thead > tr > th,
+.s40-discovery-heirs-table > thead > tr > th {
+  border-radius: 0 !important;
+}
+
 .s40-discovery-offer th,
 .s40-discovery-strong {
   font-weight: 700 !important;
@@ -981,15 +986,6 @@
 }
 
 @media (max-width: 900px) {
-  .s40-docprep-head {
-    align-items: start;
-    flex-direction: column;
-  }
-
-  .s40-docprep-command {
-    justify-content: flex-start;
-  }
-
   .s40-export-row {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -1010,8 +1006,12 @@
 }
 
 @media (max-width: 700px) {
+  .s40-selector > header > div {
+    margin-inline-end: 0;
+  }
+
   .s40-docprep {
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
     padding: var(--hr-space-3);
   }
 
