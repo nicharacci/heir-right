@@ -8,6 +8,9 @@
     "build:production": "pnpm --filter @ple/types build && pnpm --filter @ple/worker build && pnpm --filter @ple/artifact build:production",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:s44-hold": "node --test scripts/s44-artifact-hold.test.mjs",
+    "test:s44-durable": "pnpm --filter @ple/worker build && node --test apps/artifact/test/s44-doc-prep-durable-state.test.mjs",
+    "test:s44-provider": "pnpm --filter @ple/worker build && node --test apps/artifact/test/s44-doc-prep-sandbox-provider.test.mjs",
     "test:vercel-trace": "node apps/artifact/test/s38-vercel-function-trace.test.mjs",
     "pretest:e2e": "pnpm --filter @ple/artifact build",
     "test:e2e": "playwright test"
