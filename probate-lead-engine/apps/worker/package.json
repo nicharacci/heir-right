@@ -10,7 +10,7 @@
     "dev": "tsc --watch",
     "dev:cloudflare": "wrangler dev",
     "lint": "tsc --noEmit",
-    "test": "node dist/validation/run-validation.js",
+    "test": "node dist/validation/run-validation.js && node dist/validation/s45-discovery-contract.js",
     "run:daily": "node dist/daily-cli.js",
     "fresh:batch": "node dist/fresh-batch-cli.js",
     "seeds:validate": "node dist/seed-validation-cli.js",
