@@ -2,7 +2,8 @@ name = "heirright-probate-lead-engine"
 main = "src/cloudflare.ts"
 compatibility_date = "2026-05-18"
 compatibility_flags = ["nodejs_compat"]
-account_id = "e7a583857399cb19fd86f879c3a4629f"
+# HeirRight owns every production and sandbox Cloudflare resource for this Worker.
+account_id = "0accc9c5d935b32672a8df2b21ee2435"
 
 [vars]
 DEPLOYMENT_KEY = "heirright"
@@ -28,11 +29,11 @@ MIAMI_DADE_CLERK_API_BASE = "https://www2.miamidadeclerk.gov/Developers/api"
 
 [[kv_namespaces]]
 binding = "PODIO_TOKEN_STORE"
-id = "d21d2926fe3e4e12ae17bc89e0907a93"
+id = "f7a8ec04d2334721805c1bdc215f5451"
 
 [[kv_namespaces]]
 binding = "PACKET_ARTIFACTS"
-id = "23c96c2fed534d8b86e36139f44230f7"
+id = "33d20655799e4e1ab024e2409adbeeb1"
 
 [durable_objects]
 bindings = [
