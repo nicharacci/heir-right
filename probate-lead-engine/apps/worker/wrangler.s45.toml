@@ -1,0 +1,27 @@
+name = "heirright-s45-sandbox-discovery"
+main = "src/s45-discovery-worker.ts"
+compatibility_date = "2026-05-18"
+compatibility_flags = ["nodejs_compat"]
+account_id = "0accc9c5d935b32672a8df2b21ee2435"
+
+[vars]
+S45_SANDBOX_LABEL = "s45-sandbox"
+
+[[d1_databases]]
+binding = "S45_DB"
+database_name = "s45-sandbox-discovery"
+database_id = "9be1ad8e-b6f7-400f-b844-80afedee1000"
+
+[[r2_buckets]]
+binding = "S45_ARTIFACTS"
+bucket_name = "s45-sandbox-discovery-private"
+
+[[queues.producers]]
+binding = "S45_DISCOVERY_QUEUE"
+queue = "s45-sandbox-discovery"
+
+[[queues.consumers]]
+queue = "s45-sandbox-discovery"
+max_batch_size = 1
+max_retries = 3
+dead_letter_queue = "s45-sandbox-discovery-dlq"
