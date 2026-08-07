@@ -10,3 +10,4 @@ output/
 *.tsbuildinfo
 .env
 .env.local
+.s44-artifact-holds/
