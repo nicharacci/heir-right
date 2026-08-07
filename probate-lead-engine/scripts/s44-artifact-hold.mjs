@@ -58,6 +58,43 @@ function requireAbsolutePath(filePath, label) {
   return resolve(filePath);
 }
 
+function closureReceiptPath(manifestPath, holdId) {
+  return join(dirname(manifestPath), `${holdId}.closure.json`);
+}
+
+function assertExpectedHold(hold, expectedHoldId, expectedCiphertextSha256) {
+  if (hold.manifest.holdId !== expectedHoldId) throw new Error("hold ID does not match the approved closure target");
+  if (hold.manifest.ciphertextSha256 !== expectedCiphertextSha256) {
+    throw new Error("ciphertext digest does not match the approved closure target");
+  }
+}
+
+function closureReceiptFor(hold, closedAt) {
+  return {
+    schema: "heirright.s44.artifact-hold-closure/v1",
+    holdId: hold.manifest.holdId,
+    createdAt: hold.manifest.createdAt,
+    expiresAt: hold.manifest.expiresAt,
+    retentionSeconds: hold.manifest.retentionSeconds,
+    ciphertextSha256: hold.manifest.ciphertextSha256,
+    closedAt,
+  };
+}
+
+async function readClosureReceipt(receiptPath, expectedHoldId, expectedCiphertextSha256) {
+  await requireRegularFile(receiptPath, "closure receipt");
+  const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
+  if (receipt?.schema !== "heirright.s44.artifact-hold-closure/v1"
+    || receipt.holdId !== expectedHoldId
+    || receipt.ciphertextSha256 !== expectedCiphertextSha256
+    || receipt.retentionSeconds !== HOLD_RETENTION_SECONDS
+    || requireDate(receipt.expiresAt, "closure receipt expiresAt").getTime() - requireDate(receipt.createdAt, "closure receipt createdAt").getTime() !== HOLD_RETENTION_SECONDS * 1000
+    || requireDate(receipt.closedAt, "closure receipt closedAt").getTime() < requireDate(receipt.expiresAt, "closure receipt expiresAt").getTime()) {
+    throw new Error("closure receipt does not match the approved closure target");
+  }
+  return receipt;
+}
+
 function authenticatedFields(manifest) {
   return {
     schema: manifest.schema,
@@ -238,6 +275,34 @@ export async function purgeExpiredHold({ manifestPath, now = new Date() }) {
   return { holdId: hold.manifest.holdId, purgedAt: currentTime.toISOString() };
 }
 
+export async function closeExpiredHold({ manifestPath, expectedHoldId, expectedCiphertextSha256, now = new Date() }) {
+  const currentTime = requireDate(now, "now");
+  const resolvedManifestPath = requireAbsolutePath(manifestPath, "manifest path");
+  let hold;
+  try {
+    hold = await readManifest(resolvedManifestPath);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    const receiptPath = closureReceiptPath(resolvedManifestPath, expectedHoldId);
+    return { ...(await readClosureReceipt(receiptPath, expectedHoldId, expectedCiphertextSha256)), receiptPath };
+  }
+  assertExpectedHold(hold, expectedHoldId, expectedCiphertextSha256);
+  if (currentTime.getTime() < hold.expiresAt.getTime()) throw new Error("active artifact hold cannot be closed");
+
+  const receiptPath = closureReceiptPath(hold.manifestPath, hold.manifest.holdId);
+  const receipt = closureReceiptFor(hold, currentTime.toISOString());
+  try {
+    await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { flag: "wx", mode: 0o600 });
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+    await readClosureReceipt(receiptPath, expectedHoldId, expectedCiphertextSha256);
+  }
+
+  await rm(hold.ciphertextPath, { force: true });
+  await rm(hold.manifestPath, { force: true });
+  return { ...(await readClosureReceipt(receiptPath, expectedHoldId, expectedCiphertextSha256)), receiptPath };
+}
+
 function parseArguments(argv) {
   const [command, ...rest] = argv;
   const options = {};
@@ -262,8 +327,14 @@ async function main() {
     result = await restoreArtifact({ manifestPath: options.manifest, outputPath: options.output, secret });
   } else if (command === "purge-expired") {
     result = await purgeExpiredHold({ manifestPath: options.manifest });
+  } else if (command === "close-expired") {
+    result = await closeExpiredHold({
+      manifestPath: options.manifest,
+      expectedHoldId: options["expected-hold-id"],
+      expectedCiphertextSha256: options["expected-ciphertext-sha256"],
+    });
   } else {
-    throw new Error("usage: s44-artifact-hold.mjs seal|inspect|restore|purge-expired [options]");
+    throw new Error("usage: s44-artifact-hold.mjs seal|inspect|restore|purge-expired|close-expired [options]");
   }
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }

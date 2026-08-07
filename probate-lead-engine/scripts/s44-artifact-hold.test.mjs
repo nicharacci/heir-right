@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   HOLD_MAX_BYTES,
   HOLD_RETENTION_SECONDS,
+  closeExpiredHold,
   inspectHold,
   purgeExpiredHold,
   restoreArtifact,
@@ -90,4 +91,67 @@ test("S44 binds expiry metadata to the authenticated ciphertext", async (t) => {
   await assert.rejects(
     restoreArtifact({ manifestPath: sealed.manifestPath, outputPath: join(directory, "tampered.txt"), secret, now: createdAt }),
   );
+});
+
+test("S44 closes only the approved synthetic hold at exact expiry and records an idempotent receipt", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "heirright-s44-closure-"));
+  t.after(async () => rm(directory, { recursive: true, force: true }));
+  const inputPath = join(directory, "synthetic.txt");
+  const secret = randomBytes(48).toString("base64url");
+  const createdAt = new Date("2026-08-07T04:50:09.444Z");
+  const expiresAt = new Date(createdAt.getTime() + HOLD_RETENTION_SECONDS * 1000);
+  await writeFile(inputPath, "synthetic closure protocol only", { mode: 0o600 });
+  const sealed = await sealArtifact({ inputPath, outputDirectory: join(directory, "holds"), secret, now: createdAt });
+  const manifest = JSON.parse(await readFile(sealed.manifestPath, "utf8"));
+  const holdDirectoryMode = (await lstat(join(directory, "holds"))).mode & 0o777;
+  const manifestMode = (await lstat(sealed.manifestPath)).mode & 0o777;
+  const ciphertextMode = (await lstat(sealed.ciphertextPath)).mode & 0o777;
+  assert.equal(holdDirectoryMode, 0o700);
+  assert.equal(manifestMode, 0o600);
+  assert.equal(ciphertextMode, 0o600);
+  assert.equal(sealed.expiresAt, "2026-08-14T04:50:09.444Z");
+
+  await assert.rejects(
+    closeExpiredHold({
+      manifestPath: sealed.manifestPath,
+      expectedHoldId: sealed.holdId,
+      expectedCiphertextSha256: manifest.ciphertextSha256,
+      now: new Date(expiresAt.getTime() - 1),
+    }),
+    /active/,
+  );
+  assert.equal(await missing(sealed.manifestPath), false);
+  assert.equal(await missing(sealed.ciphertextPath), false);
+
+  await assert.rejects(
+    closeExpiredHold({
+      manifestPath: sealed.manifestPath,
+      expectedHoldId: sealed.holdId,
+      expectedCiphertextSha256: "0".repeat(64),
+      now: expiresAt,
+    }),
+    /digest/,
+  );
+  assert.equal(await missing(sealed.manifestPath), false);
+  assert.equal(await missing(sealed.ciphertextPath), false);
+
+  const closed = await closeExpiredHold({
+    manifestPath: sealed.manifestPath,
+    expectedHoldId: sealed.holdId,
+    expectedCiphertextSha256: manifest.ciphertextSha256,
+    now: expiresAt,
+  });
+  assert.equal(closed.holdId, sealed.holdId);
+  assert.equal(closed.expiresAt, expiresAt.toISOString());
+  assert.equal(await missing(sealed.manifestPath), true);
+  assert.equal(await missing(sealed.ciphertextPath), true);
+  const receipt = JSON.parse(await readFile(closed.receiptPath, "utf8"));
+  assert.equal(receipt.ciphertextSha256, manifest.ciphertextSha256);
+  const retried = await closeExpiredHold({
+    manifestPath: sealed.manifestPath,
+    expectedHoldId: sealed.holdId,
+    expectedCiphertextSha256: manifest.ciphertextSha256,
+    now: new Date(expiresAt.getTime() + 1),
+  });
+  assert.deepEqual(retried, closed);
 });
