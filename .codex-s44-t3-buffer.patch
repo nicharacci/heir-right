@@ -1,0 +1,12 @@
+diff --git a/probate-lead-engine/apps/artifact/test/s44-doc-prep-sandbox-provider.test.mjs b/probate-lead-engine/apps/artifact/test/s44-doc-prep-sandbox-provider.test.mjs
+--- a/probate-lead-engine/apps/artifact/test/s44-doc-prep-sandbox-provider.test.mjs
++++ b/probate-lead-engine/apps/artifact/test/s44-doc-prep-sandbox-provider.test.mjs
+@@ -168,7 +168,7 @@ test("S44 records deterministic PDF evidence, opens the PDF, and seals the exac
+   const restoredPath = join(directory, "restored.pdf");
+   await restoreArtifact({ manifestPath: sealed.manifestPath, outputPath: restoredPath, secret, now: CREATED_AT });
+   const restored = await readFile(restoredPath);
+-  assert.deepEqual(restored, artifactPdf);
++  assert.equal(restored.equals(Buffer.from(artifactPdf)), true);
+   assert.equal((await verifyOpenedPdf(restored)).pageCount, 1);
+   await unlink(restoredPath);
+   await purgeExpiredHold({ manifestPath: sealed.manifestPath, now: EXPIRES_AT });
