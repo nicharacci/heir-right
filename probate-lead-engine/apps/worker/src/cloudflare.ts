@@ -26,6 +26,7 @@ import { buildRawDossier } from "./dossier/build-raw-dossier";
 import { generateCompletedLeadReport } from "./documents/completed-lead-report";
 import { buildOutreachWorkflow } from "./outreach/build-outreach-workflow";
 import { buildQualificationDecision } from "./qualification/qualification-review";
+import { DocPrepDurableState, isDocPrepDurablePath } from "./doc-prep/durable-state";
 
 interface CloudflareEnv {
   DEPLOYMENT_KEY?: string;
@@ -190,6 +191,12 @@ function routeList(): string[] {
     "/api/google-workspace/connection",
     "/api/google-workspace/destinations",
     "/api/doc-prep/packet-approval",
+    "/api/doc-prep/cases",
+    "/api/doc-prep/cases/:caseId",
+    "/api/doc-prep/cases/:caseId/jobs",
+    "/api/doc-prep/jobs/:jobId",
+    "/api/doc-prep/jobs/:jobId/transitions",
+    "/api/doc-prep/jobs/:jobId/events",
     "/api/google-workspace/export",
     "/api/outreach/sync",
     "/api/exports",
@@ -2829,6 +2836,9 @@ export class WorkspaceState {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    if (isDocPrepDurablePath(url.pathname)) {
+      return new DocPrepDurableState(this.storage).fetch(request);
+    }
     const body = request.method === "POST"
       ? await request.json().catch(() => ({})) as Record<string, unknown>
       : {};
@@ -7541,6 +7551,12 @@ export default {
       const blocked = await authBlocker(request, env);
       if (blocked) return blocked;
       return packetApprovalResponse(request, env);
+    }
+
+    if (isDocPrepDurablePath(url.pathname)) {
+      const blocked = await authBlocker(request, env);
+      if (blocked) return blocked;
+      return workspaceStateResponse(request, url, env);
     }
 
     if (url.pathname === "/api/google-workspace/export") {
