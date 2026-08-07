@@ -394,10 +394,10 @@ async function renderDiscoveryPacketPdf(model: PacketModel): Promise<Uint8Array>
       else cursor -= 12;
       cursor -= 25.3;
 
-      const owner = sectionValue(summary, "Owner of record", estate.displayName);
-      page.drawText("Owner:", { x: 72, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
-      cursor -= 17.5;
-      page.drawText(owner, { x: 72, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+      const owner = ascii(sectionValue(summary, "Owner of record", estate.displayName)).toUpperCase();
+      const ownerLabel = "Owner:";
+      page.drawText(ownerLabel, { x: 72, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
+      page.drawText(owner, { x: 72 + bold.widthOfTextAtSize(ownerLabel, 11) + 4, y: cursor, size: 11, font: bold, color: rgb(0, 0, 0) });
       cursor -= 17.5;
       page.drawText(`DOB: ${sectionValue(vital, "Date of birth", "Needs review")}`, { x: 72, y: cursor, size: 11, font: regular, color: rgb(0, 0, 0) });
       cursor -= 17.5;

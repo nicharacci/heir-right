@@ -1,0 +1,8 @@
+app = "heirright-docprep-worker"
+primary_region = "iad"
+
+[build]
+  dockerfile = "deploy/heirright-process/Dockerfile.worker"
+
+[processes]
+  app = "node apps/docprep-worker/dist/index.js"
