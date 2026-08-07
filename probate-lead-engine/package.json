@@ -9,6 +9,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:s44-hold": "node --test scripts/s44-artifact-hold.test.mjs",
+    "test:s44-evidence": "node --test scripts/s44-michelet-discovery-evidence.test.mjs",
     "test:vercel-trace": "node apps/artifact/test/s38-vercel-function-trace.test.mjs",
     "pretest:e2e": "pnpm --filter @ple/artifact build",
     "test:e2e": "playwright test"
