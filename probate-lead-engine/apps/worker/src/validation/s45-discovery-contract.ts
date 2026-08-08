@@ -27,7 +27,7 @@ async function main(): Promise<void> {
         dateOfDeath: "01/01/2020",
       },
     }), { status: 200, headers: { "content-type": "application/json" } });
-    return new Response(JSON.stringify({ output_text: "A concise factual background based on the verified obituary source." }), { status: 200, headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify({ choices: [{ message: { content: "A concise factual background based on the verified obituary source." } }] }), { status: 200, headers: { "content-type": "application/json" } });
   };
   try {
     const vital = await runS45VitalObituary({ BROWSERBASE_API_KEY: "test", OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID: "function-test" }, { ownerName: "TEST OWNER" });
@@ -35,18 +35,24 @@ async function main(): Promise<void> {
     assert.equal(vital.dateOfBirth, "01/01/1940");
     assert.equal(calls[0]?.body.params && (calls[0].body.params as Record<string, unknown>).ownerName, "TEST OWNER");
 
-    const story = await generateS45Backstory({ NOUS_API_KEY: "test", NOUS_BASE_URL: "https://nous.example.test", NOUS_MODEL: "test-model" }, {
+    const story = await generateS45Backstory({ NOUS_API_KEY: "test", NOUS_BASE_URL: "https://nous.example.test", NOUS_MODEL: "test-model:free", NOUS_FREE_TIER_ONLY: "true" }, {
       ownerName: "TEST OWNER",
       dateOfBirth: "01/01/1940",
       dateOfDeath: "01/01/2020",
       obituarySnapshot: "Verified obituary source sentence.",
     });
     assert.ok(story.length < 500);
+    const nousCall = calls.find((call) => call.url.endsWith("/chat/completions"));
+    assert.equal(nousCall?.body.model, "test-model:free");
+    assert.ok(Array.isArray(nousCall?.body.messages));
 
-    globalThis.fetch = async () => new Response(JSON.stringify({ output_text: "The heir is entitled to an inheritance." }), { status: 200, headers: { "content-type": "application/json" } });
+    globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: "The heir is entitled to an inheritance." } }] }), { status: 200, headers: { "content-type": "application/json" } });
     await rejects(() => generateS45Backstory({ NOUS_API_KEY: "test", NOUS_BASE_URL: "https://nous.example.test", NOUS_MODEL: "test-model" }, {
       ownerName: "TEST OWNER", dateOfBirth: "01/01/1940", dateOfDeath: "01/01/2020", obituarySnapshot: "Verified obituary source sentence.",
     }), "nous_backstory_unsupported_legal_conclusion");
+    await rejects(() => generateS45Backstory({ NOUS_API_KEY: "test", NOUS_BASE_URL: "https://nous.example.test", NOUS_MODEL: "paid-model", NOUS_FREE_TIER_ONLY: "true" }, {
+      ownerName: "TEST OWNER", dateOfBirth: "01/01/1940", dateOfDeath: "01/01/2020", obituarySnapshot: "Verified obituary source sentence.",
+    }), "nous_backstory_non_free_model");
   } finally {
     globalThis.fetch = originalFetch;
   }

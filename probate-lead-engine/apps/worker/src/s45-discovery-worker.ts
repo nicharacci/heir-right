@@ -11,7 +11,7 @@ interface R2Object { arrayBuffer: () => Promise<ArrayBuffer>; body: ReadableStre
 interface R2Bucket { put: (key: string, value: Uint8Array, options?: unknown) => Promise<void>; get: (key: string) => Promise<R2Object | null> }
 interface Queue { send: (value: unknown) => Promise<void> }
 interface MessageBatch<T> { messages: Array<{ body: T; ack: () => void; retry: () => void }> }
-interface Env { S45_DB:D1Database; S45_ARTIFACTS:R2Bucket; S45_DISCOVERY_QUEUE:Queue; S45_INTERNAL_API_TOKEN?:string; S45_SANDBOX_LABEL:string; BROWSERBASE_API_KEY?:string; OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID?:string; BROWSERBASE_API_BASE?:string; BROWSERBASE_PROJECT_ID?:string; NOUS_API_KEY?:string; NOUS_BASE_URL?:string; NOUS_MODEL?:string }
+interface Env { S45_DB:D1Database; S45_ARTIFACTS:R2Bucket; S45_DISCOVERY_QUEUE:Queue; S45_INTERNAL_API_TOKEN?:string; S45_SANDBOX_LABEL:string; BROWSERBASE_API_KEY?:string; OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID?:string; BROWSERBASE_API_BASE?:string; BROWSERBASE_PROJECT_ID?:string; NOUS_API_KEY?:string; NOUS_BASE_URL?:string; NOUS_MODEL?:string; NOUS_FREE_TIER_ONLY?:string }
 type Msg={jobId:string}; type Field={key:string;label:string;value:string|null;proof:{page?:number;sourceText:string;sourceUrl?:string;provider?:string}|null;blankReason:string|null};
 const valid=new Ajv({allErrors:true,strict:true}).compile({type:"object",additionalProperties:false,required:["idempotencyKey","sourcePdfBase64"],properties:{idempotencyKey:{type:"string",minLength:16,maxLength:128,pattern:"^[A-Za-z0-9._:-]+$"},sourcePdfBase64:{type:"string",minLength:8,maxLength:16777216},sourceName:{type:"string",maxLength:120}}});
 const t=()=>new Date().toISOString(), id=(p:string)=>p+"_"+crypto.randomUUID().replace(/-/g,"");
