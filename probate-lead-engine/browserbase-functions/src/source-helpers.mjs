@@ -13,7 +13,22 @@ export function stripTags(value = "") {
 
 export function resolveUrl(href = "", baseUrl = "https://miamidade.county-taxes.com/") {
   try {
-    return new URL(href, baseUrl || "https://miamidade.county-taxes.com/").toString();
+    const resolved = new URL(href, baseUrl || "https://miamidade.county-taxes.com/");
+    if (/^(?:www\.)?google\./i.test(resolved.hostname) && resolved.pathname === "/url") {
+      const target = resolved.searchParams.get("q") || resolved.searchParams.get("url");
+      if (target) {
+        const unwrapped = new URL(target);
+        if (/^https?:$/.test(unwrapped.protocol)) return unwrapped.toString();
+      }
+    }
+    if (/^(?:www\.|html\.)?duckduckgo\.com$/i.test(resolved.hostname) && resolved.pathname === "/l/") {
+      const target = resolved.searchParams.get("uddg");
+      if (target) {
+        const unwrapped = new URL(target);
+        if (/^https?:$/.test(unwrapped.protocol)) return unwrapped.toString();
+      }
+    }
+    return resolved.toString();
   } catch {
     return href;
   }
@@ -94,21 +109,29 @@ export function discoverTaxCollectorReceipt(input = {}) {
 
 export function obituaryLinkScore(candidate = {}) {
   const haystack = `${candidate.url || ""} ${candidate.text || ""}`.toLowerCase();
+  let hostname = "";
+  try { hostname = new URL(candidate.url || "").hostname.toLowerCase(); } catch {}
+  if (/(^|\.)(google\.[^.]+|bing\.com|duckduckgo\.com)$/.test(hostname)) return -100;
+  if (/\/obituaries\/(?:search)?(?:[/?#\s]|$)/.test(haystack)) return -100;
   let score = 0;
   if (/funeral-homes|cemeteries|bill-pay|privacy|terms|careers|contact-us|about-us|do-not-sell|accessibility/.test(haystack)) score -= 6;
   if (/obituar|memorial|death-notice|tribute/.test(haystack)) score += 4;
   if (/legacy\.com|findagrave\.com|everloved\.com/.test(haystack)) score += 3;
   if (/dignitymemorial\.com\/obituaries\//.test(haystack)) score += 3;
   if (/facebook|instagram|linkedin|peoplefinders|whitepages/.test(haystack)) score -= 3;
-  if (/miamidadeclerk|marriage|license/.test(haystack)) score += 1;
+  if (/miamidadeclerk|marriage|license/.test(haystack)) score -= 8;
   return score;
 }
 
 export function pickBestObituaryLink(candidates = []) {
+  return rankObituaryLinks(candidates)[0] || null;
+}
+
+export function rankObituaryLinks(candidates = []) {
   return candidates
     .map((candidate) => ({ ...candidate, score: obituaryLinkScore(candidate) }))
     .sort((a, b) => b.score - a.score)
-    .find((candidate) => candidate.score > 0) || null;
+    .filter((candidate) => candidate.score > 0);
 }
 
 export function extractDateSignals(text = "") {

@@ -6,6 +6,12 @@ account_id = "0accc9c5d935b32672a8df2b21ee2435"
 
 [vars]
 S45_SANDBOX_LABEL = "s45-sandbox"
+BROWSERBASE_API_BASE = "https://api.browserbase.com"
+BROWSERBASE_PROJECT_ID = "ff4ddf54-f672-498a-820b-d19b6d535851"
+OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID = "59bf1447-9ca9-4bdb-9b7b-ea58619fd901"
+NOUS_BASE_URL = "https://inference-api.nousresearch.com/v1"
+NOUS_MODEL = "poolside/laguna-s-2.1:free"
+NOUS_FREE_TIER_ONLY = "true"
 
 [[d1_databases]]
 binding = "S45_DB"

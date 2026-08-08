@@ -1,6 +1,6 @@
 import { defineFn } from "@browserbasehq/sdk-functions";
 import { chromium } from "playwright-core";
-import { anchorCandidates, compactObject, extractDateSignals, normalizeWhitespace, pickBestObituaryLink } from "./source-helpers.mjs";
+import { anchorCandidates, compactObject, extractDateSignals, normalizeWhitespace, rankObituaryLinks } from "./source-helpers.mjs";
 
 function subjectName(params = {}) {
   return normalizeWhitespace(params.ownerName || params.estateName || "").replace(/^estate\s+of\s+/i, "");
@@ -13,6 +13,8 @@ function searchUrls(params = {}) {
   if (name) {
     const query = encodeURIComponent(`${name} ${county} obituary OR legacy OR findagrave`);
     urls.push(`https://www.google.com/search?q=${query}`);
+    urls.push(`https://www.bing.com/search?q=${query}`);
+    urls.push(`https://html.duckduckgo.com/html/?q=${query}`);
   }
   if (params.clerkSearchUrl) urls.push(String(params.clerkSearchUrl));
   return [...new Set(urls)].slice(0, 6);
@@ -46,14 +48,20 @@ defineFn("vital-obituary-review", async (context, params = {}) => {
   const { browser, page } = await openBrowserPage(context);
   try {
     const candidates = await collectCandidatePages(page, params);
-    const best = pickBestObituaryLink(candidates);
     let text = "";
-    let sourceUrl = best?.url || "";
-    if (sourceUrl) {
-      await page.goto(sourceUrl, { waitUntil: "domcontentloaded", timeout: 25000 }).catch(() => {});
+    let sourceUrl = "";
+    const subjectTokens = subjectName(params).toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length >= 3);
+    for (const candidate of rankObituaryLinks(candidates).slice(0, 8)) {
+      await page.goto(candidate.url, { waitUntil: "domcontentloaded", timeout: 25000 }).catch(() => {});
       await page.waitForTimeout(1500);
-      sourceUrl = page.url();
-      text = normalizeWhitespace(await page.locator("body").innerText({ timeout: 8000 }).catch(() => ""));
+      const candidateUrl = page.url();
+      const candidateText = normalizeWhitespace(await page.locator("body").innerText({ timeout: 8000 }).catch(() => ""));
+      if (/performing security verification|verify you are not a bot|access denied|captcha/i.test(candidateText)) continue;
+      const lower = candidateText.toLowerCase();
+      if (subjectTokens.length && !subjectTokens.every((token) => lower.includes(token))) continue;
+      sourceUrl = candidateUrl;
+      text = candidateText;
+      break;
     }
     const dates = extractDateSignals(text);
     const obituarySnapshot = text ? text.slice(0, 1200) : "";

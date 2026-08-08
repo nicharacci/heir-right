@@ -16,6 +16,13 @@ async function main(): Promise<void> {
     const url = String(input);
     const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
     calls.push({ url, body });
+    if (url.endsWith("/v1/search")) return new Response(JSON.stringify({
+      requestId: "search-test",
+      results: [
+        { url: "https://www.google.com/search?q=test+obituary", title: "Search page" },
+        { url: "https://example.test/obituary", title: "TEST OWNER obituary" },
+      ],
+    }), { status: 200, headers: { "content-type": "application/json" } });
     if (url.includes("/functions/")) return new Response(JSON.stringify({
       id: "invocation-test",
       status: "COMPLETED",
@@ -33,7 +40,12 @@ async function main(): Promise<void> {
     const vital = await runS45VitalObituary({ BROWSERBASE_API_KEY: "test", OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID: "function-test" }, { ownerName: "TEST OWNER" });
     assert.equal(vital.sourceUrl, "https://example.test/obituary");
     assert.equal(vital.dateOfBirth, "01/01/1940");
-    assert.equal(calls[0]?.body.params && (calls[0].body.params as Record<string, unknown>).ownerName, "TEST OWNER");
+    const functionCall = calls.find((call) => call.url.includes("/functions/"));
+    const searchCall = calls.find((call) => call.url.endsWith("/v1/search"));
+    const functionParams = functionCall?.body.params as Record<string, unknown> | undefined;
+    assert.ok(String(searchCall?.body.query || "").length <= 200);
+    assert.equal(functionParams?.ownerName, "TEST OWNER");
+    assert.deepEqual(functionParams?.sourceUrls, ["https://example.test/obituary"]);
 
     const story = await generateS45Backstory({ NOUS_API_KEY: "test", NOUS_BASE_URL: "https://nous.example.test", NOUS_MODEL: "test-model:free", NOUS_FREE_TIER_ONLY: "true" }, {
       ownerName: "TEST OWNER",

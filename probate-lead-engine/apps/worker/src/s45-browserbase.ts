@@ -17,6 +17,32 @@ export type S45VitalFinding = {
 const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
 const record = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 
+function approvedObituaryResult(value: unknown): string {
+  const result = record(value);
+  const url = text(result.url);
+  const title = text(result.title);
+  if (!url.startsWith("https://")) return "";
+  let hostname = "";
+  try { hostname = new URL(url).hostname.toLowerCase(); } catch { return ""; }
+  if (/(^|\.)(google\.[^.]+|bing\.com|duckduckgo\.com)$/.test(hostname)) return "";
+  return /obituar|memorial|death-notice|tribute|legacy\.com|findagrave\.com|everloved\.com|dignitymemorial\.com/i.test(`${url} ${title}`) ? url : "";
+}
+
+async function discoverSourceUrls(apiBase: string, apiKey: string, input: { ownerName: string; county?: string }): Promise<string[]> {
+  const ownerName = text(input.ownerName).slice(0, 100);
+  const countyInput = text(input.county);
+  const county = /miami[- ]dade/i.test(countyInput) ? "Miami-Dade" : countyInput.slice(0, 40) || "Miami-Dade";
+  const query = `"${ownerName}" ${county} obituary memorial`.slice(0, 200);
+  const response = await fetch(apiBase + "/v1/search", {
+    method: "POST",
+    headers: { accept: "application/json", "content-type": "application/json", "x-bb-api-key": apiKey },
+    body: JSON.stringify({ query, numResults: 25 }),
+  });
+  if (!response.ok) throw new Error(`browserbase_search_failed_${response.status}`);
+  const results = record(await response.json().catch(() => ({}))).results;
+  return [...new Set((Array.isArray(results) ? results : []).map(approvedObituaryResult).filter(Boolean))].slice(0, 8);
+}
+
 async function waitForResult(invocation: Record<string, unknown>, apiBase: string, apiKey: string): Promise<Record<string, unknown>> {
   let current = invocation;
   const id = text(current.id);
@@ -43,6 +69,7 @@ export async function runS45VitalObituary(
   if (!apiKey || !functionId) throw new Error("browserbase_vital_workflow_unconfigured");
   const apiBase = text(env.BROWSERBASE_API_BASE) || "https://api.browserbase.com";
   const normalizedApiBase = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
+  const sourceUrls = await discoverSourceUrls(normalizedApiBase, apiKey, input);
   const response = await fetch(normalizedApiBase + "/v1/functions/" + encodeURIComponent(functionId) + "/invoke", {
     method: "POST",
     headers: { accept: "application/json", "content-type": "application/json", "x-bb-api-key": apiKey },
@@ -52,7 +79,7 @@ export async function runS45VitalObituary(
         estateName: input.ownerName,
         county: input.county || "Miami-Dade",
         propertyAddress: input.propertyAddress || "",
-        clerkSearchUrl: "https://www2.miamidadeclerk.gov/ocs/",
+        sourceUrls,
       },
       sessionCreateParams: {
         projectId: text(env.BROWSERBASE_PROJECT_ID) || undefined,
