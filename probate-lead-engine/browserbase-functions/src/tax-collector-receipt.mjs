@@ -19,6 +19,16 @@ function isBrowserErrorPage(url = "", html = "") {
     || /ERR_[A-Z_]+|This site can.?t be reached|Enable JavaScript and cookies to continue|Just a moment/i.test(String(html || ""));
 }
 
+async function waitForSecurityCheck(page) {
+  const deadline = Date.now() + 25_000;
+  while (Date.now() < deadline) {
+    const title = await page.title().catch(() => "");
+    const text = await page.locator("body").innerText({ timeout: 2000 }).catch(() => "");
+    if (!/Just a moment|Performing security verification|verify you are not a bot/i.test(`${title} ${text}`)) return;
+    await page.waitForTimeout(1500);
+  }
+}
+
 function browserbaseDiscoveryPayload(discovery = {}, extra = {}) {
   return compactObject({
     ok: true,
@@ -27,6 +37,7 @@ function browserbaseDiscoveryPayload(discovery = {}, extra = {}) {
     listingUrl: discovery.listingUrl,
     receiptUrl: discovery.receiptUrl,
     receiptLink: discovery.receiptUrl,
+    details: discovery.details,
     candidates: (discovery.candidates || []).slice(0, 5).map((candidate) => compactObject({
       href: candidate.href,
       url: candidate.url,
@@ -39,14 +50,29 @@ function browserbaseDiscoveryPayload(discovery = {}, extra = {}) {
 }
 
 async function pageSummary(page) {
-  const listingUrl = page.url();
-  const title = await page.title().catch(() => "");
-  const html = await page.content().catch(() => "");
-  const text = await page.locator("body").innerText({ timeout: 3000 }).catch(() => stripTags(html));
+  let surface = page;
+  for (const frame of page.frames()) {
+    const frameText = await frame.locator("body").innerText({ timeout: 3000 }).catch(() => "");
+    if (/Account Summary|Account history|Amount due|Print \(PDF\)/i.test(frameText)) {
+      surface = frame;
+      break;
+    }
+  }
+  const dataDeadline = Date.now() + 20_000;
+  while (Date.now() < dataDeadline) {
+    const currentText = await surface.locator("body").innerText({ timeout: 3000 }).catch(() => "");
+    if (/Print \(PDF\)|Receipt #/i.test(currentText)) break;
+    await page.waitForTimeout(1000);
+  }
+  const listingUrl = surface.url() || page.url();
+  const title = await surface.title().catch(() => page.title().catch(() => ""));
+  const html = await surface.content().catch(() => "");
+  const text = await surface.locator("body").innerText({ timeout: 5000 }).catch(() => stripTags(html));
   return {
     listingUrl,
     title,
     html,
+    bodyText: bounded(text || stripTags(html), 12_000),
     bodySnippet: bounded(text || stripTags(html), 1800),
     htmlSnippet: bounded(html, 1800),
   };
@@ -77,16 +103,39 @@ async function submitSearch(page, term) {
     "input[name*='search' i]:visible",
     "input:visible",
   ].join(", ")).first();
+  await input.waitFor({ state: "visible", timeout: 20_000 }).catch(() => {});
   if (await input.count().catch(() => 0)) {
     await input.fill(term);
-    const searchButton = page.getByRole("button", { name: /search|submit|go/i }).first();
-    if (await searchButton.count().catch(() => 0)) {
-      await searchButton.click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(1200);
+    const option = page.getByRole("option").first();
+    if (await option.count().catch(() => 0)) {
+      await option.click({ timeout: 5000 });
     } else {
-      await input.press("Enter");
+      const searchButton = page.getByRole("button", { name: /search|submit|go/i }).first();
+      if (await searchButton.count().catch(() => 0)) {
+        await searchButton.click({ timeout: 5000 }).catch(() => {});
+      } else {
+        await input.press("Enter");
+      }
     }
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(3500);
   }
+}
+
+function extractTaxDetails(text = "") {
+  const paidDate = text.match(/most recent payment was made on\s+([0-9/]+)/i)?.[1]
+    || text.match(/Paid\s+\$[0-9,.]+\s+([0-9/]+)/i)?.[1]
+    || "";
+  const amount = text.match(/most recent payment was made on\s+[0-9/]+\s+for\s+\$([0-9,.]+)/i)?.[1]
+    || text.match(/Paid\s+\$([0-9,.]+)/i)?.[1]
+    || "";
+  const paidInFull = /paid in full|nothing due at this time/i.test(text);
+  return compactObject({
+    paidDate,
+    amountDue: paidInFull ? { amount: 0, currency: "USD", years: [] } : undefined,
+    receiptStatus: paidInFull ? "paid_in_full" : undefined,
+    lastPaymentAmount: amount ? Number(amount.replace(/,/g, "")) : undefined,
+  });
 }
 
 async function openLikelyListing(page, params = {}) {
@@ -122,15 +171,17 @@ defineFn("tax-collector-receipt", async (context, params = {}) => {
   try {
     const searchUrl = normalizeSearchUrl(params.searchUrl);
     await page.goto(String(params.listingUrl || searchUrl), { waitUntil: "domcontentloaded", timeout: 25000 });
-    await page.waitForTimeout(1500);
+    await waitForSecurityCheck(page);
+    await page.waitForTimeout(750);
     if (!params.listingUrl) {
       await submitSearch(page, searchTerm(params));
-      await openLikelyListing(page, params);
+      await waitForSecurityCheck(page);
     }
 
     const summary = await pageSummary(page);
     const discovery = discoverTaxCollectorReceipt({ listingHtml: summary.html, listingUrl: summary.listingUrl });
-    if (isBrowserErrorPage(summary.listingUrl, summary.html)) {
+    if (discovery) discovery.details = extractTaxDetails(summary.bodyText);
+    if (isBrowserErrorPage(summary.listingUrl, `${summary.title} ${summary.bodyText}`)) {
       return {
         ok: false,
         source: "tax_collector",

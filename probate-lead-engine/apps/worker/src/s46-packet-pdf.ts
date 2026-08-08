@@ -13,7 +13,20 @@ function printable(value: string): string {
 function wrap(value: string, font: PDFFont, size: number, width: number): string[] {
   const lines: string[] = [];
   for (const paragraph of printable(value).split(/\n+/)) {
-    const words = paragraph.split(/\s+/).filter(Boolean);
+    const words = paragraph.split(/\s+/).filter(Boolean).flatMap((word) => {
+      if (font.widthOfTextAtSize(word, size) <= width) return [word];
+      const chunks: string[] = [];
+      let chunk = "";
+      for (const character of word) {
+        const candidate = chunk + character;
+        if (chunk && font.widthOfTextAtSize(candidate, size) > width) {
+          chunks.push(chunk);
+          chunk = character;
+        } else chunk = candidate;
+      }
+      if (chunk) chunks.push(chunk);
+      return chunks;
+    });
     if (!words.length) { lines.push(""); continue; }
     let line = words.shift() || "";
     for (const word of words) {
@@ -95,7 +108,7 @@ export async function renderS46DiscoveryPdf(input: S46MappedDocument, generatedA
   const columns = [106, 115, 111];
   const tableWidth = columns.reduce((sum, width) => sum + width, 0);
   const rowHeight = 16.5;
-  const rows = ["As-Is Value", "Taxes Due", "Liens", "Mortgages", "Selling Costs", "Probate Costs", "Partition Costs", "Post Equity Value", "Amount per heir $$", "# of heirs on board", "Profit", "Offer per heir", "", "", "", "Min Profit", "$100,000 Net", "", ""];
+  const rows = ["As-Is Value", "Taxes Due", "Liens", "Mortgages", "Selling Costs", "Probate Costs", "Partition Costs", "Post Equity Value", "Amount per heir $$", "# of heirs on board", "Profit", "Offer per heir", "", "", "", "Min Profit", "", "", ""];
   const drawCell = (value: string, x: number, width: number, baseline: number, font: PDFFont, size: number): void => {
     const safe = printable(value);
     page.drawText(safe, { x: x + Math.max(4, (width - font.widthOfTextAtSize(safe, size)) / 2), y: baseline, size, font, color: rgb(0, 0, 0) });

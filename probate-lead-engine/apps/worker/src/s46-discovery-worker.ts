@@ -2,6 +2,7 @@ import { acquireTaxCollectorReceipt } from "./adapters/tax-collector-receipt";
 import { fetchOfficialRecordsCommercialApiFacts } from "./adapters/clerk-commercial-api";
 import { runS45VitalObituary } from "./s45-browserbase";
 import { generateS45Backstory } from "./s45-nous";
+import { runS46OfficialRecords, type S46OfficialFinding } from "./s46-browserbase-official";
 import {
   S46_MAX_BATCH_BYTES,
   S46_MAX_BATCH_FILES,
@@ -11,6 +12,7 @@ import {
   identitiesMatch,
   inspectPdf,
   mapIdiPages,
+  obituaryIdentityMatches,
   publicMappingReceipt,
   safeFilename,
   sha256,
@@ -40,6 +42,7 @@ interface Env {
   BROWSERBASE_API_BASE?: string;
   BROWSERBASE_PROJECT_ID?: string;
   OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID?: string;
+  OFFICIAL_RECORDS_BROWSERBASE_FUNCTION_ID?: string;
   NOUS_API_KEY?: string;
   NOUS_BASE_URL?: string;
   NOUS_MODEL?: string;
@@ -173,17 +176,115 @@ async function runTaxCheck(env: Env, jobId: string, document: S46MappedDocument)
     return;
   }
   const sourceUrl = result.discovery?.receiptUrl || result.finalUrl || result.searchUrl;
-  const sourceText = JSON.stringify(result.discovery?.details || {});
+  const details = result.discovery?.details || {};
+  const sourceText = JSON.stringify(details);
   const proof = { source: "tax_collector" as const, sourceUrl, retrievedAt: now(), sha256: await sha256(new TextEncoder().encode(sourceText || sourceUrl)), excerpt: sourceText.slice(0, 1200) };
   document.taxReceiptUrl = result.discovery?.receiptUrl || "";
-  document.taxSummary = sourceText === "{}" ? "" : sourceText;
+  const taxSummary = [
+    details.receiptStatus === "paid_in_full" ? "Paid in full" : details.receiptStatus,
+    details.paidDate ? `Latest payment: ${details.paidDate}` : "",
+    details.paidBy ? `Paid by: ${details.paidBy}` : "",
+    details.amountDue && details.amountDue.amount > 0 ? `Amount due: $${details.amountDue.amount.toFixed(2)}` : "",
+    details.unpaidYears?.length ? `Unpaid years: ${details.unpaidYears.join(", ")}` : "",
+  ].filter(Boolean).join("; ");
+  document.taxSummary = taxSummary ? `${taxSummary}.` : "";
   if (document.taxReceiptUrl) document.evidence.taxReceiptUrl = proof;
   if (document.taxSummary) document.evidence.taxSummary = proof;
   await observation(env, jobId, "tax_collector", "tax_record", result.discovery?.details || {}, proof);
   await sourceCheck(env, jobId, "tax_collector", result.discovery ? "found" : "checked_not_found", { mode: result.mode, paidRun: result.paidRun });
 }
 
+function normalizedOfficialAddress(value: string): string {
+  return value.toUpperCase()
+    .replace(/,?\s+(MIAMI|MIAMI GARDENS|HIALEAH|HOMESTEAD|FLORIDA CITY|NORTH MIAMI)(?:,?\s+FL)?(?:,?\s+\d{5}(?:-\d{4})?)?$/, "")
+    .replace(/,.*$/, "")
+    .replace(/\b(\d+)(?:ST|ND|RD|TH)\b/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function directOfficialRecordsReadback(env: Env, propertyAddress: string): Promise<(S46OfficialFinding & { sourceText: string }) | null> {
+  const expectedAddress = normalizedOfficialAddress(propertyAddress);
+  if (!expectedAddress) return null;
+  const cached = await env.S46_DB.prepare("SELECT source_url FROM s46_source_observations WHERE source_name='official_records' AND source_url IS NOT NULL ORDER BY retrieved_at DESC LIMIT 20").all<{ source_url: string }>();
+  for (const row of cached.results) {
+    let source: URL;
+    try { source = new URL(row.source_url); } catch { continue; }
+    const query = source.searchParams.get("qs");
+    if (source.protocol !== "https:" || source.hostname !== "onlineservices.miamidadeclerk.gov" || !query) continue;
+    const endpoint = new URL("https://onlineservices.miamidadeclerk.gov/officialrecords/api/SearchResults/getStandardRecords");
+    endpoint.searchParams.set("qs", query);
+    let response: Response;
+    try { response = await fetch(endpoint, { headers: { accept: "application/json", "user-agent": "HeirRight-S46/1.0" } }); } catch { continue; }
+    if (!response.ok) continue;
+    const sourceText = await response.text();
+    if (sourceText.length > 1_000_000) continue;
+    let payload: Record<string, unknown>;
+    try { payload = JSON.parse(sourceText) as Record<string, unknown>; } catch { continue; }
+    const criteria = payload.searchCritiriea && typeof payload.searchCritiriea === "object" ? payload.searchCritiriea as Record<string, unknown> : {};
+    if (normalizedOfficialAddress(String(criteria.addressNoUnit || "")) !== expectedAddress) continue;
+    const models = Array.isArray(payload.recordingModels) ? payload.recordingModels.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object")) : [];
+    const deeds = models.map((item) => ({
+      clerkFileNumber: String(item.clerk_File || "").trim(),
+      partyName: String(item.parties || "").trim(),
+      address: String(item.address || item.addressnounit || "").trim(),
+      documentType: String(item.doC_TYPE || "").trim(),
+      recordedDate: String(item.reC_DATE || "").split(" ")[0],
+      bookPage: String(item.reC_BOOKPAGE || "").trim(),
+    })).filter((item) => item.partyName && item.documentType && item.recordedDate && item.bookPage)
+      .sort((left, right) => Date.parse(right.recordedDate) - Date.parse(left.recordedDate));
+    return { outcome: deeds.length ? "found" : "checked_not_found", recordCount: models.length, sourceUrl: source.toString(), latestDeed: deeds[0], sourceText };
+  }
+  return null;
+}
+
 async function runOfficialCheck(env: Env, jobId: string, document: S46MappedDocument): Promise<void> {
+  const direct = await directOfficialRecordsReadback(env, document.propertyAddress);
+  if (direct) {
+    if (direct.outcome === "checked_not_found") {
+      await sourceCheck(env, jobId, "official_records", "checked_not_found", { recordCount: direct.recordCount, accessMode: "direct_query_readback" });
+      return;
+    }
+    const deed = direct.latestDeed;
+    if (!deed || !identitiesMatch(document.owner, deed.partyName)) {
+      await sourceCheck(env, jobId, "official_records", "identity_mismatch", { recordCount: direct.recordCount, accessMode: "direct_query_readback" });
+      throw new Error("identity_mismatch:official_records");
+    }
+    const proof = { source: "official_records" as const, sourceUrl: direct.sourceUrl, retrievedAt: now(), sha256: await sha256(new TextEncoder().encode(direct.sourceText)), excerpt: JSON.stringify(deed).slice(0, 1200) };
+    document.deedSummary = [`OR ${deed.bookPage}`, deed.documentType, deed.recordedDate, deed.partyName].filter(Boolean).join(" - ").slice(0, 600);
+    document.evidence.deedSummary = proof;
+    await observation(env, jobId, "official_records", "latest_deed", deed, proof);
+    await sourceCheck(env, jobId, "official_records", "found", { recordCount: direct.recordCount, accessMode: "direct_query_readback" });
+    return;
+  }
+  if (env.BROWSERBASE_API_KEY && env.OFFICIAL_RECORDS_BROWSERBASE_FUNCTION_ID) {
+    try {
+      const result = await runS46OfficialRecords(env, { ownerName: document.owner, propertyAddress: document.propertyAddress, parcelId: document.folio });
+      if (result.outcome === "checked_not_found") {
+        await sourceCheck(env, jobId, "official_records", "checked_not_found", { recordCount: result.recordCount, invocationId: result.invocationId || null, sessionId: result.sessionId || null });
+        return;
+      }
+      const deed = result.latestDeed;
+      if (!deed || !deed.bookPage || !deed.recordedDate || !deed.partyName) throw new Error("official_records_incomplete_result");
+      if (!identitiesMatch(document.owner, deed.partyName)) {
+        await sourceCheck(env, jobId, "official_records", "identity_mismatch", { recordCount: result.recordCount });
+        throw new Error("identity_mismatch:official_records");
+      }
+      const deedText = JSON.stringify(deed);
+      const proof = { source: "official_records" as const, sourceUrl: result.sourceUrl, retrievedAt: now(), sha256: await sha256(new TextEncoder().encode(deedText)), excerpt: deedText.slice(0, 1200) };
+      document.deedSummary = [`OR ${deed.bookPage}`, deed.documentType, deed.recordedDate, deed.partyName].filter(Boolean).join(" - ").slice(0, 600);
+      document.evidence.deedSummary = proof;
+      await observation(env, jobId, "official_records", "latest_deed", deed, proof);
+      await sourceCheck(env, jobId, "official_records", "found", { recordCount: result.recordCount, invocationId: result.invocationId || null, sessionId: result.sessionId || null });
+      return;
+    } catch (error) {
+      if (/identity_mismatch/.test(errorCode(error))) throw error;
+      const code = errorCode(error);
+      const outcome: S46SourceOutcome = /unconfigured|required/.test(code) ? "unconfigured" : /blocked|billing|rate/.test(code) ? "blocked" : "provider_failed";
+      await sourceCheck(env, jobId, "official_records", outcome, { code });
+      throw new Error(`${outcome}:official_records`);
+    }
+  }
   const facts = await fetchOfficialRecordsCommercialApiFacts(jobId, { ownerName: document.owner, propertyAddress: document.propertyAddress, parcelId: document.folio, county: "miami-dade", source: "operator_cli" }, { env: env as unknown as Record<string, string | undefined> });
   const status = facts.find((fact) => fact.factType === "source_status");
   const statusValue = status?.value && typeof status.value === "object" ? status.value as Record<string, unknown> : {};
@@ -204,15 +305,35 @@ async function runOfficialCheck(env: Env, jobId: string, document: S46MappedDocu
   await sourceCheck(env, jobId, "official_records", document.deedSummary ? "found" : "checked_not_found", { recordCount: Number(statusValue.recordCount || 0) });
 }
 
+async function recentObituaryNoMatch(env: Env, jobId: string, document: S46MappedDocument): Promise<{ jobId: string; checkedAt: string } | null> {
+  const rows = await env.S46_DB.prepare("SELECT j.id,j.private_mapping_json,sc.finished_at FROM s46_jobs j JOIN s46_source_checks sc ON sc.job_id=j.id WHERE j.id<>? AND sc.source_name='direct_obituary' AND sc.outcome='checked_not_found' AND sc.finished_at IS NOT NULL ORDER BY sc.finished_at DESC LIMIT 20")
+    .bind(jobId).all<{ id: string; private_mapping_json: string | null; finished_at: string }>();
+  for (const row of rows.results) {
+    if (Date.now() - Date.parse(row.finished_at) > 24 * 60 * 60 * 1000) continue;
+    let prior: S46MappedDocument;
+    try { prior = JSON.parse(row.private_mapping_json || "") as S46MappedDocument; } catch { continue; }
+    if (!identitiesMatch(document.owner, prior.owner)) continue;
+    if (normalizedOfficialAddress(document.propertyAddress) !== normalizedOfficialAddress(prior.propertyAddress)) continue;
+    return { jobId: row.id, checkedAt: row.finished_at };
+  }
+  return null;
+}
+
 async function runObituaryCheck(env: Env, jobId: string, document: S46MappedDocument): Promise<void> {
   // Google search results cannot prove a fact. The existing Browserbase seam
   // discovers candidates, then returns evidence from the direct destination.
+  const recentNoMatch = await recentObituaryNoMatch(env, jobId, document);
+  if (recentNoMatch) {
+    await sourceCheck(env, jobId, "direct_obituary", "checked_not_found", { code: "recent_verified_no_match", priorJobId: recentNoMatch.jobId, checkedAt: recentNoMatch.checkedAt });
+    return;
+  }
   if (!env.BROWSERBASE_API_KEY || !env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID) {
     await sourceCheck(env, jobId, "direct_obituary", "unconfigured", { code: "browserbase_not_configured" });
     throw new Error("unconfigured:direct_obituary");
   }
   try {
     const result = await runS45VitalObituary(env, { ownerName: document.owner, county: document.county, propertyAddress: document.propertyAddress });
+    if (result.sourceUrl && !obituaryIdentityMatches(document.owner, `${result.sourceUrl} ${result.obituarySnapshot || ""}`)) throw new Error("identity_mismatch:direct_obituary");
     const proof = { source: "direct_obituary" as const, sourceUrl: result.sourceUrl, retrievedAt: now(), sha256: await sha256(new TextEncoder().encode(result.obituarySnapshot || result.sourceUrl)), excerpt: (result.obituarySnapshot || "Direct obituary source checked.").slice(0, 1200) };
     applyVerifiedValue(document, "dateOfBirth", result.dateOfBirth || "", proof);
     applyVerifiedValue(document, "dateOfDeath", result.dateOfDeath || "", proof);

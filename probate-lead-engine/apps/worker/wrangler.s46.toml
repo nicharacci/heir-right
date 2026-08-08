@@ -8,10 +8,12 @@ workers_dev = true
 [vars]
 S46_SANDBOX_LABEL = "s46-sandbox"
 BROWSERBASE_API_BASE = "https://api.browserbase.com"
-BROWSERBASE_PROJECT_ID = "76e87277-1612-4e78-88ba-094927c25149"
-OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID = "b7d041ce-5505-4364-996d-7ebdf5823048"
+BROWSERBASE_PROJECT_ID = "ff4ddf54-f672-498a-820b-d19b6d535851"
+TAX_COLLECTOR_BROWSERBASE_FUNCTION_ID = "54ecee5f-696f-41c2-a898-dafacb4dd1b9"
+OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID = "59bf1447-9ca9-4bdb-9b7b-ea58619fd901"
+OFFICIAL_RECORDS_BROWSERBASE_FUNCTION_ID = "727dd13d-3f90-4e5c-a2ec-e542fe0adfb6"
 NOUS_BASE_URL = "https://inference-api.nousresearch.com/v1"
-NOUS_MODEL = "Hermes-3-Llama-3.1-70B:free"
+NOUS_MODEL = "poolside/laguna-xs-2.1:free"
 NOUS_FREE_TIER_ONLY = "true"
 IDI_API_ENABLED = "false"
 CLOSING_ENABLED = "false"
@@ -19,7 +21,8 @@ CLOSING_ENABLED = "false"
 [[d1_databases]]
 binding = "S46_DB"
 database_name = "s46-sandbox-discovery"
-database_id = "S46_D1_DATABASE_ID"
+database_id = "ad1d0f97-233d-4bd7-ae84-801990e68d04"
+migrations_dir = "migrations/s46"
 
 [[r2_buckets]]
 binding = "S46_ARTIFACTS"

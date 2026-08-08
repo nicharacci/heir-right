@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { PDFDocument, StandardFonts } from "pdf-lib";
-import { applyVerifiedValue, assertPdfEnvelope, identitiesMatch, inspectPdf, mapIdiPages, publicMappingReceipt, safeFilename, sha256 } from "../s46-core";
+import { applyVerifiedValue, assertPdfEnvelope, identitiesMatch, inspectPdf, mapIdiPages, obituaryIdentityMatches, publicMappingReceipt, safeFilename, sha256 } from "../s46-core";
 import { renderS46DiscoveryPdf } from "../s46-packet-pdf";
 import { S46_CLOSING_ENABLED, S46_CLOSING_INPUT_SCHEMA } from "../s46-closing-contract";
 
@@ -34,7 +34,14 @@ async function main(): Promise<void> {
   assert.equal(mapped.heirs[0].email, "jean@example.com");
   assert.equal(mapped.heirs[0].addresses.length, 1);
   assert.equal(mapped.heirs[0].evidence.phone?.page, 2);
+  const collapsedIdi = await mapIdiPages([
+    "Subject: MICHELET EUGENE\nLikely Current Address: 401 NW 77TH ST, MIAMI, FL, 33150 (MIAMI-DADE)\nAddress (County/Parish/Borough) History:\nLikely relatives and associates\nSpouse\n1 found\nChild\n3 found",
+  ], sourceHash, new Date(0).toISOString());
+  assert.equal(collapsedIdi.county, "Miami-Dade");
+  assert.equal(collapsedIdi.heirs.length, 0);
   assert.ok(identitiesMatch("Estate of Michelet Eugene", "MICHELET EUGENE"));
+  assert.equal(obituaryIdentityMatches("MICHELET EUGENE", "Eugene Michelet obituary, Miami, Florida"), true);
+  assert.equal(obituaryIdentityMatches("MICHELET EUGENE", "Eugene chapel serves families. Michelet family memorial."), false);
   applyVerifiedValue(mapped, "owner", "Estate of Michelet Eugene", { source: "property_appraiser", retrievedAt: new Date(0).toISOString(), sha256: sourceHash, excerpt: "direct record" });
   assert.throws(() => applyVerifiedValue(mapped, "dateOfBirth", "12/31/1900", { source: "direct_obituary", retrievedAt: new Date(0).toISOString(), sha256: sourceHash, excerpt: "direct page" }), /conflict:dateOfBirth/);
   const receipt = publicMappingReceipt(mapped);
@@ -49,6 +56,7 @@ async function main(): Promise<void> {
   assert.match(text, /Owner:\s*MICHELET EUGENE/i);
   assert.match(text, /DOB:\s*01\/02\/1940/i);
   assert.match(text, /Offer\/Profit/i);
+  assert.doesNotMatch(text, /\$100,000 Net/);
   assert.doesNotMatch(text, /Needs review|Discovery subject|internal status/i);
   assert.equal(S46_CLOSING_ENABLED, false);
   assert.equal(S46_CLOSING_INPUT_SCHEMA.properties.version.const, 1);

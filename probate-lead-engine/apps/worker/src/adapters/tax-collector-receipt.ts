@@ -517,6 +517,19 @@ function asRecord(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : {};
 }
 
+function taxDetailsInput(value: unknown): Partial<TaxCollectorReceiptInput> {
+  const details = asRecord(value);
+  return {
+    paidBy: details.paidBy,
+    payerIdentity: details.payerIdentity,
+    paidDate: details.paidDate,
+    amountDue: details.amountDue,
+    unpaidYears: details.unpaidYears,
+    reassessment: details.reassessment,
+    status: details.receiptStatus,
+  };
+}
+
 function anchorCandidates(html: string, baseUrl: string): TaxCollectorReceiptCandidate[] {
   const candidates: TaxCollectorReceiptCandidate[] = [];
   const anchorPattern = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>[\s\S]*?<\/a>/gi;
@@ -638,6 +651,7 @@ export async function acquireTaxCollectorReceipt(
       const workflowListingUrl = stringValue(data.listingUrl) || stringValue(data.finalUrl) || searchUrl;
       const workflowDiscovery = approvedTaxCollectorDiscovery(discoverTaxCollectorReceipt({
         ...input,
+        ...taxDetailsInput(data.details),
         listingUrl: workflowListingUrl,
         listingHtml: data.listingHtml,
         receiptUrl: data.receiptUrl,
@@ -711,6 +725,7 @@ export async function acquireTaxCollectorReceipt(
       const workflowListingUrl = stringValue(result.listingUrl) || stringValue(result.finalUrl) || searchUrl;
       const workflowDiscovery = approvedTaxCollectorDiscovery(discoverTaxCollectorReceipt({
         ...input,
+        ...taxDetailsInput(result.details),
         listingUrl: workflowListingUrl,
         listingHtml: result.listingHtml,
         receiptUrl: result.receiptUrl,

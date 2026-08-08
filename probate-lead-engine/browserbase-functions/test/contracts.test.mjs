@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { discoverTaxCollectorReceipt, extractDateSignals, pickBestObituaryLink, resolveUrl } from "../src/source-helpers.mjs";
+import { discoverTaxCollectorReceipt, extractDateSignals, obituaryIdentityMatches, officialRecordsAddress, parseOfficialRecordsResults, pickBestObituaryLink, resolveUrl } from "../src/source-helpers.mjs";
 
 const receipt = discoverTaxCollectorReceipt({
   listingUrl: "https://miamidade.county-taxes.test/listing/3031030000010",
@@ -16,6 +16,12 @@ const receipt = discoverTaxCollectorReceipt({
 assert.equal(receipt.mode, "listing_page_bottom_right");
 assert.equal(receipt.receiptUrl, "https://miamidade.county-taxes.test/receipts/2025-paid.pdf");
 
+const grantStreetPrint = discoverTaxCollectorReceipt({
+  listingUrl: "https://county-taxes.net/iframe-taxsys/miamidade.county-taxes.com/govhub/property-tax/account/bills/2025",
+  listingHtml: `<table><tr><td>Receipt #0217-26-000475</td><td><a href="/iframe-taxsys/miamidade.county-taxes.com/govhub/property-tax/account/bills/2025/print">Print (PDF)</a></td></tr></table>`,
+});
+assert.equal(grantStreetPrint.receiptUrl, "https://county-taxes.net/iframe-taxsys/miamidade.county-taxes.com/govhub/property-tax/account/bills/2025/print");
+
 const noReceipt = discoverTaxCollectorReceipt({
   listingUrl: "https://www.browserbase.com/navigation-blocked",
   listingHtml: `
@@ -28,6 +34,15 @@ const noReceipt = discoverTaxCollectorReceipt({
   `,
 });
 assert.equal(noReceipt, null);
+
+const officialRecords = parseOfficialRecordsResults(`
+  Clerk's File Number: 2011 R 594619, Group: 1 Party Name BERRY MARIE M / EUGENE MICHELET Address 401 NW 77 ST Document Type QUIT CLAIM DEED - QCD Rec Date 9/6/2011 Rec Book/Page 27815/1671 Plat Book/Page 7/1190
+  Clerk's File Number: 2012 R 691833, Group: 1 Party Name EUGENE MICHELET / EUGENE MICHELET Address 401 NW 77 ST Document Type QUIT CLAIM DEED - QCD Rec Date 9/28/2012 Rec Book/Page 28291/3916 Plat Book/Page 7/1190
+`);
+assert.equal(officialRecords.length, 2);
+assert.equal(officialRecords[0].clerkFileNumber, "2012 R 691833");
+assert.equal(officialRecords[0].bookPage, "28291/3916");
+assert.equal(officialRecordsAddress("401 NW 77TH ST, MIAMI, FL, 33150"), "401 NW 77 ST");
 
 const best = pickBestObituaryLink([
   { url: "https://example.com/profile", text: "social profile" },
@@ -69,6 +84,11 @@ assert.equal(pickBestObituaryLink([
   { url: "https://www2.miamidadeclerk.gov/marriage/example", text: "Marriage license record" },
 ]), null);
 
+assert.equal(obituaryIdentityMatches("MICHELET EUGENE", "Eugene Michelet obituary, Miami, Florida"), true);
+assert.equal(obituaryIdentityMatches("MICHELET EUGENE", "Timothy Flowers obituary, Miami, Florida"), false);
+assert.equal(obituaryIdentityMatches("MICHELET EUGENE", "Michelet family memorial"), false);
+assert.equal(obituaryIdentityMatches("MICHELET EUGENE", "Eugene chapel serves families. Michelet family memorial."), false);
+
 const dates = extractDateSignals("Example Owner was born March 4, 1942. She passed away January 2, 2024 in Miami.");
 assert.equal(dates.dateOfBirth, "March 4, 1942");
 assert.equal(dates.dateOfDeath, "January 2, 2024");
@@ -77,4 +97,4 @@ const uppercaseRangeDates = extractDateSignals("OBITUARY Annie F. Hawkins FEBRUA
 assert.equal(uppercaseRangeDates.dateOfBirth, "February 7, 1937");
 assert.equal(uppercaseRangeDates.dateOfDeath, "June 23, 2014");
 
-console.log(JSON.stringify({ ok: true, checks: ["tax_receipt", "tax_receipt_false_positive_guard", "obituary_link", "obituary_false_positive_guard", "search_redirect_unwrap", "search_page_guard", "date_signals", "obituary_header_date_range"] }, null, 2));
+console.log(JSON.stringify({ ok: true, checks: ["tax_receipt", "grant_street_print_receipt", "tax_receipt_false_positive_guard", "official_records", "obituary_link", "obituary_false_positive_guard", "search_redirect_unwrap", "search_page_guard", "obituary_identity_guard", "date_signals", "obituary_header_date_range"] }, null, 2));

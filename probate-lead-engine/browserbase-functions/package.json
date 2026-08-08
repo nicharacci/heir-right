@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check src/source-helpers.mjs && node --check src/tax-collector-receipt.mjs && node --check src/vital-obituary-review.mjs && node test/contracts.test.mjs"
+    "check": "node --check src/source-helpers.mjs && node --check src/tax-collector-receipt.mjs && node --check src/official-records-discovery.mjs && node --check src/vital-obituary-review.mjs && node test/contracts.test.mjs"
   },
   "dependencies": {
     "@browserbasehq/sdk-functions": "latest",

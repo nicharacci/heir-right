@@ -38,14 +38,14 @@ export async function generateS45Backstory(env: S45NousEnv, input: { ownerName: 
   if (!input.obituarySnapshot) throw new Error("nous_backstory_source_missing");
   const prompt = [
     "Write one concise professional Back Story for a Discovery Family Tree.",
-    "Use only the supplied obituary facts in concise, professional Family Tree style. Keep it below 500 characters.",
+    "Use only the supplied verified facts in concise, professional Family Tree style. Keep it below 500 characters.",
     "Write finished factual prose, never a report extract.",
     "Do not state or imply legal status, inheritance, ownership, or entitlement.",
     "Do not include a heading, citation, source text, or analysis.",
     "Subject: " + input.ownerName,
     "DOB: " + input.dateOfBirth,
     "DOD: " + input.dateOfDeath,
-    "Verified obituary source text: " + input.obituarySnapshot,
+    "Verified source facts: " + input.obituarySnapshot,
   ].join("\n");
   const response = await fetch(apiBase + "/chat/completions", {
     method: "POST",
@@ -53,10 +53,10 @@ export async function generateS45Backstory(env: S45NousEnv, input: { ownerName: 
     body: JSON.stringify({
       model,
       messages: [
-        { role: "system", content: "Draft a concise, factual Discovery Family Tree Back Story from verified obituary evidence only. Never add legal conclusions, unsupported facts, headings, citations, or analysis." },
+        { role: "system", content: "Draft a concise, factual Discovery Family Tree Back Story from verified evidence only. Never add legal conclusions, unsupported facts, headings, citations, or analysis." },
         { role: "user", content: prompt },
       ],
-      max_tokens: 160,
+      max_tokens: 800,
       temperature: 0.2,
     }),
   });

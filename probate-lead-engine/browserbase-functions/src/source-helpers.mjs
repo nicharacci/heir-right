@@ -2,6 +2,14 @@ export function normalizeWhitespace(value = "") {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+export function officialRecordsAddress(value = "") {
+  return normalizeWhitespace(value)
+    .replace(/,?\s+(MIAMI|MIAMI GARDENS|HIALEAH|HOMESTEAD|FLORIDA CITY|NORTH MIAMI)(?:,?\s+FL)?(?:,?\s+\d{5}(?:-\d{4})?)?$/i, "")
+    .replace(/,.*$/, "")
+    .replace(/\b(\d+)(?:ST|ND|RD|TH)\b/gi, "$1")
+    .trim();
+}
+
 export function stripTags(value = "") {
   return normalizeWhitespace(String(value || "")
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
@@ -67,6 +75,7 @@ export function taxReceiptCandidateScore(candidate = {}) {
   let score = 0;
   if (/local\s+business\s+tax|lbt\s+tax\s+receipt|business-tax|business\s+tax\s+receipt/.test(haystack)) score -= 25;
   if (/receipt|receipts/.test(haystack) && /(print|payment|paid|tax\s*-?\s*bill|taxbill|real\s+estate|property|parcel|folio|ad\s+valorem)/.test(haystack)) score += 12;
+  if (/\/print(?:[/?#]|$)|print\s*\(pdf\)|print\s+pdf/.test(haystack)) score += 14;
   if (/tax\s*-?\s*bill|taxbill/.test(haystack)) score += 8;
   if (/print/.test(haystack) && /(receipt|bill)/.test(haystack)) score += 6;
   if (/payment/.test(haystack) && /(receipt|tax\s*-?\s*bill|taxbill)/.test(haystack)) score += 4;
@@ -107,6 +116,25 @@ export function discoverTaxCollectorReceipt(input = {}) {
   };
 }
 
+export function parseOfficialRecordsResults(text = "") {
+  const normalized = normalizeWhitespace(text);
+  const records = [];
+  const pattern = /Clerk's File Number:\s*([^,]+),\s*Group:\s*(\S+)\s+Party Name\s+(.+?)\s+Address\s+(.+?)\s+Document Type\s+(.+?)\s+Rec Date\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+Rec Book\/Page\s+(\S+)(?=\s+Plat Book\/Page)/gi;
+  let match;
+  while ((match = pattern.exec(normalized)) !== null) {
+    records.push({
+      clerkFileNumber: normalizeWhitespace(match[1]),
+      group: normalizeWhitespace(match[2]),
+      partyName: normalizeWhitespace(match[3]),
+      address: normalizeWhitespace(match[4]),
+      documentType: normalizeWhitespace(match[5]),
+      recordedDate: normalizeWhitespace(match[6]),
+      bookPage: normalizeWhitespace(match[7]),
+    });
+  }
+  return records.sort((a, b) => Date.parse(b.recordedDate) - Date.parse(a.recordedDate));
+}
+
 export function obituaryLinkScore(candidate = {}) {
   const haystack = `${candidate.url || ""} ${candidate.text || ""}`.toLowerCase();
   let hostname = "";
@@ -132,6 +160,19 @@ export function rankObituaryLinks(candidates = []) {
     .map((candidate) => ({ ...candidate, score: obituaryLinkScore(candidate) }))
     .sort((a, b) => b.score - a.score)
     .filter((candidate) => candidate.score > 0);
+}
+
+export function obituaryIdentityMatches(subject = "", destination = "") {
+  const tokens = normalizeWhitespace(subject)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s'-]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length >= 2 && !["estate", "of", "the"].includes(token));
+  if (tokens.length < 2) return false;
+  const haystack = ` ${normalizeWhitespace(destination).toLowerCase().replace(/[^a-z0-9\s'-]/g, " ").replace(/\s+/g, " ")} `;
+  const phrases = [tokens, [...tokens].reverse(), [...tokens.slice(1), tokens[0]]]
+    .map((parts) => ` ${parts.join(" ")} `);
+  return [...new Set(phrases)].some((phrase) => haystack.includes(phrase));
 }
 
 export function extractDateSignals(text = "") {

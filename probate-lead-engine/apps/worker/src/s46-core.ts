@@ -154,6 +154,14 @@ export function identitiesMatch(left: string, right: string): boolean {
   return common.length >= Math.min(2, a.length, b.length) && common.length / Math.max(a.length, b.length) >= 0.5;
 }
 
+export function obituaryIdentityMatches(subject: string, destination: string): boolean {
+  const tokens = subject.toLowerCase().replace(/\b(estate|est|of|the|deceased|decedent)\b/g, " ").replace(/[^a-z0-9\s'-]/g, " ").split(/\s+/).filter((token) => token.length > 1);
+  if (tokens.length < 2) return false;
+  const haystack = ` ${destination.toLowerCase().replace(/[^a-z0-9\s'-]/g, " ").replace(/\s+/g, " ")} `;
+  const phrases = [tokens, [...tokens].reverse(), [...tokens.slice(1), tokens[0]]].map((parts) => ` ${parts.join(" ")} `);
+  return [...new Set(phrases)].some((phrase) => haystack.includes(phrase));
+}
+
 function fieldFromPages(pages: string[], labels: string[], limit = 240): { value: string; page: number; excerpt: string } | null {
   for (let index = 0; index < pages.length; index += 1) {
     for (const label of labels) {
@@ -170,6 +178,14 @@ function allUnique(value: Iterable<string>, limit = 5): string[] {
   return [...new Set([...value].map((item) => item.replace(/\s+/g, " ").trim()).filter(Boolean))].slice(0, limit);
 }
 
+function countyFromPages(pages: string[]): { value: string; page: number; excerpt: string } | null {
+  for (let index = 0; index < pages.length; index += 1) {
+    const match = pages[index].match(/\((MIAMI[- ]DADE)\)/i);
+    if (match?.[1]) return { value: "Miami-Dade", page: index + 1, excerpt: match[0] };
+  }
+  return null;
+}
+
 export async function mapIdiPages(pages: string[], sourceSha256: string, retrievedAt: string): Promise<S46MappedDocument> {
   const fields = {
     owner: fieldFromPages(pages, ["decedent name", "subject name", "owner of record", "owner", "report result"]),
@@ -178,7 +194,7 @@ export async function mapIdiPages(pages: string[], sourceSha256: string, retriev
     propertyAddress: fieldFromPages(pages, ["property address", "current address", "address"]),
     mailingAddress: fieldFromPages(pages, ["mailing address"]),
     folio: fieldFromPages(pages, ["folio", "parcel id", "parcel number"]),
-    county: fieldFromPages(pages, ["county"]),
+    county: countyFromPages(pages) || fieldFromPages(pages, ["county"]),
   };
   const evidence: S46MappedDocument["evidence"] = {};
   for (const [key, match] of Object.entries(fields)) {
@@ -188,11 +204,11 @@ export async function mapIdiPages(pages: string[], sourceSha256: string, retriev
   const heirs: S46Heir[] = [];
   for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
     const page = pages[pageIndex];
-    const starts = [...page.matchAll(/(?:potential\s+heir|relative|associate|possible\s+relative)\s*[:#-]?\s*([A-Z][A-Za-z .,'-]{2,90})/gi)];
+    const starts = [...page.matchAll(/(?:potential\s+heir|relative|associate|possible\s+relative)\b\s*[:#-]\s*([A-Z][A-Za-z .,'-]{2,90})/gi)];
     for (const start of starts) {
       const excerpt = page.slice(start.index || 0, (start.index || 0) + 2600);
       const name = start[1].replace(/\s+/g, " ").trim().replace(/\s+(?:age|born|phone|email|address)\b.*$/i, "");
-      if (!name || /^(information|search|history|section)$/i.test(name)) continue;
+      if (!name || /^(information|search|history|section|s\s+and\s+associates)$/i.test(name)) continue;
       const age = excerpt.match(/\bage\s*[:#-]?\s*(\d{1,3})\b/i)?.[1] || "";
       const email = excerpt.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i)?.[0] || "";
       const phone = excerpt.match(/\b(?:\+?1[-. ]?)?(?:\(\d{3}\)|\d{3})[-. ]?\d{3}[-. ]?\d{4}\b/)?.[0] || "";
