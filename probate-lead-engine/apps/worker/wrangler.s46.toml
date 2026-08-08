@@ -1,0 +1,37 @@
+name = "heirright-s46-sandbox-discovery"
+main = "src/s46-discovery-worker.ts"
+compatibility_date = "2025-01-15"
+compatibility_flags = ["nodejs_compat"]
+account_id = "0accc9c5d935b32672a8df2b21ee2435"
+workers_dev = true
+
+[vars]
+S46_SANDBOX_LABEL = "s46-sandbox"
+BROWSERBASE_API_BASE = "https://api.browserbase.com"
+BROWSERBASE_PROJECT_ID = "76e87277-1612-4e78-88ba-094927c25149"
+OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID = "b7d041ce-5505-4364-996d-7ebdf5823048"
+NOUS_BASE_URL = "https://inference-api.nousresearch.com/v1"
+NOUS_MODEL = "Hermes-3-Llama-3.1-70B:free"
+NOUS_FREE_TIER_ONLY = "true"
+IDI_API_ENABLED = "false"
+CLOSING_ENABLED = "false"
+
+[[d1_databases]]
+binding = "S46_DB"
+database_name = "s46-sandbox-discovery"
+database_id = "S46_D1_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "S46_ARTIFACTS"
+bucket_name = "s46-sandbox-discovery-private"
+
+[[queues.producers]]
+binding = "S46_DISCOVERY_QUEUE"
+queue = "s46-sandbox-discovery"
+
+[[queues.consumers]]
+queue = "s46-sandbox-discovery"
+dead_letter_queue = "s46-sandbox-discovery-dlq"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3

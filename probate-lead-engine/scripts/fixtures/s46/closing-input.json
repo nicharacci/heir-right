@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "discoveryJobId": "job_fixture_001",
+  "discoveryArtifactSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "verifiedFieldReceiptIds": ["receipt_fixture_001"]
+}

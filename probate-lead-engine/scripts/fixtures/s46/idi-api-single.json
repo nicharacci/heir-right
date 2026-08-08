@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "provider": "idi_api",
+  "providerDocumentId": "fixture-document-001",
+  "sourceUrl": "https://idi.example.invalid/documents/fixture-document-001.pdf",
+  "expectedMimeType": "application/pdf"
+}

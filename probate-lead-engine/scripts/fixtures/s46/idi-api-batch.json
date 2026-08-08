@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "provider": "idi_api",
+  "documents": [
+    {
+      "providerDocumentId": "fixture-document-001",
+      "sourceUrl": "https://idi.example.invalid/documents/fixture-document-001.pdf",
+      "order": 0
+    },
+    {
+      "providerDocumentId": "fixture-document-002",
+      "sourceUrl": "https://idi.example.invalid/documents/fixture-document-002.pdf",
+      "order": 1
+    }
+  ]
+}
