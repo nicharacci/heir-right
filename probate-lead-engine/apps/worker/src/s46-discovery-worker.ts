@@ -1,6 +1,6 @@
 import { acquireTaxCollectorReceipt } from "./adapters/tax-collector-receipt";
 import { fetchOfficialRecordsCommercialApiFacts } from "./adapters/clerk-commercial-api";
-import { runS45VitalObituary } from "./s45-browserbase";
+import { runS46VitalObituary } from "./s45-browserbase";
 import { generateS45Backstory } from "./s45-nous";
 import { runS46OfficialRecords, type S46OfficialFinding } from "./s46-browserbase-official";
 import {
@@ -320,30 +320,31 @@ async function recentObituaryNoMatch(env: Env, jobId: string, document: S46Mappe
 }
 
 async function runObituaryCheck(env: Env, jobId: string, document: S46MappedDocument): Promise<void> {
-  // Google search results cannot prove a fact. The existing Browserbase seam
-  // discovers candidates, then returns evidence from the direct destination.
+  // Search results cannot prove a fact. Browserbase Search discovers Google
+  // candidates. Direct destination pages supply evidence. A browser session
+  // is a fallback for blocked destinations.
   const recentNoMatch = await recentObituaryNoMatch(env, jobId, document);
   if (recentNoMatch) {
     await sourceCheck(env, jobId, "direct_obituary", "checked_not_found", { code: "recent_verified_no_match", priorJobId: recentNoMatch.jobId, checkedAt: recentNoMatch.checkedAt });
     return;
   }
-  if (!env.BROWSERBASE_API_KEY || !env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID) {
+  if (!env.BROWSERBASE_API_KEY) {
     await sourceCheck(env, jobId, "direct_obituary", "unconfigured", { code: "browserbase_not_configured" });
     throw new Error("unconfigured:direct_obituary");
   }
   try {
-    const result = await runS45VitalObituary(env, { ownerName: document.owner, county: document.county, propertyAddress: document.propertyAddress });
+    const result = await runS46VitalObituary(env, { ownerName: document.owner, county: document.county, propertyAddress: document.propertyAddress });
     if (result.sourceUrl && !obituaryIdentityMatches(document.owner, `${result.sourceUrl} ${result.obituarySnapshot || ""}`)) throw new Error("identity_mismatch:direct_obituary");
     const proof = { source: "direct_obituary" as const, sourceUrl: result.sourceUrl, retrievedAt: now(), sha256: await sha256(new TextEncoder().encode(result.obituarySnapshot || result.sourceUrl)), excerpt: (result.obituarySnapshot || "Direct obituary source checked.").slice(0, 1200) };
     applyVerifiedValue(document, "dateOfBirth", result.dateOfBirth || "", proof);
     applyVerifiedValue(document, "dateOfDeath", result.dateOfDeath || "", proof);
     applyVerifiedValue(document, "obituaryUrl", result.sourceUrl || "", proof);
     await observation(env, jobId, "direct_obituary", "vital_record", { dateOfBirth: result.dateOfBirth || "", dateOfDeath: result.dateOfDeath || "", sourceUrl: result.sourceUrl || "" }, proof);
-    await sourceCheck(env, jobId, "direct_obituary", result.sourceUrl ? "found" : "checked_not_found", { invocationId: result.invocationId || null, sessionId: result.sessionId || null });
+    await sourceCheck(env, jobId, "direct_obituary", result.sourceUrl ? "found" : "checked_not_found", { accessMode: result.accessMode || "browserbase_function", searchResultCount: result.searchResultCount || 0, checkedCandidateCount: result.checkedCandidateCount || 0, invocationId: result.invocationId || null, sessionId: result.sessionId || null });
   } catch (error) {
     const code = errorCode(error);
     if (/not_found|no_match|no_candidate/i.test(code)) { await sourceCheck(env, jobId, "direct_obituary", "checked_not_found", { code: "no_supported_match" }); return; }
-    const outcome: S46SourceOutcome = /conflict/i.test(code) ? "conflict" : /identity/i.test(code) ? "identity_mismatch" : /blocked|billing|rate/i.test(code) ? "blocked" : "provider_failed";
+    const outcome: S46SourceOutcome = /conflict/i.test(code) ? "conflict" : /identity/i.test(code) ? "identity_mismatch" : /blocked|billing|rate|quota|minutes|402/i.test(code) ? "blocked" : "provider_failed";
     await sourceCheck(env, jobId, "direct_obituary", outcome, { code });
     throw new Error(`${outcome}:direct_obituary`);
   }

@@ -12,6 +12,9 @@ export type S45VitalFinding = {
   obituarySnapshot?: string;
   invocationId?: string;
   sessionId?: string;
+  accessMode?: "direct_destination" | "browserbase_function";
+  searchResultCount?: number;
+  checkedCandidateCount?: number;
 };
 
 const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
@@ -28,7 +31,7 @@ function approvedObituaryResult(value: unknown): string {
   return /obituar|memorial|death-notice|tribute|legacy\.com|findagrave\.com|everloved\.com|dignitymemorial\.com/i.test(`${url} ${title}`) ? url : "";
 }
 
-async function discoverSourceUrls(apiBase: string, apiKey: string, input: { ownerName: string; county?: string }): Promise<string[]> {
+export async function discoverSourceUrls(apiBase: string, apiKey: string, input: { ownerName: string; county?: string }): Promise<string[]> {
   const ownerName = text(input.ownerName).slice(0, 100);
   const countyInput = text(input.county);
   const county = /miami[- ]dade/i.test(countyInput) ? "Miami-Dade" : countyInput.slice(0, 40) || "Miami-Dade";
@@ -41,6 +44,84 @@ async function discoverSourceUrls(apiBase: string, apiKey: string, input: { owne
   if (!response.ok) throw new Error(`browserbase_search_failed_${response.status}`);
   const results = record(await response.json().catch(() => ({}))).results;
   return [...new Set((Array.isArray(results) ? results : []).map(approvedObituaryResult).filter(Boolean))].slice(0, 8);
+}
+
+function stripHtml(value: string): string {
+  return value
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;|&#34;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function directIdentityMatches(subject: string, destination: string): boolean {
+  const tokens = subject.toLowerCase().replace(/\b(estate|est|of|the|deceased|decedent)\b/g, " ").replace(/[^a-z0-9\s'-]/g, " ").split(/\s+/).filter((token) => token.length > 1);
+  if (tokens.length < 2) return false;
+  const haystack = ` ${destination.toLowerCase().replace(/[^a-z0-9\s'-]/g, " ").replace(/\s+/g, " ")} `;
+  const phrases = [tokens, [...tokens].reverse(), [...tokens.slice(1), tokens[0]]].map((parts) => ` ${parts.join(" ")} `);
+  return [...new Set(phrases)].some((phrase) => haystack.includes(phrase));
+}
+
+function locationSignals(input: { county?: string; propertyAddress?: string }): string[] {
+  const address = text(input.propertyAddress).toLowerCase();
+  const county = text(input.county).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const knownCity = address.match(/\b(miami gardens|florida city|north miami|miami|hialeah|homestead)\b/)?.[1] || "";
+  return [...new Set([knownCity, county, county.replace(/\s+county$/, "")].filter((value) => value.length >= 5))];
+}
+
+function locationMatches(input: { county?: string; propertyAddress?: string }, destination: string): boolean {
+  const haystack = destination.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  const signals = locationSignals(input);
+  return signals.length > 0 && signals.some((signal) => haystack.includes(signal));
+}
+
+function extractDateSignals(value: string): { dateOfBirth?: string; dateOfDeath?: string } {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  const months = "January|February|March|April|May|June|July|August|September|October|November|December";
+  const date = `((?:${months})\\s+\\d{1,2},\\s+\\d{4}|\\d{1,2}/\\d{1,2}/\\d{2,4}|\\d{4}-\\d{2}-\\d{2})`;
+  const after = (keywords: string[]) => normalized.match(new RegExp(`\\b(?:${keywords.join("|")})\\b[^.]{0,80}?${date}`, "i"))?.[1];
+  const range = normalized.match(new RegExp(`(${date})\\s*[\\u2013\\u2014-]\\s*(${date})`, "i"));
+  return {
+    ...(after(["born", "birth", "dob"]) || range?.[2] ? { dateOfBirth: after(["born", "birth", "dob"]) || range?.[2] } : {}),
+    ...(after(["died", "death", "dod", "passed away", "deceased"]) || range?.[4] ? { dateOfDeath: after(["died", "death", "dod", "passed away", "deceased"]) || range?.[4] } : {}),
+  };
+}
+
+async function directDestinationFinding(sourceUrls: string[], input: { ownerName: string; county?: string; propertyAddress?: string }): Promise<{ finding: S45VitalFinding | null; fetchedCount: number }> {
+  let fetchedCount = 0;
+  for (const sourceUrl of sourceUrls.slice(0, 8)) {
+    let response: Response;
+    try {
+      response = await fetch(sourceUrl, { redirect: "follow", headers: { accept: "text/html,application/xhtml+xml", "user-agent": "HeirRight-S46/1.0" } });
+    } catch { continue; }
+    const contentType = response.headers.get("content-type") || "";
+    if (!response.ok || !/text\/html|application\/xhtml\+xml/i.test(contentType)) continue;
+    const html = (await response.text()).slice(0, 1_000_000);
+    fetchedCount += 1;
+    const title = stripHtml(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "");
+    const body = stripHtml(html).slice(0, 20_000);
+    const finalUrl = response.url.startsWith("https://") ? response.url : sourceUrl;
+    const identityText = `${title} ${finalUrl} ${body.slice(0, 6000)}`;
+    if (!directIdentityMatches(input.ownerName, identityText) || !locationMatches(input, identityText)) continue;
+    const dates = extractDateSignals(body);
+    return {
+      fetchedCount,
+      finding: {
+        sourceUrl: finalUrl,
+        obituarySnapshot: body.slice(0, 1200),
+        ...dates,
+        accessMode: "direct_destination",
+        searchResultCount: sourceUrls.length,
+        checkedCandidateCount: fetchedCount,
+      },
+    };
+  }
+  return { finding: null, fetchedCount };
 }
 
 async function waitForResult(invocation: Record<string, unknown>, apiBase: string, apiKey: string): Promise<Record<string, unknown>> {
@@ -101,6 +182,25 @@ export async function runS45VitalObituary(
     ...(text(result.obituarySnapshot) ? { obituarySnapshot: text(result.obituarySnapshot).slice(0, 1200) } : {}),
     ...(text(completed.id) ? { invocationId: text(completed.id) } : {}),
     ...(text(completed.sessionId) ? { sessionId: text(completed.sessionId) } : {}),
+    accessMode: "browserbase_function",
   };
   return finding;
+}
+
+/** Uses Browserbase Search for Google candidate discovery and fetches direct destinations without browser minutes. */
+export async function runS46VitalObituary(
+  env: S45BrowserbaseEnv,
+  input: { ownerName: string; county?: string; propertyAddress?: string },
+): Promise<S45VitalFinding> {
+  const apiKey = text(env.BROWSERBASE_API_KEY);
+  if (!apiKey) throw new Error("browserbase_vital_workflow_unconfigured");
+  const apiBase = text(env.BROWSERBASE_API_BASE) || "https://api.browserbase.com";
+  const normalizedApiBase = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
+  const sourceUrls = await discoverSourceUrls(normalizedApiBase, apiKey, input);
+  if (!sourceUrls.length) return { sourceUrl: "", accessMode: "direct_destination", searchResultCount: 0, checkedCandidateCount: 0 };
+  const direct = await directDestinationFinding(sourceUrls, input);
+  if (direct.finding) return direct.finding;
+  if (direct.fetchedCount > 0) return { sourceUrl: "", accessMode: "direct_destination", searchResultCount: sourceUrls.length, checkedCandidateCount: direct.fetchedCount };
+  if (!text(env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID)) throw new Error("browserbase_vital_destination_access_blocked");
+  return runS45VitalObituary(env, input);
 }
