@@ -375,6 +375,12 @@ async function finishFields(env: Env, jobId: string, document: S46MappedDocument
         .bind(identifier("receipt"), jobId, `heirs.${heirIndex}.${key}`, populated ? 1 : 0, proof?.source || null, proof?.page || null, populated ? null : "completed_check_no_supported_value", now()).run();
     }
   }
+  for (const [groupIndex, group] of (document.heirGroups || []).entries()) {
+    for (const key of ["relationship", "reportedCount"] as const) {
+      await env.S46_DB.prepare("INSERT INTO s46_field_receipts(id,job_id,field_key,populated,evidence_source,evidence_page,blank_reason,created_at) VALUES(?,?,?,?,?,?,?,?)")
+        .bind(identifier("receipt"), jobId, `heirGroups.${groupIndex}.${key}`, 1, group.evidence.source, group.evidence.page || null, null, now()).run();
+    }
+  }
   await env.S46_DB.prepare("UPDATE s46_jobs SET mapping_receipt_json=?,updated_at=? WHERE id=?").bind(JSON.stringify(receipt), now(), jobId).run();
 }
 
@@ -392,13 +398,25 @@ async function processJob(env: Env, jobId: string): Promise<void> {
   if (object.httpMetadata?.contentType !== source.mime_type || bytes.byteLength !== source.byte_count || await sha256(buffer) !== source.sha256) throw new Error("source_altered");
   const inspection = await inspectPdf(bytes);
   if (inspection.pageCount !== source.page_count) throw new Error("source_page_count_changed");
-  const document = job.private_mapping_json ? JSON.parse(job.private_mapping_json) as S46MappedDocument : await mapIdiPages(inspection.pages, source.sha256, now());
+  const parsedDocument = job.private_mapping_json ? JSON.parse(job.private_mapping_json) as S46MappedDocument : await mapIdiPages(inspection.pages, source.sha256, now());
+  const document: S46MappedDocument = {
+    ...parsedDocument,
+    heirs: parsedDocument.heirs || [],
+    heirGroups: parsedDocument.heirGroups || [],
+  };
+  const reportedCandidateCount = document.heirGroups.reduce((sum, group) => sum + group.reportedCount, 0);
   if (!await sourceFinished(env, jobId, "idi_core")) await sourceCheck(env, jobId, "idi_core", document.owner ? "found" : "checked_not_found", { pageCount: inspection.pageCount, mappedFieldCount: Object.values(document.evidence).filter(Boolean).length });
-  if (!await sourceFinished(env, jobId, "idi_contacts")) await sourceCheck(env, jobId, "idi_contacts", document.heirs.length ? "found" : "checked_not_found", { heirCount: document.heirs.length, populatedCellCount: document.heirs.reduce((sum, heir) => sum + [heir.name, heir.age, heir.email, heir.phone, heir.addresses.length ? "yes" : ""].filter(Boolean).length, 0) });
+  if (!await sourceFinished(env, jobId, "idi_contacts")) await sourceCheck(env, jobId, "idi_contacts", document.heirs.length || document.heirGroups.length ? "found" : "checked_not_found", {
+    namedHeirCount: document.heirs.length,
+    heirGroupCount: document.heirGroups.length,
+    reportedCandidateCount,
+    populatedCellCount: document.heirs.reduce((sum, heir) => sum + [heir.name, heir.age, heir.email, heir.phone, heir.addresses.length ? "yes" : ""].filter(Boolean).length, 0) + document.heirGroups.length * 2,
+  });
   if (!document.owner) throw new Error("required_field_missing:owner");
   if (!job.private_mapping_json) {
     for (const [field, proof] of Object.entries(document.evidence)) if (proof) await observation(env, jobId, "idi_core", field, (document as unknown as Record<string, unknown>)[field], proof);
     for (const [heirIndex, heir] of document.heirs.entries()) for (const [field, proof] of Object.entries(heir.evidence)) if (proof) await observation(env, jobId, "idi_contacts", `heirs.${heirIndex}.${field}`, heir[field as keyof typeof heir], proof);
+    for (const [groupIndex, group] of document.heirGroups.entries()) await observation(env, jobId, "idi_contacts", `heirGroups.${groupIndex}`, { relationship: group.relationship, reportedCount: group.reportedCount }, group.evidence);
   }
   await savePrivateMapping(env, jobId, document);
   if (!await sourceFinished(env, jobId, "property_appraiser")) { await runPropertyCheck(env, jobId, document); await savePrivateMapping(env, jobId, document); }
@@ -406,7 +424,7 @@ async function processJob(env: Env, jobId: string): Promise<void> {
   if (!await sourceFinished(env, jobId, "official_records")) { await runOfficialCheck(env, jobId, document); await savePrivateMapping(env, jobId, document); }
   if (!await sourceFinished(env, jobId, "direct_obituary")) { await runObituaryCheck(env, jobId, document); await savePrivateMapping(env, jobId, document); }
   await finishFields(env, jobId, document);
-  await event(env, jobId, "mapped", { populatedFields: Object.values(document).filter((value) => typeof value === "string" && value).length, heirCount: document.heirs.length });
+  await event(env, jobId, "mapped", { populatedFields: Object.values(document).filter((value) => typeof value === "string" && value).length, namedHeirCount: document.heirs.length, reportedCandidateCount });
   const pdf = await renderS46DiscoveryPdf(document);
   await event(env, jobId, "rendered", { byteCount: pdf.byteLength });
   const artifactId = identifier("artifact");

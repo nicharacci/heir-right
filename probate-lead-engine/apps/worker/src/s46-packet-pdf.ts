@@ -143,7 +143,13 @@ export async function renderS46DiscoveryPdf(input: S46MappedDocument, generatedA
   y -= 5;
 
   heading("Potential Heirs");
-  if (!input.heirs.length) line("", "");
+  const heirGroups = input.heirGroups || [];
+  if (!input.heirs.length && !heirGroups.length) line("", "");
+  heirGroups.forEach((group) => {
+    const countLabel = `${group.reportedCount} ${group.reportedCount === 1 ? "record" : "records"} found`;
+    line(`${group.relationship} category`, countLabel);
+  });
+  if (heirGroups.length && input.heirs.length) y -= 8;
   input.heirs.forEach((heir, index) => {
     ensure(130);
     line(`${index + 1}. Name`, heir.name, { boldValue: true });

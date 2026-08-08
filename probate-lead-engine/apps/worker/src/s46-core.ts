@@ -39,6 +39,12 @@ export type S46Heir = {
   evidence: Partial<Record<"name" | "age" | "email" | "phone" | "addresses", S46Evidence>>;
 };
 
+export type S46HeirGroup = {
+  relationship: "Spouse" | "Child" | "Other Relative" | "In-Law";
+  reportedCount: number;
+  evidence: S46Evidence;
+};
+
 export type S46MappedDocument = {
   owner: string;
   dateOfBirth: string;
@@ -53,6 +59,7 @@ export type S46MappedDocument = {
   deedSummary: string;
   backStory: string;
   heirs: S46Heir[];
+  heirGroups: S46HeirGroup[];
   evidence: Partial<Record<string, S46Evidence>>;
 };
 
@@ -231,6 +238,25 @@ export async function mapIdiPages(pages: string[], sourceSha256: string, retriev
     }
   }
   const uniqueHeirs = [...new Map(heirs.map((heir) => [heir.name.toLowerCase().replace(/[^a-z0-9]/g, ""), heir])).values()];
+  const heirGroups: S46HeirGroup[] = [];
+  for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+    const page = pages[pageIndex];
+    const matches = page.matchAll(/(?:^|\n)\s*(Spouse|Child|Other Relative|In-Law)\s*(?:\n|\s)+\s*(\d{1,3})\s+found(?:\b|[_a-z])/gi);
+    for (const match of matches) {
+      const relationship = match[1].replace(/\b\w/g, (character) => character.toUpperCase()) as S46HeirGroup["relationship"];
+      const reportedCount = Number(match[2]);
+      if (!Number.isSafeInteger(reportedCount) || reportedCount < 1) continue;
+      const evidence: S46Evidence = {
+        source: "idi_contacts",
+        page: pageIndex + 1,
+        retrievedAt,
+        sha256: sourceSha256,
+        excerpt: `${relationship}: ${reportedCount} found`,
+      };
+      heirGroups.push({ relationship, reportedCount, evidence });
+    }
+  }
+  const uniqueHeirGroups = [...new Map(heirGroups.map((group) => [group.relationship.toLowerCase(), group])).values()];
   return {
     owner: fields.owner?.value.replace(/^report result\s*/i, "").replace(/\bshow alias\b.*$/i, "").replace(/\s+\(\d{1,3}\).*$/, "").trim() || "",
     dateOfBirth: fields.dateOfBirth?.value || "",
@@ -245,6 +271,7 @@ export async function mapIdiPages(pages: string[], sourceSha256: string, retriev
     deedSummary: "",
     backStory: "",
     heirs: uniqueHeirs,
+    heirGroups: uniqueHeirGroups,
     evidence,
   };
 }
@@ -280,6 +307,15 @@ export function publicMappingReceipt(document: S46MappedDocument): Record<string
     heirs: document.heirs.map((heir, index) => ({
       index,
       cells: ["name", "age", "email", "phone", "addresses"].map((key) => ({ key, populated: Boolean(Array.isArray(heir[key as keyof S46Heir]) ? (heir[key as "addresses"] as string[]).length : String(heir[key as keyof S46Heir] || "")), evidenceSource: heir.evidence[key as keyof S46Heir["evidence"]]?.source || null })),
+    })),
+    heirGroups: (document.heirGroups || []).map((group, index) => ({
+      index,
+      relationship: {
+        populated: Boolean(group.relationship),
+        evidenceSource: group.evidence.source,
+        evidencePage: group.evidence.page || null,
+      },
+      reportedCount: { populated: group.reportedCount > 0, evidenceSource: group.evidence.source, evidencePage: group.evidence.page || null },
     })),
   };
 }

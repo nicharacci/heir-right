@@ -35,10 +35,17 @@ async function main(): Promise<void> {
   assert.equal(mapped.heirs[0].addresses.length, 1);
   assert.equal(mapped.heirs[0].evidence.phone?.page, 2);
   const collapsedIdi = await mapIdiPages([
-    "Subject: MICHELET EUGENE\nLikely Current Address: 401 NW 77TH ST, MIAMI, FL, 33150 (MIAMI-DADE)\nAddress (County/Parish/Borough) History:\nLikely relatives and associates\nSpouse\n1 found\nChild\n3 found",
+    "Subject: MICHELET EUGENE\nLikely Current Address: 401 NW 77TH ST, MIAMI, FL, 33150 (MIAMI-DADE)\nAddress (County/Parish/Borough) History:\nLikely relatives and associates\nSpouse\n1 foundexpand_less\nChild\n3 foundexpand_less\nOther Relative\n5 foundexpand_less\nIn-Law\n1 foundexpand_less\nNeighbor\n10 foundexpand_less\nUnclassified Associates\n8 foundexpand_less",
   ], sourceHash, new Date(0).toISOString());
   assert.equal(collapsedIdi.county, "Miami-Dade");
   assert.equal(collapsedIdi.heirs.length, 0);
+  assert.deepEqual(collapsedIdi.heirGroups.map((group) => ({ relationship: group.relationship, reportedCount: group.reportedCount })), [
+    { relationship: "Spouse", reportedCount: 1 },
+    { relationship: "Child", reportedCount: 3 },
+    { relationship: "Other Relative", reportedCount: 5 },
+    { relationship: "In-Law", reportedCount: 1 },
+  ]);
+  assert.equal(collapsedIdi.heirGroups[0].evidence.page, 1);
   assert.ok(identitiesMatch("Estate of Michelet Eugene", "MICHELET EUGENE"));
   assert.equal(obituaryIdentityMatches("MICHELET EUGENE", "Eugene Michelet obituary, Miami, Florida"), true);
   assert.equal(obituaryIdentityMatches("MICHELET EUGENE", "Eugene chapel serves families. Michelet family memorial."), false);
@@ -58,6 +65,13 @@ async function main(): Promise<void> {
   assert.match(text, /Offer\/Profit/i);
   assert.doesNotMatch(text, /\$100,000 Net/);
   assert.doesNotMatch(text, /Needs review|Discovery subject|internal status/i);
+  collapsedIdi.backStory = "Michelet Eugene maintained a home in Miami-Dade.";
+  const collapsedOutput = await renderS46DiscoveryPdf(collapsedIdi, "2026-08-08T12:00:00.000Z");
+  const collapsedText = (await inspectPdf(collapsedOutput)).pages.join("\n");
+  assert.match(collapsedText, /Potential Heirs/i);
+  assert.match(collapsedText, /Spouse category:\s*1 record found/i);
+  assert.match(collapsedText, /Child category:\s*3 records found/i);
+  assert.doesNotMatch(collapsedText, /Neighbor category|Unclassified Associates category/i);
   assert.equal(S46_CLOSING_ENABLED, false);
   assert.equal(S46_CLOSING_INPUT_SCHEMA.properties.version.const, 1);
   const outputHash = await sha256(output);
