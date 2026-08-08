@@ -12,7 +12,7 @@ export type S45VitalFinding = {
   obituarySnapshot?: string;
   invocationId?: string;
   sessionId?: string;
-  accessMode?: "direct_destination" | "browserbase_function";
+  accessMode?: "direct_destination" | "browserbase_fetch" | "browserbase_function";
   searchResultCount?: number;
   checkedCandidateCount?: number;
 };
@@ -92,20 +92,40 @@ function extractDateSignals(value: string): { dateOfBirth?: string; dateOfDeath?
   };
 }
 
-async function directDestinationFinding(sourceUrls: string[], input: { ownerName: string; county?: string; propertyAddress?: string }): Promise<{ finding: S45VitalFinding | null; fetchedCount: number }> {
+async function fetchDestination(apiBase: string, apiKey: string, sourceUrl: string): Promise<{ html: string; finalUrl: string; accessMode: "direct_destination" | "browserbase_fetch" } | null> {
+  try {
+    const response = await fetch(sourceUrl, { redirect: "follow", headers: { accept: "text/html,application/xhtml+xml", "user-agent": "HeirRight-S46/1.0" } });
+    const contentType = response.headers.get("content-type") || "";
+    if (response.ok && /text\/html|application\/xhtml\+xml/i.test(contentType)) {
+      return { html: (await response.text()).slice(0, 1_000_000), finalUrl: response.url.startsWith("https://") ? response.url : sourceUrl, accessMode: "direct_destination" };
+    }
+  } catch {}
+  try {
+    const response = await fetch(apiBase + "/v1/fetch", {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json", "x-bb-api-key": apiKey },
+      body: JSON.stringify({ url: sourceUrl, allowRedirects: true, allowInsecureSsl: false, proxies: false }),
+    });
+    if (!response.ok) return null;
+    const payload = record(await response.json().catch(() => ({})));
+    const statusCode = Number(payload.statusCode || 0);
+    const contentType = text(payload.contentType);
+    const content = text(payload.content);
+    if (statusCode < 200 || statusCode >= 300 || !/text\/html|application\/xhtml\+xml/i.test(contentType) || !content) return null;
+    return { html: content.slice(0, 1_000_000), finalUrl: sourceUrl, accessMode: "browserbase_fetch" };
+  } catch { return null; }
+}
+
+async function directDestinationFinding(sourceUrls: string[], input: { ownerName: string; county?: string; propertyAddress?: string }, apiBase: string, apiKey: string): Promise<{ finding: S45VitalFinding | null; fetchedCount: number }> {
   let fetchedCount = 0;
   for (const sourceUrl of sourceUrls.slice(0, 8)) {
-    let response: Response;
-    try {
-      response = await fetch(sourceUrl, { redirect: "follow", headers: { accept: "text/html,application/xhtml+xml", "user-agent": "HeirRight-S46/1.0" } });
-    } catch { continue; }
-    const contentType = response.headers.get("content-type") || "";
-    if (!response.ok || !/text\/html|application\/xhtml\+xml/i.test(contentType)) continue;
-    const html = (await response.text()).slice(0, 1_000_000);
+    const fetched = await fetchDestination(apiBase, apiKey, sourceUrl);
+    if (!fetched) continue;
+    const html = fetched.html;
     fetchedCount += 1;
     const title = stripHtml(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "");
     const body = stripHtml(html).slice(0, 20_000);
-    const finalUrl = response.url.startsWith("https://") ? response.url : sourceUrl;
+    const finalUrl = fetched.finalUrl;
     const identityText = `${title} ${finalUrl} ${body.slice(0, 6000)}`;
     if (!directIdentityMatches(input.ownerName, identityText) || !locationMatches(input, identityText)) continue;
     const dates = extractDateSignals(body);
@@ -115,7 +135,7 @@ async function directDestinationFinding(sourceUrls: string[], input: { ownerName
         sourceUrl: finalUrl,
         obituarySnapshot: body.slice(0, 1200),
         ...dates,
-        accessMode: "direct_destination",
+        accessMode: fetched.accessMode,
         searchResultCount: sourceUrls.length,
         checkedCandidateCount: fetchedCount,
       },
@@ -198,7 +218,7 @@ export async function runS46VitalObituary(
   const normalizedApiBase = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
   const sourceUrls = await discoverSourceUrls(normalizedApiBase, apiKey, input);
   if (!sourceUrls.length) return { sourceUrl: "", accessMode: "direct_destination", searchResultCount: 0, checkedCandidateCount: 0 };
-  const direct = await directDestinationFinding(sourceUrls, input);
+  const direct = await directDestinationFinding(sourceUrls, input, normalizedApiBase, apiKey);
   if (direct.finding) return direct.finding;
   if (direct.fetchedCount > 0) return { sourceUrl: "", accessMode: "direct_destination", searchResultCount: sourceUrls.length, checkedCandidateCount: direct.fetchedCount };
   if (!text(env.OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID)) throw new Error("browserbase_vital_destination_access_blocked");

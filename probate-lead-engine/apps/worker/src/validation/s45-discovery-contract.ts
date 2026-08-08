@@ -61,6 +61,17 @@ async function main(): Promise<void> {
     assert.equal(locationMismatch.sourceUrl, "");
     assert.equal(locationMismatch.accessMode, "direct_destination");
 
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      if (url.endsWith("/v1/search")) return new Response(JSON.stringify({ results: [{ url: "https://blocked.example.test/obituary", title: "TEST OWNER obituary" }] }), { status: 200, headers: { "content-type": "application/json" } });
+      if (url.endsWith("/v1/fetch")) return new Response(JSON.stringify({ statusCode: 200, contentType: "text/html; charset=utf-8", encoding: "utf-8", content: "<html><title>TEST OWNER obituary</title><body>TEST OWNER of Miami-Dade was born January 1, 1940 and passed away January 1, 2020.</body></html>" }), { status: 200, headers: { "content-type": "application/json" } });
+      return new Response("blocked", { status: 403, headers: { "content-type": "text/plain" } });
+    };
+    const fetchVital = await runS46VitalObituary({ BROWSERBASE_API_KEY: "test", OBITUARY_VITAL_BROWSERBASE_FUNCTION_ID: "function-test" }, { ownerName: "TEST OWNER", county: "Miami-Dade", propertyAddress: "1 Main Street, Miami, FL 33101" });
+    assert.equal(fetchVital.sourceUrl, "https://blocked.example.test/obituary");
+    assert.equal(fetchVital.accessMode, "browserbase_fetch");
+    assert.equal(fetchVital.dateOfBirth, "January 1, 1940");
+
     globalThis.fetch = async (input, init) => {
       const url = String(input);
       const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
